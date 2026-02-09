@@ -1,0 +1,53 @@
+{
+  "name": "get-paw",
+  "version": "0.1.0",
+  "description": "Parallel Agent Worktrees — orchestrate multi-agent git worktree workflows",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.mjs",
+  "types": "./dist/index.d.mts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "default": "./dist/index.mjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "bin": {
+    "paw": "./dist/bin.mjs"
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "dev": "tsdown --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint . --fix && pnpm typecheck",
+    "lint:check": "pnpm typecheck && eslint . --max-warnings 0",
+    "format": "prettier --write --log-level warn .",
+    "format:check": "prettier --check --log-level warn .",
+    "precommit": "pnpm format && pnpm lint && pnpm build && pnpm test"
+  },
+  "dependencies": {
+    "commander": "^14.0.2",
+    "picocolors": "^1.1.1",
+    "yaml": "^2.8.2",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.7",
+    "eslint": "^9.39.2",
+    "prettier": "^3.8.1",
+    "tsdown": "^0.20.1",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.54.0",
+    "vitest": "^2.1.9"
+  }
+}
