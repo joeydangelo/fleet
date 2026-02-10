@@ -244,6 +244,23 @@ export function initSyncWorktree(cwd: string): string {
 }
 
 /**
+ * Resolve the absolute path to .paw/sync/ from any worktree.
+ * Agents run in task worktrees (-paw-auth, -paw-api) but the sync
+ * worktree lives in the main repo. This uses git-common-dir to find
+ * the shared .git path and derives the main worktree from it.
+ */
+export function resolveSyncDir(cwd: string): string {
+  const gitCommonDir = git(["rev-parse", "--git-common-dir"], {
+    cwd,
+    stdio: "pipe",
+  });
+  // git-common-dir is relative to cwd. Resolve it, then go up one level
+  // to get the main worktree root (since git-common-dir points to .git/).
+  const mainRoot = resolve(cwd, gitCommonDir, "..");
+  return resolve(mainRoot, ".paw", "sync");
+}
+
+/**
  * Remove the sync worktree at .paw/sync/.
  * Idempotent: no error if no worktree exists.
  * Follows tbd's removeWorktree pattern.

@@ -16,8 +16,15 @@ import {
   listSyncDir,
   initSyncWorktree,
   removeSyncWorktree,
+  resolveSyncDir,
 } from "../src/lib/sync.js";
-import { deleteBranch, branchExists } from "../src/lib/git.js";
+import {
+  deleteBranch,
+  branchExists,
+  createBranch,
+  createWorktree,
+  removeWorktree,
+} from "../src/lib/git.js";
 import type { SyncState } from "../src/lib/sync.js";
 
 function makeTempDir(): string {
@@ -346,5 +353,44 @@ describe("initSyncWorktree / removeSyncWorktree", () => {
   it("removeSyncWorktree is idempotent -- no error if no worktree", () => {
     // Should not throw
     removeSyncWorktree(repoDir);
+  });
+});
+
+describe("resolveSyncDir", () => {
+  let repoDir: string;
+  let taskWorktreePath: string;
+
+  beforeEach(() => {
+    repoDir = makeTempDir();
+    gitInit(repoDir);
+    // Create a task worktree to test resolution from there
+    createBranch("feature-auth", "HEAD", repoDir);
+    taskWorktreePath = resolve(repoDir, "..", `${repoDir.split(/[\\/]/).pop()}-paw-auth`);
+    createWorktree(taskWorktreePath, "feature-auth", repoDir);
+  });
+
+  afterEach(() => {
+    try {
+      removeSyncWorktree(repoDir);
+    } catch {
+      // Ignore
+    }
+    try {
+      removeWorktree(taskWorktreePath, repoDir);
+    } catch {
+      // Ignore
+    }
+    rmSync(repoDir, { recursive: true, force: true });
+    rmSync(taskWorktreePath, { recursive: true, force: true });
+  });
+
+  it("resolves from the main repo directory", () => {
+    const syncDir = resolveSyncDir(repoDir);
+    expect(syncDir).toBe(resolve(repoDir, ".paw", "sync"));
+  });
+
+  it("resolves from a task worktree to the main repo .paw/sync/", () => {
+    const syncDir = resolveSyncDir(taskWorktreePath);
+    expect(syncDir).toBe(resolve(repoDir, ".paw", "sync"));
   });
 });
