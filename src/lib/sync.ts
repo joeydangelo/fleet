@@ -88,6 +88,10 @@ function writeSyncFilesRetry(
     try {
       if (syncBranchExists(cwd)) {
         git(["read-tree", SYNC_BRANCH], pipeOpts);
+      } else {
+        // Clear stale index to prevent old entries leaking across sessions.
+        // Without this, paw-index retains files from a deleted paw-sync branch.
+        git(["read-tree", "--empty"], pipeOpts);
       }
 
       for (const file of files) {

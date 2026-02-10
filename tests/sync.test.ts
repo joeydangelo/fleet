@@ -14,6 +14,7 @@ import {
   writeSyncStateAndFiles,
   listSyncDir,
 } from "../src/lib/sync.js";
+import { deleteBranch } from "../src/lib/git.js";
 import type { SyncState } from "../src/lib/sync.js";
 
 function makeTempDir(): string {
@@ -230,5 +231,55 @@ describe("listSyncDir", () => {
     expect(files).toContain("summaries/auth.md");
     expect(files).toContain("summaries/api.md");
     expect(files).toHaveLength(2);
+  });
+});
+
+describe("session leak (paw-pm8q)", () => {
+  let repoDir: string;
+
+  beforeEach(() => {
+    repoDir = makeTempDir();
+    gitInit(repoDir);
+  });
+
+  afterEach(() => {
+    rmSync(repoDir, { recursive: true, force: true });
+  });
+
+  it("does not carry journal entries across delete + re-init", () => {
+    // Session 1: create state and write journal entries
+    const state1 = initSyncState("feature/dash", ["auth", "api"], "paw.yaml");
+    writeSyncStateAndFiles(
+      state1,
+      [
+        { path: "journal/.gitkeep", content: "" },
+        { path: "journal/auth.jsonl", content: '{"msg":"old entry"}' },
+      ],
+      repoDir,
+    );
+
+    expect(readSyncFile("journal/auth.jsonl", repoDir)).toBe(
+      '{"msg":"old entry"}',
+    );
+
+    // Simulate paw down: delete the sync branch
+    deleteBranch("paw-sync", repoDir);
+
+    // Session 2: re-init with fresh state
+    const state2 = initSyncState("feature/dash", ["auth", "api"], "paw.yaml");
+    writeSyncStateAndFiles(
+      state2,
+      [{ path: "journal/.gitkeep", content: "" }],
+      repoDir,
+    );
+
+    // Old journal entry must NOT be present
+    expect(readSyncFile("journal/auth.jsonl", repoDir)).toBeNull();
+    expect(listSyncDir("journal", repoDir)).toEqual(["journal/.gitkeep"]);
+
+    // Fresh state should be readable
+    const read = readSyncState(repoDir);
+    expect(read).not.toBeNull();
+    expect(read!.tasks["auth"]?.status).toBe("pending");
   });
 });
