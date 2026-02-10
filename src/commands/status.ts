@@ -4,7 +4,8 @@ import pc from "picocolors";
 import { getRepoRoot, getCommitCount, getChangedFileCount } from "../lib/git.js";
 import { loadConfig, resolveConfigPath } from "../lib/config.js";
 import { planWorktrees } from "../lib/session.js";
-import { success, error, pending, unknown } from "../lib/output.js";
+import { readSyncState } from "../lib/sync.js";
+import { success, error, pending, skip, unknown } from "../lib/output.js";
 
 export function statusCommand(): Command {
   return new Command("status")
@@ -15,13 +16,21 @@ export function statusCommand(): Command {
       const configPath = opts.config ?? resolveConfigPath(repoRoot);
       const config = loadConfig(configPath);
       const worktrees = planWorktrees(config, repoRoot);
+      const syncState = readSyncState(repoRoot);
 
       console.log(pc.bold("paw status\n"));
 
       for (const wt of worktrees) {
+        const taskSync = syncState?.tasks[wt.taskName];
         const exists = existsSync(wt.worktreePath);
+
         if (!exists) {
           error(wt.taskName, "worktree not found");
+          continue;
+        }
+
+        if (taskSync?.status === "completed") {
+          skip(wt.taskName, "completed");
           continue;
         }
 
@@ -31,10 +40,12 @@ export function statusCommand(): Command {
             ? getChangedFileCount(wt.branch, config.target, repoRoot)
             : 0;
 
+          const syncLabel = taskSync?.status === "in_progress" ? " [claimed]" : "";
+
           if (commits === 0) {
-            pending(wt.taskName, "no changes yet");
+            pending(wt.taskName, `no changes yet${syncLabel}`);
           } else {
-            success(wt.taskName, `${commits} commit(s), ${files} file(s) changed`);
+            success(wt.taskName, `${commits} commit(s), ${files} file(s) changed${syncLabel}`);
           }
         } catch {
           unknown(wt.taskName, "unable to read status");
