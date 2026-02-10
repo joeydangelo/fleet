@@ -1,4 +1,5 @@
 import { readFileSync, existsSync } from "node:fs";
+import { resolve } from "node:path";
 import { parse as parseYaml } from "yaml";
 import { z } from "zod";
 
@@ -30,8 +31,8 @@ export function loadConfig(configPath: string): PawConfig {
 export function resolveConfigPath(cwd: string): string {
   const candidates = ["paw.yaml", "paw.yml"];
   for (const name of candidates) {
-    const path = `${cwd}/${name}`;
-    if (existsSync(path)) return path;
+    const p = resolve(cwd, name);
+    if (existsSync(p)) return p;
   }
   throw new Error(
     "No paw.yaml found. Create one or specify --config <path>",
