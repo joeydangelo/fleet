@@ -20,20 +20,27 @@ If you are in a paw worktree, run \`paw prime\` to:
 - Read your task assignment
 - Claim the task so other agents see you're working on it
 - See what other agents are doing
+- Read recent broadcasts and directed messages from other agents
 
 ## Commands
 
 \`\`\`
-paw prime    # orient + self-assign (run this first)
-paw status   # check progress across all tasks
-paw done     # mark your task as completed
+paw prime              # orient + self-assign (run this first)
+paw status             # check progress across all tasks
+paw broadcast "..."    # announce a change to all agents
+paw ask <task> "..."   # send a directed message to a specific agent
+paw reply "..."        # reply to the most recent directed message
+paw check              # read new messages and broadcasts
+paw done               # mark your task as completed (use --summary)
 \`\`\`
 
 ## Workflow
 
 1. Read your task file at \`.paw/tasks/<name>.md\`
 2. Work on the task, committing to your branch as you go
-3. Run \`paw done\` when finished
+3. Run \`paw broadcast "..."\` when you make significant changes
+4. Run \`paw check\` periodically to read messages from other agents
+5. Run \`paw done --summary "..."\` when finished
 `;
 
 export function setupCommand(): Command {
