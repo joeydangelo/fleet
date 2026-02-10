@@ -9,6 +9,7 @@ import {
 import { loadConfig, resolveConfigPath } from "../lib/config.js";
 import { planWorktrees } from "../lib/session.js";
 import { readSyncState } from "../lib/sync.js";
+import { readJournal } from "../lib/journal.js";
 import {
   success,
   error,
@@ -67,6 +68,21 @@ export function statusCommand(): Command {
             }
           } catch {
             unknown(wt.taskName, "unable to read status");
+          }
+        }
+
+        // Show latest broadcast per agent
+        const journalEntries = readJournal(repoRoot);
+        const latestBroadcasts = new Map<string, string>();
+        for (const entry of journalEntries) {
+          if (entry.type === "broadcast") {
+            latestBroadcasts.set(entry.from, entry.msg);
+          }
+        }
+        if (latestBroadcasts.size > 0) {
+          console.log(pc.bold("\nLatest broadcasts:"));
+          for (const [from, msg] of latestBroadcasts) {
+            console.log(`  ${pc.dim(`[${from}]`)} ${msg}`);
           }
         }
 

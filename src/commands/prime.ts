@@ -10,6 +10,7 @@ import {
   writeSyncState,
   readSyncFile,
 } from "../lib/sync.js";
+import { readJournalForTask } from "../lib/journal.js";
 import { handleError } from "../lib/output.js";
 
 export function primeCommand(): Command {
@@ -50,8 +51,9 @@ export function primeCommand(): Command {
           writeSyncState(updated, repoRoot);
           console.log(pc.green(`Claimed task: ${taskName}\n`));
 
-          // Show team status
           const separator = pc.dim("────────────────────────────────────────");
+
+          // Show team status
           const otherTasks = Object.entries(updated.tasks).filter(
             ([name]) => name !== taskName,
           );
@@ -66,6 +68,34 @@ export function primeCommand(): Command {
                     ? pc.yellow
                     : pc.dim;
               console.log(`  ${statusColor(task.status.padEnd(12))} ${name}`);
+            }
+            console.log();
+          }
+
+          // Show recent broadcasts and directed messages
+          const lastCheck = updated.lastCheck?.[taskName];
+          const entries = readJournalForTask(taskName, repoRoot, lastCheck);
+          const broadcasts = entries.filter(
+            (e) => e.type === "broadcast" && e.from !== taskName,
+          );
+          const directed = entries.filter((e) => e.to === taskName);
+
+          if (broadcasts.length > 0) {
+            console.log(separator);
+            console.log(pc.bold("Recent Broadcasts"));
+            for (const entry of broadcasts) {
+              console.log(`  ${pc.dim(`[${entry.from}]`)} ${entry.msg}`);
+            }
+            console.log();
+          }
+
+          if (directed.length > 0) {
+            console.log(separator);
+            console.log(pc.bold("Messages for You"));
+            for (const entry of directed) {
+              console.log(
+                `  ${pc.cyan(`[${entry.from} → ${taskName}]`)} ${entry.msg}`,
+              );
             }
             console.log();
           }

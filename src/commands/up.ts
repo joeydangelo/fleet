@@ -7,7 +7,7 @@ import {
   planWorktrees,
   writeTaskFiles,
 } from "../lib/session.js";
-import { initSyncState, writeSyncState } from "../lib/sync.js";
+import { initSyncState, writeSyncStateAndFiles } from "../lib/sync.js";
 import { success, pending, handleError } from "../lib/output.js";
 
 export function upCommand(): Command {
@@ -42,9 +42,13 @@ export function upCommand(): Command {
         const worktrees = createSession(config, repoRoot);
         writeTaskFiles(config, worktrees);
 
-        // Initialize sync branch with all tasks as pending
+        // Initialize sync branch with all tasks as pending + journal directory
         const syncState = initSyncState(config.target, taskNames, configPath);
-        writeSyncState(syncState, repoRoot);
+        writeSyncStateAndFiles(
+          syncState,
+          [{ path: "journal/.gitkeep", content: "" }],
+          repoRoot,
+        );
 
         for (const wt of worktrees) {
           success(wt.taskName, wt.worktreePath);

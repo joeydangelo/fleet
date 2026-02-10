@@ -27,6 +27,8 @@ export interface SyncState {
   target: string;
   tasks: Record<string, TaskState>;
   merges?: Record<string, MergeEntry>;
+  /** Per-task timestamp of last `paw check` run. */
+  lastCheck?: Record<string, string>;
 }
 
 function syncBranchExists(cwd?: string): boolean {

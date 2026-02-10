@@ -8,6 +8,10 @@ const SUBCOMMANDS = [
   "done",
   "merge",
   "down",
+  "broadcast",
+  "ask",
+  "reply",
+  "check",
   "completions",
 ];
 
@@ -192,6 +196,10 @@ function descriptionFor(cmd: string): string {
     done: "Mark task as completed",
     merge: "Merge task branches into target",
     down: "Tear down session",
+    broadcast: "Broadcast message to all agents",
+    ask: "Send directed message to agent",
+    reply: "Reply to last directed message",
+    check: "Read new messages and broadcasts",
     completions: "Generate shell completions",
   };
   return descriptions[cmd] ?? cmd;
