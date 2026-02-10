@@ -6,6 +6,7 @@ import { statusCommand } from "./commands/status.js";
 import { doneCommand } from "./commands/done.js";
 import { mergeCommand } from "./commands/merge.js";
 import { downCommand } from "./commands/down.js";
+import { completionsCommand } from "./commands/completions.js";
 
 export function createCli(): Command {
   const program = new Command();
@@ -24,6 +25,7 @@ export function createCli(): Command {
   program.addCommand(doneCommand());
   program.addCommand(mergeCommand());
   program.addCommand(downCommand());
+  program.addCommand(completionsCommand());
 
   return program;
 }
