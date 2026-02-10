@@ -13,10 +13,12 @@ import type { WorktreeInfo } from "../lib/session.js";
 import {
   readSyncState,
   writeSyncState,
+  writeSyncStateAndFiles,
   initMergeState,
   updateMergeEntry,
 } from "../lib/sync.js";
 import type { SyncState } from "../lib/sync.js";
+import { generateConflictBrief } from "../lib/conflict.js";
 import { success, warn, skip, handleError } from "../lib/output.js";
 
 export function mergeCommand(): Command {
@@ -175,10 +177,30 @@ function runMergeLoop(
       writeSyncState(state, repoRoot);
       success(wt.taskName, "merged clean");
     } else {
-      state = updateMergeEntry(state, wt.taskName, { status: "conflict" });
-      writeSyncState(state, repoRoot);
+      // Generate conflict brief
+      const briefPath = `conflicts/${wt.taskName}-into-target.md`;
+      const brief = generateConflictBrief({
+        conflictingTask: wt.taskName,
+        target,
+        state,
+        cwd: repoRoot,
+      });
+
+      state = updateMergeEntry(state, wt.taskName, {
+        status: "conflict",
+        brief: briefPath,
+      });
+      writeSyncStateAndFiles(
+        state,
+        [{ path: briefPath, content: brief }],
+        repoRoot,
+      );
+
       warn(wt.taskName, "conflicts");
       console.log(pc.dim(`    ${result.message.split("\n")[0]}`));
+      console.log(
+        pc.dim(`    Brief written to ${briefPath} on sync branch`),
+      );
       console.log(
         pc.yellow(
           "\nResolve the conflict, commit, then run: paw merge --continue",

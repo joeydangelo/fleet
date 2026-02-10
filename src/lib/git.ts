@@ -99,6 +99,29 @@ export function mergeBranch(
   }
 }
 
+/** Get diff output for a merge conflict (shows conflict markers). */
+export function getDiffOutput(cwd?: string): string {
+  try {
+    return git(["diff"], { cwd, stdio: "pipe" });
+  } catch {
+    return "";
+  }
+}
+
+/** Get the list of conflicting files during a merge. */
+export function getConflictingFiles(cwd?: string): string[] {
+  try {
+    const output = git(["diff", "--name-only", "--diff-filter=U"], {
+      cwd,
+      stdio: "pipe",
+    });
+    if (!output) return [];
+    return output.split("\n").filter(Boolean);
+  } catch {
+    return [];
+  }
+}
+
 /** Check whether git is currently in a merge-conflict state (MERGE_HEAD exists). */
 export function isMergeInProgress(cwd?: string): boolean {
   try {

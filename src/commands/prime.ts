@@ -116,6 +116,29 @@ export function primeCommand(): Command {
               }
             }
           }
+
+          // Show active conflict brief if one exists for this session
+          if (updated.merges) {
+            const conflictEntries = Object.entries(updated.merges).filter(
+              ([, entry]) => entry.status === "conflict" && entry.brief,
+            );
+            if (conflictEntries.length > 0) {
+              console.log(separator);
+              console.log(pc.bold(pc.yellow("Active Conflict\n")));
+              for (const [name, entry] of conflictEntries) {
+                const brief = readSyncFile(entry.brief!, repoRoot);
+                if (brief) {
+                  console.log(brief);
+                } else {
+                  console.log(
+                    pc.yellow(
+                      `Conflict on ${name} -- brief at ${entry.brief}`,
+                    ),
+                  );
+                }
+              }
+            }
+          }
         } else {
           console.log(pc.dim("No sync state found. Run `paw up` first.\n"));
         }
