@@ -1,8 +1,15 @@
 import { Command } from "commander";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  writeFileSync,
+} from "node:fs";
 import { resolve } from "node:path";
 import pc from "picocolors";
 import { getRepoRoot } from "../lib/git.js";
+import { getDocsBasePath } from "../lib/docs.js";
 import { success, skip, handleError } from "../lib/output.js";
 
 const SKILL_CONTENT = `---
@@ -130,6 +137,21 @@ export function setupCommand(): Command {
           success("gitignore", "added .paw/");
         }
 
+        // Copy bundled docs to .paw/docs/
+        try {
+          const docsBase = getDocsBasePath();
+          const destDocs = resolve(repoRoot, ".paw", "docs");
+          cpSync(docsBase, destDocs, { recursive: true });
+          success("docs", destDocs);
+        } catch {
+          // Docs may not be available in dev without a build
+          skip("docs", "bundled docs not found (run pnpm build)");
+        }
+
+        // Install Claude Code hooks
+        const settingsPath = resolve(repoRoot, ".claude", "settings.json");
+        installHooks(settingsPath);
+
         console.log(
           pc.dim("\nCreate a paw.yaml and run `paw up` to start a session."),
         );
@@ -137,4 +159,51 @@ export function setupCommand(): Command {
         handleError(err);
       }
     });
+}
+
+function installHooks(settingsPath: string): void {
+  const pawHooks = {
+    SessionStart: [{ command: "paw prime --brief" }],
+    PreCompact: [{ command: "paw prime --brief" }],
+  };
+
+  let settings: Record<string, unknown> = {};
+  if (existsSync(settingsPath)) {
+    try {
+      settings = JSON.parse(readFileSync(settingsPath, "utf-8")) as Record<
+        string,
+        unknown
+      >;
+    } catch {
+      // Corrupted settings -- overwrite
+    }
+  }
+
+  const existing = (settings.hooks ?? {}) as Record<string, unknown[]>;
+  let changed = false;
+
+  for (const [event, hooks] of Object.entries(pawHooks)) {
+    const current = existing[event] ?? [];
+    const hasPaw = current.some(
+      (h) =>
+        typeof h === "object" &&
+        h !== null &&
+        "command" in h &&
+        typeof (h as { command: string }).command === "string" &&
+        (h as { command: string }).command.startsWith("paw "),
+    );
+    if (!hasPaw) {
+      existing[event] = [...current, ...hooks];
+      changed = true;
+    }
+  }
+
+  if (changed) {
+    settings.hooks = existing;
+    mkdirSync(resolve(settingsPath, ".."), { recursive: true });
+    writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + "\n", "utf-8");
+    success("hooks", "SessionStart + PreCompact → paw prime --brief");
+  } else {
+    skip("hooks", "paw hooks already installed");
+  }
 }
