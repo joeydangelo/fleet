@@ -12,6 +12,7 @@ import { readSyncState } from "../lib/sync.js";
 import {
   success,
   error,
+  warn,
   pending,
   skip,
   unknown,
@@ -66,6 +67,31 @@ export function statusCommand(): Command {
             }
           } catch {
             unknown(wt.taskName, "unable to read status");
+          }
+        }
+
+        if (syncState?.merges) {
+          console.log(pc.bold("\nMerge state:"));
+          for (const wt of worktrees) {
+            const entry = syncState.merges[wt.taskName];
+            if (!entry) continue;
+            switch (entry.status) {
+              case "merged":
+                success(
+                  wt.taskName,
+                  `merged${entry.merged ? ` at ${entry.merged}` : ""}`,
+                );
+                break;
+              case "skipped":
+                skip(wt.taskName, "skipped (no commits)");
+                break;
+              case "conflict":
+                warn(wt.taskName, "conflict (unresolved)");
+                break;
+              case "pending":
+                pending(wt.taskName, "pending");
+                break;
+            }
           }
         }
       } catch (err) {

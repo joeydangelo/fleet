@@ -11,11 +11,22 @@ export interface TaskState {
   completed?: string;
 }
 
+export type MergeStatus = "pending" | "merged" | "skipped" | "conflict";
+
+export interface MergeEntry {
+  status: MergeStatus;
+  /** ISO timestamp when merged clean. */
+  merged?: string;
+  /** Path to conflict brief on sync branch. */
+  brief?: string;
+}
+
 export interface SyncState {
   session: string;
   config: string;
   target: string;
   tasks: Record<string, TaskState>;
+  merges?: Record<string, MergeEntry>;
 }
 
 function syncBranchExists(cwd?: string): boolean {
@@ -164,6 +175,32 @@ export function completeTask(state: SyncState, taskName: string): SyncState {
         status: "completed",
         completed: new Date().toISOString(),
       },
+    },
+  };
+}
+
+/** Create initial merge state with all tasks pending. */
+export function initMergeState(
+  taskNames: string[],
+): Record<string, MergeEntry> {
+  const merges: Record<string, MergeEntry> = {};
+  for (const name of taskNames) {
+    merges[name] = { status: "pending" };
+  }
+  return merges;
+}
+
+/** Return a new SyncState with one merge entry updated. */
+export function updateMergeEntry(
+  state: SyncState,
+  taskName: string,
+  entry: MergeEntry,
+): SyncState {
+  return {
+    ...state,
+    merges: {
+      ...state.merges,
+      [taskName]: entry,
     },
   };
 }

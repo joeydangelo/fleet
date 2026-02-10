@@ -98,3 +98,13 @@ export function mergeBranch(
     return { success: false, message };
   }
 }
+
+/** Check whether git is currently in a merge-conflict state (MERGE_HEAD exists). */
+export function isMergeInProgress(cwd?: string): boolean {
+  try {
+    git(["rev-parse", "--verify", "MERGE_HEAD"], { cwd, stdio: "pipe" });
+    return true;
+  } catch {
+    return false;
+  }
+}
