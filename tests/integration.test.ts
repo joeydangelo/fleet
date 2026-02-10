@@ -13,7 +13,13 @@ import {
   writeSyncState,
   readSyncState,
 } from "../src/lib/sync.js";
-import { branchExists, listWorktrees, removeWorktree } from "../src/lib/git.js";
+import {
+  branchExists,
+  listWorktrees,
+  removeWorktree,
+  deleteBranch,
+} from "../src/lib/git.js";
+import { writeSyncStateAndFiles } from "../src/lib/sync.js";
 import type { PawConfig } from "../src/lib/config.js";
 
 function makeTempDir(): string {
@@ -165,6 +171,55 @@ describe("paw session lifecycle", () => {
     }
 
     // Clear tracked paths since we already cleaned up
+    worktreePaths = [];
+  });
+
+  it("deletes sync branch on teardown", () => {
+    const worktrees = createSession(config, repoDir);
+    worktreePaths = worktrees.map((w) => w.worktreePath);
+
+    // Set up sync branch with state + journal
+    const taskNames = Object.keys(config.tasks);
+    const syncState = initSyncState(config.target, taskNames, "paw.yaml");
+    writeSyncStateAndFiles(
+      syncState,
+      [{ path: "journal/.gitkeep", content: "" }],
+      repoDir,
+    );
+
+    expect(branchExists("paw-sync", repoDir)).toBe(true);
+
+    // Tear down worktrees
+    for (const wt of worktrees) {
+      removeWorktree(wt.worktreePath, repoDir);
+    }
+
+    // Delete sync branch (as paw down does)
+    deleteBranch("paw-sync", repoDir);
+    expect(branchExists("paw-sync", repoDir)).toBe(false);
+
+    // Verify paw up works again after teardown
+    const worktrees2 = createSession(config, repoDir);
+    const paths2 = worktrees2.map((w) => w.worktreePath);
+
+    const syncState2 = initSyncState(config.target, taskNames, "paw.yaml");
+    writeSyncStateAndFiles(
+      syncState2,
+      [{ path: "journal/.gitkeep", content: "" }],
+      repoDir,
+    );
+
+    expect(branchExists("paw-sync", repoDir)).toBe(true);
+    const read = readSyncState(repoDir);
+    expect(read).not.toBeNull();
+    expect(read!.tasks["auth"]?.status).toBe("pending");
+
+    // Clean up second session
+    for (const wt of worktrees2) {
+      removeWorktree(wt.worktreePath, repoDir);
+    }
+
+    // Clear tracked paths
     worktreePaths = [];
   });
 });

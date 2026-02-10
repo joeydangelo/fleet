@@ -1,7 +1,12 @@
 import { Command } from "commander";
 import pc from "picocolors";
 import { existsSync } from "node:fs";
-import { getRepoRoot, removeWorktree } from "../lib/git.js";
+import {
+  getRepoRoot,
+  removeWorktree,
+  branchExists,
+  deleteBranch,
+} from "../lib/git.js";
 import { loadConfig, resolveConfigPath } from "../lib/config.js";
 import { planWorktrees } from "../lib/session.js";
 import { success, error, skip, pending, handleError } from "../lib/output.js";
@@ -52,7 +57,22 @@ export function downCommand(): Command {
             }
           }
 
-          console.log(`\n${pc.dim(`Removed ${removed} worktree(s).`)}`);
+          // Delete sync branch
+          const SYNC_BRANCH = "paw-sync";
+          if (branchExists(SYNC_BRANCH, repoRoot)) {
+            try {
+              deleteBranch(SYNC_BRANCH, repoRoot);
+              console.log(
+                `\n${pc.dim(`Removed ${removed} worktree(s). Sync branch deleted.`)}`,
+              );
+            } catch {
+              console.log(
+                `\n${pc.dim(`Removed ${removed} worktree(s). Failed to delete sync branch.`)}`,
+              );
+            }
+          } else {
+            console.log(`\n${pc.dim(`Removed ${removed} worktree(s).`)}`);
+          }
 
           if (!opts.keepBranches) {
             console.log(

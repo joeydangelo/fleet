@@ -99,6 +99,11 @@ export function mergeBranch(
   }
 }
 
+/** Delete a local branch. */
+export function deleteBranch(branch: string, cwd?: string): void {
+  git(["branch", "-D", branch], { cwd, stdio: "pipe" });
+}
+
 /** Get diff output for a merge conflict (shows conflict markers). */
 export function getDiffOutput(cwd?: string): string {
   try {
