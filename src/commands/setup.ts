@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import pc from "picocolors";
 import { getRepoRoot } from "../lib/git.js";
-import { success, skip } from "../lib/output.js";
+import { success, skip, handleError } from "../lib/output.js";
 
 const SKILL_CONTENT = `---
 description: paw -- Parallel Agent Worktrees
@@ -40,40 +40,44 @@ export function setupCommand(): Command {
   return new Command("setup")
     .description("Initialize paw in a repo")
     .action(() => {
-      const repoRoot = getRepoRoot();
+      try {
+        const repoRoot = getRepoRoot();
 
-      console.log(pc.bold("paw setup\n"));
+        console.log(pc.bold("paw setup\n"));
 
-      // Write skill file
-      const skillDir = resolve(repoRoot, ".claude", "skills", "paw");
-      const skillPath = resolve(skillDir, "SKILL.md");
-      mkdirSync(skillDir, { recursive: true });
-      writeFileSync(skillPath, SKILL_CONTENT, "utf-8");
-      success("skill", skillPath);
+        // Write skill file
+        const skillDir = resolve(repoRoot, ".claude", "skills", "paw");
+        const skillPath = resolve(skillDir, "SKILL.md");
+        mkdirSync(skillDir, { recursive: true });
+        writeFileSync(skillPath, SKILL_CONTENT, "utf-8");
+        success("skill", skillPath);
 
-      // Ensure .paw/ is in .gitignore
-      const gitignorePath = resolve(repoRoot, ".gitignore");
-      let gitignore = "";
-      if (existsSync(gitignorePath)) {
-        gitignore = readFileSync(gitignorePath, "utf-8");
-      }
+        // Ensure .paw/ is in .gitignore
+        const gitignorePath = resolve(repoRoot, ".gitignore");
+        let gitignore = "";
+        if (existsSync(gitignorePath)) {
+          gitignore = readFileSync(gitignorePath, "utf-8");
+        }
 
-      if (gitignore.includes(".paw/")) {
-        skip("gitignore", ".paw/ already present");
-      } else {
-        const separator = gitignore.length > 0 && !gitignore.endsWith("\n")
-          ? "\n"
-          : "";
-        writeFileSync(
-          gitignorePath,
-          gitignore + separator + "\n# paw working state\n.paw/\n",
-          "utf-8",
+        if (gitignore.includes(".paw/")) {
+          skip("gitignore", ".paw/ already present");
+        } else {
+          const separator = gitignore.length > 0 && !gitignore.endsWith("\n")
+            ? "\n"
+            : "";
+          writeFileSync(
+            gitignorePath,
+            gitignore + separator + "\n# paw working state\n.paw/\n",
+            "utf-8",
+          );
+          success("gitignore", "added .paw/");
+        }
+
+        console.log(
+          pc.dim("\nCreate a paw.yaml and run `paw up` to start a session."),
         );
-        success("gitignore", "added .paw/");
+      } catch (err) {
+        handleError(err);
       }
-
-      console.log(
-        pc.dim("\nCreate a paw.yaml and run `paw up` to start a session."),
-      );
     });
 }

@@ -1,5 +1,20 @@
 import pc from "picocolors";
 
+/**
+ * Wrap a command action to catch errors and print friendly messages.
+ */
+export function handleError(err: unknown): never {
+  const message = err instanceof Error ? err.message : String(err);
+
+  if (message.includes("not a git repository")) {
+    console.error(pc.red("Not in a git repository. Run paw from inside a git repo."));
+  } else {
+    console.error(pc.red(message));
+  }
+
+  process.exit(1);
+}
+
 export const ICONS = {
   SUCCESS: "+",
   ERROR: "x",

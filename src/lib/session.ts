@@ -1,5 +1,5 @@
 import { resolve, dirname, basename } from "node:path";
-import { mkdirSync, writeFileSync, readFileSync, existsSync } from "node:fs";
+import { mkdirSync, writeFileSync, readFileSync, existsSync, readdirSync } from "node:fs";
 import type { PawConfig } from "./config.js";
 import {
   branchExists,
@@ -87,6 +87,21 @@ export function ensureGitignore(worktreePath: string): void {
   } else {
     writeFileSync(gitignorePath, entry + "\n");
   }
+}
+
+/**
+ * Detect which task this directory belongs to by checking .paw/tasks/ for a
+ * single task file. Returns null if detection fails.
+ */
+export function detectTaskName(cwd: string): string | null {
+  const tasksDir = resolve(cwd, ".paw", "tasks");
+  if (existsSync(tasksDir)) {
+    const files = readdirSync(tasksDir).filter((f) => f.endsWith(".md"));
+    if (files.length === 1) {
+      return files[0]!.replace(/\.md$/, "");
+    }
+  }
+  return null;
 }
 
 export function writeTaskFiles(

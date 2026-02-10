@@ -14,6 +14,7 @@ import {
   generateTaskFile,
   writeTaskFiles,
   ensureGitignore,
+  detectTaskName,
 } from "../src/lib/session.js";
 
 function makeTempDir(): string {
@@ -180,6 +181,49 @@ describe("writeTaskFiles", () => {
 
     const gitignore = readFileSync(resolve(wt, ".gitignore"), "utf-8");
     expect(gitignore).toContain(".paw/");
+
+    rmSync(dir, { recursive: true });
+  });
+});
+
+describe("detectTaskName", () => {
+  it("finds task name from single file in .paw/tasks/", () => {
+    const dir = makeTempDir();
+    const tasksDir = resolve(dir, ".paw", "tasks");
+    mkdirSync(tasksDir, { recursive: true });
+    writeFileSync(resolve(tasksDir, "auth.md"), "# Task: auth\n");
+
+    expect(detectTaskName(dir)).toBe("auth");
+
+    rmSync(dir, { recursive: true });
+  });
+
+  it("returns null when .paw/tasks/ does not exist", () => {
+    const dir = makeTempDir();
+
+    expect(detectTaskName(dir)).toBeNull();
+
+    rmSync(dir, { recursive: true });
+  });
+
+  it("returns null when .paw/tasks/ has multiple files", () => {
+    const dir = makeTempDir();
+    const tasksDir = resolve(dir, ".paw", "tasks");
+    mkdirSync(tasksDir, { recursive: true });
+    writeFileSync(resolve(tasksDir, "auth.md"), "# auth\n");
+    writeFileSync(resolve(tasksDir, "api.md"), "# api\n");
+
+    expect(detectTaskName(dir)).toBeNull();
+
+    rmSync(dir, { recursive: true });
+  });
+
+  it("returns null when .paw/tasks/ is empty", () => {
+    const dir = makeTempDir();
+    const tasksDir = resolve(dir, ".paw", "tasks");
+    mkdirSync(tasksDir, { recursive: true });
+
+    expect(detectTaskName(dir)).toBeNull();
 
     rmSync(dir, { recursive: true });
   });

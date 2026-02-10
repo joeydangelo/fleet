@@ -70,6 +70,20 @@ tasks:
     expect(() => loadConfig(configPath)).toThrow();
     rmSync(dir, { recursive: true });
   });
+
+  it("throws a readable message on invalid config", () => {
+    const dir = makeTempDir();
+    const configPath = resolve(dir, "paw.yaml");
+    writeFileSync(configPath, `
+target: feature/x
+tasks:
+  foo:
+    not_a_field: true
+`);
+
+    expect(() => loadConfig(configPath)).toThrow(/Invalid paw\.yaml/);
+    rmSync(dir, { recursive: true });
+  });
 });
 
 describe("resolveConfigPath", () => {

@@ -25,7 +25,15 @@ export function loadConfig(configPath: string): PawConfig {
 
   const raw = readFileSync(configPath, "utf-8");
   const parsed = parseYaml(raw) as unknown;
-  return PawConfigSchema.parse(parsed);
+
+  const result = PawConfigSchema.safeParse(parsed);
+  if (!result.success) {
+    const issues = result.error.issues
+      .map((i) => `  ${i.path.join(".")}: ${i.message}`)
+      .join("\n");
+    throw new Error(`Invalid paw.yaml:\n${issues}`);
+  }
+  return result.data;
 }
 
 export function resolveConfigPath(cwd: string): string {
