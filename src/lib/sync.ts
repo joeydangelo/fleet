@@ -1,4 +1,5 @@
-import { resolve } from "node:path";
+import { resolve, join } from "node:path";
+import { existsSync, rmSync } from "node:fs";
 import { git } from "./git.js";
 
 const SYNC_BRANCH = "paw-sync";
@@ -207,6 +208,64 @@ export function listSyncDir(prefix: string, cwd?: string): string[] {
     return output.split("\n").filter(Boolean);
   } catch {
     return [];
+  }
+}
+
+/**
+ * Create a git worktree at .paw/sync/ for the paw-sync branch.
+ * If no branch exists, creates an orphan worktree.
+ * Idempotent: returns immediately if the worktree already exists.
+ * Follows tbd's initWorktree pattern.
+ */
+export function initSyncWorktree(cwd: string): string {
+  const worktreePath = resolve(cwd, ".paw", "sync");
+
+  // Idempotent: valid worktree already exists
+  if (existsSync(join(worktreePath, ".git"))) {
+    return worktreePath;
+  }
+
+  // Remove any stale directory (e.g. leftover from a crash)
+  rmSync(worktreePath, { recursive: true, force: true });
+
+  if (syncBranchExists(cwd)) {
+    git(["worktree", "add", worktreePath, SYNC_BRANCH], {
+      cwd,
+      stdio: "pipe",
+    });
+  } else {
+    git(["worktree", "add", "--orphan", "-b", SYNC_BRANCH, worktreePath], {
+      cwd,
+      stdio: "pipe",
+    });
+  }
+
+  return worktreePath;
+}
+
+/**
+ * Remove the sync worktree at .paw/sync/.
+ * Idempotent: no error if no worktree exists.
+ * Follows tbd's removeWorktree pattern.
+ */
+export function removeSyncWorktree(cwd: string): void {
+  const worktreePath = resolve(cwd, ".paw", "sync");
+
+  try {
+    git(["worktree", "remove", "--force", worktreePath], {
+      cwd,
+      stdio: "pipe",
+    });
+  } catch {
+    // If git worktree remove fails, manually delete
+    rmSync(worktreePath, { recursive: true, force: true });
+  }
+
+  // Prune stale worktree references
+  try {
+    git(["worktree", "prune"], { cwd, stdio: "pipe" });
+  } catch {
+    // Ignore prune errors
   }
 }
 

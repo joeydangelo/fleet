@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 import { mkdirSync, rmSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { tmpdir } from "node:os";
+import { existsSync } from "node:fs";
 import {
   initSyncState,
   claimTask,
@@ -13,8 +14,10 @@ import {
   readSyncFile,
   writeSyncStateAndFiles,
   listSyncDir,
+  initSyncWorktree,
+  removeSyncWorktree,
 } from "../src/lib/sync.js";
-import { deleteBranch } from "../src/lib/git.js";
+import { deleteBranch, branchExists } from "../src/lib/git.js";
 import type { SyncState } from "../src/lib/sync.js";
 
 function makeTempDir(): string {
@@ -281,5 +284,67 @@ describe("session leak (paw-pm8q)", () => {
     const read = readSyncState(repoDir);
     expect(read).not.toBeNull();
     expect(read!.tasks["auth"]?.status).toBe("pending");
+  });
+});
+
+describe("initSyncWorktree / removeSyncWorktree", () => {
+  let repoDir: string;
+
+  beforeEach(() => {
+    repoDir = makeTempDir();
+    gitInit(repoDir);
+  });
+
+  afterEach(() => {
+    // Must remove worktree before deleting temp dir
+    try {
+      removeSyncWorktree(repoDir);
+    } catch {
+      // Ignore cleanup errors
+    }
+    rmSync(repoDir, { recursive: true, force: true });
+  });
+
+  it("creates orphan worktree when no paw-sync branch exists", () => {
+    const wtPath = initSyncWorktree(repoDir);
+
+    expect(wtPath).toBe(resolve(repoDir, ".paw", "sync"));
+    expect(existsSync(resolve(wtPath, ".git"))).toBe(true);
+    // Orphan branch ref doesn't exist until first commit -- that's correct.
+    // The worktree is ready for files to be written and committed.
+  });
+
+  it("creates worktree from existing paw-sync branch", () => {
+    // Pre-create the sync branch with plumbing (simulate existing state)
+    const state = initSyncState("feature/dash", ["auth"], "paw.yaml");
+    writeSyncState(state, repoDir);
+    expect(branchExists("paw-sync", repoDir)).toBe(true);
+
+    const wtPath = initSyncWorktree(repoDir);
+
+    expect(existsSync(resolve(wtPath, ".git"))).toBe(true);
+    // state.json from the existing branch should be visible on disk
+    expect(existsSync(resolve(wtPath, "state.json"))).toBe(true);
+  });
+
+  it("is idempotent -- calling twice does not error", () => {
+    initSyncWorktree(repoDir);
+    const wtPath = initSyncWorktree(repoDir);
+
+    expect(existsSync(resolve(wtPath, ".git"))).toBe(true);
+  });
+
+  it("removes an existing worktree", () => {
+    const wtPath = initSyncWorktree(repoDir);
+    expect(existsSync(wtPath)).toBe(true);
+
+    removeSyncWorktree(repoDir);
+
+    expect(existsSync(wtPath)).toBe(false);
+  });
+
+  it("removeSyncWorktree is idempotent -- no error if no worktree", () => {
+    // Should not throw
+    removeSyncWorktree(repoDir);
   });
 });
