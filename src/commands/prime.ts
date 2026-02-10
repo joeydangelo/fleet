@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 import pc from "picocolors";
 import { getRepoRoot } from "../lib/git.js";
 import { detectTaskName } from "../lib/session.js";
+import type { SyncState } from "../lib/sync.js";
 import {
   readSyncState,
   claimTask,
@@ -16,7 +17,8 @@ import { handleError } from "../lib/output.js";
 export function primeCommand(): Command {
   return new Command("prime")
     .description("Orient agent and claim task (run inside a worktree)")
-    .action(() => {
+    .option("--brief", "Condensed output for hooks and constrained contexts")
+    .action((opts: { brief?: boolean }) => {
       try {
         const repoRoot = getRepoRoot();
         const taskName = detectTaskName(repoRoot);
@@ -33,132 +35,191 @@ export function primeCommand(): Command {
           process.exit(1);
         }
 
-        console.log(pc.bold(`paw prime: ${taskName}\n`));
-
-        // Read and display task file
+        // Read task file content
         const taskFile = resolve(repoRoot, ".paw", "tasks", `${taskName}.md`);
-        if (existsSync(taskFile)) {
-          const content = readFileSync(taskFile, "utf-8");
-          console.log(content);
-        } else {
-          console.log(pc.yellow("No task file found at " + taskFile));
-        }
+        const taskContent = existsSync(taskFile)
+          ? readFileSync(taskFile, "utf-8")
+          : null;
 
         // Claim on sync branch
         const state = readSyncState(repoRoot);
-        if (state && state.tasks[taskName]) {
-          const updated = claimTask(state, taskName);
-          writeSyncState(updated, repoRoot);
-          console.log(pc.green(`Claimed task: ${taskName}\n`));
+        const updated =
+          state && state.tasks[taskName]
+            ? claimTask(state, taskName)
+            : null;
+        if (updated) writeSyncState(updated, repoRoot);
 
-          const separator = pc.dim("────────────────────────────────────────");
-
-          // Show team status
-          const otherTasks = Object.entries(updated.tasks).filter(
-            ([name]) => name !== taskName,
-          );
-          if (otherTasks.length > 0) {
-            console.log(separator);
-            console.log(pc.bold("Team Status"));
-            for (const [name, task] of otherTasks) {
-              const statusColor =
-                task.status === "completed"
-                  ? pc.green
-                  : task.status === "in_progress"
-                    ? pc.yellow
-                    : pc.dim;
-              console.log(`  ${statusColor(task.status.padEnd(12))} ${name}`);
-            }
-            console.log();
-          }
-
-          // Show recent broadcasts and directed messages
-          const lastCheck = updated.lastCheck?.[taskName];
-          const entries = readJournalForTask(taskName, repoRoot, lastCheck);
-          const broadcasts = entries.filter(
-            (e) => e.type === "broadcast" && e.from !== taskName,
-          );
-          const directed = entries.filter((e) => e.to === taskName);
-
-          if (broadcasts.length > 0) {
-            console.log(separator);
-            console.log(pc.bold("Recent Broadcasts"));
-            for (const entry of broadcasts) {
-              console.log(`  ${pc.dim(`[${entry.from}]`)} ${entry.msg}`);
-            }
-            console.log();
-          }
-
-          if (directed.length > 0) {
-            console.log(separator);
-            console.log(pc.bold("Messages for You"));
-            for (const entry of directed) {
-              console.log(
-                `  ${pc.cyan(`[${entry.from} → ${taskName}]`)} ${entry.msg}`,
-              );
-            }
-            console.log();
-          }
-
-          // Show completed summaries
-          const completedTasks = Object.entries(updated.tasks).filter(
-            ([name, task]) => name !== taskName && task.status === "completed",
-          );
-          if (completedTasks.length > 0) {
-            console.log(separator);
-            console.log(pc.bold("Completed Summaries\n"));
-            for (const [name] of completedTasks) {
-              const summary = readSyncFile(`summaries/${name}.md`, repoRoot);
-              if (summary) {
-                console.log(pc.bold(`### ${name}`));
-                console.log(summary);
-                console.log();
-              }
-            }
-          }
-
-          // Show active conflict brief if one exists for this session
-          if (updated.merges) {
-            const conflictEntries = Object.entries(updated.merges).filter(
-              ([, entry]) => entry.status === "conflict" && entry.brief,
-            );
-            if (conflictEntries.length > 0) {
-              console.log(separator);
-              console.log(pc.bold(pc.yellow("Active Conflict\n")));
-              for (const [name, entry] of conflictEntries) {
-                const brief = readSyncFile(entry.brief!, repoRoot);
-                if (brief) {
-                  console.log(brief);
-                } else {
-                  console.log(
-                    pc.yellow(
-                      `Conflict on ${name} -- brief at ${entry.brief}`,
-                    ),
-                  );
-                }
-              }
-            }
-          }
+        if (opts.brief) {
+          printBrief(taskName, taskContent, updated);
         } else {
-          console.log(pc.dim("No sync state found. Run `paw up` first.\n"));
+          printFull(taskName, taskContent, updated, repoRoot);
         }
-
-        // Usage guide
-        console.log(pc.dim("── Workflow ──"));
-        console.log(pc.dim("1. Work on the task, committing as you go"));
-        console.log(
-          pc.dim(
-            '2. Run `paw broadcast "..."` when you make significant changes',
-          ),
-        );
-        console.log(
-          pc.dim("3. Run `paw check` to read messages from other agents"),
-        );
-        console.log(
-          pc.dim("4. Run `paw done` when finished (include a --summary)"),
-        );
       } catch (err) {
         handleError(err);
       }
     });
+}
+
+function printTeamStatus(taskName: string, state: SyncState): void {
+  const otherTasks = Object.entries(state.tasks).filter(
+    ([name]) => name !== taskName,
+  );
+  if (otherTasks.length === 0) return;
+
+  console.log(pc.bold("Team Status"));
+  for (const [name, task] of otherTasks) {
+    const statusColor =
+      task.status === "completed"
+        ? pc.green
+        : task.status === "in_progress"
+          ? pc.yellow
+          : pc.dim;
+    console.log(`  ${statusColor(task.status.padEnd(12))} ${name}`);
+  }
+  console.log();
+}
+
+function printBrief(
+  taskName: string,
+  taskContent: string | null,
+  state: SyncState | null,
+): void {
+  console.log(pc.bold(`paw prime: ${taskName} (brief)\n`));
+
+  if (taskContent) {
+    // Extract just focus and instructions sections, skip full markdown
+    const lines = taskContent.split("\n");
+    const focusStart = lines.findIndex((l) => l.startsWith("## Focus"));
+    const instructionsStart = lines.findIndex((l) =>
+      l.startsWith("## Instructions"),
+    );
+
+    if (focusStart !== -1) {
+      const end =
+        instructionsStart !== -1 ? instructionsStart : lines.length;
+      const focusLines = lines.slice(focusStart, end).filter((l) => l.trim());
+      for (const line of focusLines) console.log(line);
+      console.log();
+    }
+  }
+
+  if (state) {
+    printTeamStatus(taskName, state);
+  } else {
+    console.log(pc.dim("No sync state found. Run `paw up` first.\n"));
+  }
+
+  console.log(pc.dim("Commands: paw check | paw broadcast | paw done"));
+  console.log(pc.dim("Full context: paw prime"));
+}
+
+function printFull(
+  taskName: string,
+  taskContent: string | null,
+  state: SyncState | null,
+  repoRoot: string,
+): void {
+  console.log(pc.bold(`paw prime: ${taskName}\n`));
+
+  if (taskContent) {
+    console.log(taskContent);
+  } else {
+    console.log(pc.yellow("No task file found.\n"));
+  }
+
+  if (!state) {
+    console.log(pc.dim("No sync state found. Run `paw up` first.\n"));
+    return;
+  }
+
+  console.log(pc.green(`Claimed task: ${taskName}\n`));
+
+  const separator = pc.dim("────────────────────────────────────────");
+
+  // Team status
+  console.log(separator);
+  printTeamStatus(taskName, state);
+
+  // Recent broadcasts and directed messages
+  const lastCheck = state.lastCheck?.[taskName];
+  const entries = readJournalForTask(taskName, repoRoot, lastCheck);
+  const broadcasts = entries.filter(
+    (e) => e.type === "broadcast" && e.from !== taskName,
+  );
+  const directed = entries.filter((e) => e.to === taskName);
+
+  if (broadcasts.length > 0) {
+    console.log(separator);
+    console.log(pc.bold("Recent Broadcasts"));
+    for (const entry of broadcasts) {
+      console.log(`  ${pc.dim(`[${entry.from}]`)} ${entry.msg}`);
+    }
+    console.log();
+  }
+
+  if (directed.length > 0) {
+    console.log(separator);
+    console.log(pc.bold("Messages for You"));
+    for (const entry of directed) {
+      console.log(
+        `  ${pc.cyan(`[${entry.from} → ${taskName}]`)} ${entry.msg}`,
+      );
+    }
+    console.log();
+  }
+
+  // Completed summaries
+  const completedTasks = Object.entries(state.tasks).filter(
+    ([name, task]) => name !== taskName && task.status === "completed",
+  );
+  if (completedTasks.length > 0) {
+    console.log(separator);
+    console.log(pc.bold("Completed Summaries\n"));
+    for (const [name] of completedTasks) {
+      const summary = readSyncFile(`summaries/${name}.md`, repoRoot);
+      if (summary) {
+        console.log(pc.bold(`### ${name}`));
+        console.log(summary);
+        console.log();
+      }
+    }
+  }
+
+  // Active conflict brief
+  if (state.merges) {
+    const conflictEntries = Object.entries(state.merges).filter(
+      ([, entry]) => entry.status === "conflict" && entry.brief,
+    );
+    if (conflictEntries.length > 0) {
+      console.log(separator);
+      console.log(pc.bold(pc.yellow("Active Conflict\n")));
+      for (const [name, entry] of conflictEntries) {
+        const brief = readSyncFile(entry.brief!, repoRoot);
+        if (brief) {
+          console.log(brief);
+        } else {
+          console.log(
+            pc.yellow(`Conflict on ${name} -- brief at ${entry.brief}`),
+          );
+        }
+      }
+    }
+  }
+
+  // Workflow footer
+  console.log(pc.dim("── Workflow ──"));
+  console.log(
+    pc.dim("1. Follow `paw shortcut precommit-process` when committing"),
+  );
+  console.log(
+    pc.dim(
+      '2. Run `paw broadcast "..."` when you change shared interfaces',
+    ),
+  );
+  console.log(
+    pc.dim("3. Run `paw check` to read messages from other agents"),
+  );
+  console.log(
+    pc.dim("4. Run `paw shortcut session-end` when finished"),
+  );
 }
