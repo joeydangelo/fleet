@@ -6,7 +6,8 @@ import { tmpdir } from "node:os";
 import {
   initSyncState,
   writeSyncState,
-  readSyncState,
+  initSyncWorktree,
+  removeSyncWorktree,
 } from "../src/lib/sync.js";
 import {
   appendJournalEntry,
@@ -38,12 +39,13 @@ describe("appendJournalEntry / readJournal", () => {
   beforeEach(() => {
     repoDir = makeTempDir();
     gitInit(repoDir);
-    // Need sync branch for journal operations
+    initSyncWorktree(repoDir);
     const state = initSyncState("feature/dash", ["auth", "api"], "paw.yaml");
     writeSyncState(state, repoDir);
   });
 
   afterEach(() => {
+    removeSyncWorktree(repoDir);
     rmSync(repoDir, { recursive: true, force: true });
   });
 
@@ -146,6 +148,7 @@ describe("readJournalForTask", () => {
   beforeEach(() => {
     repoDir = makeTempDir();
     gitInit(repoDir);
+    initSyncWorktree(repoDir);
     const state = initSyncState(
       "feature/dash",
       ["auth", "api", "dashboard"],
@@ -155,6 +158,7 @@ describe("readJournalForTask", () => {
   });
 
   afterEach(() => {
+    removeSyncWorktree(repoDir);
     rmSync(repoDir, { recursive: true, force: true });
   });
 

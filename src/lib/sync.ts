@@ -1,5 +1,12 @@
-import { resolve, join } from "node:path";
-import { existsSync, rmSync } from "node:fs";
+import { resolve, join, dirname } from "node:path";
+import {
+  existsSync,
+  rmSync,
+  readFileSync,
+  writeFileSync,
+  mkdirSync,
+  readdirSync,
+} from "node:fs";
 import { git } from "./git.js";
 
 const SYNC_BRANCH = "paw-sync";
@@ -41,191 +48,19 @@ function syncBranchExists(cwd?: string): boolean {
   }
 }
 
-export function readSyncState(cwd?: string): SyncState | null {
-  if (!syncBranchExists(cwd)) return null;
-
-  try {
-    const raw = git(["show", `${SYNC_BRANCH}:${STATE_FILE}`], {
-      cwd,
-      stdio: "pipe",
-    });
-    return JSON.parse(raw) as SyncState;
-  } catch {
-    return null;
-  }
-}
-
-/** Run a function with GIT_INDEX_FILE pointed at the paw-sync isolated index. */
-function withSyncIndex<T>(fn: () => T, cwd?: string): T {
-  const gitDir = git(["rev-parse", "--git-dir"], { cwd });
-  const effectiveCwd = cwd || process.cwd();
-  const indexFile = resolve(effectiveCwd, gitDir, "paw-index");
-  const originalIndex = process.env.GIT_INDEX_FILE;
-
-  try {
-    process.env.GIT_INDEX_FILE = indexFile;
-    return fn();
-  } finally {
-    if (originalIndex) {
-      process.env.GIT_INDEX_FILE = originalIndex;
-    } else {
-      delete process.env.GIT_INDEX_FILE;
-    }
-  }
-}
-
-/**
- * Write one or more files to the paw-sync branch in a single atomic commit.
- * Uses an isolated git index to avoid touching the working tree.
- */
-function writeSyncFilesRetry(
-  files: Array<{ path: string; content: string }>,
-  message: string,
-  cwd?: string,
-): void {
-  const pipeOpts = { cwd, stdio: "pipe" as const };
-
-  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-    try {
-      if (syncBranchExists(cwd)) {
-        git(["read-tree", SYNC_BRANCH], pipeOpts);
-      } else {
-        // Clear stale index to prevent old entries leaking across sessions.
-        // Without this, paw-index retains files from a deleted paw-sync branch.
-        git(["read-tree", "--empty"], pipeOpts);
-      }
-
-      for (const file of files) {
-        const blob = git(["hash-object", "-w", "--stdin"], {
-          ...pipeOpts,
-          input: file.content,
-        });
-        git(
-          [
-            "update-index",
-            "--add",
-            "--cacheinfo",
-            `100644,${blob},${file.path}`,
-          ],
-          pipeOpts,
-        );
-      }
-
-      const tree = git(["write-tree"], pipeOpts);
-      const commitArgs = ["commit-tree", tree, "-m", message];
-      if (syncBranchExists(cwd)) {
-        const parent = git(["rev-parse", SYNC_BRANCH], pipeOpts);
-        commitArgs.push("-p", parent);
-      }
-
-      const commit = git(commitArgs, pipeOpts);
-      git(["update-ref", `refs/heads/${SYNC_BRANCH}`, commit], pipeOpts);
-      return;
-    } catch (err) {
-      if (attempt === MAX_RETRIES) {
-        throw new Error(
-          `Failed to write to sync branch after ${MAX_RETRIES} attempts: ${
-            err instanceof Error ? err.message : String(err)
-          }`,
-        );
-      }
-    }
-  }
-}
-
-/**
- * Write sync state to the paw-sync branch using an isolated git index.
- * Pattern from tbd: set GIT_INDEX_FILE to avoid touching the working tree's
- * index, then use read-tree/hash-object/write-tree/commit-tree/update-ref
- * to commit directly to the orphan branch.
- */
-export function writeSyncState(state: SyncState, cwd?: string): void {
-  withSyncIndex(
-    () =>
-      writeSyncFilesRetry(
-        [{ path: STATE_FILE, content: JSON.stringify(state, null, 2) + "\n" }],
-        "paw: update sync state",
-        cwd,
-      ),
-    cwd,
-  );
-}
-
-/** Write sync state and additional files in one atomic commit. */
-export function writeSyncStateAndFiles(
-  state: SyncState,
-  files: Array<{ path: string; content: string }>,
-  cwd?: string,
-): void {
-  withSyncIndex(
-    () =>
-      writeSyncFilesRetry(
-        [
-          {
-            path: STATE_FILE,
-            content: JSON.stringify(state, null, 2) + "\n",
-          },
-          ...files,
-        ],
-        "paw: update sync state",
-        cwd,
-      ),
-    cwd,
-  );
-}
-
-/** Write a single file to the sync branch. */
-export function writeSyncFile(
-  path: string,
-  content: string,
-  cwd?: string,
-): void {
-  withSyncIndex(
-    () => writeSyncFilesRetry([{ path, content }], `paw: update ${path}`, cwd),
-    cwd,
-  );
-}
-
-/** Read a file from the sync branch. Returns null if not found. */
-export function readSyncFile(path: string, cwd?: string): string | null {
-  if (!syncBranchExists(cwd)) return null;
-  try {
-    return git(["show", `${SYNC_BRANCH}:${path}`], { cwd, stdio: "pipe" });
-  } catch {
-    return null;
-  }
-}
-
-/** List files under a directory prefix on the sync branch. */
-export function listSyncDir(prefix: string, cwd?: string): string[] {
-  if (!syncBranchExists(cwd)) return [];
-  try {
-    const output = git(["ls-tree", "--name-only", SYNC_BRANCH, prefix + "/"], {
-      cwd,
-      stdio: "pipe",
-    });
-    if (!output) return [];
-    return output.split("\n").filter(Boolean);
-  } catch {
-    return [];
-  }
-}
 
 /**
  * Create a git worktree at .paw/sync/ for the paw-sync branch.
  * If no branch exists, creates an orphan worktree.
  * Idempotent: returns immediately if the worktree already exists.
- * Follows tbd's initWorktree pattern.
  */
 export function initSyncWorktree(cwd: string): string {
   const worktreePath = resolve(cwd, ".paw", "sync");
 
-  // Idempotent: valid worktree already exists
   if (existsSync(join(worktreePath, ".git"))) {
     return worktreePath;
   }
 
-  // Remove any stale directory (e.g. leftover from a crash)
   rmSync(worktreePath, { recursive: true, force: true });
 
   if (syncBranchExists(cwd)) {
@@ -263,7 +98,6 @@ export function resolveSyncDir(cwd: string): string {
 /**
  * Remove the sync worktree at .paw/sync/.
  * Idempotent: no error if no worktree exists.
- * Follows tbd's removeWorktree pattern.
  */
 export function removeSyncWorktree(cwd: string): void {
   const worktreePath = resolve(cwd, ".paw", "sync");
@@ -274,7 +108,6 @@ export function removeSyncWorktree(cwd: string): void {
       stdio: "pipe",
     });
   } catch {
-    // If git worktree remove fails, manually delete
     rmSync(worktreePath, { recursive: true, force: true });
   }
 
@@ -285,6 +118,109 @@ export function removeSyncWorktree(cwd: string): void {
     // Ignore prune errors
   }
 }
+
+
+/**
+ * Stage all changes in the sync worktree and commit with retry.
+ * Retries on index.lock contention (concurrent multi-agent writes).
+ */
+export function commitSyncChanges(syncDir: string, message: string): void {
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      git(["add", "-A"], { cwd: syncDir, stdio: "pipe" });
+      git(["commit", "--allow-empty", "-m", message], {
+        cwd: syncDir,
+        stdio: "pipe",
+      });
+      return;
+    } catch (err) {
+      if (attempt === MAX_RETRIES) {
+        throw new Error(
+          `Failed to commit sync changes after ${MAX_RETRIES} attempts: ${
+            err instanceof Error ? err.message : String(err)
+          }`,
+        );
+      }
+    }
+  }
+}
+
+
+export function readSyncState(cwd?: string): SyncState | null {
+  try {
+    const syncDir = resolveSyncDir(cwd ?? process.cwd());
+    const raw = readFileSync(resolve(syncDir, STATE_FILE), "utf-8");
+    return JSON.parse(raw) as SyncState;
+  } catch {
+    return null;
+  }
+}
+
+/** Read a file from the sync worktree. Returns null if not found. */
+export function readSyncFile(path: string, cwd?: string): string | null {
+  try {
+    const syncDir = resolveSyncDir(cwd ?? process.cwd());
+    return readFileSync(resolve(syncDir, path), "utf-8");
+  } catch {
+    return null;
+  }
+}
+
+/** List files under a directory prefix in the sync worktree. */
+export function listSyncDir(prefix: string, cwd?: string): string[] {
+  try {
+    const syncDir = resolveSyncDir(cwd ?? process.cwd());
+    const dir = resolve(syncDir, prefix);
+    const entries = readdirSync(dir);
+    return entries.map((e) => `${prefix}/${e}`);
+  } catch {
+    return [];
+  }
+}
+
+
+/** Write sync state to the sync worktree and commit. */
+export function writeSyncState(state: SyncState, cwd?: string): void {
+  const syncDir = resolveSyncDir(cwd ?? process.cwd());
+  writeFileSync(
+    resolve(syncDir, STATE_FILE),
+    JSON.stringify(state, null, 2) + "\n",
+  );
+  commitSyncChanges(syncDir, "paw: update sync state");
+}
+
+/** Write sync state and additional files in one atomic commit. */
+export function writeSyncStateAndFiles(
+  state: SyncState,
+  files: Array<{ path: string; content: string }>,
+  cwd?: string,
+): void {
+  const syncDir = resolveSyncDir(cwd ?? process.cwd());
+  writeFileSync(
+    resolve(syncDir, STATE_FILE),
+    JSON.stringify(state, null, 2) + "\n",
+  );
+  for (const file of files) {
+    const filePath = resolve(syncDir, file.path);
+    mkdirSync(dirname(filePath), { recursive: true });
+    writeFileSync(filePath, file.content);
+  }
+  commitSyncChanges(syncDir, "paw: update sync state");
+}
+
+/** Write a single file to the sync worktree and commit. */
+export function writeSyncFile(
+  path: string,
+  content: string,
+  cwd?: string,
+): void {
+  const syncDir = resolveSyncDir(cwd ?? process.cwd());
+  const filePath = resolve(syncDir, path);
+  mkdirSync(dirname(filePath), { recursive: true });
+  writeFileSync(filePath, content);
+  commitSyncChanges(syncDir, `paw: update ${path}`);
+}
+
 
 export function initSyncState(
   target: string,

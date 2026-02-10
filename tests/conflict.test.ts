@@ -11,6 +11,8 @@ import {
   initMergeState,
   updateMergeEntry,
   readSyncFile,
+  initSyncWorktree,
+  removeSyncWorktree,
 } from "../src/lib/sync.js";
 import { appendJournalEntry } from "../src/lib/journal.js";
 import { generateConflictBrief } from "../src/lib/conflict.js";
@@ -116,6 +118,7 @@ describe("generateConflictBrief", () => {
     repoDir = makeTempDir();
     worktreePaths = [];
     gitInit(repoDir);
+    initSyncWorktree(repoDir);
   });
 
   afterEach(() => {
@@ -126,6 +129,12 @@ describe("generateConflictBrief", () => {
       });
     } catch {
       // No merge in progress
+    }
+
+    try {
+      removeSyncWorktree(repoDir);
+    } catch {
+      // already removed
     }
 
     for (const p of worktreePaths) {

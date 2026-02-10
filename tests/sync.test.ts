@@ -1,9 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { resolve } from "node:path";
-import { mkdirSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, rmSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { tmpdir } from "node:os";
-import { existsSync } from "node:fs";
 import {
   initSyncState,
   claimTask,
@@ -25,7 +24,6 @@ import {
   createWorktree,
   removeWorktree,
 } from "../src/lib/git.js";
-import type { SyncState } from "../src/lib/sync.js";
 
 function makeTempDir(): string {
   const dir = resolve(
@@ -101,17 +99,19 @@ describe("writeSyncState / readSyncState", () => {
   beforeEach(() => {
     repoDir = makeTempDir();
     gitInit(repoDir);
+    initSyncWorktree(repoDir);
   });
 
   afterEach(() => {
+    removeSyncWorktree(repoDir);
     rmSync(repoDir, { recursive: true, force: true });
   });
 
-  it("returns null when no sync branch exists", () => {
+  it("returns null when no state file exists", () => {
     expect(readSyncState(repoDir)).toBeNull();
   });
 
-  it("round-trips sync state through git", () => {
+  it("round-trips sync state through the worktree", () => {
     const state = initSyncState("feature/dash", ["auth", "api"], "paw.yaml");
     writeSyncState(state, repoDir);
 
@@ -141,46 +141,32 @@ describe("writeSyncFile / readSyncFile", () => {
   beforeEach(() => {
     repoDir = makeTempDir();
     gitInit(repoDir);
+    initSyncWorktree(repoDir);
   });
 
   afterEach(() => {
+    removeSyncWorktree(repoDir);
     rmSync(repoDir, { recursive: true, force: true });
   });
 
   it("returns null when file does not exist", () => {
-    // Need sync branch to exist first
-    const state = initSyncState("feature/dash", ["auth"], "paw.yaml");
-    writeSyncState(state, repoDir);
-
     expect(readSyncFile("nonexistent.md", repoDir)).toBeNull();
   });
 
-  it("round-trips a file through the sync branch", () => {
-    const state = initSyncState("feature/dash", ["auth"], "paw.yaml");
-    writeSyncState(state, repoDir);
-
+  it("round-trips a file through the sync worktree", () => {
     const content = "# Summary\n\nDid some work.";
     writeSyncFile("summaries/auth.md", content, repoDir);
 
-    // git show trims trailing newlines, so compare trimmed
     const read = readSyncFile("summaries/auth.md", repoDir);
     expect(read).toBe(content);
   });
 
   it("preserves existing files when writing new ones", () => {
-    const state = initSyncState("feature/dash", ["auth"], "paw.yaml");
-    writeSyncState(state, repoDir);
-
     writeSyncFile("summaries/auth.md", "auth summary", repoDir);
     writeSyncFile("summaries/api.md", "api summary", repoDir);
 
-    // Both files should exist
     expect(readSyncFile("summaries/auth.md", repoDir)).toBe("auth summary");
     expect(readSyncFile("summaries/api.md", repoDir)).toBe("api summary");
-
-    // State should also still be readable
-    const readState = readSyncState(repoDir);
-    expect(readState).not.toBeNull();
   });
 });
 
@@ -190,9 +176,11 @@ describe("writeSyncStateAndFiles", () => {
   beforeEach(() => {
     repoDir = makeTempDir();
     gitInit(repoDir);
+    initSyncWorktree(repoDir);
   });
 
   afterEach(() => {
+    removeSyncWorktree(repoDir);
     rmSync(repoDir, { recursive: true, force: true });
   });
 
@@ -220,20 +208,19 @@ describe("listSyncDir", () => {
   beforeEach(() => {
     repoDir = makeTempDir();
     gitInit(repoDir);
+    initSyncWorktree(repoDir);
   });
 
   afterEach(() => {
+    removeSyncWorktree(repoDir);
     rmSync(repoDir, { recursive: true, force: true });
   });
 
-  it("returns empty array when no sync branch", () => {
+  it("returns empty array when directory does not exist", () => {
     expect(listSyncDir("summaries", repoDir)).toEqual([]);
   });
 
   it("lists files under a prefix", () => {
-    const state = initSyncState("feature/dash", ["auth", "api"], "paw.yaml");
-    writeSyncState(state, repoDir);
-
     writeSyncFile("summaries/auth.md", "auth summary", repoDir);
     writeSyncFile("summaries/api.md", "api summary", repoDir);
 
@@ -253,11 +240,16 @@ describe("session leak (paw-pm8q)", () => {
   });
 
   afterEach(() => {
+    try {
+      removeSyncWorktree(repoDir);
+    } catch {
+      // already removed
+    }
     rmSync(repoDir, { recursive: true, force: true });
   });
 
-  it("does not carry journal entries across delete + re-init", () => {
-    // Session 1: create state and write journal entries
+  it("does not carry journal entries across remove + re-init", () => {
+    initSyncWorktree(repoDir);
     const state1 = initSyncState("feature/dash", ["auth", "api"], "paw.yaml");
     writeSyncStateAndFiles(
       state1,
@@ -272,10 +264,10 @@ describe("session leak (paw-pm8q)", () => {
       '{"msg":"old entry"}',
     );
 
-    // Simulate paw down: delete the sync branch
+    removeSyncWorktree(repoDir);
     deleteBranch("paw-sync", repoDir);
 
-    // Session 2: re-init with fresh state
+    initSyncWorktree(repoDir);
     const state2 = initSyncState("feature/dash", ["auth", "api"], "paw.yaml");
     writeSyncStateAndFiles(
       state2,
@@ -283,11 +275,9 @@ describe("session leak (paw-pm8q)", () => {
       repoDir,
     );
 
-    // Old journal entry must NOT be present
     expect(readSyncFile("journal/auth.jsonl", repoDir)).toBeNull();
     expect(listSyncDir("journal", repoDir)).toEqual(["journal/.gitkeep"]);
 
-    // Fresh state should be readable
     const read = readSyncState(repoDir);
     expect(read).not.toBeNull();
     expect(read!.tasks["auth"]?.status).toBe("pending");
@@ -303,11 +293,10 @@ describe("initSyncWorktree / removeSyncWorktree", () => {
   });
 
   afterEach(() => {
-    // Must remove worktree before deleting temp dir
     try {
       removeSyncWorktree(repoDir);
     } catch {
-      // Ignore cleanup errors
+      // already removed
     }
     rmSync(repoDir, { recursive: true, force: true });
   });
@@ -317,20 +306,17 @@ describe("initSyncWorktree / removeSyncWorktree", () => {
 
     expect(wtPath).toBe(resolve(repoDir, ".paw", "sync"));
     expect(existsSync(resolve(wtPath, ".git"))).toBe(true);
-    // Orphan branch ref doesn't exist until first commit -- that's correct.
-    // The worktree is ready for files to be written and committed.
   });
 
   it("creates worktree from existing paw-sync branch", () => {
-    // Pre-create the sync branch with plumbing (simulate existing state)
+    initSyncWorktree(repoDir);
     const state = initSyncState("feature/dash", ["auth"], "paw.yaml");
     writeSyncState(state, repoDir);
-    expect(branchExists("paw-sync", repoDir)).toBe(true);
+    removeSyncWorktree(repoDir);
 
     const wtPath = initSyncWorktree(repoDir);
 
     expect(existsSync(resolve(wtPath, ".git"))).toBe(true);
-    // state.json from the existing branch should be visible on disk
     expect(existsSync(resolve(wtPath, "state.json"))).toBe(true);
   });
 
@@ -351,7 +337,6 @@ describe("initSyncWorktree / removeSyncWorktree", () => {
   });
 
   it("removeSyncWorktree is idempotent -- no error if no worktree", () => {
-    // Should not throw
     removeSyncWorktree(repoDir);
   });
 });
@@ -363,22 +348,20 @@ describe("resolveSyncDir", () => {
   beforeEach(() => {
     repoDir = makeTempDir();
     gitInit(repoDir);
-    // Create a task worktree to test resolution from there
     createBranch("feature-auth", "HEAD", repoDir);
-    taskWorktreePath = resolve(repoDir, "..", `${repoDir.split(/[\\/]/).pop()}-paw-auth`);
+    taskWorktreePath = resolve(
+      repoDir,
+      "..",
+      `${repoDir.split(/[\\/]/).pop()}-paw-auth`,
+    );
     createWorktree(taskWorktreePath, "feature-auth", repoDir);
   });
 
   afterEach(() => {
     try {
-      removeSyncWorktree(repoDir);
-    } catch {
-      // Ignore
-    }
-    try {
       removeWorktree(taskWorktreePath, repoDir);
     } catch {
-      // Ignore
+      // already removed
     }
     rmSync(repoDir, { recursive: true, force: true });
     rmSync(taskWorktreePath, { recursive: true, force: true });

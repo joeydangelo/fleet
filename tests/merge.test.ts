@@ -9,6 +9,8 @@ import {
   readSyncState,
   initMergeState,
   updateMergeEntry,
+  initSyncWorktree,
+  removeSyncWorktree,
 } from "../src/lib/sync.js";
 import { isMergeInProgress, mergeBranch, git } from "../src/lib/git.js";
 import { createSession } from "../src/lib/session.js";
@@ -85,9 +87,11 @@ describe("merge state round-trip through sync branch", () => {
   beforeEach(() => {
     repoDir = makeTempDir();
     gitInit(repoDir);
+    initSyncWorktree(repoDir);
   });
 
   afterEach(() => {
+    removeSyncWorktree(repoDir);
     rmSync(repoDir, { recursive: true, force: true });
   });
 
@@ -186,17 +190,23 @@ describe("merge stops on first conflict", () => {
     repoDir = makeTempDir();
     worktreePaths = [];
     gitInit(repoDir);
+    initSyncWorktree(repoDir);
   });
 
   afterEach(() => {
-    // Abort any in-progress merge before cleanup
     try {
       execFileSync("git", ["merge", "--abort"], {
         cwd: repoDir,
         stdio: "pipe",
       });
     } catch {
-      // No merge in progress, fine
+      // No merge in progress
+    }
+
+    try {
+      removeSyncWorktree(repoDir);
+    } catch {
+      // already removed
     }
 
     for (const p of worktreePaths) {
@@ -313,6 +323,7 @@ describe("merge --continue flow", () => {
     repoDir = makeTempDir();
     worktreePaths = [];
     gitInit(repoDir);
+    initSyncWorktree(repoDir);
   });
 
   afterEach(() => {
@@ -323,6 +334,12 @@ describe("merge --continue flow", () => {
       });
     } catch {
       // No merge in progress
+    }
+
+    try {
+      removeSyncWorktree(repoDir);
+    } catch {
+      // already removed
     }
 
     for (const p of worktreePaths) {

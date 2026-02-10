@@ -12,6 +12,8 @@ import {
   initSyncState,
   writeSyncState,
   readSyncState,
+  initSyncWorktree,
+  removeSyncWorktree,
 } from "../src/lib/sync.js";
 import {
   branchExists,
@@ -56,15 +58,21 @@ describe("paw session lifecycle", () => {
     repoDir = makeTempDir();
     worktreePaths = [];
     gitInit(repoDir);
+    initSyncWorktree(repoDir);
   });
 
   afterEach(() => {
+    try {
+      removeSyncWorktree(repoDir);
+    } catch {
+      // already removed
+    }
+
     for (const p of worktreePaths) {
       if (existsSync(p)) {
         try {
           removeWorktree(p, repoDir);
         } catch {
-          // force cleanup if git worktree remove fails
           rmSync(p, { recursive: true, force: true });
         }
       }
@@ -178,7 +186,6 @@ describe("paw session lifecycle", () => {
     const worktrees = createSession(config, repoDir);
     worktreePaths = worktrees.map((w) => w.worktreePath);
 
-    // Set up sync branch with state + journal
     const taskNames = Object.keys(config.tasks);
     const syncState = initSyncState(config.target, taskNames, "paw.yaml");
     writeSyncStateAndFiles(
@@ -189,16 +196,16 @@ describe("paw session lifecycle", () => {
 
     expect(branchExists("paw-sync", repoDir)).toBe(true);
 
-    // Tear down worktrees
+    // Tear down (as paw down does): worktrees first, then sync worktree, then branch
     for (const wt of worktrees) {
       removeWorktree(wt.worktreePath, repoDir);
     }
-
-    // Delete sync branch (as paw down does)
+    removeSyncWorktree(repoDir);
     deleteBranch("paw-sync", repoDir);
     expect(branchExists("paw-sync", repoDir)).toBe(false);
 
-    // Verify paw up works again after teardown
+    // Verify paw up works again after full teardown
+    initSyncWorktree(repoDir);
     const worktrees2 = createSession(config, repoDir);
     const paths2 = worktrees2.map((w) => w.worktreePath);
 
@@ -218,8 +225,6 @@ describe("paw session lifecycle", () => {
     for (const wt of worktrees2) {
       removeWorktree(wt.worktreePath, repoDir);
     }
-
-    // Clear tracked paths
     worktreePaths = [];
   });
 });
