@@ -5,7 +5,6 @@ import {
   branchExists,
   createBranch,
   createWorktree,
-  getRepoRoot,
 } from "./git.js";
 
 export interface WorktreeInfo {
@@ -32,7 +31,6 @@ export function createSession(
   config: PawConfig,
   repoRoot: string,
 ): WorktreeInfo[] {
-  // Create target branch if it doesn't exist
   if (!branchExists(config.target, repoRoot)) {
     createBranch(config.target, config.base, repoRoot);
   }
@@ -40,19 +38,16 @@ export function createSession(
   const worktrees = planWorktrees(config, repoRoot);
 
   for (const wt of worktrees) {
-    // Create sub-branch from target
     if (!branchExists(wt.branch, repoRoot)) {
       createBranch(wt.branch, config.target, repoRoot);
     }
-
-    // Create worktree
     createWorktree(wt.worktreePath, wt.branch, repoRoot);
   }
 
   return worktrees;
 }
 
-export function generateHandoff(
+export function generateTaskFile(
   config: PawConfig,
   taskName: string,
   worktreeInfo: WorktreeInfo,
@@ -60,48 +55,37 @@ export function generateHandoff(
   const task = config.tasks[taskName];
   if (!task) throw new Error(`Task not found: ${taskName}`);
 
-  const focus = Array.isArray(task.focus)
-    ? task.focus.join(", ")
-    : task.focus;
+  const focusList = Array.isArray(task.focus) ? task.focus : [task.focus];
 
   const lines: string[] = [
-    `Task: ${taskName}`,
+    `# Task: ${taskName}`,
     ``,
-    `Branch: ${worktreeInfo.branch} (from ${config.target})`,
-    `Worktree: ${worktreeInfo.worktreePath}`,
-    `Focus: ${focus}`,
+    `**Branch:** ${worktreeInfo.branch}`,
+    `**Target:** ${config.target}`,
+    `**Worktree:** ${worktreeInfo.worktreePath}`,
+    ``,
+    `## Focus`,
+    ``,
+    ...focusList.map((f) => `- ${f}`),
   ];
 
-  if (task.bead) {
-    lines.push(`Bead: ${task.bead}`);
-  }
-
   if (task.prompt) {
-    lines.push(``, task.prompt);
+    lines.push(``, `## Instructions`, ``, task.prompt.trimEnd());
   }
 
-  return lines.join("\n");
+  return lines.join("\n") + "\n";
 }
 
-export function writeHandoffs(
+export function writeTaskFiles(
   config: PawConfig,
   worktrees: WorktreeInfo[],
-  repoRoot: string,
-): string {
-  const outDir = resolve(repoRoot, ".paw");
-  mkdirSync(outDir, { recursive: true });
-
-  const handoffPath = resolve(outDir, "handoffs.md");
-  const sections: string[] = ["# paw handoffs\n"];
-
+): void {
   for (const wt of worktrees) {
-    const handoff = generateHandoff(config, wt.taskName, wt);
-    sections.push(`## ${wt.taskName}\n`);
-    sections.push("```");
-    sections.push(handoff);
-    sections.push("```\n");
-  }
+    const taskDir = resolve(wt.worktreePath, ".paw", "tasks");
+    mkdirSync(taskDir, { recursive: true });
 
-  writeFileSync(handoffPath, sections.join("\n"), "utf-8");
-  return handoffPath;
+    const taskFilePath = resolve(taskDir, `${wt.taskName}.md`);
+    const content = generateTaskFile(config, wt.taskName, wt);
+    writeFileSync(taskFilePath, content, "utf-8");
+  }
 }
