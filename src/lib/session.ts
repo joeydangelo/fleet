@@ -1,5 +1,5 @@
 import { resolve, dirname, basename } from "node:path";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync, readFileSync, existsSync } from "node:fs";
 import type { PawConfig } from "./config.js";
 import {
   branchExists,
@@ -22,7 +22,7 @@ export function planWorktrees(
 
   return Object.keys(config.tasks).map((taskName) => ({
     taskName,
-    branch: `${config.target}/${taskName}`,
+    branch: `${config.target}-${taskName}`,
     worktreePath: resolve(parentDir, `${repoName}-paw-${taskName}`),
   }));
 }
@@ -76,6 +76,19 @@ export function generateTaskFile(
   return lines.join("\n") + "\n";
 }
 
+export function ensureGitignore(worktreePath: string): void {
+  const gitignorePath = resolve(worktreePath, ".gitignore");
+  const entry = ".paw/";
+
+  if (existsSync(gitignorePath)) {
+    const content = readFileSync(gitignorePath, "utf-8");
+    if (content.split("\n").some((line) => line.trim() === entry)) return;
+    writeFileSync(gitignorePath, content.trimEnd() + "\n" + entry + "\n");
+  } else {
+    writeFileSync(gitignorePath, entry + "\n");
+  }
+}
+
 export function writeTaskFiles(
   config: PawConfig,
   worktrees: WorktreeInfo[],
@@ -87,5 +100,7 @@ export function writeTaskFiles(
     const taskFilePath = resolve(taskDir, `${wt.taskName}.md`);
     const content = generateTaskFile(config, wt.taskName, wt);
     writeFileSync(taskFilePath, content, "utf-8");
+
+    ensureGitignore(wt.worktreePath);
   }
 }
