@@ -42,7 +42,5 @@ export function resolveConfigPath(cwd: string): string {
     const p = resolve(cwd, name);
     if (existsSync(p)) return p;
   }
-  throw new Error(
-    "No paw.yaml found. Create one or specify --config <path>",
-  );
+  throw new Error("No paw.yaml found. Create one or specify --config <path>");
 }

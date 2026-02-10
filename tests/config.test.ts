@@ -5,7 +5,10 @@ import { tmpdir } from "node:os";
 import { loadConfig, resolveConfigPath } from "../src/lib/config.js";
 
 function makeTempDir(): string {
-  const dir = resolve(tmpdir(), `paw-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+  const dir = resolve(
+    tmpdir(),
+    `paw-test-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+  );
   mkdirSync(dir, { recursive: true });
   return dir;
 }
@@ -14,7 +17,9 @@ describe("loadConfig", () => {
   it("parses a valid paw.yaml", () => {
     const dir = makeTempDir();
     const configPath = resolve(dir, "paw.yaml");
-    writeFileSync(configPath, `
+    writeFileSync(
+      configPath,
+      `
 base: main
 target: feature/dashboard
 tasks:
@@ -25,7 +30,8 @@ tasks:
     focus:
       - src/api/
       - src/routes/
-`);
+`,
+    );
 
     const config = loadConfig(configPath);
     expect(config.base).toBe("main");
@@ -41,12 +47,15 @@ tasks:
   it("defaults base to main", () => {
     const dir = makeTempDir();
     const configPath = resolve(dir, "paw.yaml");
-    writeFileSync(configPath, `
+    writeFileSync(
+      configPath,
+      `
 target: cleanup/tests
 tasks:
   lint:
     focus: src/
-`);
+`,
+    );
 
     const config = loadConfig(configPath);
     expect(config.base).toBe("main");
@@ -55,17 +64,22 @@ tasks:
   });
 
   it("throws on missing config file", () => {
-    expect(() => loadConfig("/nonexistent/paw.yaml")).toThrow("Config file not found");
+    expect(() => loadConfig("/nonexistent/paw.yaml")).toThrow(
+      "Config file not found",
+    );
   });
 
   it("throws on invalid config (missing target)", () => {
     const dir = makeTempDir();
     const configPath = resolve(dir, "paw.yaml");
-    writeFileSync(configPath, `
+    writeFileSync(
+      configPath,
+      `
 tasks:
   foo:
     focus: bar/
-`);
+`,
+    );
 
     expect(() => loadConfig(configPath)).toThrow();
     rmSync(dir, { recursive: true });
@@ -74,12 +88,15 @@ tasks:
   it("throws a readable message on invalid config", () => {
     const dir = makeTempDir();
     const configPath = resolve(dir, "paw.yaml");
-    writeFileSync(configPath, `
+    writeFileSync(
+      configPath,
+      `
 target: feature/x
 tasks:
   foo:
     not_a_field: true
-`);
+`,
+    );
 
     expect(() => loadConfig(configPath)).toThrow(/Invalid paw\.yaml/);
     rmSync(dir, { recursive: true });
@@ -89,7 +106,10 @@ tasks:
 describe("resolveConfigPath", () => {
   it("finds paw.yaml", () => {
     const dir = makeTempDir();
-    writeFileSync(resolve(dir, "paw.yaml"), "target: x\ntasks:\n  a:\n    focus: b\n");
+    writeFileSync(
+      resolve(dir, "paw.yaml"),
+      "target: x\ntasks:\n  a:\n    focus: b\n",
+    );
 
     const result = resolveConfigPath(dir);
     expect(result).toBe(resolve(dir, "paw.yaml"));
@@ -99,7 +119,10 @@ describe("resolveConfigPath", () => {
 
   it("finds paw.yml", () => {
     const dir = makeTempDir();
-    writeFileSync(resolve(dir, "paw.yml"), "target: x\ntasks:\n  a:\n    focus: b\n");
+    writeFileSync(
+      resolve(dir, "paw.yml"),
+      "target: x\ntasks:\n  a:\n    focus: b\n",
+    );
 
     const result = resolveConfigPath(dir);
     expect(result).toBe(resolve(dir, "paw.yml"));

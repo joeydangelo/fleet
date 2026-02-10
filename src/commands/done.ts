@@ -18,7 +18,9 @@ export function doneCommand(): Command {
             pc.red("Could not detect task name. Are you in a paw worktree?"),
           );
           console.error(
-            pc.dim("Expected a single .md file in .paw/tasks/. Run `paw up` to create worktrees."),
+            pc.dim(
+              "Expected a single .md file in .paw/tasks/. Run `paw up` to create worktrees.",
+            ),
           );
           process.exit(1);
         }

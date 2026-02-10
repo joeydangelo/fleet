@@ -1,10 +1,7 @@
 import { execFileSync } from "node:child_process";
 import type { ExecFileSyncOptions } from "node:child_process";
 
-export function git(
-  args: string[],
-  options?: ExecFileSyncOptions,
-): string {
+export function git(args: string[], options?: ExecFileSyncOptions): string {
   const result = execFileSync("git", args, {
     ...options,
     encoding: "utf-8",
@@ -29,11 +26,7 @@ export function branchExists(branch: string, cwd?: string): boolean {
   }
 }
 
-export function createBranch(
-  branch: string,
-  from: string,
-  cwd?: string,
-): void {
+export function createBranch(branch: string, from: string, cwd?: string): void {
   git(["branch", branch, from], { cwd });
 }
 
@@ -73,10 +66,10 @@ export function getCommitCount(
   base: string,
   cwd?: string,
 ): number {
-  const output = git(
-    ["rev-list", "--count", `${base}..${branch}`],
-    { cwd, stdio: "pipe" },
-  );
+  const output = git(["rev-list", "--count", `${base}..${branch}`], {
+    cwd,
+    stdio: "pipe",
+  });
   return parseInt(output, 10);
 }
 
@@ -85,10 +78,10 @@ export function getChangedFileCount(
   base: string,
   cwd?: string,
 ): number {
-  const output = git(
-    ["diff", "--name-only", base, branch],
-    { cwd, stdio: "pipe" },
-  );
+  const output = git(["diff", "--name-only", base, branch], {
+    cwd,
+    stdio: "pipe",
+  });
   if (!output) return 0;
   return output.split("\n").length;
 }
@@ -101,8 +94,7 @@ export function mergeBranch(
     const output = git(["merge", branch, "--no-edit"], { cwd });
     return { success: true, message: output };
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : String(error);
+    const message = error instanceof Error ? error.message : String(error);
     return { success: false, message };
   }
 }

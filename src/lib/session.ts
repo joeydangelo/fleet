@@ -1,11 +1,13 @@
 import { resolve, dirname, basename } from "node:path";
-import { mkdirSync, writeFileSync, readFileSync, existsSync, readdirSync } from "node:fs";
-import type { PawConfig } from "./config.js";
 import {
-  branchExists,
-  createBranch,
-  createWorktree,
-} from "./git.js";
+  mkdirSync,
+  writeFileSync,
+  readFileSync,
+  existsSync,
+  readdirSync,
+} from "node:fs";
+import type { PawConfig } from "./config.js";
+import { branchExists, createBranch, createWorktree } from "./git.js";
 
 export interface WorktreeInfo {
   taskName: string;

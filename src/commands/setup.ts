@@ -62,9 +62,8 @@ export function setupCommand(): Command {
         if (gitignore.includes(".paw/")) {
           skip("gitignore", ".paw/ already present");
         } else {
-          const separator = gitignore.length > 0 && !gitignore.endsWith("\n")
-            ? "\n"
-            : "";
+          const separator =
+            gitignore.length > 0 && !gitignore.endsWith("\n") ? "\n" : "";
           writeFileSync(
             gitignorePath,
             gitignore + separator + "\n# paw working state\n.paw/\n",

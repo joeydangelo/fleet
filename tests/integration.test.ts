@@ -3,8 +3,16 @@ import { resolve } from "node:path";
 import { mkdirSync, existsSync, readFileSync, rmSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { tmpdir } from "node:os";
-import { createSession, writeTaskFiles, planWorktrees } from "../src/lib/session.js";
-import { initSyncState, writeSyncState, readSyncState } from "../src/lib/sync.js";
+import {
+  createSession,
+  writeTaskFiles,
+  planWorktrees,
+} from "../src/lib/session.js";
+import {
+  initSyncState,
+  writeSyncState,
+  readSyncState,
+} from "../src/lib/sync.js";
 import { branchExists, listWorktrees, removeWorktree } from "../src/lib/git.js";
 import type { PawConfig } from "../src/lib/config.js";
 
@@ -88,7 +96,12 @@ describe("paw session lifecycle", () => {
     writeTaskFiles(config, worktrees);
 
     for (const wt of worktrees) {
-      const taskFile = resolve(wt.worktreePath, ".paw", "tasks", `${wt.taskName}.md`);
+      const taskFile = resolve(
+        wt.worktreePath,
+        ".paw",
+        "tasks",
+        `${wt.taskName}.md`,
+      );
       expect(existsSync(taskFile)).toBe(true);
 
       const content = readFileSync(taskFile, "utf-8");

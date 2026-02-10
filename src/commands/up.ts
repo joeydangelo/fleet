@@ -2,7 +2,11 @@ import { Command } from "commander";
 import pc from "picocolors";
 import { getRepoRoot } from "../lib/git.js";
 import { loadConfig, resolveConfigPath } from "../lib/config.js";
-import { createSession, planWorktrees, writeTaskFiles } from "../lib/session.js";
+import {
+  createSession,
+  planWorktrees,
+  writeTaskFiles,
+} from "../lib/session.js";
 import { initSyncState, writeSyncState } from "../lib/sync.js";
 import { success, pending, handleError } from "../lib/output.js";
 
@@ -18,7 +22,11 @@ export function upCommand(): Command {
         const config = loadConfig(configPath);
         const taskNames = Object.keys(config.tasks);
 
-        console.log(pc.bold(`paw up: ${taskNames.length} tasks${opts.dryRun ? " (dry run)" : ""}`));
+        console.log(
+          pc.bold(
+            `paw up: ${taskNames.length} tasks${opts.dryRun ? " (dry run)" : ""}`,
+          ),
+        );
         console.log(`  base:   ${config.base}`);
         console.log(`  target: ${config.target}\n`);
 
@@ -43,9 +51,7 @@ export function upCommand(): Command {
         }
 
         console.log(
-          pc.dim(
-            "\nOpen an agent session in each worktree path to begin.",
-          ),
+          pc.dim("\nOpen an agent session in each worktree path to begin."),
         );
       } catch (err) {
         handleError(err);

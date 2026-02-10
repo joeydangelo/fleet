@@ -31,10 +31,10 @@ export function readSyncState(cwd?: string): SyncState | null {
   if (!syncBranchExists(cwd)) return null;
 
   try {
-    const raw = git(
-      ["show", `${SYNC_BRANCH}:${STATE_FILE}`],
-      { cwd, stdio: "pipe" },
-    );
+    const raw = git(["show", `${SYNC_BRANCH}:${STATE_FILE}`], {
+      cwd,
+      stdio: "pipe",
+    });
     return JSON.parse(raw) as SyncState;
   } catch {
     return null;
@@ -76,14 +76,19 @@ function writeSyncStateWithRetry(state: SyncState, cwd?: string): void {
 
       // Write state.json as a blob via stdin
       const content = JSON.stringify(state, null, 2) + "\n";
-      const blob = git(
-        ["hash-object", "-w", "--stdin"],
-        { ...pipeOpts, input: content },
-      );
+      const blob = git(["hash-object", "-w", "--stdin"], {
+        ...pipeOpts,
+        input: content,
+      });
 
       // Add blob to index
       git(
-        ["update-index", "--add", "--cacheinfo", `100644,${blob},${STATE_FILE}`],
+        [
+          "update-index",
+          "--add",
+          "--cacheinfo",
+          `100644,${blob},${STATE_FILE}`,
+        ],
         pipeOpts,
       );
 

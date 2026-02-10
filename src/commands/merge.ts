@@ -64,9 +64,7 @@ export function mergeCommand(): Command {
 
         if (hasConflicts) {
           console.log(
-            pc.yellow(
-              "\nResolve conflicts, then run: paw merge --continue",
-            ),
+            pc.yellow("\nResolve conflicts, then run: paw merge --continue"),
           );
         }
       } catch (err) {

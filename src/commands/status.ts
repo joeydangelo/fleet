@@ -1,11 +1,22 @@
 import { Command } from "commander";
 import { existsSync } from "node:fs";
 import pc from "picocolors";
-import { getRepoRoot, getCommitCount, getChangedFileCount } from "../lib/git.js";
+import {
+  getRepoRoot,
+  getCommitCount,
+  getChangedFileCount,
+} from "../lib/git.js";
 import { loadConfig, resolveConfigPath } from "../lib/config.js";
 import { planWorktrees } from "../lib/session.js";
 import { readSyncState } from "../lib/sync.js";
-import { success, error, pending, skip, unknown, handleError } from "../lib/output.js";
+import {
+  success,
+  error,
+  pending,
+  skip,
+  unknown,
+  handleError,
+} from "../lib/output.js";
 
 export function statusCommand(): Command {
   return new Command("status")
@@ -37,16 +48,21 @@ export function statusCommand(): Command {
 
           try {
             const commits = getCommitCount(wt.branch, config.target, repoRoot);
-            const files = commits > 0
-              ? getChangedFileCount(wt.branch, config.target, repoRoot)
-              : 0;
+            const files =
+              commits > 0
+                ? getChangedFileCount(wt.branch, config.target, repoRoot)
+                : 0;
 
-            const syncLabel = taskSync?.status === "in_progress" ? " [claimed]" : "";
+            const syncLabel =
+              taskSync?.status === "in_progress" ? " [claimed]" : "";
 
             if (commits === 0) {
               pending(wt.taskName, `no changes yet${syncLabel}`);
             } else {
-              success(wt.taskName, `${commits} commit(s), ${files} file(s) changed${syncLabel}`);
+              success(
+                wt.taskName,
+                `${commits} commit(s), ${files} file(s) changed${syncLabel}`,
+              );
             }
           } catch {
             unknown(wt.taskName, "unable to read status");

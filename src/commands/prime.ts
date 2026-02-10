@@ -20,7 +20,9 @@ export function primeCommand(): Command {
             pc.red("Could not detect task name. Are you in a paw worktree?"),
           );
           console.error(
-            pc.dim("Expected a single .md file in .paw/tasks/. Run `paw up` to create worktrees."),
+            pc.dim(
+              "Expected a single .md file in .paw/tasks/. Run `paw up` to create worktrees.",
+            ),
           );
           process.exit(1);
         }
@@ -51,9 +53,11 @@ export function primeCommand(): Command {
             console.log(pc.bold("Other tasks:"));
             for (const [name, task] of otherTasks) {
               const statusColor =
-                task.status === "completed" ? pc.green :
-                task.status === "in_progress" ? pc.yellow :
-                pc.dim;
+                task.status === "completed"
+                  ? pc.green
+                  : task.status === "in_progress"
+                    ? pc.yellow
+                    : pc.dim;
               console.log(`  ${statusColor(task.status.padEnd(12))} ${name}`);
             }
             console.log();
@@ -72,4 +76,3 @@ export function primeCommand(): Command {
       }
     });
 }
-

@@ -7,7 +7,9 @@ export function handleError(err: unknown): never {
   const message = err instanceof Error ? err.message : String(err);
 
   if (message.includes("not a git repository")) {
-    console.error(pc.red("Not in a git repository. Run paw from inside a git repo."));
+    console.error(
+      pc.red("Not in a git repository. Run paw from inside a git repo."),
+    );
   } else {
     console.error(pc.red(message));
   }
@@ -45,5 +47,7 @@ export function skip(taskName: string, detail: string): void {
 }
 
 export function unknown(taskName: string, detail: string): void {
-  console.log(`  ${pc.yellow(ICONS.UNKNOWN)} ${pc.bold(taskName)} -- ${detail}`);
+  console.log(
+    `  ${pc.yellow(ICONS.UNKNOWN)} ${pc.bold(taskName)} -- ${detail}`,
+  );
 }
