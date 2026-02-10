@@ -9,6 +9,10 @@ import {
   completeTask,
   writeSyncState,
   readSyncState,
+  writeSyncFile,
+  readSyncFile,
+  writeSyncStateAndFiles,
+  listSyncDir,
 } from "../src/lib/sync.js";
 import type { SyncState } from "../src/lib/sync.js";
 
@@ -117,5 +121,114 @@ describe("writeSyncState / readSyncState", () => {
 
     const read = readSyncState(repoDir);
     expect(read!.tasks["auth"]?.status).toBe("in_progress");
+  });
+});
+
+describe("writeSyncFile / readSyncFile", () => {
+  let repoDir: string;
+
+  beforeEach(() => {
+    repoDir = makeTempDir();
+    gitInit(repoDir);
+  });
+
+  afterEach(() => {
+    rmSync(repoDir, { recursive: true, force: true });
+  });
+
+  it("returns null when file does not exist", () => {
+    // Need sync branch to exist first
+    const state = initSyncState("feature/dash", ["auth"], "paw.yaml");
+    writeSyncState(state, repoDir);
+
+    expect(readSyncFile("nonexistent.md", repoDir)).toBeNull();
+  });
+
+  it("round-trips a file through the sync branch", () => {
+    const state = initSyncState("feature/dash", ["auth"], "paw.yaml");
+    writeSyncState(state, repoDir);
+
+    const content = "# Summary\n\nDid some work.";
+    writeSyncFile("summaries/auth.md", content, repoDir);
+
+    // git show trims trailing newlines, so compare trimmed
+    const read = readSyncFile("summaries/auth.md", repoDir);
+    expect(read).toBe(content);
+  });
+
+  it("preserves existing files when writing new ones", () => {
+    const state = initSyncState("feature/dash", ["auth"], "paw.yaml");
+    writeSyncState(state, repoDir);
+
+    writeSyncFile("summaries/auth.md", "auth summary", repoDir);
+    writeSyncFile("summaries/api.md", "api summary", repoDir);
+
+    // Both files should exist
+    expect(readSyncFile("summaries/auth.md", repoDir)).toBe("auth summary");
+    expect(readSyncFile("summaries/api.md", repoDir)).toBe("api summary");
+
+    // State should also still be readable
+    const readState = readSyncState(repoDir);
+    expect(readState).not.toBeNull();
+  });
+});
+
+describe("writeSyncStateAndFiles", () => {
+  let repoDir: string;
+
+  beforeEach(() => {
+    repoDir = makeTempDir();
+    gitInit(repoDir);
+  });
+
+  afterEach(() => {
+    rmSync(repoDir, { recursive: true, force: true });
+  });
+
+  it("writes state and files atomically", () => {
+    const state = initSyncState("feature/dash", ["auth"], "paw.yaml");
+    const completed = completeTask(state, "auth");
+
+    writeSyncStateAndFiles(
+      completed,
+      [{ path: "summaries/auth.md", content: "auth done" }],
+      repoDir,
+    );
+
+    const readState = readSyncState(repoDir);
+    expect(readState?.tasks["auth"]?.status).toBe("completed");
+
+    const summary = readSyncFile("summaries/auth.md", repoDir);
+    expect(summary).toBe("auth done");
+  });
+});
+
+describe("listSyncDir", () => {
+  let repoDir: string;
+
+  beforeEach(() => {
+    repoDir = makeTempDir();
+    gitInit(repoDir);
+  });
+
+  afterEach(() => {
+    rmSync(repoDir, { recursive: true, force: true });
+  });
+
+  it("returns empty array when no sync branch", () => {
+    expect(listSyncDir("summaries", repoDir)).toEqual([]);
+  });
+
+  it("lists files under a prefix", () => {
+    const state = initSyncState("feature/dash", ["auth", "api"], "paw.yaml");
+    writeSyncState(state, repoDir);
+
+    writeSyncFile("summaries/auth.md", "auth summary", repoDir);
+    writeSyncFile("summaries/api.md", "api summary", repoDir);
+
+    const files = listSyncDir("summaries", repoDir);
+    expect(files).toContain("summaries/auth.md");
+    expect(files).toContain("summaries/api.md");
+    expect(files).toHaveLength(2);
   });
 });

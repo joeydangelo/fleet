@@ -4,7 +4,12 @@ import { resolve } from "node:path";
 import pc from "picocolors";
 import { getRepoRoot } from "../lib/git.js";
 import { detectTaskName } from "../lib/session.js";
-import { readSyncState, claimTask, writeSyncState } from "../lib/sync.js";
+import {
+  readSyncState,
+  claimTask,
+  writeSyncState,
+  readSyncFile,
+} from "../lib/sync.js";
 import { handleError } from "../lib/output.js";
 
 export function primeCommand(): Command {
@@ -45,12 +50,14 @@ export function primeCommand(): Command {
           writeSyncState(updated, repoRoot);
           console.log(pc.green(`Claimed task: ${taskName}\n`));
 
-          // Show other agents' status
+          // Show team status
+          const separator = pc.dim("────────────────────────────────────────");
           const otherTasks = Object.entries(updated.tasks).filter(
             ([name]) => name !== taskName,
           );
           if (otherTasks.length > 0) {
-            console.log(pc.bold("Other tasks:"));
+            console.log(separator);
+            console.log(pc.bold("Team Status"));
             for (const [name, task] of otherTasks) {
               const statusColor =
                 task.status === "completed"
@@ -62,15 +69,41 @@ export function primeCommand(): Command {
             }
             console.log();
           }
+
+          // Show completed summaries
+          const completedTasks = Object.entries(updated.tasks).filter(
+            ([name, task]) => name !== taskName && task.status === "completed",
+          );
+          if (completedTasks.length > 0) {
+            console.log(separator);
+            console.log(pc.bold("Completed Summaries\n"));
+            for (const [name] of completedTasks) {
+              const summary = readSyncFile(`summaries/${name}.md`, repoRoot);
+              if (summary) {
+                console.log(pc.bold(`### ${name}`));
+                console.log(summary);
+                console.log();
+              }
+            }
+          }
         } else {
           console.log(pc.dim("No sync state found. Run `paw up` first.\n"));
         }
 
         // Usage guide
-        console.log(pc.dim("-- Workflow --"));
+        console.log(pc.dim("── Workflow ──"));
         console.log(pc.dim("1. Work on the task, committing as you go"));
-        console.log(pc.dim("2. Run `paw status` to check overall progress"));
-        console.log(pc.dim("3. Run `paw done` when finished"));
+        console.log(
+          pc.dim(
+            '2. Run `paw broadcast "..."` when you make significant changes',
+          ),
+        );
+        console.log(
+          pc.dim("3. Run `paw check` to read messages from other agents"),
+        );
+        console.log(
+          pc.dim("4. Run `paw done` when finished (include a --summary)"),
+        );
       } catch (err) {
         handleError(err);
       }

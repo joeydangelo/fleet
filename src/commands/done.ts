@@ -2,13 +2,22 @@ import { Command } from "commander";
 import pc from "picocolors";
 import { getRepoRoot } from "../lib/git.js";
 import { detectTaskName } from "../lib/session.js";
-import { readSyncState, completeTask, writeSyncState } from "../lib/sync.js";
+import {
+  readSyncState,
+  completeTask,
+  writeSyncState,
+  writeSyncStateAndFiles,
+} from "../lib/sync.js";
 import { handleError } from "../lib/output.js";
 
 export function doneCommand(): Command {
   return new Command("done")
     .description("Mark current task as completed")
-    .action(() => {
+    .option(
+      "--summary <text>",
+      "Completion summary (what you did, files changed, interface changes, warnings)",
+    )
+    .action((opts: { summary?: string }) => {
       try {
         const repoRoot = getRepoRoot();
         const taskName = detectTaskName(repoRoot);
@@ -37,9 +46,25 @@ export function doneCommand(): Command {
         }
 
         const updated = completeTask(state, taskName);
-        writeSyncState(updated, repoRoot);
 
-        console.log(pc.green(`+ ${taskName} -- marked as completed`));
+        if (opts.summary) {
+          const summaryPath = `summaries/${taskName}.md`;
+          writeSyncStateAndFiles(
+            updated,
+            [{ path: summaryPath, content: opts.summary }],
+            repoRoot,
+          );
+          console.log(pc.green(`+ ${taskName} -- marked as completed`));
+          console.log(
+            pc.dim(`  Summary written to ${summaryPath} on sync branch`),
+          );
+        } else {
+          writeSyncState(updated, repoRoot);
+          console.log(pc.green(`+ ${taskName} -- marked as completed`));
+          console.log(
+            pc.dim("  No summary provided. Use --summary to include one."),
+          );
+        }
       } catch (err) {
         handleError(err);
       }

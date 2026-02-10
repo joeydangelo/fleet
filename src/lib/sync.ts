@@ -52,20 +52,16 @@ export function readSyncState(cwd?: string): SyncState | null {
   }
 }
 
-/**
- * Write sync state to the paw-sync branch using an isolated git index.
- * Pattern from tbd: set GIT_INDEX_FILE to avoid touching the working tree's
- * index, then use read-tree/hash-object/write-tree/commit-tree/update-ref
- * to commit directly to the orphan branch.
- */
-export function writeSyncState(state: SyncState, cwd?: string): void {
+/** Run a function with GIT_INDEX_FILE pointed at the paw-sync isolated index. */
+function withSyncIndex<T>(fn: () => T, cwd?: string): T {
   const gitDir = git(["rev-parse", "--git-dir"], { cwd });
-  const indexFile = resolve(gitDir, "paw-index");
+  const effectiveCwd = cwd || process.cwd();
+  const indexFile = resolve(effectiveCwd, gitDir, "paw-index");
   const originalIndex = process.env.GIT_INDEX_FILE;
 
   try {
     process.env.GIT_INDEX_FILE = indexFile;
-    writeSyncStateWithRetry(state, cwd);
+    return fn();
   } finally {
     if (originalIndex) {
       process.env.GIT_INDEX_FILE = originalIndex;
@@ -75,38 +71,41 @@ export function writeSyncState(state: SyncState, cwd?: string): void {
   }
 }
 
-function writeSyncStateWithRetry(state: SyncState, cwd?: string): void {
+/**
+ * Write one or more files to the paw-sync branch in a single atomic commit.
+ * Uses an isolated git index to avoid touching the working tree.
+ */
+function writeSyncFilesRetry(
+  files: Array<{ path: string; content: string }>,
+  message: string,
+  cwd?: string,
+): void {
   const pipeOpts = { cwd, stdio: "pipe" as const };
 
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
-      // Read existing tree into isolated index if branch exists
       if (syncBranchExists(cwd)) {
         git(["read-tree", SYNC_BRANCH], pipeOpts);
       }
 
-      // Write state.json as a blob via stdin
-      const content = JSON.stringify(state, null, 2) + "\n";
-      const blob = git(["hash-object", "-w", "--stdin"], {
-        ...pipeOpts,
-        input: content,
-      });
+      for (const file of files) {
+        const blob = git(["hash-object", "-w", "--stdin"], {
+          ...pipeOpts,
+          input: file.content,
+        });
+        git(
+          [
+            "update-index",
+            "--add",
+            "--cacheinfo",
+            `100644,${blob},${file.path}`,
+          ],
+          pipeOpts,
+        );
+      }
 
-      // Add blob to index
-      git(
-        [
-          "update-index",
-          "--add",
-          "--cacheinfo",
-          `100644,${blob},${STATE_FILE}`,
-        ],
-        pipeOpts,
-      );
-
-      // Write tree, create commit, update branch ref
       const tree = git(["write-tree"], pipeOpts);
-
-      const commitArgs = ["commit-tree", tree, "-m", "paw: update sync state"];
+      const commitArgs = ["commit-tree", tree, "-m", message];
       if (syncBranchExists(cwd)) {
         const parent = git(["rev-parse", SYNC_BRANCH], pipeOpts);
         commitArgs.push("-p", parent);
@@ -118,12 +117,90 @@ function writeSyncStateWithRetry(state: SyncState, cwd?: string): void {
     } catch (err) {
       if (attempt === MAX_RETRIES) {
         throw new Error(
-          `Failed to write sync state after ${MAX_RETRIES} attempts: ${
+          `Failed to write to sync branch after ${MAX_RETRIES} attempts: ${
             err instanceof Error ? err.message : String(err)
           }`,
         );
       }
     }
+  }
+}
+
+/**
+ * Write sync state to the paw-sync branch using an isolated git index.
+ * Pattern from tbd: set GIT_INDEX_FILE to avoid touching the working tree's
+ * index, then use read-tree/hash-object/write-tree/commit-tree/update-ref
+ * to commit directly to the orphan branch.
+ */
+export function writeSyncState(state: SyncState, cwd?: string): void {
+  withSyncIndex(
+    () =>
+      writeSyncFilesRetry(
+        [{ path: STATE_FILE, content: JSON.stringify(state, null, 2) + "\n" }],
+        "paw: update sync state",
+        cwd,
+      ),
+    cwd,
+  );
+}
+
+/** Write sync state and additional files in one atomic commit. */
+export function writeSyncStateAndFiles(
+  state: SyncState,
+  files: Array<{ path: string; content: string }>,
+  cwd?: string,
+): void {
+  withSyncIndex(
+    () =>
+      writeSyncFilesRetry(
+        [
+          {
+            path: STATE_FILE,
+            content: JSON.stringify(state, null, 2) + "\n",
+          },
+          ...files,
+        ],
+        "paw: update sync state",
+        cwd,
+      ),
+    cwd,
+  );
+}
+
+/** Write a single file to the sync branch. */
+export function writeSyncFile(
+  path: string,
+  content: string,
+  cwd?: string,
+): void {
+  withSyncIndex(
+    () => writeSyncFilesRetry([{ path, content }], `paw: update ${path}`, cwd),
+    cwd,
+  );
+}
+
+/** Read a file from the sync branch. Returns null if not found. */
+export function readSyncFile(path: string, cwd?: string): string | null {
+  if (!syncBranchExists(cwd)) return null;
+  try {
+    return git(["show", `${SYNC_BRANCH}:${path}`], { cwd, stdio: "pipe" });
+  } catch {
+    return null;
+  }
+}
+
+/** List files under a directory prefix on the sync branch. */
+export function listSyncDir(prefix: string, cwd?: string): string[] {
+  if (!syncBranchExists(cwd)) return [];
+  try {
+    const output = git(["ls-tree", "--name-only", SYNC_BRANCH, prefix + "/"], {
+      cwd,
+      stdio: "pipe",
+    });
+    if (!output) return [];
+    return output.split("\n").filter(Boolean);
+  } catch {
+    return [];
   }
 }
 
