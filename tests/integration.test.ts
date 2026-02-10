@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 import { mkdirSync, existsSync, readFileSync, rmSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { tmpdir } from "node:os";
-import { createSession, writeTaskFiles } from "../src/lib/session.js";
+import { createSession, writeTaskFiles, planWorktrees } from "../src/lib/session.js";
 import { initSyncState, writeSyncState, readSyncState } from "../src/lib/sync.js";
 import { branchExists, listWorktrees, removeWorktree } from "../src/lib/git.js";
 import type { PawConfig } from "../src/lib/config.js";
@@ -126,6 +126,17 @@ describe("paw session lifecycle", () => {
     expect(Object.keys(read!.tasks)).toEqual(["auth", "api"]);
     expect(read!.tasks["auth"]?.status).toBe("pending");
     expect(read!.tasks["api"]?.status).toBe("pending");
+  });
+
+  it("planWorktrees (dry-run path) does not create branches or worktrees", () => {
+    const worktrees = planWorktrees(config, repoDir);
+
+    // planWorktrees is pure -- no side effects
+    for (const wt of worktrees) {
+      expect(existsSync(wt.worktreePath)).toBe(false);
+    }
+    expect(branchExists("feature/dash", repoDir)).toBe(false);
+    expect(branchExists("feature/dash-auth", repoDir)).toBe(false);
   });
 
   it("tears down worktrees cleanly", () => {
