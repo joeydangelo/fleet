@@ -9,6 +9,7 @@ import {
 } from "../lib/git.js";
 import { loadConfig, resolveConfigPath } from "../lib/config.js";
 import { planWorktrees } from "../lib/session.js";
+import { removeSyncWorktree } from "../lib/sync.js";
 import { success, error, skip, pending, handleError } from "../lib/output.js";
 
 export function downCommand(): Command {
@@ -57,8 +58,13 @@ export function downCommand(): Command {
             }
           }
 
-          // Delete sync branch
+          // Remove sync worktree, then delete sync branch
           const SYNC_BRANCH = "paw-sync";
+          try {
+            removeSyncWorktree(repoRoot);
+          } catch {
+            // already removed
+          }
           if (branchExists(SYNC_BRANCH, repoRoot)) {
             try {
               deleteBranch(SYNC_BRANCH, repoRoot);
