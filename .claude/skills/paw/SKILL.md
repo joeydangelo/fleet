@@ -55,6 +55,7 @@ Run `paw shortcut <name>` for step-by-step workflows:
 | `generate-paw-yaml` | Analyze a codebase and create a paw.yaml |
 | `session-start` | Agent's first actions in a worktree |
 | `session-end` | Wrap up: broadcast final state, write done summary |
+| `implement-and-validate` | TDD workflow from task assignment to done |
 | `resolve-conflict` | Read conflict brief, resolve, merge --continue |
 | `precommit-process` | Review, test, broadcast, and commit checklist |
 
@@ -65,7 +66,10 @@ Run `paw guidelines <name>` for reference knowledge:
 | Guideline | Purpose |
 |---|---|
 | `commit-conventions` | Conventional Commits format for multi-agent work |
+| `general-tdd-guidelines` | Red, Green, Refactor in small slices |
+| `general-testing-rules` | Minimal tests, maximum coverage |
 | `paw-task-decomposition` | How to split work into good parallel tasks |
+| `typescript-testing-guidelines` | Test behavior and data flow, not mock existence |
 
 ## Templates
 

@@ -64,7 +64,7 @@ function parseFrontmatter(content: string): {
   title?: string;
   description?: string;
 } {
-  const match = content.match(/^---\n([\s\S]*?)\n---/);
+  const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
   if (!match) return {};
   const block = match[1]!;
   const title = block.match(/^title:\s*(.+)$/m)?.[1]?.trim();
