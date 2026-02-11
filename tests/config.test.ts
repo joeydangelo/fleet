@@ -103,6 +103,72 @@ tasks:
   });
 });
 
+describe("hooks config", () => {
+  it("parses pre-done and post-merge hooks", () => {
+    const dir = makeTempDir();
+    const configPath = resolve(dir, "paw.yaml");
+    writeFileSync(
+      configPath,
+      `
+target: feature/x
+hooks:
+  pre-done: npm test
+  post-merge: npm test
+tasks:
+  a:
+    focus: src/
+`,
+    );
+
+    const config = loadConfig(configPath);
+    expect(config.hooks?.["pre-done"]).toBe("npm test");
+    expect(config.hooks?.["post-merge"]).toBe("npm test");
+
+    rmSync(dir, { recursive: true });
+  });
+
+  it("accepts config with no hooks", () => {
+    const dir = makeTempDir();
+    const configPath = resolve(dir, "paw.yaml");
+    writeFileSync(
+      configPath,
+      `
+target: feature/x
+tasks:
+  a:
+    focus: src/
+`,
+    );
+
+    const config = loadConfig(configPath);
+    expect(config.hooks).toBeUndefined();
+
+    rmSync(dir, { recursive: true });
+  });
+
+  it("accepts config with only pre-done hook", () => {
+    const dir = makeTempDir();
+    const configPath = resolve(dir, "paw.yaml");
+    writeFileSync(
+      configPath,
+      `
+target: feature/x
+hooks:
+  pre-done: uv run pytest
+tasks:
+  a:
+    focus: src/
+`,
+    );
+
+    const config = loadConfig(configPath);
+    expect(config.hooks?.["pre-done"]).toBe("uv run pytest");
+    expect(config.hooks?.["post-merge"]).toBeUndefined();
+
+    rmSync(dir, { recursive: true });
+  });
+});
+
 describe("resolveConfigPath", () => {
   it("finds paw.yaml", () => {
     const dir = makeTempDir();

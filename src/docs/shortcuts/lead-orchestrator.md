@@ -1,0 +1,58 @@
+---
+title: Lead Orchestrator
+description: Coordinate parallel agents from the main repo -- setup, monitor, merge, cleanup
+category: session
+---
+You're the lead orchestrator running a paw session from the main repo. Your job is
+to set up the session, merge results, and clean up. During the session, agents work
+independently -- you can check in, but you're not actively managing them.
+
+## Setup
+
+1. **Write `paw.yaml`.** Use `paw shortcut generate-paw-yaml` to decompose work
+   into parallel tasks with focus areas and prompts.
+
+2. **Run `paw up`.** Creates worktrees, branches, and sync state. Verify the output
+   shows all tasks created.
+
+3. **Launch agents.** Start one agent per worktree. Each agent runs
+   `paw shortcut session-start` as their first action.
+
+## Check-in (optional)
+
+PAW's communication is async and pull-based. There's no real-time monitoring --
+you check in when you want.
+
+- **`paw status`** -- see which agents are working, done, or pending
+- **`paw check`** -- read broadcasts and messages from agents
+- **`paw ask <task> "..."`** -- send a message to redirect an agent
+
+## Merge & cleanup
+
+1. **Verify completions.** `paw status` should show all tasks as "done" with
+   summaries written.
+
+2. **Run `paw merge`.** Merges each task branch into the target branch in order.
+   - Clean merges are automatic.
+   - On conflict: paw writes a conflict brief and stops. Run
+     `paw shortcut resolve-conflict`, then `paw merge --continue`.
+   - On hook failure: fix the issue and `paw merge --continue`, or roll back
+     with the backup ref paw printed.
+
+3. **Run `paw down`.** Removes worktrees and task branches. The target branch with
+   all merged work remains.
+
+4. **Review the target branch.** Merge or rebase into main when ready.
+
+## Delegate mode
+
+PAW's worktree architecture already separates the coordinator from implementers.
+As the lead, you stay in the main repo. Each agent works in an isolated worktree
+with their own branch. This means:
+
+- You can review summaries and broadcasts without touching agent code
+- Messages via `paw ask` don't create merge conflicts
+- `paw merge` runs from the main repo where no agent is working
+
+If you need to make changes yourself (e.g., a shared config file), do it on the
+target branch before or after the merge -- not during agent work.

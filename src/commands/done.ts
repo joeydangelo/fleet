@@ -1,6 +1,8 @@
 import { Command } from "commander";
+import { execSync } from "node:child_process";
 import pc from "picocolors";
 import { getRepoRoot } from "../lib/git.js";
+import { loadConfig, resolveConfigPath } from "../lib/config.js";
 import { detectTaskName } from "../lib/session.js";
 import {
   readSyncState,
@@ -77,6 +79,31 @@ export function doneCommand(): Command {
             ),
           );
           process.exit(1);
+        }
+
+        // Run pre-done hook if configured
+        if (!opts.force) {
+          try {
+            const configPath = resolveConfigPath(repoRoot);
+            const config = loadConfig(configPath);
+            const preDoneHook = config.hooks?.["pre-done"];
+            if (preDoneHook) {
+              console.log(pc.dim(`Running pre-done hook: ${preDoneHook}`));
+              try {
+                execSync(preDoneHook, { cwd: repoRoot, stdio: "inherit" });
+              } catch {
+                console.error(
+                  pc.red("Pre-done hook failed. Fix the issue and try again."),
+                );
+                console.error(
+                  pc.dim("Use --force to bypass the pre-done hook."),
+                );
+                process.exit(1);
+              }
+            }
+          } catch {
+            // No config found -- skip hook (worktree may not have paw.yaml)
+          }
         }
 
         const updated = completeTask(state, taskName);

@@ -14,9 +14,8 @@ clean commits.
    specs, issues, or beads, read those too.
 
 2. **Plan the work.** Break your task into small, testable increments. Bugs first,
-   then features. If the project uses an external tracker (beads, GitHub Issues, etc.)
-   and your task's paw.yaml entry has a `bead:` reference, update the tracker as you
-   go. If not, the paw task file is your tracking.
+   then features. If the project uses an external tracker (beads, GitHub Issues, etc.),
+   update the tracker as you go. If not, the paw task file is your tracking.
 
 3. **Implement with TDD.** For each increment:
    - Write a failing test first (Red)

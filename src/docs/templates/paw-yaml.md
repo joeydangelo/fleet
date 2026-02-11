@@ -14,9 +14,12 @@ target: feature/my-feature
 # Base branch to create target from (default: main). Usually you leave this alone.
 # base: main
 
-# Optional hooks. post-merge runs after each clean merge in `paw merge`.
-# If it fails, paw stops and shows rollback guidance.
+# Optional hooks.
+# pre-done runs before `paw done` marks a task complete. If it fails, done is blocked.
+# post-merge runs after each clean merge in `paw merge`. If it fails, paw stops
+# and shows rollback guidance.
 # hooks:
+#   pre-done: npm test
 #   post-merge: npm test
 
 tasks:
@@ -39,9 +42,6 @@ tasks:
       Add OAuth2 login flow with Google and GitHub providers.
       Define AuthConfig type at src/auth/types.ts -- the api task depends on this.
       Broadcast any changes to AuthConfig or the middleware signature.
-
-    # Optional: link to a tbd bead for tracking.
-    # bead: paw-a1b2
 
   api:
     focus:
