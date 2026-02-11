@@ -172,14 +172,13 @@ function isPawHookEntry(entry: unknown): boolean {
 
   // Correct matcher group format: { matcher: "", hooks: [{ command: "...paw..." }] }
   if ("hooks" in obj && Array.isArray(obj.hooks)) {
-    return obj.hooks.some(
-      (h: unknown) =>
-        typeof h === "object" &&
-        h !== null &&
-        "command" in (h as Record<string, unknown>) &&
-        typeof (h as Record<string, string>).command === "string" &&
-        (h as Record<string, string>).command.includes("paw"),
-    );
+    return obj.hooks.some((h: unknown) => {
+      if (typeof h !== "object" || h === null) return false;
+      const rec = h as Record<string, unknown>;
+      return (
+        typeof rec.command === "string" && rec.command.includes("paw")
+      );
+    });
   }
 
   return false;
