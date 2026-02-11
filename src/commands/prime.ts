@@ -3,11 +3,13 @@ import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import pc from "picocolors";
 import { getRepoRoot } from "../lib/git.js";
-import { detectTaskName } from "../lib/session.js";
+import { detectTaskName, planWorktrees } from "../lib/session.js";
+import { loadConfig, resolveConfigPath } from "../lib/config.js";
 import type { SyncState } from "../lib/sync.js";
 import {
   readSyncState,
   claimTask,
+  findFirstPendingTask,
   writeSyncState,
   readSyncFile,
 } from "../lib/sync.js";
@@ -16,7 +18,7 @@ import { handleError } from "../lib/output.js";
 
 export function primeCommand(): Command {
   return new Command("prime")
-    .description("Orient agent and claim task (run inside a worktree)")
+    .description("Orient agent and claim task (worktree or repo root)")
     .option("--brief", "Condensed output for hooks and constrained contexts")
     .action((opts: { brief?: boolean }) => {
       try {
@@ -24,15 +26,8 @@ export function primeCommand(): Command {
         const taskName = detectTaskName(repoRoot);
 
         if (!taskName) {
-          console.error(
-            pc.red("Could not detect task name. Are you in a paw worktree?"),
-          );
-          console.error(
-            pc.dim(
-              "Expected a single .md file in .paw/tasks/. Run `paw up` to create worktrees.",
-            ),
-          );
-          process.exit(1);
+          selfAssignFromRoot(repoRoot);
+          return;
         }
 
         // Read task file content
@@ -222,4 +217,62 @@ function printFull(
   console.log(
     pc.dim("4. Run `paw shortcut session-end` when finished"),
   );
+}
+
+/**
+ * When run from the main repo root (no task file), read paw.yaml and
+ * the sync branch to claim the next pending task and direct the agent
+ * to its worktree.
+ */
+function selfAssignFromRoot(repoRoot: string): void {
+  let configPath: string;
+  try {
+    configPath = resolveConfigPath(repoRoot);
+  } catch {
+    // No paw.yaml -- fall back to the original error
+    console.error(
+      pc.red("Could not detect task name. Are you in a paw worktree?"),
+    );
+    console.error(
+      pc.dim(
+        "Expected a single .md file in .paw/tasks/. Run `paw up` to create worktrees.",
+      ),
+    );
+    process.exit(1);
+  }
+
+  const config = loadConfig(configPath);
+  const state = readSyncState(repoRoot);
+
+  if (!state) {
+    console.error(pc.red("No sync state found. Run `paw up` first."));
+    process.exit(1);
+  }
+
+  const pendingTask = findFirstPendingTask(state);
+
+  if (!pendingTask) {
+    console.log(pc.yellow("All tasks are already claimed or completed.\n"));
+    printTeamStatus("", state);
+    process.exit(0);
+  }
+
+  // Claim the task
+  const updated = claimTask(state, pendingTask);
+  writeSyncState(updated, repoRoot);
+
+  // Find the worktree path
+  const worktrees = planWorktrees(config, repoRoot);
+  const wt = worktrees.find((w) => w.taskName === pendingTask);
+
+  console.log("No task file found in current directory.");
+  console.log("Checking paw.yaml for unclaimed tasks...\n");
+  console.log(pc.green(`Claimed task: ${pendingTask}`));
+  if (wt) {
+    console.log(`Worktree: ${wt.worktreePath}\n`);
+    console.log(
+      "Change to the worktree directory and run `paw prime` again for full context:",
+    );
+    console.log(`  cd "${wt.worktreePath}"`);
+  }
 }
