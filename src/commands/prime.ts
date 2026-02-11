@@ -14,7 +14,7 @@ import {
   readSyncFile,
 } from "../lib/sync.js";
 import { readJournalForTask } from "../lib/journal.js";
-import { handleError } from "../lib/output.js";
+import { handleError, formatFocusAreas } from "../lib/output.js";
 
 export function primeCommand(): Command {
   return new Command("prime")
@@ -39,9 +39,7 @@ export function primeCommand(): Command {
         // Claim on sync branch
         const state = readSyncState(repoRoot);
         const updated =
-          state && state.tasks[taskName]
-            ? claimTask(state, taskName)
-            : null;
+          state && state.tasks[taskName] ? claimTask(state, taskName) : null;
         if (updated) writeSyncState(updated, repoRoot);
 
         if (opts.brief) {
@@ -69,7 +67,11 @@ function printTeamStatus(taskName: string, state: SyncState): void {
         : task.status === "in_progress"
           ? pc.yellow
           : pc.dim;
-    console.log(`  ${statusColor(task.status.padEnd(12))} ${name}`);
+    const focus = formatFocusAreas(task.focus);
+    const focusSuffix = focus ? `  ${pc.dim(focus)}` : "";
+    console.log(
+      `  ${statusColor(task.status.padEnd(12))} ${name}${focusSuffix}`,
+    );
   }
   console.log();
 }
@@ -90,8 +92,7 @@ function printBrief(
     );
 
     if (focusStart !== -1) {
-      const end =
-        instructionsStart !== -1 ? instructionsStart : lines.length;
+      const end = instructionsStart !== -1 ? instructionsStart : lines.length;
       const focusLines = lines.slice(focusStart, end).filter((l) => l.trim());
       for (const line of focusLines) console.log(line);
       console.log();
@@ -156,9 +157,7 @@ function printFull(
     console.log(separator);
     console.log(pc.bold("Messages for You"));
     for (const entry of directed) {
-      console.log(
-        `  ${pc.cyan(`[${entry.from} → ${taskName}]`)} ${entry.msg}`,
-      );
+      console.log(`  ${pc.cyan(`[${entry.from} → ${taskName}]`)} ${entry.msg}`);
     }
     console.log();
   }
@@ -207,16 +206,10 @@ function printFull(
     pc.dim("1. Follow `paw shortcut precommit-process` when committing"),
   );
   console.log(
-    pc.dim(
-      '2. Run `paw broadcast "..."` when you change shared interfaces',
-    ),
+    pc.dim('2. Run `paw broadcast "..."` when you change shared interfaces'),
   );
-  console.log(
-    pc.dim("3. Run `paw check` to read messages from other agents"),
-  );
-  console.log(
-    pc.dim("4. Run `paw shortcut session-end` when finished"),
-  );
+  console.log(pc.dim("3. Run `paw check` to read messages from other agents"));
+  console.log(pc.dim("4. Run `paw shortcut session-end` when finished"));
 }
 
 /**

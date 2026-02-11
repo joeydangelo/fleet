@@ -18,6 +18,7 @@ import {
   skip,
   unknown,
   handleError,
+  formatFocusAreas,
 } from "../lib/output.js";
 
 export function statusCommand(): Command {
@@ -57,13 +58,15 @@ export function statusCommand(): Command {
 
             const syncLabel =
               taskSync?.status === "in_progress" ? " [claimed]" : "";
+            const focus = formatFocusAreas(taskSync?.focus);
+            const focusSuffix = focus ? `  ${focus}` : "";
 
             if (commits === 0) {
-              pending(wt.taskName, `no changes yet${syncLabel}`);
+              pending(wt.taskName, `no changes yet${syncLabel}${focusSuffix}`);
             } else {
               success(
                 wt.taskName,
-                `${commits} commit(s), ${files} file(s) changed${syncLabel}`,
+                `${commits} commit(s), ${files} file(s) changed${syncLabel}${focusSuffix}`,
               );
             }
           } catch {

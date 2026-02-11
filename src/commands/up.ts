@@ -47,7 +47,18 @@ export function upCommand(): Command {
         writeTaskFiles(config, worktrees);
 
         initSyncWorktree(repoRoot);
-        const syncState = initSyncState(config.target, taskNames, configPath);
+        const focusMap: Record<string, string[]> = {};
+        for (const [name, task] of Object.entries(config.tasks)) {
+          focusMap[name] = Array.isArray(task.focus)
+            ? task.focus
+            : [task.focus];
+        }
+        const syncState = initSyncState(
+          config.target,
+          taskNames,
+          configPath,
+          focusMap,
+        );
         writeSyncStateAndFiles(
           syncState,
           [{ path: "journal/.gitkeep", content: "" }],
