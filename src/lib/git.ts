@@ -127,6 +127,32 @@ export function getConflictingFiles(cwd?: string): string[] {
   }
 }
 
+/** Get the current HEAD commit hash. */
+export function getHeadRef(cwd?: string): string {
+  return git(["rev-parse", "HEAD"], { cwd, stdio: "pipe" });
+}
+
+/** Create a backup ref at refs/paw-backup/{taskName} pointing to the given commit. */
+export function createBackupRef(taskName: string, commit: string, cwd?: string): void {
+  git(["update-ref", `refs/paw-backup/${taskName}`, commit], { cwd });
+}
+
+/** Remove all refs/paw-backup/ refs. */
+export function cleanupBackupRefs(cwd?: string): void {
+  try {
+    const output = git(["for-each-ref", "--format=%(refname)", "refs/paw-backup/"], {
+      cwd,
+      stdio: "pipe",
+    });
+    if (!output) return;
+    for (const ref of output.split("\n").filter(Boolean)) {
+      git(["update-ref", "-d", ref], { cwd });
+    }
+  } catch {
+    // No backup refs to clean up
+  }
+}
+
 /** Check whether git is currently in a merge-conflict state (MERGE_HEAD exists). */
 export function isMergeInProgress(cwd?: string): boolean {
   try {

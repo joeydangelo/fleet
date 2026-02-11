@@ -9,9 +9,14 @@ const TaskSchema = z.object({
   bead: z.string().optional(),
 });
 
+const HooksSchema = z.object({
+  "post-merge": z.string().optional(),
+});
+
 const PawConfigSchema = z.object({
   base: z.string().default("main"),
   target: z.string(),
+  hooks: HooksSchema.optional(),
   tasks: z.record(z.string(), TaskSchema),
 });
 
