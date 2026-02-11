@@ -26,6 +26,21 @@ export function validateSummary(summary: string): ValidationResult {
   return { valid: missing.length === 0, missing };
 }
 
+/** Generate the error-display template from REQUIRED_SECTIONS. Single source of truth. */
+export function generateErrorTemplate(): string {
+  const sectionTemplates: Record<string, string> = {
+    "What I did": "- [Major accomplishment 1]\n- [Major accomplishment 2]",
+    "Interface changes":
+      "- [Type/export/API changes other agents need to know about]\n- [New exports, renamed functions, changed signatures]",
+    "Watch out":
+      "- [Non-obvious things: env vars, ordering dependencies, breaking changes]\n- [Anything that isn't clear from the diff alone]",
+  };
+
+  return REQUIRED_SECTIONS.map(
+    (s) => `## ${s}\n${sectionTemplates[s] ?? "- [Details]"}`,
+  ).join("\n\n");
+}
+
 function escapeRegex(str: string): string {
   return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }

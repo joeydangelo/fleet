@@ -8,6 +8,7 @@ import {
 } from "node:fs";
 import type { PawConfig } from "./config.js";
 import { branchExists, createBranch, createWorktree, getFileFromBranch } from "./git.js";
+import { REQUIRED_SECTIONS } from "./summary.js";
 
 export interface WorktreeInfo {
   taskName: string;
@@ -57,23 +58,27 @@ const COLLABORATION_RULES = `## Collaboration Rules
 - Stay within your focus areas. If you need to modify files outside your
   focus, broadcast first.`;
 
-const SUMMARY_TEMPLATE = `## When You're Done
+const SECTION_DESCRIPTIONS: Record<string, string> = {
+  "What I did": "- Bullet list of what you built or changed",
+  "Interface changes":
+    "- New exports, changed signatures, renamed types\n- Anything another agent importing from your files needs to know",
+  "Watch out":
+    "- Breaking changes, migration needs, gotchas\n- Files other agents should check",
+};
 
-Run \`paw done --summary "..."\` with a structured summary. Use this format:
-
-### What I did
-- Bullet list of what you built or changed
-
-### Interface changes
-- New exports, changed signatures, renamed types
-- Anything another agent importing from your files needs to know
-
-### Watch out
-- Breaking changes, migration needs, gotchas
-- Files other agents should check
-
-This summary feeds the conflict brief. Be specific about interface changes --
-other agents depend on this information to resolve merge conflicts.`;
+const SUMMARY_TEMPLATE = [
+  `## When You're Done`,
+  ``,
+  `Run \`paw done --summary "..."\` with a structured summary. Use this format:`,
+  ``,
+  ...REQUIRED_SECTIONS.flatMap((s) => [
+    `### ${s}`,
+    SECTION_DESCRIPTIONS[s] ?? "- [Details]",
+    ``,
+  ]),
+  `This summary feeds the conflict brief. Be specific about interface changes --`,
+  `other agents depend on this information to resolve merge conflicts.`,
+].join("\n");
 
 export function generateTaskFile(
   config: PawConfig,

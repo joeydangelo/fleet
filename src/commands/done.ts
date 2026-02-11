@@ -8,19 +8,7 @@ import {
   writeSyncStateAndFiles,
 } from "../lib/sync.js";
 import { handleError } from "../lib/output.js";
-import { validateSummary } from "../lib/summary.js";
-
-const SUMMARY_TEMPLATE = `## What I did
-- [Major accomplishment 1]
-- [Major accomplishment 2]
-
-## Interface changes
-- [Type/export/API changes other agents need to know about]
-- [New exports, renamed functions, changed signatures]
-
-## Watch out
-- [Non-obvious things: env vars, ordering dependencies, breaking changes]
-- [Anything that isn't clear from the diff alone]`;
+import { validateSummary, generateErrorTemplate } from "../lib/summary.js";
 
 export function doneCommand(): Command {
   return new Command("done")
@@ -64,7 +52,7 @@ export function doneCommand(): Command {
           );
           console.error("");
           console.error(pc.bold("Expected format:"));
-          console.error(pc.dim(SUMMARY_TEMPLATE));
+          console.error(pc.dim(generateErrorTemplate()));
           console.error("");
           console.error(
             pc.dim("Run `paw template task-summary` for full details."),
@@ -81,7 +69,7 @@ export function doneCommand(): Command {
           );
           console.error("");
           console.error(pc.bold("Expected format:"));
-          console.error(pc.dim(SUMMARY_TEMPLATE));
+          console.error(pc.dim(generateErrorTemplate()));
           console.error("");
           console.error(
             pc.dim(

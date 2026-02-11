@@ -1,5 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { validateSummary, REQUIRED_SECTIONS } from "../src/lib/summary.js";
+import { validateSummary, REQUIRED_SECTIONS, generateErrorTemplate } from "../src/lib/summary.js";
+import { generateTaskFile } from "../src/lib/session.js";
+import type { PawConfig } from "../src/lib/config.js";
 
 describe("validateSummary", () => {
   const validSummary = `## What I did
@@ -107,5 +109,32 @@ describe("validateSummary", () => {
     expect(result.missing).toContain("What I did");
     expect(result.missing).toContain("Interface changes");
     expect(result.missing).toContain("Watch out");
+  });
+});
+
+describe("summary template single source of truth (paw-em2l)", () => {
+  it("generateErrorTemplate contains all REQUIRED_SECTIONS", () => {
+    const template = generateErrorTemplate();
+    for (const section of REQUIRED_SECTIONS) {
+      expect(template).toContain(`## ${section}`);
+    }
+  });
+
+  it("task file template contains all REQUIRED_SECTIONS as headings", () => {
+    const config: PawConfig = {
+      base: "main",
+      target: "feature/dash",
+      tasks: { auth: { focus: "src/auth/" } },
+    };
+    const worktree = {
+      taskName: "auth",
+      branch: "feature/dash-auth",
+      worktreePath: "/projects/acme-app-paw-auth",
+    };
+
+    const taskFile = generateTaskFile(config, "auth", worktree);
+    for (const section of REQUIRED_SECTIONS) {
+      expect(taskFile).toContain(`### ${section}`);
+    }
   });
 });
