@@ -12,7 +12,8 @@ const __dirname = dirname(__filename);
 export function getDocsBasePath(): string {
   const candidates = [
     join(__dirname, "docs"), // Bundled: dist/docs/
-    join(__dirname, "..", "src", "docs"), // Dev: src/docs/
+    join(__dirname, "..", "src", "docs"), // Dev from dist: ../src/docs/
+    join(__dirname, "..", "docs"), // Dev from src/lib: ../docs/ = src/docs/
   ];
   for (const p of candidates) {
     if (existsSync(p)) return p;
