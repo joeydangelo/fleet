@@ -113,7 +113,9 @@ Backup refs are created automatically before each merge for safe rollback.
 - **Read before you plan.** \`paw prime\` shows what other agents have done and said.
   Adapt your approach to the current state, not your initial assumptions.
 - **Write a good summary.** Your done summary is what the merge process and resolver
-  agents use to understand your work. See \`paw template task-summary\`.
+  agents use to understand your work. \`paw done\` requires a structured summary with
+  sections: What I did, Interface changes, Watch out. Use \`--force\` to bypass for
+  trivial tasks. See \`paw template task-summary\`.
 `;
 
 export function setupCommand(): Command {
@@ -174,4 +176,3 @@ export function setupCommand(): Command {
       }
     });
 }
-

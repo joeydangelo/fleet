@@ -49,6 +49,32 @@ export function createSession(
   return worktrees;
 }
 
+const COLLABORATION_RULES = `## Collaboration Rules
+
+- Run \`paw broadcast "..."\` when you make significant changes, especially
+  interface changes that affect other agents.
+- Run \`paw check\` periodically to read broadcasts from other agents.
+- Stay within your focus areas. If you need to modify files outside your
+  focus, broadcast first.`;
+
+const SUMMARY_TEMPLATE = `## When You're Done
+
+Run \`paw done --summary "..."\` with a structured summary. Use this format:
+
+### What I did
+- Bullet list of what you built or changed
+
+### Interface changes
+- New exports, changed signatures, renamed types
+- Anything another agent importing from your files needs to know
+
+### Watch out
+- Breaking changes, migration needs, gotchas
+- Files other agents should check
+
+This summary feeds the conflict brief. Be specific about interface changes --
+other agents depend on this information to resolve merge conflicts.`;
+
 export function generateTaskFile(
   config: PawConfig,
   taskName: string,
@@ -74,6 +100,8 @@ export function generateTaskFile(
   if (task.prompt) {
     lines.push(``, `## Instructions`, ``, task.prompt.trimEnd());
   }
+
+  lines.push(``, COLLABORATION_RULES, ``, SUMMARY_TEMPLATE);
 
   return lines.join("\n") + "\n";
 }

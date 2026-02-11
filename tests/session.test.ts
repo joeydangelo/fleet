@@ -123,6 +123,61 @@ describe("generateTaskFile", () => {
     expect(result).not.toContain("## Instructions");
   });
 
+  it("includes collaboration rules section", () => {
+    const worktree = {
+      taskName: "auth",
+      branch: "feature/dashboard-auth",
+      worktreePath: "/projects/acme-app-paw-auth",
+    };
+
+    const result = generateTaskFile(baseConfig, "auth", worktree);
+
+    expect(result).toContain("## Collaboration Rules");
+    expect(result).toContain("paw broadcast");
+    expect(result).toContain("paw check");
+    expect(result).toContain("Stay within your focus areas");
+  });
+
+  it("includes summary template section", () => {
+    const worktree = {
+      taskName: "auth",
+      branch: "feature/dashboard-auth",
+      worktreePath: "/projects/acme-app-paw-auth",
+    };
+
+    const result = generateTaskFile(baseConfig, "auth", worktree);
+
+    expect(result).toContain("## When You're Done");
+    expect(result).toContain("paw done --summary");
+    expect(result).toContain("### What I did");
+    expect(result).toContain("### Interface changes");
+    expect(result).toContain("### Watch out");
+    expect(result).toContain("conflict brief");
+  });
+
+  it("places collaboration rules and summary template after instructions", () => {
+    const config: PawConfig = {
+      ...baseConfig,
+      tasks: {
+        auth: { focus: "src/auth/", prompt: "Implement OAuth2 login." },
+      },
+    };
+    const worktree = {
+      taskName: "auth",
+      branch: "feature/dashboard-auth",
+      worktreePath: "/projects/acme-app-paw-auth",
+    };
+
+    const result = generateTaskFile(config, "auth", worktree);
+
+    const instructionsPos = result.indexOf("## Instructions");
+    const collabPos = result.indexOf("## Collaboration Rules");
+    const summaryPos = result.indexOf("## When You're Done");
+
+    expect(instructionsPos).toBeLessThan(collabPos);
+    expect(collabPos).toBeLessThan(summaryPos);
+  });
+
   it("throws on unknown task name", () => {
     const worktree = {
       taskName: "nope",
