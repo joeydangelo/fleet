@@ -53,6 +53,25 @@ describe("initSyncState", () => {
     expect(state.tasks["api"]?.status).toBe("pending");
     expect(state.session).toBeTruthy();
   });
+
+  it("stores focus areas when focusMap is provided", () => {
+    const state = initSyncState("feature/dash", ["auth", "api"], "paw.yaml", {
+      auth: ["src/auth/", "src/middleware/auth.ts"],
+      api: ["src/api/"],
+    });
+
+    expect(state.tasks["auth"]?.focus).toEqual([
+      "src/auth/",
+      "src/middleware/auth.ts",
+    ]);
+    expect(state.tasks["api"]?.focus).toEqual(["src/api/"]);
+  });
+
+  it("omits focus when focusMap is not provided", () => {
+    const state = initSyncState("feature/dash", ["auth"], "paw.yaml");
+
+    expect(state.tasks["auth"]?.focus).toBeUndefined();
+  });
 });
 
 describe("claimTask", () => {

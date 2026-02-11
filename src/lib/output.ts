@@ -51,3 +51,15 @@ export function unknown(taskName: string, detail: string): void {
     `  ${pc.yellow(ICONS.UNKNOWN)} ${pc.bold(taskName)} -- ${detail}`,
   );
 }
+
+/**
+ * Format focus areas for display. Shows up to 3 items.
+ * If more than 3, shows the first 2 and "+N more".
+ * Returns empty string if no focus areas.
+ */
+export function formatFocusAreas(focus: string[] | undefined): string {
+  if (!focus || focus.length === 0) return "";
+  if (focus.length <= 3) return `(${focus.join(", ")})`;
+  const remaining = focus.length - 2;
+  return `(${focus[0]}, ${focus[1]}, +${remaining} more)`;
+}

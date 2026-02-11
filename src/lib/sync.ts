@@ -17,6 +17,7 @@ export interface TaskState {
   status: "pending" | "in_progress" | "completed";
   claimed?: string;
   completed?: string;
+  focus?: string[];
 }
 
 export type MergeStatus = "pending" | "merged" | "skipped" | "conflict";
@@ -47,7 +48,6 @@ function syncBranchExists(cwd?: string): boolean {
     return false;
   }
 }
-
 
 /**
  * Create a git worktree at .paw/sync/ for the paw-sync branch.
@@ -119,7 +119,6 @@ export function removeSyncWorktree(cwd: string): void {
   }
 }
 
-
 /**
  * Stage all changes in the sync worktree and commit with retry.
  * Retries on index.lock contention (concurrent multi-agent writes).
@@ -144,7 +143,6 @@ export function commitSyncChanges(syncDir: string, message: string): void {
     }
   }
 }
-
 
 export function readSyncState(cwd?: string): SyncState | null {
   try {
@@ -177,7 +175,6 @@ export function listSyncDir(prefix: string, cwd?: string): string[] {
     return [];
   }
 }
-
 
 /** Write sync state to the sync worktree and commit. */
 export function writeSyncState(state: SyncState, cwd?: string): void {
@@ -221,15 +218,16 @@ export function writeSyncFile(
   commitSyncChanges(syncDir, `paw: update ${path}`);
 }
 
-
 export function initSyncState(
   target: string,
   taskNames: string[],
   configPath: string,
+  focusMap?: Record<string, string[]>,
 ): SyncState {
   const tasks: Record<string, TaskState> = {};
   for (const name of taskNames) {
-    tasks[name] = { status: "pending" };
+    const focus = focusMap?.[name];
+    tasks[name] = { status: "pending", ...(focus ? { focus } : {}) };
   }
 
   return {
