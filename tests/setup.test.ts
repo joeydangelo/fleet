@@ -8,7 +8,7 @@ import {
 } from "node:fs";
 import { resolve } from "node:path";
 import { tmpdir } from "node:os";
-import { installHooks, PAW_SESSION_SCRIPT } from "../src/lib/hooks.js";
+import { installHooks, PAW_SESSION_SCRIPT, PAW_DONE_REMINDER_SCRIPT } from "../src/lib/hooks.js";
 
 function makeTempDir(): string {
   const dir = resolve(
@@ -109,6 +109,38 @@ describe("installHooks", () => {
     expect(settings.hooks.SessionStart[1].hooks[0].command).toContain("paw");
   });
 
+  it("registers PostToolUse hook for paw done reminder (paw-xlg3)", () => {
+    installHooks(repoRoot);
+
+    const settings = JSON.parse(
+      readFileSync(
+        resolve(repoRoot, ".claude", "settings.json"),
+        "utf-8",
+      ),
+    );
+
+    const postToolUse = settings.hooks.PostToolUse;
+    expect(postToolUse).toHaveLength(1);
+    expect(postToolUse[0]).toHaveProperty("matcher", "Bash");
+    expect(postToolUse[0].hooks[0].command).toContain("paw-done-reminder.sh");
+  });
+
+  it("writes the paw done reminder script (paw-xlg3)", () => {
+    installHooks(repoRoot);
+
+    const scriptPath = resolve(
+      repoRoot,
+      ".claude",
+      "hooks",
+      "paw-done-reminder.sh",
+    );
+    expect(existsSync(scriptPath)).toBe(true);
+
+    const content = readFileSync(scriptPath, "utf-8");
+    expect(content).toContain("paw done");
+    expect(content).toContain("paw-sync:summaries");
+  });
+
   it("is idempotent -- does not duplicate paw hooks", () => {
     installHooks(repoRoot);
     installHooks(repoRoot);
@@ -121,6 +153,7 @@ describe("installHooks", () => {
     );
     expect(settings.hooks.SessionStart).toHaveLength(1);
     expect(settings.hooks.PreCompact).toHaveLength(1);
+    expect(settings.hooks.PostToolUse).toHaveLength(1);
   });
 
   it("replaces old flat-format paw hooks with correct schema", () => {

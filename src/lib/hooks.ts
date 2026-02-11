@@ -65,7 +65,39 @@ ensure_paw || exit 1
 paw prime "$@"
 `;
 
+/** PostToolUse hook that reminds agents to run paw done before ending their session. */
+export const PAW_DONE_REMINDER_SCRIPT = `#!/bin/bash
+# Remind agents to run paw done before ending session
+# Installed by: paw setup
+# Fires on PostToolUse:Bash for git commit/push commands
+
+input=$(cat)
+command=$(echo "$input" | jq -r '.tool_input.command // empty')
+
+# Only trigger on git push or git commit
+if [[ "$command" == git\\ push* ]] || [[ "$command" == *"git push"* ]] || \\
+   [[ "$command" == git\\ commit* ]] || [[ "$command" == *"git commit"* ]]; then
+  # Check if we're in a paw worktree
+  if ls .paw/tasks/*.md 1>/dev/null 2>&1; then
+    task_file=$(ls .paw/tasks/*.md 2>/dev/null | head -1)
+    task_name=$(basename "$task_file" .md)
+
+    # Check if summary exists on sync branch (paw done writes it there)
+    if ! git show "paw-sync:summaries/$task_name.md" >/dev/null 2>&1; then
+      echo ""
+      echo "PAW REMINDER: You have not run 'paw done' yet."
+      echo "  Run 'paw done --summary \\"...\\"' before ending your session."
+      echo "  Your summary is critical for merge conflict resolution."
+      echo ""
+    fi
+  fi
+fi
+
+exit 0
+`;
+
 const SCRIPT_RELATIVE = ".claude/scripts/paw-session.sh";
+const REMINDER_RELATIVE = ".claude/hooks/paw-done-reminder.sh";
 
 interface HookHandler {
   type: "command";
@@ -82,6 +114,10 @@ export function installHooks(repoRoot: string): void {
   const scriptDir = resolve(repoRoot, ".claude", "scripts");
   mkdirSync(scriptDir, { recursive: true });
   writeFileSync(resolve(repoRoot, SCRIPT_RELATIVE), PAW_SESSION_SCRIPT, "utf-8");
+
+  const hooksDir = resolve(repoRoot, ".claude", "hooks");
+  mkdirSync(hooksDir, { recursive: true });
+  writeFileSync(resolve(repoRoot, REMINDER_RELATIVE), PAW_DONE_REMINDER_SCRIPT, "utf-8");
 
   const pawHooks: Record<string, MatcherGroup[]> = {
     SessionStart: [
@@ -102,6 +138,17 @@ export function installHooks(repoRoot: string): void {
           {
             type: "command",
             command: `bash ${SCRIPT_RELATIVE} --brief`,
+          },
+        ],
+      },
+    ],
+    PostToolUse: [
+      {
+        matcher: "Bash",
+        hooks: [
+          {
+            type: "command",
+            command: `bash ${REMINDER_RELATIVE}`,
           },
         ],
       },
@@ -148,12 +195,13 @@ export function installHooks(repoRoot: string): void {
   );
 
   if (changed) {
-    success("hooks", "SessionStart + PreCompact → paw prime --brief");
+    success("hooks", "SessionStart + PreCompact + PostToolUse");
   } else {
-    success("hooks", "SessionStart + PreCompact (updated)");
+    success("hooks", "SessionStart + PreCompact + PostToolUse (updated)");
   }
 
   success("script", SCRIPT_RELATIVE);
+  success("script", REMINDER_RELATIVE);
 }
 
 /** Detect any paw-related hook entry (old flat format or correct matcher group). */
