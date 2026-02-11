@@ -12,7 +12,7 @@ import {
   initSyncWorktree,
   removeSyncWorktree,
 } from "../src/lib/sync.js";
-import { isMergeInProgress, mergeBranch, git, isAncestor } from "../src/lib/git.js";
+import { isMergeInProgress, mergeBranch, git, isAncestor, commitUntrackedFiles } from "../src/lib/git.js";
 import { createSession } from "../src/lib/session.js";
 import { removeWorktree } from "../src/lib/git.js";
 import type { PawConfig } from "../src/lib/config.js";
@@ -348,6 +348,59 @@ describe("isAncestor (paw-0yqg)", () => {
 
     // feature has commits not in main
     expect(isAncestor("feature", "HEAD", repoDir)).toBe(false);
+  });
+});
+
+describe("commitUntrackedFiles (paw-gbu0)", () => {
+  let repoDir: string;
+
+  beforeEach(() => {
+    repoDir = makeTempDir();
+    gitInit(repoDir);
+  });
+
+  afterEach(() => {
+    rmSync(repoDir, { recursive: true, force: true });
+  });
+
+  it("stages and commits untracked files", () => {
+    writeFileSync(resolve(repoDir, "untracked.txt"), "content");
+
+    const committed = commitUntrackedFiles(repoDir, "test-task");
+    expect(committed).toBe(true);
+
+    // File should now be tracked
+    const status = git(["status", "--porcelain"], { cwd: repoDir });
+    expect(status).toBe("");
+  });
+
+  it("returns false when no untracked files exist", () => {
+    const committed = commitUntrackedFiles(repoDir, "test-task");
+    expect(committed).toBe(false);
+  });
+
+  it("allows merge that would otherwise fail due to untracked collision", () => {
+    // Create a branch with a file
+    execFileSync("git", ["checkout", "-b", "feature"], {
+      cwd: repoDir,
+      stdio: "pipe",
+    });
+    commitFile(repoDir, "spec.md", "feature version", "add spec");
+
+    // Go back to main, create the same file as untracked
+    execFileSync("git", ["checkout", "main"], {
+      cwd: repoDir,
+      stdio: "pipe",
+    });
+    writeFileSync(resolve(repoDir, "spec.md"), "main version");
+
+    // Without staging, merge would fail
+    commitUntrackedFiles(repoDir, "feature");
+
+    // Now merge should succeed (three-way merge)
+    const result = mergeBranch("feature", repoDir);
+    // May conflict or succeed, but shouldn't abort due to untracked files
+    expect(result.message).not.toContain("untracked working tree files");
   });
 });
 

@@ -153,6 +153,19 @@ export function cleanupBackupRefs(cwd?: string): void {
   }
 }
 
+/** Stage and commit untracked files. Returns true if files were committed, false if none existed. */
+export function commitUntrackedFiles(cwd: string, taskName: string): boolean {
+  const output = git(["ls-files", "--others", "--exclude-standard"], { cwd, stdio: "pipe" });
+  if (!output) return false;
+
+  const files = output.split("\n").filter(Boolean);
+  if (files.length === 0) return false;
+
+  git(["add", ...files], { cwd });
+  git(["commit", "-m", `paw: stage untracked files for merge of ${taskName}`], { cwd });
+  return true;
+}
+
 /** Check if commit is an ancestor of target (i.e., target contains all commits from commit). */
 export function isAncestor(commit: string, target: string, cwd?: string): boolean {
   try {

@@ -8,6 +8,7 @@ import {
   getCommitCount,
   isMergeInProgress,
   isAncestor,
+  commitUntrackedFiles,
   getHeadRef,
   createBackupRef,
 } from "../lib/git.js";
@@ -228,6 +229,10 @@ function runMergeLoop(
       skip(wt.taskName, "no commits");
       continue;
     }
+
+    // Stage untracked files to prevent "untracked working tree files would be
+    // overwritten" errors during merge (paw-gbu0).
+    commitUntrackedFiles(repoRoot, wt.taskName);
 
     // Save backup ref before merge
     const headBefore = getHeadRef(repoRoot);
