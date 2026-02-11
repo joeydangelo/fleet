@@ -153,6 +153,16 @@ export function cleanupBackupRefs(cwd?: string): void {
   }
 }
 
+/** Check if commit is an ancestor of target (i.e., target contains all commits from commit). */
+export function isAncestor(commit: string, target: string, cwd?: string): boolean {
+  try {
+    git(["merge-base", "--is-ancestor", commit, target], { cwd, stdio: "pipe" });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /** Read a file from a specific branch. Returns null if the file doesn't exist on that branch. */
 export function getFileFromBranch(branch: string, filepath: string, cwd?: string): string | null {
   try {

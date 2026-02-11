@@ -12,7 +12,7 @@ import {
   initSyncWorktree,
   removeSyncWorktree,
 } from "../src/lib/sync.js";
-import { isMergeInProgress, mergeBranch, git } from "../src/lib/git.js";
+import { isMergeInProgress, mergeBranch, git, isAncestor } from "../src/lib/git.js";
 import { createSession } from "../src/lib/session.js";
 import { removeWorktree } from "../src/lib/git.js";
 import type { PawConfig } from "../src/lib/config.js";
@@ -303,6 +303,51 @@ describe("merge stops on first conflict", () => {
 
     const read = readSyncState(repoDir);
     expect(read?.merges?.["api"]?.status).toBe("skipped");
+  });
+});
+
+describe("isAncestor (paw-0yqg)", () => {
+  let repoDir: string;
+
+  beforeEach(() => {
+    repoDir = makeTempDir();
+    gitInit(repoDir);
+  });
+
+  afterEach(() => {
+    rmSync(repoDir, { recursive: true, force: true });
+  });
+
+  it("returns true when branch is ancestor of HEAD", () => {
+    execFileSync("git", ["checkout", "-b", "feature"], {
+      cwd: repoDir,
+      stdio: "pipe",
+    });
+    commitFile(repoDir, "a.txt", "a", "feature commit");
+
+    execFileSync("git", ["checkout", "main"], {
+      cwd: repoDir,
+      stdio: "pipe",
+    });
+    mergeBranch("feature", repoDir);
+
+    expect(isAncestor("feature", "HEAD", repoDir)).toBe(true);
+  });
+
+  it("returns false when branch is not ancestor of HEAD", () => {
+    execFileSync("git", ["checkout", "-b", "feature"], {
+      cwd: repoDir,
+      stdio: "pipe",
+    });
+    commitFile(repoDir, "a.txt", "a", "feature commit");
+
+    execFileSync("git", ["checkout", "main"], {
+      cwd: repoDir,
+      stdio: "pipe",
+    });
+
+    // feature has commits not in main
+    expect(isAncestor("feature", "HEAD", repoDir)).toBe(false);
   });
 });
 

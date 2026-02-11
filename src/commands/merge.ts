@@ -7,6 +7,7 @@ import {
   mergeBranch,
   getCommitCount,
   isMergeInProgress,
+  isAncestor,
   getHeadRef,
   createBackupRef,
 } from "../lib/git.js";
@@ -116,6 +117,17 @@ function handleMergeContinue(
   );
 
   if (hookFailedTask) {
+    // Verify the branch's commits are actually in HEAD (paw-0yqg)
+    if (!isAncestor(hookFailedTask.branch, "HEAD", repoRoot)) {
+      console.error(
+        pc.red(
+          `Branch '${hookFailedTask.branch}' was not merged into the target. ` +
+            `Its commits are not in HEAD. Re-run \`paw merge\` to retry.`,
+        ),
+      );
+      process.exit(1);
+    }
+
     const updated = updateMergeEntry(state, hookFailedTask.taskName, {
       status: "merged",
       merged: new Date().toISOString(),
@@ -134,6 +146,17 @@ function handleMergeContinue(
 
   if (!conflictTask) {
     console.error(pc.red("No conflicting or failed merge found. Run `paw merge` first."));
+    process.exit(1);
+  }
+
+  // Verify the branch's commits are actually in HEAD (paw-0yqg)
+  if (!isAncestor(conflictTask.branch, "HEAD", repoRoot)) {
+    console.error(
+      pc.red(
+        `Branch '${conflictTask.branch}' was not merged into the target. ` +
+          `Its commits are not in HEAD. Re-run \`paw merge\` to retry.`,
+      ),
+    );
     process.exit(1);
   }
 
