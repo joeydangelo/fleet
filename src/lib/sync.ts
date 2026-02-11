@@ -20,7 +20,7 @@ export interface TaskState {
   focus?: string[];
 }
 
-export type MergeStatus = "pending" | "merged" | "skipped" | "conflict";
+export type MergeStatus = "pending" | "merged" | "skipped" | "conflict" | "hook_failed";
 
 export interface MergeEntry {
   status: MergeStatus;

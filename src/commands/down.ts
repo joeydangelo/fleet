@@ -6,6 +6,7 @@ import {
   removeWorktree,
   branchExists,
   deleteBranch,
+  cleanupBackupRefs,
 } from "../lib/git.js";
 import { loadConfig, resolveConfigPath } from "../lib/config.js";
 import { planWorktrees } from "../lib/session.js";
@@ -57,6 +58,9 @@ export function downCommand(): Command {
               error(wt.taskName, `failed: ${message}`);
             }
           }
+
+          // Remove backup refs
+          cleanupBackupRefs(repoRoot);
 
           // Remove sync worktree, then delete sync branch
           const SYNC_BRANCH = "paw-sync";

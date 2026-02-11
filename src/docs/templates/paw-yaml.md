@@ -14,6 +14,11 @@ target: feature/my-feature
 # Base branch to create target from (default: main). Usually you leave this alone.
 # base: main
 
+# Optional hooks. post-merge runs after each clean merge in `paw merge`.
+# If it fails, paw stops and shows rollback guidance.
+# hooks:
+#   post-merge: npm test
+
 tasks:
   # Each key is the task name. It becomes the branch name suffix, worktree directory
   # name, and the agent's identity for broadcasts and summaries.

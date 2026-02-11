@@ -90,6 +90,20 @@ Run \`paw template <name>\` for document structures:
 | \`paw-yaml\` | Annotated paw.yaml config structure |
 | \`task-summary\` | Done summary structure (what/interfaces/watch-out) |
 
+## Post-merge Hooks
+
+paw can run a validation command after each clean merge. Configure it in paw.yaml:
+
+\`\`\`yaml
+hooks:
+  post-merge: npm test
+\`\`\`
+
+If the hook fails, paw stops and shows rollback guidance. Use \`paw merge --continue\`
+after fixing the issue, or roll back with \`git reset --hard refs/paw-backup/{task}\`.
+
+Backup refs are created automatically before each merge for safe rollback.
+
 ## Key Principles
 
 - **Broadcast interface changes.** If you change a type, export, or API that another
