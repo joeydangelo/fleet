@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, afterEach } from "vitest";
 import { resolve } from "node:path";
 import {
   mkdirSync,
@@ -7,6 +7,7 @@ import {
   existsSync,
   rmSync,
 } from "node:fs";
+import { execFileSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import type { PawConfig } from "../src/lib/config.js";
 import {
@@ -318,5 +319,98 @@ describe("ensureGitignore", () => {
     expect(matches).toHaveLength(1);
 
     rmSync(dir, { recursive: true });
+  });
+});
+
+describe("ensureGitignore with baseBranch (paw-numd)", () => {
+  let repoDir: string;
+
+  function gitInit(dir: string): void {
+    execFileSync("git", ["init", dir], { stdio: "pipe" });
+    execFileSync("git", ["commit", "--allow-empty", "-m", "init"], {
+      cwd: dir,
+      stdio: "pipe",
+    });
+  }
+
+  function commitFile(
+    dir: string,
+    filename: string,
+    content: string,
+    message: string,
+  ): void {
+    writeFileSync(resolve(dir, filename), content);
+    execFileSync("git", ["add", filename], { cwd: dir, stdio: "pipe" });
+    execFileSync("git", ["commit", "-m", message], {
+      cwd: dir,
+      stdio: "pipe",
+    });
+  }
+
+  afterEach(() => {
+    if (repoDir) rmSync(repoDir, { recursive: true, force: true });
+  });
+
+  it("skips adding .paw/ when base branch already has it", () => {
+    repoDir = makeTempDir();
+    gitInit(repoDir);
+    commitFile(repoDir, ".gitignore", "node_modules/\n.paw/\n", "add gitignore");
+
+    // Create a feature branch (simulating a worktree branch)
+    execFileSync("git", ["checkout", "-b", "feature-branch"], {
+      cwd: repoDir,
+      stdio: "pipe",
+    });
+
+    // Remove .paw/ locally to simulate it not being in the local file
+    writeFileSync(resolve(repoDir, ".gitignore"), "node_modules/\n");
+
+    ensureGitignore(repoDir, "main");
+
+    // Should NOT have added .paw/ because base branch has it
+    const content = readFileSync(resolve(repoDir, ".gitignore"), "utf-8");
+    expect(content).not.toContain(".paw/");
+  });
+
+  it("adds .paw/ when base branch does not have it", () => {
+    repoDir = makeTempDir();
+    gitInit(repoDir);
+    commitFile(repoDir, ".gitignore", "node_modules/\n", "add gitignore");
+
+    execFileSync("git", ["checkout", "-b", "feature-branch"], {
+      cwd: repoDir,
+      stdio: "pipe",
+    });
+
+    ensureGitignore(repoDir, "main");
+
+    const content = readFileSync(resolve(repoDir, ".gitignore"), "utf-8");
+    expect(content).toContain(".paw/");
+  });
+
+  it("adds .paw/ when base branch has no .gitignore at all", () => {
+    repoDir = makeTempDir();
+    gitInit(repoDir);
+
+    execFileSync("git", ["checkout", "-b", "feature-branch"], {
+      cwd: repoDir,
+      stdio: "pipe",
+    });
+
+    ensureGitignore(repoDir, "main");
+
+    const content = readFileSync(resolve(repoDir, ".gitignore"), "utf-8");
+    expect(content).toContain(".paw/");
+  });
+
+  it("falls back to local check when no baseBranch provided", () => {
+    repoDir = makeTempDir();
+    gitInit(repoDir);
+
+    // No baseBranch -- original behavior
+    ensureGitignore(repoDir);
+
+    const content = readFileSync(resolve(repoDir, ".gitignore"), "utf-8");
+    expect(content).toBe(".paw/\n");
   });
 });

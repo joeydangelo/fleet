@@ -7,7 +7,7 @@ import {
   readdirSync,
 } from "node:fs";
 import type { PawConfig } from "./config.js";
-import { branchExists, createBranch, createWorktree } from "./git.js";
+import { branchExists, createBranch, createWorktree, getFileFromBranch } from "./git.js";
 
 export interface WorktreeInfo {
   taskName: string;
@@ -106,9 +106,18 @@ export function generateTaskFile(
   return lines.join("\n") + "\n";
 }
 
-export function ensureGitignore(worktreePath: string): void {
+export function ensureGitignore(worktreePath: string, baseBranch?: string): void {
   const gitignorePath = resolve(worktreePath, ".gitignore");
   const entry = ".paw/";
+
+  // If the base branch already has this entry, the worktree inherited it -- skip
+  // to avoid duplicate additions across branches that cause merge conflicts (paw-numd).
+  if (baseBranch) {
+    const baseContent = getFileFromBranch(baseBranch, ".gitignore", worktreePath);
+    if (baseContent && baseContent.split("\n").some((line) => line.trim() === entry)) {
+      return;
+    }
+  }
 
   if (existsSync(gitignorePath)) {
     const content = readFileSync(gitignorePath, "utf-8");
@@ -137,6 +146,7 @@ export function detectTaskName(cwd: string): string | null {
 export function writeTaskFiles(
   config: PawConfig,
   worktrees: WorktreeInfo[],
+  baseBranch?: string,
 ): void {
   for (const wt of worktrees) {
     const taskDir = resolve(wt.worktreePath, ".paw", "tasks");
@@ -146,6 +156,6 @@ export function writeTaskFiles(
     const content = generateTaskFile(config, wt.taskName, wt);
     writeFileSync(taskFilePath, content, "utf-8");
 
-    ensureGitignore(wt.worktreePath);
+    ensureGitignore(wt.worktreePath, baseBranch);
   }
 }

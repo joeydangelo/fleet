@@ -44,7 +44,7 @@ export function upCommand(): Command {
         }
 
         const worktrees = createSession(config, repoRoot);
-        writeTaskFiles(config, worktrees);
+        writeTaskFiles(config, worktrees, config.target);
 
         initSyncWorktree(repoRoot);
         const focusMap: Record<string, string[]> = {};

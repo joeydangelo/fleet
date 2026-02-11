@@ -153,6 +153,15 @@ export function cleanupBackupRefs(cwd?: string): void {
   }
 }
 
+/** Read a file from a specific branch. Returns null if the file doesn't exist on that branch. */
+export function getFileFromBranch(branch: string, filepath: string, cwd?: string): string | null {
+  try {
+    return git(["show", `${branch}:${filepath}`], { cwd, stdio: "pipe" });
+  } catch {
+    return null;
+  }
+}
+
 /** Check whether git is currently in a merge-conflict state (MERGE_HEAD exists). */
 export function isMergeInProgress(cwd?: string): boolean {
   try {
