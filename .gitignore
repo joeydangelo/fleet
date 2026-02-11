@@ -3,3 +3,6 @@ dist/
 attic/
 *.tgz
 .DS_Store
+
+# paw working state
+.paw/

@@ -19,6 +19,15 @@
             "timeout": 120
           }
         ]
+      },
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/scripts/paw-session.sh"
+          }
+        ]
       }
     ],
     "PreCompact": [
@@ -28,6 +37,15 @@
           {
             "type": "command",
             "command": "bash .claude/scripts/tbd-session.sh --brief"
+          }
+        ]
+      },
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/scripts/paw-session.sh --brief"
           }
         ]
       }
