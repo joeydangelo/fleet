@@ -1,5 +1,6 @@
 import { execFileSync } from "node:child_process";
 import type { ExecFileSyncOptions } from "node:child_process";
+import { rmSync } from "node:fs";
 
 export function git(args: string[], options?: ExecFileSyncOptions): string {
   const result = execFileSync("git", args, {
@@ -39,7 +40,14 @@ export function createWorktree(
 }
 
 export function removeWorktree(path: string, cwd?: string): void {
-  git(["worktree", "remove", "--force", path], { cwd });
+  try {
+    git(["worktree", "remove", "--force", path], { cwd });
+  } catch {
+    // Fallback: manually remove directory and prune worktree list.
+    // git worktree remove can fail on Windows due to permission/symlink issues.
+    rmSync(path, { recursive: true, force: true });
+    git(["worktree", "prune"], { cwd });
+  }
 }
 
 export function listWorktrees(
