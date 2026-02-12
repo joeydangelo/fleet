@@ -4,6 +4,7 @@ import {
   existsSync,
   mkdirSync,
   readFileSync,
+  rmSync,
   writeFileSync,
 } from "node:fs";
 import { resolve } from "node:path";
@@ -61,10 +62,13 @@ export function setupCommand(): Command {
           success("gitignore", "added .paw/");
         }
 
-        // Copy bundled docs to .paw/docs/
+        // Copy bundled docs to .paw/docs/ (clean first to remove stale files)
         try {
           const docsBase = getDocsBasePath();
           const destDocs = resolve(repoRoot, ".paw", "docs");
+          if (existsSync(destDocs)) {
+            rmSync(destDocs, { recursive: true });
+          }
           cpSync(docsBase, destDocs, { recursive: true });
           success("docs", destDocs);
         } catch {
