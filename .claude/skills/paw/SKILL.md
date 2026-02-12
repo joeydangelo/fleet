@@ -53,6 +53,7 @@ Run `paw shortcut <name>` for step-by-step workflows:
 | Shortcut | Purpose |
 |---|---|
 | `generate-paw-yaml` | Analyze a codebase and create a paw.yaml |
+| `lead-orchestrator` | Coordinate parallel agents from the main repo |
 | `session-start` | Agent's first actions in a worktree |
 | `session-end` | Wrap up: broadcast final state, write done summary |
 | `implement-and-validate` | TDD workflow from task assignment to done |
@@ -80,17 +81,22 @@ Run `paw template <name>` for document structures:
 | `paw-yaml` | Annotated paw.yaml config structure |
 | `task-summary` | Done summary structure (what/interfaces/watch-out) |
 
-## Post-merge Hooks
+## Hooks
 
-paw can run a validation command after each clean merge. Configure it in paw.yaml:
+paw can run validation commands at two points. Configure them in paw.yaml:
 
 ```yaml
 hooks:
+  pre-done: npm test
   post-merge: npm test
 ```
 
-If the hook fails, paw stops and shows rollback guidance. Use `paw merge --continue`
-after fixing the issue, or roll back with `git reset --hard refs/paw-backup/{task}`.
+**`pre-done`** runs before `paw done` marks a task complete. If it fails, done is
+blocked and the agent must fix the issue before trying again. Use `--force` to bypass.
+
+**`post-merge`** runs after each clean merge in `paw merge`. If it fails, paw stops
+and shows rollback guidance. Use `paw merge --continue` after fixing the issue, or
+roll back with `git reset --hard refs/paw-backup/{task}`.
 
 Backup refs are created automatically before each merge for safe rollback.
 
