@@ -6,3 +6,5 @@ attic/
 
 # paw working state
 .paw/
+paw.yaml
+paw.yml

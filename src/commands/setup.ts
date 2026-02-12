@@ -49,17 +49,26 @@ export function setupCommand(): Command {
           gitignore = readFileSync(gitignorePath, "utf-8");
         }
 
-        if (gitignore.includes(".paw/")) {
-          skip("gitignore", ".paw/ already present");
+        const gitignoreEntries = [".paw/", "paw.yaml", "paw.yml"];
+        const missing = gitignoreEntries.filter(
+          (entry) => !gitignore.includes(entry),
+        );
+
+        if (missing.length === 0) {
+          skip("gitignore", "paw entries already present");
         } else {
           const separator =
             gitignore.length > 0 && !gitignore.endsWith("\n") ? "\n" : "";
+          const comment = gitignore.includes("# paw working state")
+            ? ""
+            : "\n# paw working state\n";
+          const block = missing.join("\n");
           writeFileSync(
             gitignorePath,
-            gitignore + separator + "\n# paw working state\n.paw/\n",
+            gitignore + separator + comment + block + "\n",
             "utf-8",
           );
-          success("gitignore", "added .paw/");
+          success("gitignore", `added ${missing.join(", ")}`);
         }
 
         // Copy bundled docs to .paw/docs/ (clean first to remove stale files)
