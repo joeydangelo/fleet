@@ -1,4 +1,4 @@
-import pc from "picocolors";
+import pc from 'picocolors';
 
 /**
  * Wrap a command action to catch errors and print friendly messages.
@@ -6,10 +6,8 @@ import pc from "picocolors";
 export function handleError(err: unknown): never {
   const message = err instanceof Error ? err.message : String(err);
 
-  if (message.includes("not a git repository")) {
-    console.error(
-      pc.red("Not in a git repository. Run paw from inside a git repo."),
-    );
+  if (message.includes('not a git repository')) {
+    console.error(pc.red('Not in a git repository. Run paw from inside a git repo.'));
   } else {
     console.error(pc.red(message));
   }
@@ -18,12 +16,12 @@ export function handleError(err: unknown): never {
 }
 
 export const ICONS = {
-  SUCCESS: "+",
-  ERROR: "x",
-  WARN: "!",
-  PENDING: ".",
-  SKIP: "-",
-  UNKNOWN: "?",
+  SUCCESS: '+',
+  ERROR: 'x',
+  WARN: '!',
+  PENDING: '.',
+  SKIP: '-',
+  UNKNOWN: '?',
 } as const;
 
 export function success(taskName: string, detail: string): void {
@@ -47,9 +45,7 @@ export function skip(taskName: string, detail: string): void {
 }
 
 export function unknown(taskName: string, detail: string): void {
-  console.log(
-    `  ${pc.yellow(ICONS.UNKNOWN)} ${pc.bold(taskName)} -- ${detail}`,
-  );
+  console.log(`  ${pc.yellow(ICONS.UNKNOWN)} ${pc.bold(taskName)} -- ${detail}`);
 }
 
 /**
@@ -58,8 +54,8 @@ export function unknown(taskName: string, detail: string): void {
  * Returns empty string if no focus areas.
  */
 export function formatFocusAreas(focus: string[] | undefined): string {
-  if (!focus || focus.length === 0) return "";
-  if (focus.length <= 3) return `(${focus.join(", ")})`;
+  if (!focus || focus.length === 0) return '';
+  if (focus.length <= 3) return `(${focus.join(', ')})`;
   const remaining = focus.length - 2;
   return `(${focus[0]}, ${focus[1]}, +${remaining} more)`;
 }

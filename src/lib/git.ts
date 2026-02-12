@@ -1,26 +1,26 @@
-import { execFileSync } from "node:child_process";
-import type { ExecFileSyncOptions } from "node:child_process";
-import { rmSync } from "node:fs";
+import { execFileSync } from 'node:child_process';
+import type { ExecFileSyncOptions } from 'node:child_process';
+import { rmSync } from 'node:fs';
 
 export function git(args: string[], options?: ExecFileSyncOptions): string {
-  const result = execFileSync("git", args, {
+  const result = execFileSync('git', args, {
     ...options,
-    encoding: "utf-8",
+    encoding: 'utf-8',
   });
   return result.trim();
 }
 
 export function getRepoRoot(cwd?: string): string {
-  return git(["rev-parse", "--show-toplevel"], { cwd });
+  return git(['rev-parse', '--show-toplevel'], { cwd });
 }
 
 export function getCurrentBranch(cwd?: string): string {
-  return git(["branch", "--show-current"], { cwd });
+  return git(['branch', '--show-current'], { cwd });
 }
 
 export function branchExists(branch: string, cwd?: string): boolean {
   try {
-    git(["rev-parse", "--verify", branch], { cwd, stdio: "pipe" });
+    git(['rev-parse', '--verify', branch], { cwd, stdio: 'pipe' });
     return true;
   } catch {
     return false;
@@ -28,40 +28,34 @@ export function branchExists(branch: string, cwd?: string): boolean {
 }
 
 export function createBranch(branch: string, from: string, cwd?: string): void {
-  git(["branch", branch, from], { cwd });
+  git(['branch', branch, from], { cwd });
 }
 
-export function createWorktree(
-  path: string,
-  branch: string,
-  cwd?: string,
-): void {
-  git(["worktree", "add", path, branch], { cwd });
+export function createWorktree(path: string, branch: string, cwd?: string): void {
+  git(['worktree', 'add', path, branch], { cwd });
 }
 
 export function removeWorktree(path: string, cwd?: string): void {
   try {
-    git(["worktree", "remove", "--force", path], { cwd });
+    git(['worktree', 'remove', '--force', path], { cwd });
   } catch {
     // Fallback: manually remove directory and prune worktree list.
     // git worktree remove can fail on Windows due to permission/symlink issues.
     rmSync(path, { recursive: true, force: true });
-    git(["worktree", "prune"], { cwd });
+    git(['worktree', 'prune'], { cwd });
   }
 }
 
-export function listWorktrees(
-  cwd?: string,
-): Array<{ path: string; branch: string }> {
-  const output = git(["worktree", "list", "--porcelain"], { cwd });
+export function listWorktrees(cwd?: string): Array<{ path: string; branch: string }> {
+  const output = git(['worktree', 'list', '--porcelain'], { cwd });
   const worktrees: Array<{ path: string; branch: string }> = [];
-  let currentPath = "";
+  let currentPath = '';
 
-  for (const line of output.split("\n")) {
-    if (line.startsWith("worktree ")) {
-      currentPath = line.slice("worktree ".length);
-    } else if (line.startsWith("branch ")) {
-      const branch = line.slice("branch refs/heads/".length);
+  for (const line of output.split('\n')) {
+    if (line.startsWith('worktree ')) {
+      currentPath = line.slice('worktree '.length);
+    } else if (line.startsWith('branch ')) {
+      const branch = line.slice('branch refs/heads/'.length);
       worktrees.push({ path: currentPath, branch });
     }
   }
@@ -69,37 +63,26 @@ export function listWorktrees(
   return worktrees;
 }
 
-export function getCommitCount(
-  branch: string,
-  base: string,
-  cwd?: string,
-): number {
-  const output = git(["rev-list", "--count", `${base}..${branch}`], {
+export function getCommitCount(branch: string, base: string, cwd?: string): number {
+  const output = git(['rev-list', '--count', `${base}..${branch}`], {
     cwd,
-    stdio: "pipe",
+    stdio: 'pipe',
   });
   return parseInt(output, 10);
 }
 
-export function getChangedFileCount(
-  branch: string,
-  base: string,
-  cwd?: string,
-): number {
-  const output = git(["diff", "--name-only", base, branch], {
+export function getChangedFileCount(branch: string, base: string, cwd?: string): number {
+  const output = git(['diff', '--name-only', base, branch], {
     cwd,
-    stdio: "pipe",
+    stdio: 'pipe',
   });
   if (!output) return 0;
-  return output.split("\n").length;
+  return output.split('\n').length;
 }
 
-export function mergeBranch(
-  branch: string,
-  cwd?: string,
-): { success: boolean; message: string } {
+export function mergeBranch(branch: string, cwd?: string): { success: boolean; message: string } {
   try {
-    const output = git(["merge", branch, "--no-edit"], { cwd });
+    const output = git(['merge', branch, '--no-edit'], { cwd });
     return { success: true, message: output };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -109,27 +92,27 @@ export function mergeBranch(
 
 /** Delete a local branch. */
 export function deleteBranch(branch: string, cwd?: string): void {
-  git(["branch", "-D", branch], { cwd, stdio: "pipe" });
+  git(['branch', '-D', branch], { cwd, stdio: 'pipe' });
 }
 
 /** Get diff output for a merge conflict (shows conflict markers). */
 export function getDiffOutput(cwd?: string): string {
   try {
-    return git(["diff"], { cwd, stdio: "pipe" });
+    return git(['diff'], { cwd, stdio: 'pipe' });
   } catch {
-    return "";
+    return '';
   }
 }
 
 /** Get the list of conflicting files during a merge. */
 export function getConflictingFiles(cwd?: string): string[] {
   try {
-    const output = git(["diff", "--name-only", "--diff-filter=U"], {
+    const output = git(['diff', '--name-only', '--diff-filter=U'], {
       cwd,
-      stdio: "pipe",
+      stdio: 'pipe',
     });
     if (!output) return [];
-    return output.split("\n").filter(Boolean);
+    return output.split('\n').filter(Boolean);
   } catch {
     return [];
   }
@@ -137,24 +120,24 @@ export function getConflictingFiles(cwd?: string): string[] {
 
 /** Get the current HEAD commit hash. */
 export function getHeadRef(cwd?: string): string {
-  return git(["rev-parse", "HEAD"], { cwd, stdio: "pipe" });
+  return git(['rev-parse', 'HEAD'], { cwd, stdio: 'pipe' });
 }
 
 /** Create a backup ref at refs/paw-backup/{taskName} pointing to the given commit. */
 export function createBackupRef(taskName: string, commit: string, cwd?: string): void {
-  git(["update-ref", `refs/paw-backup/${taskName}`, commit], { cwd });
+  git(['update-ref', `refs/paw-backup/${taskName}`, commit], { cwd });
 }
 
 /** Remove all refs/paw-backup/ refs. */
 export function cleanupBackupRefs(cwd?: string): void {
   try {
-    const output = git(["for-each-ref", "--format=%(refname)", "refs/paw-backup/"], {
+    const output = git(['for-each-ref', '--format=%(refname)', 'refs/paw-backup/'], {
       cwd,
-      stdio: "pipe",
+      stdio: 'pipe',
     });
     if (!output) return;
-    for (const ref of output.split("\n").filter(Boolean)) {
-      git(["update-ref", "-d", ref], { cwd });
+    for (const ref of output.split('\n').filter(Boolean)) {
+      git(['update-ref', '-d', ref], { cwd });
     }
   } catch {
     // No backup refs to clean up
@@ -163,21 +146,21 @@ export function cleanupBackupRefs(cwd?: string): void {
 
 /** Stage and commit untracked files. Returns true if files were committed, false if none existed. */
 export function commitUntrackedFiles(cwd: string, taskName: string): boolean {
-  const output = git(["ls-files", "--others", "--exclude-standard"], { cwd, stdio: "pipe" });
+  const output = git(['ls-files', '--others', '--exclude-standard'], { cwd, stdio: 'pipe' });
   if (!output) return false;
 
-  const files = output.split("\n").filter(Boolean);
+  const files = output.split('\n').filter(Boolean);
   if (files.length === 0) return false;
 
-  git(["add", ...files], { cwd });
-  git(["commit", "-m", `paw: stage untracked files for merge of ${taskName}`], { cwd });
+  git(['add', ...files], { cwd });
+  git(['commit', '-m', `paw: stage untracked files for merge of ${taskName}`], { cwd });
   return true;
 }
 
 /** Check if commit is an ancestor of target (i.e., target contains all commits from commit). */
 export function isAncestor(commit: string, target: string, cwd?: string): boolean {
   try {
-    git(["merge-base", "--is-ancestor", commit, target], { cwd, stdio: "pipe" });
+    git(['merge-base', '--is-ancestor', commit, target], { cwd, stdio: 'pipe' });
     return true;
   } catch {
     return false;
@@ -187,7 +170,7 @@ export function isAncestor(commit: string, target: string, cwd?: string): boolea
 /** Read a file from a specific branch. Returns null if the file doesn't exist on that branch. */
 export function getFileFromBranch(branch: string, filepath: string, cwd?: string): string | null {
   try {
-    return git(["show", `${branch}:${filepath}`], { cwd, stdio: "pipe" });
+    return git(['show', `${branch}:${filepath}`], { cwd, stdio: 'pipe' });
   } catch {
     return null;
   }
@@ -196,7 +179,7 @@ export function getFileFromBranch(branch: string, filepath: string, cwd?: string
 /** Check whether git is currently in a merge-conflict state (MERGE_HEAD exists). */
 export function isMergeInProgress(cwd?: string): boolean {
   try {
-    git(["rev-parse", "--verify", "MERGE_HEAD"], { cwd, stdio: "pipe" });
+    git(['rev-parse', '--verify', 'MERGE_HEAD'], { cwd, stdio: 'pipe' });
     return true;
   } catch {
     return false;

@@ -1,8 +1,4 @@
-export const REQUIRED_SECTIONS = [
-  "What I did",
-  "Interface changes",
-  "Watch out",
-] as const;
+export const REQUIRED_SECTIONS = ['What I did', 'Interface changes', 'Watch out'] as const;
 
 export interface ValidationResult {
   valid: boolean;
@@ -17,7 +13,7 @@ export function validateSummary(summary: string): ValidationResult {
   const missing: string[] = [];
 
   for (const section of REQUIRED_SECTIONS) {
-    const pattern = new RegExp(`^#{2,3}\\s+${escapeRegex(section)}`, "im");
+    const pattern = new RegExp(`^#{2,3}\\s+${escapeRegex(section)}`, 'im');
     if (!pattern.test(summary)) {
       missing.push(section);
     }
@@ -29,18 +25,18 @@ export function validateSummary(summary: string): ValidationResult {
 /** Generate the error-display template from REQUIRED_SECTIONS. Single source of truth. */
 export function generateErrorTemplate(): string {
   const sectionTemplates: Record<string, string> = {
-    "What I did": "- [Major accomplishment 1]\n- [Major accomplishment 2]",
-    "Interface changes":
-      "- [Type/export/API changes other agents need to know about]\n- [New exports, renamed functions, changed signatures]",
-    "Watch out":
+    'What I did': '- [Major accomplishment 1]\n- [Major accomplishment 2]',
+    'Interface changes':
+      '- [Type/export/API changes other agents need to know about]\n- [New exports, renamed functions, changed signatures]',
+    'Watch out':
       "- [Non-obvious things: env vars, ordering dependencies, breaking changes]\n- [Anything that isn't clear from the diff alone]",
   };
 
-  return REQUIRED_SECTIONS.map(
-    (s) => `## ${s}\n${sectionTemplates[s] ?? "- [Details]"}`,
-  ).join("\n\n");
+  return REQUIRED_SECTIONS.map((s) => `## ${s}\n${sectionTemplates[s] ?? '- [Details]'}`).join(
+    '\n\n',
+  );
 }
 
 function escapeRegex(str: string): string {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }

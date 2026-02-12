@@ -1,7 +1,7 @@
-import { readFileSync, existsSync } from "node:fs";
-import { resolve } from "node:path";
-import { parse as parseYaml } from "yaml";
-import { z } from "zod";
+import { readFileSync, existsSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { parse as parseYaml } from 'yaml';
+import { z } from 'zod';
 
 const TaskSchema = z.object({
   focus: z.union([z.string(), z.array(z.string())]),
@@ -9,12 +9,12 @@ const TaskSchema = z.object({
 });
 
 const HooksSchema = z.object({
-  "pre-done": z.string().optional(),
-  "post-merge": z.string().optional(),
+  'pre-done': z.string().optional(),
+  'post-merge': z.string().optional(),
 });
 
 const PawConfigSchema = z.object({
-  base: z.string().default("main"),
+  base: z.string().default('main'),
   target: z.string(),
   hooks: HooksSchema.optional(),
   tasks: z.record(z.string(), TaskSchema),
@@ -28,24 +28,22 @@ export function loadConfig(configPath: string): PawConfig {
     throw new Error(`Config file not found: ${configPath}`);
   }
 
-  const raw = readFileSync(configPath, "utf-8");
+  const raw = readFileSync(configPath, 'utf-8');
   const parsed = parseYaml(raw) as unknown;
 
   const result = PawConfigSchema.safeParse(parsed);
   if (!result.success) {
-    const issues = result.error.issues
-      .map((i) => `  ${i.path.join(".")}: ${i.message}`)
-      .join("\n");
+    const issues = result.error.issues.map((i) => `  ${i.path.join('.')}: ${i.message}`).join('\n');
     throw new Error(`Invalid paw.yaml:\n${issues}`);
   }
   return result.data;
 }
 
 export function resolveConfigPath(cwd: string): string {
-  const candidates = ["paw.yaml", "paw.yml"];
+  const candidates = ['paw.yaml', 'paw.yml'];
   for (const name of candidates) {
     const p = resolve(cwd, name);
     if (existsSync(p)) return p;
   }
-  throw new Error("No paw.yaml found. Create one or specify --config <path>");
+  throw new Error('No paw.yaml found. Create one or specify --config <path>');
 }

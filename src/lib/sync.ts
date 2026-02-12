@@ -1,26 +1,19 @@
-import { resolve, join, dirname } from "node:path";
-import {
-  existsSync,
-  rmSync,
-  readFileSync,
-  writeFileSync,
-  mkdirSync,
-  readdirSync,
-} from "node:fs";
-import { git } from "./git.js";
+import { resolve, join, dirname } from 'node:path';
+import { existsSync, rmSync, readFileSync, writeFileSync, mkdirSync, readdirSync } from 'node:fs';
+import { git } from './git.js';
 
-const SYNC_BRANCH = "paw-sync";
-const STATE_FILE = "state.json";
+const SYNC_BRANCH = 'paw-sync';
+const STATE_FILE = 'state.json';
 const MAX_RETRIES = 3;
 
 export interface TaskState {
-  status: "pending" | "in_progress" | "completed";
+  status: 'pending' | 'in_progress' | 'completed';
   claimed?: string;
   completed?: string;
   focus?: string[];
 }
 
-export type MergeStatus = "pending" | "merged" | "skipped" | "conflict" | "hook_failed";
+export type MergeStatus = 'pending' | 'merged' | 'skipped' | 'conflict' | 'hook_failed';
 
 export interface MergeEntry {
   status: MergeStatus;
@@ -42,7 +35,7 @@ export interface SyncState {
 
 function syncBranchExists(cwd?: string): boolean {
   try {
-    git(["rev-parse", "--verify", SYNC_BRANCH], { cwd, stdio: "pipe" });
+    git(['rev-parse', '--verify', SYNC_BRANCH], { cwd, stdio: 'pipe' });
     return true;
   } catch {
     return false;
@@ -55,23 +48,23 @@ function syncBranchExists(cwd?: string): boolean {
  * Idempotent: returns immediately if the worktree already exists.
  */
 export function initSyncWorktree(cwd: string): string {
-  const worktreePath = resolve(cwd, ".paw", "sync");
+  const worktreePath = resolve(cwd, '.paw', 'sync');
 
-  if (existsSync(join(worktreePath, ".git"))) {
+  if (existsSync(join(worktreePath, '.git'))) {
     return worktreePath;
   }
 
   rmSync(worktreePath, { recursive: true, force: true });
 
   if (syncBranchExists(cwd)) {
-    git(["worktree", "add", worktreePath, SYNC_BRANCH], {
+    git(['worktree', 'add', worktreePath, SYNC_BRANCH], {
       cwd,
-      stdio: "pipe",
+      stdio: 'pipe',
     });
   } else {
-    git(["worktree", "add", "--orphan", "-b", SYNC_BRANCH, worktreePath], {
+    git(['worktree', 'add', '--orphan', '-b', SYNC_BRANCH, worktreePath], {
       cwd,
-      stdio: "pipe",
+      stdio: 'pipe',
     });
   }
 
@@ -85,14 +78,14 @@ export function initSyncWorktree(cwd: string): string {
  * the shared .git path and derives the main worktree from it.
  */
 export function resolveSyncDir(cwd: string): string {
-  const gitCommonDir = git(["rev-parse", "--git-common-dir"], {
+  const gitCommonDir = git(['rev-parse', '--git-common-dir'], {
     cwd,
-    stdio: "pipe",
+    stdio: 'pipe',
   });
   // git-common-dir is relative to cwd. Resolve it, then go up one level
   // to get the main worktree root (since git-common-dir points to .git/).
-  const mainRoot = resolve(cwd, gitCommonDir, "..");
-  return resolve(mainRoot, ".paw", "sync");
+  const mainRoot = resolve(cwd, gitCommonDir, '..');
+  return resolve(mainRoot, '.paw', 'sync');
 }
 
 /**
@@ -100,12 +93,12 @@ export function resolveSyncDir(cwd: string): string {
  * Idempotent: no error if no worktree exists.
  */
 export function removeSyncWorktree(cwd: string): void {
-  const worktreePath = resolve(cwd, ".paw", "sync");
+  const worktreePath = resolve(cwd, '.paw', 'sync');
 
   try {
-    git(["worktree", "remove", "--force", worktreePath], {
+    git(['worktree', 'remove', '--force', worktreePath], {
       cwd,
-      stdio: "pipe",
+      stdio: 'pipe',
     });
   } catch {
     rmSync(worktreePath, { recursive: true, force: true });
@@ -113,7 +106,7 @@ export function removeSyncWorktree(cwd: string): void {
 
   // Prune stale worktree references
   try {
-    git(["worktree", "prune"], { cwd, stdio: "pipe" });
+    git(['worktree', 'prune'], { cwd, stdio: 'pipe' });
   } catch {
     // Ignore prune errors
   }
@@ -126,10 +119,10 @@ export function removeSyncWorktree(cwd: string): void {
 export function commitSyncChanges(syncDir: string, message: string): void {
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
-      git(["add", "-A"], { cwd: syncDir, stdio: "pipe" });
-      git(["commit", "--allow-empty", "-m", message], {
+      git(['add', '-A'], { cwd: syncDir, stdio: 'pipe' });
+      git(['commit', '--allow-empty', '-m', message], {
         cwd: syncDir,
-        stdio: "pipe",
+        stdio: 'pipe',
       });
       return;
     } catch (err) {
@@ -147,7 +140,7 @@ export function commitSyncChanges(syncDir: string, message: string): void {
 export function readSyncState(cwd?: string): SyncState | null {
   try {
     const syncDir = resolveSyncDir(cwd ?? process.cwd());
-    const raw = readFileSync(resolve(syncDir, STATE_FILE), "utf-8");
+    const raw = readFileSync(resolve(syncDir, STATE_FILE), 'utf-8');
     return JSON.parse(raw) as SyncState;
   } catch {
     return null;
@@ -158,7 +151,7 @@ export function readSyncState(cwd?: string): SyncState | null {
 export function readSyncFile(path: string, cwd?: string): string | null {
   try {
     const syncDir = resolveSyncDir(cwd ?? process.cwd());
-    return readFileSync(resolve(syncDir, path), "utf-8");
+    return readFileSync(resolve(syncDir, path), 'utf-8');
   } catch {
     return null;
   }
@@ -179,11 +172,8 @@ export function listSyncDir(prefix: string, cwd?: string): string[] {
 /** Write sync state to the sync worktree and commit. */
 export function writeSyncState(state: SyncState, cwd?: string): void {
   const syncDir = resolveSyncDir(cwd ?? process.cwd());
-  writeFileSync(
-    resolve(syncDir, STATE_FILE),
-    JSON.stringify(state, null, 2) + "\n",
-  );
-  commitSyncChanges(syncDir, "paw: update sync state");
+  writeFileSync(resolve(syncDir, STATE_FILE), JSON.stringify(state, null, 2) + '\n');
+  commitSyncChanges(syncDir, 'paw: update sync state');
 }
 
 /** Write sync state and additional files in one atomic commit. */
@@ -193,24 +183,17 @@ export function writeSyncStateAndFiles(
   cwd?: string,
 ): void {
   const syncDir = resolveSyncDir(cwd ?? process.cwd());
-  writeFileSync(
-    resolve(syncDir, STATE_FILE),
-    JSON.stringify(state, null, 2) + "\n",
-  );
+  writeFileSync(resolve(syncDir, STATE_FILE), JSON.stringify(state, null, 2) + '\n');
   for (const file of files) {
     const filePath = resolve(syncDir, file.path);
     mkdirSync(dirname(filePath), { recursive: true });
     writeFileSync(filePath, file.content);
   }
-  commitSyncChanges(syncDir, "paw: update sync state");
+  commitSyncChanges(syncDir, 'paw: update sync state');
 }
 
 /** Write a single file to the sync worktree and commit. */
-export function writeSyncFile(
-  path: string,
-  content: string,
-  cwd?: string,
-): void {
+export function writeSyncFile(path: string, content: string, cwd?: string): void {
   const syncDir = resolveSyncDir(cwd ?? process.cwd());
   const filePath = resolve(syncDir, path);
   mkdirSync(dirname(filePath), { recursive: true });
@@ -227,7 +210,7 @@ export function initSyncState(
   const tasks: Record<string, TaskState> = {};
   for (const name of taskNames) {
     const focus = focusMap?.[name];
-    tasks[name] = { status: "pending", ...(focus ? { focus } : {}) };
+    tasks[name] = { status: 'pending', ...(focus ? { focus } : {}) };
   }
 
   return {
@@ -241,7 +224,7 @@ export function initSyncState(
 /** Return the name of the first task with status "pending", or null if none. */
 export function findFirstPendingTask(state: SyncState): string | null {
   for (const [name, task] of Object.entries(state.tasks)) {
-    if (task.status === "pending") return name;
+    if (task.status === 'pending') return name;
   }
   return null;
 }
@@ -256,7 +239,7 @@ export function claimTask(state: SyncState, taskName: string): SyncState {
       ...state.tasks,
       [taskName]: {
         ...task,
-        status: "in_progress",
+        status: 'in_progress',
         claimed: new Date().toISOString(),
       },
     },
@@ -273,7 +256,7 @@ export function completeTask(state: SyncState, taskName: string): SyncState {
       ...state.tasks,
       [taskName]: {
         ...task,
-        status: "completed",
+        status: 'completed',
         completed: new Date().toISOString(),
       },
     },
@@ -281,22 +264,16 @@ export function completeTask(state: SyncState, taskName: string): SyncState {
 }
 
 /** Create initial merge state with all tasks pending. */
-export function initMergeState(
-  taskNames: string[],
-): Record<string, MergeEntry> {
+export function initMergeState(taskNames: string[]): Record<string, MergeEntry> {
   const merges: Record<string, MergeEntry> = {};
   for (const name of taskNames) {
-    merges[name] = { status: "pending" };
+    merges[name] = { status: 'pending' };
   }
   return merges;
 }
 
 /** Return a new SyncState with one merge entry updated. */
-export function updateMergeEntry(
-  state: SyncState,
-  taskName: string,
-  entry: MergeEntry,
-): SyncState {
+export function updateMergeEntry(state: SyncState, taskName: string, entry: MergeEntry): SyncState {
   return {
     ...state,
     merges: {

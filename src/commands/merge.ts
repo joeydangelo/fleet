@@ -1,6 +1,6 @@
-import { Command } from "commander";
-import { execSync } from "node:child_process";
-import pc from "picocolors";
+import { Command } from 'commander';
+import { execSync } from 'node:child_process';
+import pc from 'picocolors';
 import {
   getRepoRoot,
   getCurrentBranch,
@@ -11,28 +11,28 @@ import {
   commitUntrackedFiles,
   getHeadRef,
   createBackupRef,
-} from "../lib/git.js";
-import { loadConfig, resolveConfigPath } from "../lib/config.js";
-import type { PawConfig } from "../lib/config.js";
-import { planWorktrees } from "../lib/session.js";
-import type { WorktreeInfo } from "../lib/session.js";
+} from '../lib/git.js';
+import { loadConfig, resolveConfigPath } from '../lib/config.js';
+import type { PawConfig } from '../lib/config.js';
+import { planWorktrees } from '../lib/session.js';
+import type { WorktreeInfo } from '../lib/session.js';
 import {
   readSyncState,
   writeSyncState,
   writeSyncStateAndFiles,
   initMergeState,
   updateMergeEntry,
-} from "../lib/sync.js";
-import type { SyncState } from "../lib/sync.js";
-import { generateConflictBrief } from "../lib/conflict.js";
-import { success, warn, skip, handleError } from "../lib/output.js";
+} from '../lib/sync.js';
+import type { SyncState } from '../lib/sync.js';
+import { generateConflictBrief } from '../lib/conflict.js';
+import { success, warn, skip, handleError } from '../lib/output.js';
 
 export function mergeCommand(): Command {
-  return new Command("merge")
-    .description("Merge completed task branches into the target branch")
-    .option("-c, --config <path>", "Path to paw.yaml")
-    .option("--pick <task>", "Merge only a specific task")
-    .option("--continue", "Continue merging after resolving a conflict")
+  return new Command('merge')
+    .description('Merge completed task branches into the target branch')
+    .option('-c, --config <path>', 'Path to paw.yaml')
+    .option('--pick <task>', 'Merge only a specific task')
+    .option('--continue', 'Continue merging after resolving a conflict')
     .action((opts: { config?: string; pick?: string; continue?: boolean }) => {
       try {
         const repoRoot = getRepoRoot();
@@ -51,7 +51,7 @@ export function mergeCommand(): Command {
 
         let state = readSyncState(repoRoot);
         if (!state) {
-          console.error(pc.red("No sync state found. Run `paw up` first."));
+          console.error(pc.red('No sync state found. Run `paw up` first.'));
           process.exit(1);
         }
 
@@ -72,16 +72,14 @@ export function mergeCommand(): Command {
           writeSyncState(state, repoRoot);
         }
 
-        const toMerge = opts.pick
-          ? worktrees.filter((wt) => wt.taskName === opts.pick)
-          : worktrees;
+        const toMerge = opts.pick ? worktrees.filter((wt) => wt.taskName === opts.pick) : worktrees;
 
         if (toMerge.length === 0) {
           console.error(pc.red(`Task '${opts.pick}' not found in config.`));
           process.exit(1);
         }
 
-        console.log(pc.bold("paw merge\n"));
+        console.log(pc.bold('paw merge\n'));
         runMergeLoop(state, toMerge, config, repoRoot);
       } catch (err) {
         handleError(err);
@@ -99,27 +97,23 @@ function handleMergeContinue(
   repoRoot: string,
 ): SyncState {
   if (isMergeInProgress(repoRoot)) {
-    console.error(
-      pc.red(
-        "Git merge is still in progress. Resolve conflicts and commit first.",
-      ),
-    );
+    console.error(pc.red('Git merge is still in progress. Resolve conflicts and commit first.'));
     process.exit(1);
   }
 
   if (!state.merges) {
-    console.error(pc.red("No merge state found. Run `paw merge` first."));
+    console.error(pc.red('No merge state found. Run `paw merge` first.'));
     process.exit(1);
   }
 
   // Handle hook_failed: the merge commit already exists, user fixed the issue
   const hookFailedTask = worktrees.find(
-    (wt) => state.merges?.[wt.taskName]?.status === "hook_failed",
+    (wt) => state.merges?.[wt.taskName]?.status === 'hook_failed',
   );
 
   if (hookFailedTask) {
     // Verify the branch's commits are actually in HEAD (paw-0yqg)
-    if (!isAncestor(hookFailedTask.branch, "HEAD", repoRoot)) {
+    if (!isAncestor(hookFailedTask.branch, 'HEAD', repoRoot)) {
       console.error(
         pc.red(
           `Branch '${hookFailedTask.branch}' was not merged into the target. ` +
@@ -130,28 +124,26 @@ function handleMergeContinue(
     }
 
     const updated = updateMergeEntry(state, hookFailedTask.taskName, {
-      status: "merged",
+      status: 'merged',
       merged: new Date().toISOString(),
     });
     writeSyncState(updated, repoRoot);
 
-    console.log(pc.bold("paw merge --continue\n"));
-    success(hookFailedTask.taskName, "hook failure resolved");
+    console.log(pc.bold('paw merge --continue\n'));
+    success(hookFailedTask.taskName, 'hook failure resolved');
 
     return updated;
   }
 
-  const conflictTask = worktrees.find(
-    (wt) => state.merges?.[wt.taskName]?.status === "conflict",
-  );
+  const conflictTask = worktrees.find((wt) => state.merges?.[wt.taskName]?.status === 'conflict');
 
   if (!conflictTask) {
-    console.error(pc.red("No conflicting or failed merge found. Run `paw merge` first."));
+    console.error(pc.red('No conflicting or failed merge found. Run `paw merge` first.'));
     process.exit(1);
   }
 
   // Verify the branch's commits are actually in HEAD (paw-0yqg)
-  if (!isAncestor(conflictTask.branch, "HEAD", repoRoot)) {
+  if (!isAncestor(conflictTask.branch, 'HEAD', repoRoot)) {
     console.error(
       pc.red(
         `Branch '${conflictTask.branch}' was not merged into the target. ` +
@@ -162,13 +154,13 @@ function handleMergeContinue(
   }
 
   const updated = updateMergeEntry(state, conflictTask.taskName, {
-    status: "merged",
+    status: 'merged',
     merged: new Date().toISOString(),
   });
   writeSyncState(updated, repoRoot);
 
-  console.log(pc.bold("paw merge --continue\n"));
-  success(conflictTask.taskName, "conflict resolved");
+  console.log(pc.bold('paw merge --continue\n'));
+  success(conflictTask.taskName, 'conflict resolved');
 
   return updated;
 }
@@ -185,48 +177,38 @@ function runMergeLoop(
 ): void {
   let state = initialState;
   const target = config.target;
-  const postMergeHook = config.hooks?.["post-merge"];
+  const postMergeHook = config.hooks?.['post-merge'];
 
   for (const wt of worktrees) {
     const mergeEntry = state.merges?.[wt.taskName];
 
-    if (mergeEntry?.status === "merged") {
-      skip(wt.taskName, "already merged");
+    if (mergeEntry?.status === 'merged') {
+      skip(wt.taskName, 'already merged');
       continue;
     }
-    if (mergeEntry?.status === "skipped") {
-      skip(wt.taskName, "no commits");
+    if (mergeEntry?.status === 'skipped') {
+      skip(wt.taskName, 'no commits');
       continue;
     }
-    if (mergeEntry?.status === "conflict") {
-      warn(wt.taskName, "unresolved conflict");
-      console.log(
-        pc.yellow(
-          "\nResolve the conflict, commit, then run: paw merge --continue",
-        ),
-      );
+    if (mergeEntry?.status === 'conflict') {
+      warn(wt.taskName, 'unresolved conflict');
+      console.log(pc.yellow('\nResolve the conflict, commit, then run: paw merge --continue'));
       return;
     }
-    if (mergeEntry?.status === "hook_failed") {
-      warn(wt.taskName, "post-merge hook failed");
+    if (mergeEntry?.status === 'hook_failed') {
+      warn(wt.taskName, 'post-merge hook failed');
+      console.log(pc.yellow('\nFix the issue, then run: paw merge --continue'));
       console.log(
-        pc.yellow(
-          "\nFix the issue, then run: paw merge --continue",
-        ),
-      );
-      console.log(
-        pc.yellow(
-          `To roll back:        git reset --hard refs/paw-backup/${wt.taskName}`,
-        ),
+        pc.yellow(`To roll back:        git reset --hard refs/paw-backup/${wt.taskName}`),
       );
       return;
     }
 
     const commits = getCommitCount(wt.branch, target, repoRoot);
     if (commits === 0) {
-      state = updateMergeEntry(state, wt.taskName, { status: "skipped" });
+      state = updateMergeEntry(state, wt.taskName, { status: 'skipped' });
       writeSyncState(state, repoRoot);
-      skip(wt.taskName, "no commits");
+      skip(wt.taskName, 'no commits');
       continue;
     }
 
@@ -240,7 +222,7 @@ function runMergeLoop(
 
     const result = mergeBranch(wt.branch, repoRoot);
     if (result.success) {
-      success(wt.taskName, "merged clean");
+      success(wt.taskName, 'merged clean');
 
       // Run post-merge hook if configured
       if (postMergeHook) {
@@ -248,32 +230,22 @@ function runMergeLoop(
         const hookOk = runPostMergeHook(postMergeHook, repoRoot);
         if (!hookOk) {
           state = updateMergeEntry(state, wt.taskName, {
-            status: "hook_failed",
+            status: 'hook_failed',
           });
           writeSyncState(state, repoRoot);
 
-          warn(wt.taskName, "post-merge hook failed");
+          warn(wt.taskName, 'post-merge hook failed');
+          console.log(pc.yellow('\n  The merge committed but validation failed.'));
+          console.log(pc.yellow('  To continue anyway:  paw merge --continue'));
           console.log(
-            pc.yellow(
-              "\n  The merge committed but validation failed.",
-            ),
-          );
-          console.log(
-            pc.yellow(
-              "  To continue anyway:  paw merge --continue",
-            ),
-          );
-          console.log(
-            pc.yellow(
-              `  To roll back:        git reset --hard refs/paw-backup/${wt.taskName}`,
-            ),
+            pc.yellow(`  To roll back:        git reset --hard refs/paw-backup/${wt.taskName}`),
           );
           return;
         }
       }
 
       state = updateMergeEntry(state, wt.taskName, {
-        status: "merged",
+        status: 'merged',
         merged: new Date().toISOString(),
       });
       writeSyncState(state, repoRoot);
@@ -288,25 +260,15 @@ function runMergeLoop(
       });
 
       state = updateMergeEntry(state, wt.taskName, {
-        status: "conflict",
+        status: 'conflict',
         brief: briefPath,
       });
-      writeSyncStateAndFiles(
-        state,
-        [{ path: briefPath, content: brief }],
-        repoRoot,
-      );
+      writeSyncStateAndFiles(state, [{ path: briefPath, content: brief }], repoRoot);
 
-      warn(wt.taskName, "conflicts");
-      console.log(pc.dim(`    ${result.message.split("\n")[0]}`));
-      console.log(
-        pc.dim(`    Brief written to ${briefPath} on sync branch`),
-      );
-      console.log(
-        pc.yellow(
-          "\nResolve the conflict, commit, then run: paw merge --continue",
-        ),
-      );
+      warn(wt.taskName, 'conflicts');
+      console.log(pc.dim(`    ${result.message.split('\n')[0]}`));
+      console.log(pc.dim(`    Brief written to ${briefPath} on sync branch`));
+      console.log(pc.yellow('\nResolve the conflict, commit, then run: paw merge --continue'));
       return;
     }
   }
@@ -315,7 +277,7 @@ function runMergeLoop(
 /** Run a post-merge hook command. Returns true if successful, false on failure. */
 function runPostMergeHook(command: string, cwd: string): boolean {
   try {
-    execSync(command, { cwd, stdio: "inherit" });
+    execSync(command, { cwd, stdio: 'inherit' });
     return true;
   } catch {
     return false;

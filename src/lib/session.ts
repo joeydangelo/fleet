@@ -1,14 +1,8 @@
-import { resolve, dirname, basename } from "node:path";
-import {
-  mkdirSync,
-  writeFileSync,
-  readFileSync,
-  existsSync,
-  readdirSync,
-} from "node:fs";
-import type { PawConfig } from "./config.js";
-import { branchExists, createBranch, createWorktree, getFileFromBranch } from "./git.js";
-import { REQUIRED_SECTIONS } from "./summary.js";
+import { resolve, dirname, basename } from 'node:path';
+import { mkdirSync, writeFileSync, readFileSync, existsSync, readdirSync } from 'node:fs';
+import type { PawConfig } from './config.js';
+import { branchExists, createBranch, createWorktree, getFileFromBranch } from './git.js';
+import { REQUIRED_SECTIONS } from './summary.js';
 
 export interface WorktreeInfo {
   taskName: string;
@@ -16,10 +10,7 @@ export interface WorktreeInfo {
   worktreePath: string;
 }
 
-export function planWorktrees(
-  config: PawConfig,
-  repoRoot: string,
-): WorktreeInfo[] {
+export function planWorktrees(config: PawConfig, repoRoot: string): WorktreeInfo[] {
   const repoName = basename(repoRoot);
   const parentDir = dirname(repoRoot);
 
@@ -30,10 +21,7 @@ export function planWorktrees(
   }));
 }
 
-export function createSession(
-  config: PawConfig,
-  repoRoot: string,
-): WorktreeInfo[] {
+export function createSession(config: PawConfig, repoRoot: string): WorktreeInfo[] {
   if (!branchExists(config.target, repoRoot)) {
     createBranch(config.target, config.base, repoRoot);
   }
@@ -59,11 +47,10 @@ const COLLABORATION_RULES = `## Collaboration Rules
   focus, broadcast first.`;
 
 const SECTION_DESCRIPTIONS: Record<string, string> = {
-  "What I did": "- Bullet list of what you built or changed",
-  "Interface changes":
-    "- New exports, changed signatures, renamed types\n- Anything another agent importing from your files needs to know",
-  "Watch out":
-    "- Breaking changes, migration needs, gotchas\n- Files other agents should check",
+  'What I did': '- Bullet list of what you built or changed',
+  'Interface changes':
+    '- New exports, changed signatures, renamed types\n- Anything another agent importing from your files needs to know',
+  'Watch out': '- Breaking changes, migration needs, gotchas\n- Files other agents should check',
 };
 
 const SUMMARY_TEMPLATE = [
@@ -71,14 +58,10 @@ const SUMMARY_TEMPLATE = [
   ``,
   `Run \`paw done --summary "..."\` with a structured summary. Use this format:`,
   ``,
-  ...REQUIRED_SECTIONS.flatMap((s) => [
-    `### ${s}`,
-    SECTION_DESCRIPTIONS[s] ?? "- [Details]",
-    ``,
-  ]),
+  ...REQUIRED_SECTIONS.flatMap((s) => [`### ${s}`, SECTION_DESCRIPTIONS[s] ?? '- [Details]', ``]),
   `This summary feeds the conflict brief. Be specific about interface changes --`,
   `other agents depend on this information to resolve merge conflicts.`,
-].join("\n");
+].join('\n');
 
 export function generateTaskFile(
   config: PawConfig,
@@ -108,28 +91,28 @@ export function generateTaskFile(
 
   lines.push(``, COLLABORATION_RULES, ``, SUMMARY_TEMPLATE);
 
-  return lines.join("\n") + "\n";
+  return lines.join('\n') + '\n';
 }
 
 export function ensureGitignore(worktreePath: string, baseBranch?: string): void {
-  const gitignorePath = resolve(worktreePath, ".gitignore");
-  const entry = ".paw/";
+  const gitignorePath = resolve(worktreePath, '.gitignore');
+  const entry = '.paw/';
 
   // If the base branch already has this entry, the worktree inherited it -- skip
   // to avoid duplicate additions across branches that cause merge conflicts (paw-numd).
   if (baseBranch) {
-    const baseContent = getFileFromBranch(baseBranch, ".gitignore", worktreePath);
-    if (baseContent && baseContent.split("\n").some((line) => line.trim() === entry)) {
+    const baseContent = getFileFromBranch(baseBranch, '.gitignore', worktreePath);
+    if (baseContent && baseContent.split('\n').some((line) => line.trim() === entry)) {
       return;
     }
   }
 
   if (existsSync(gitignorePath)) {
-    const content = readFileSync(gitignorePath, "utf-8");
-    if (content.split("\n").some((line) => line.trim() === entry)) return;
-    writeFileSync(gitignorePath, content.trimEnd() + "\n" + entry + "\n");
+    const content = readFileSync(gitignorePath, 'utf-8');
+    if (content.split('\n').some((line) => line.trim() === entry)) return;
+    writeFileSync(gitignorePath, content.trimEnd() + '\n' + entry + '\n');
   } else {
-    writeFileSync(gitignorePath, entry + "\n");
+    writeFileSync(gitignorePath, entry + '\n');
   }
 }
 
@@ -138,11 +121,11 @@ export function ensureGitignore(worktreePath: string, baseBranch?: string): void
  * single task file. Returns null if detection fails.
  */
 export function detectTaskName(cwd: string): string | null {
-  const tasksDir = resolve(cwd, ".paw", "tasks");
+  const tasksDir = resolve(cwd, '.paw', 'tasks');
   if (existsSync(tasksDir)) {
-    const files = readdirSync(tasksDir).filter((f) => f.endsWith(".md"));
+    const files = readdirSync(tasksDir).filter((f) => f.endsWith('.md'));
     if (files.length === 1) {
-      return files[0]!.replace(/\.md$/, "");
+      return files[0]!.replace(/\.md$/, '');
     }
   }
   return null;
@@ -154,12 +137,12 @@ export function writeTaskFiles(
   baseBranch?: string,
 ): void {
   for (const wt of worktrees) {
-    const taskDir = resolve(wt.worktreePath, ".paw", "tasks");
+    const taskDir = resolve(wt.worktreePath, '.paw', 'tasks');
     mkdirSync(taskDir, { recursive: true });
 
     const taskFilePath = resolve(taskDir, `${wt.taskName}.md`);
     const content = generateTaskFile(config, wt.taskName, wt);
-    writeFileSync(taskFilePath, content, "utf-8");
+    writeFileSync(taskFilePath, content, 'utf-8');
 
     ensureGitignore(wt.worktreePath, baseBranch);
   }

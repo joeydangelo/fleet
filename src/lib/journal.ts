@@ -1,15 +1,15 @@
-import { readSyncFile, writeSyncFile, listSyncDir } from "./sync.js";
+import { readSyncFile, writeSyncFile, listSyncDir } from './sync.js';
 
 export interface JournalEntry {
   ts: string;
   from: string;
-  type: "broadcast" | "ask" | "reply";
+  type: 'broadcast' | 'ask' | 'reply';
   to?: string;
   msg: string;
 }
 
 /** Fields required when appending (ts and from are auto-populated). */
-export type JournalAppendOpts = Omit<JournalEntry, "ts" | "from">;
+export type JournalAppendOpts = Omit<JournalEntry, 'ts' | 'from'>;
 
 /**
  * Append a journal entry to the agent's own JSONL file on the sync branch.
@@ -27,9 +27,9 @@ export function appendJournalEntry(
   };
 
   const path = `journal/${taskName}.jsonl`;
-  const existing = readSyncFile(path, cwd) ?? "";
+  const existing = readSyncFile(path, cwd) ?? '';
   const line = JSON.stringify(entry);
-  const content = existing ? existing + "\n" + line : line;
+  const content = existing ? existing + '\n' + line : line;
 
   writeSyncFile(path, content, cwd);
   return entry;
@@ -39,15 +39,15 @@ export function appendJournalEntry(
  * Read all journal entries across all agents, sorted chronologically.
  */
 export function readJournal(cwd?: string): JournalEntry[] {
-  const files = listSyncDir("journal", cwd);
+  const files = listSyncDir('journal', cwd);
   const entries: JournalEntry[] = [];
 
   for (const file of files) {
-    if (!file.endsWith(".jsonl")) continue;
+    if (!file.endsWith('.jsonl')) continue;
     const content = readSyncFile(file, cwd);
     if (!content) continue;
 
-    for (const line of content.split("\n")) {
+    for (const line of content.split('\n')) {
       const trimmed = line.trim();
       if (!trimmed) continue;
       try {
@@ -69,15 +69,11 @@ export function readJournal(cwd?: string): JournalEntry[] {
  *
  * Optionally filter to entries after a given timestamp.
  */
-export function readJournalForTask(
-  taskName: string,
-  cwd?: string,
-  since?: string,
-): JournalEntry[] {
+export function readJournalForTask(taskName: string, cwd?: string, since?: string): JournalEntry[] {
   const all = readJournal(cwd);
 
   return all.filter((entry) => {
     if (since && entry.ts <= since) return false;
-    return entry.type === "broadcast" || entry.to === taskName;
+    return entry.type === 'broadcast' || entry.to === taskName;
   });
 }

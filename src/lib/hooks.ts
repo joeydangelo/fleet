@@ -1,8 +1,8 @@
 /** Claude Code hook installation for paw agent sessions. */
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { resolve } from "node:path";
-import { success, skip } from "./output.js";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { success } from './output.js';
 
 /** Wrapper script that resolves PATH and ensures paw is installed before running paw prime. */
 export const PAW_SESSION_SCRIPT = `#!/bin/bash
@@ -96,11 +96,11 @@ fi
 exit 0
 `;
 
-const SCRIPT_RELATIVE = ".claude/scripts/paw-session.sh";
-const REMINDER_RELATIVE = ".claude/hooks/paw-done-reminder.sh";
+const SCRIPT_RELATIVE = '.claude/scripts/paw-session.sh';
+const REMINDER_RELATIVE = '.claude/hooks/paw-done-reminder.sh';
 
 interface HookHandler {
-  type: "command";
+  type: 'command';
   command: string;
 }
 
@@ -111,21 +111,21 @@ interface MatcherGroup {
 
 /** Install Claude Code hooks and the wrapper script into a repo. */
 export function installHooks(repoRoot: string): void {
-  const scriptDir = resolve(repoRoot, ".claude", "scripts");
+  const scriptDir = resolve(repoRoot, '.claude', 'scripts');
   mkdirSync(scriptDir, { recursive: true });
-  writeFileSync(resolve(repoRoot, SCRIPT_RELATIVE), PAW_SESSION_SCRIPT, "utf-8");
+  writeFileSync(resolve(repoRoot, SCRIPT_RELATIVE), PAW_SESSION_SCRIPT, 'utf-8');
 
-  const hooksDir = resolve(repoRoot, ".claude", "hooks");
+  const hooksDir = resolve(repoRoot, '.claude', 'hooks');
   mkdirSync(hooksDir, { recursive: true });
-  writeFileSync(resolve(repoRoot, REMINDER_RELATIVE), PAW_DONE_REMINDER_SCRIPT, "utf-8");
+  writeFileSync(resolve(repoRoot, REMINDER_RELATIVE), PAW_DONE_REMINDER_SCRIPT, 'utf-8');
 
   const pawHooks: Record<string, MatcherGroup[]> = {
     SessionStart: [
       {
-        matcher: "",
+        matcher: '',
         hooks: [
           {
-            type: "command",
+            type: 'command',
             command: `bash ${SCRIPT_RELATIVE}`,
           },
         ],
@@ -133,10 +133,10 @@ export function installHooks(repoRoot: string): void {
     ],
     PreCompact: [
       {
-        matcher: "",
+        matcher: '',
         hooks: [
           {
-            type: "command",
+            type: 'command',
             command: `bash ${SCRIPT_RELATIVE} --brief`,
           },
         ],
@@ -144,10 +144,10 @@ export function installHooks(repoRoot: string): void {
     ],
     PostToolUse: [
       {
-        matcher: "Bash",
+        matcher: 'Bash',
         hooks: [
           {
-            type: "command",
+            type: 'command',
             command: `bash ${REMINDER_RELATIVE}`,
           },
         ],
@@ -155,14 +155,11 @@ export function installHooks(repoRoot: string): void {
     ],
   };
 
-  const settingsPath = resolve(repoRoot, ".claude", "settings.json");
+  const settingsPath = resolve(repoRoot, '.claude', 'settings.json');
   let settings: Record<string, unknown> = {};
   if (existsSync(settingsPath)) {
     try {
-      settings = JSON.parse(readFileSync(settingsPath, "utf-8")) as Record<
-        string,
-        unknown
-      >;
+      settings = JSON.parse(readFileSync(settingsPath, 'utf-8')) as Record<string, unknown>;
     } catch {
       // Corrupted settings -- overwrite
     }
@@ -187,45 +184,35 @@ export function installHooks(repoRoot: string): void {
 
   // Always write if we got here -- ensures old formats are replaced
   settings.hooks = existing;
-  mkdirSync(resolve(settingsPath, ".."), { recursive: true });
-  writeFileSync(
-    settingsPath,
-    JSON.stringify(settings, null, 2) + "\n",
-    "utf-8",
-  );
+  mkdirSync(resolve(settingsPath, '..'), { recursive: true });
+  writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + '\n', 'utf-8');
 
   if (changed) {
-    success("hooks", "SessionStart + PreCompact + PostToolUse");
+    success('hooks', 'SessionStart + PreCompact + PostToolUse');
   } else {
-    success("hooks", "SessionStart + PreCompact + PostToolUse (updated)");
+    success('hooks', 'SessionStart + PreCompact + PostToolUse (updated)');
   }
 
-  success("script", SCRIPT_RELATIVE);
-  success("script", REMINDER_RELATIVE);
+  success('script', SCRIPT_RELATIVE);
+  success('script', REMINDER_RELATIVE);
 }
 
 /** Detect any paw-related hook entry (old flat format or correct matcher group). */
 function isPawHookEntry(entry: unknown): boolean {
-  if (typeof entry !== "object" || entry === null) return false;
+  if (typeof entry !== 'object' || entry === null) return false;
   const obj = entry as Record<string, unknown>;
 
   // Old flat format: { command: "paw prime --brief" }
-  if (
-    "command" in obj &&
-    typeof obj.command === "string" &&
-    obj.command.includes("paw")
-  ) {
+  if ('command' in obj && typeof obj.command === 'string' && obj.command.includes('paw')) {
     return true;
   }
 
   // Correct matcher group format: { matcher: "", hooks: [{ command: "...paw..." }] }
-  if ("hooks" in obj && Array.isArray(obj.hooks)) {
+  if ('hooks' in obj && Array.isArray(obj.hooks)) {
     return obj.hooks.some((h: unknown) => {
-      if (typeof h !== "object" || h === null) return false;
+      if (typeof h !== 'object' || h === null) return false;
       const rec = h as Record<string, unknown>;
-      return (
-        typeof rec.command === "string" && rec.command.includes("paw")
-      );
+      return typeof rec.command === 'string' && rec.command.includes('paw');
     });
   }
 

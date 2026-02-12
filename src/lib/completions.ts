@@ -1,18 +1,18 @@
 /** Shell completion script generators for paw CLI. */
 
 const SUBCOMMANDS = [
-  "setup",
-  "up",
-  "prime",
-  "status",
-  "done",
-  "merge",
-  "down",
-  "broadcast",
-  "ask",
-  "reply",
-  "check",
-  "completions",
+  'setup',
+  'up',
+  'prime',
+  'status',
+  'done',
+  'merge',
+  'down',
+  'broadcast',
+  'ask',
+  'reply',
+  'check',
+  'completions',
 ];
 
 /** Generate a bash completion script for paw. */
@@ -24,7 +24,7 @@ _paw_completions() {
   local cur prev cmds
   cur="\${COMP_WORDS[COMP_CWORD]}"
   prev="\${COMP_WORDS[COMP_CWORD-1]}"
-  cmds="${SUBCOMMANDS.join(" ")}"
+  cmds="${SUBCOMMANDS.join(' ')}"
 
   # Complete --pick with task names from paw.yaml
   if [[ "\$prev" == "--pick" ]]; then
@@ -76,7 +76,7 @@ export function generateZshCompletion(): string {
 _paw() {
   local -a subcommands
   subcommands=(
-${SUBCOMMANDS.map((cmd) => `    '${cmd}:${descriptionFor(cmd)}'`).join("\n")}
+${SUBCOMMANDS.map((cmd) => `    '${cmd}:${descriptionFor(cmd)}'`).join('\n')}
   )
 
   _paw_task_names() {
@@ -127,13 +127,13 @@ _paw "$@"
 /** Generate a fish completion script for paw. */
 export function generateFishCompletion(): string {
   const lines = [
-    "# paw fish completion",
-    "# Add to fish: paw completions fish | source",
-    "",
-    "# Disable file completions by default",
-    "complete -c paw -f",
-    "",
-    "# Subcommands",
+    '# paw fish completion',
+    '# Add to fish: paw completions fish | source',
+    '',
+    '# Disable file completions by default',
+    'complete -c paw -f',
+    '',
+    '# Subcommands',
   ];
 
   for (const cmd of SUBCOMMANDS) {
@@ -142,24 +142,22 @@ export function generateFishCompletion(): string {
     );
   }
 
-  lines.push("");
-  lines.push("# merge flags");
+  lines.push('');
+  lines.push('# merge flags');
   lines.push(
     "complete -c paw -n '__fish_seen_subcommand_from merge' -l pick -d 'Merge specific task' -r -a '(_paw_task_names)'",
   );
   lines.push(
     "complete -c paw -n '__fish_seen_subcommand_from merge' -l config -d 'Config path' -r -F",
   );
-  lines.push("");
-  lines.push("# up flags");
+  lines.push('');
+  lines.push('# up flags');
   lines.push(
     "complete -c paw -n '__fish_seen_subcommand_from up' -l config -d 'Config path' -r -F",
   );
-  lines.push(
-    "complete -c paw -n '__fish_seen_subcommand_from up' -l dry-run -d 'Preview changes'",
-  );
-  lines.push("");
-  lines.push("# down flags");
+  lines.push("complete -c paw -n '__fish_seen_subcommand_from up' -l dry-run -d 'Preview changes'");
+  lines.push('');
+  lines.push('# down flags');
   lines.push(
     "complete -c paw -n '__fish_seen_subcommand_from down' -l config -d 'Config path' -r -F",
   );
@@ -169,38 +167,34 @@ export function generateFishCompletion(): string {
   lines.push(
     "complete -c paw -n '__fish_seen_subcommand_from down' -l keep-branches -d 'Keep branches'",
   );
-  lines.push("");
-  lines.push("# Dynamic task name completion from paw.yaml");
-  lines.push("function _paw_task_names");
-  lines.push("  if test -f paw.yaml");
-  lines.push(
-    "    grep -E '^  [a-zA-Z_][a-zA-Z0-9_-]*:' paw.yaml | sed 's/^  //;s/://'",
-  );
-  lines.push("  else if test -f paw.yml");
-  lines.push(
-    "    grep -E '^  [a-zA-Z_][a-zA-Z0-9_-]*:' paw.yml | sed 's/^  //;s/://'",
-  );
-  lines.push("  end");
-  lines.push("end");
-  lines.push("");
+  lines.push('');
+  lines.push('# Dynamic task name completion from paw.yaml');
+  lines.push('function _paw_task_names');
+  lines.push('  if test -f paw.yaml');
+  lines.push("    grep -E '^  [a-zA-Z_][a-zA-Z0-9_-]*:' paw.yaml | sed 's/^  //;s/://'");
+  lines.push('  else if test -f paw.yml');
+  lines.push("    grep -E '^  [a-zA-Z_][a-zA-Z0-9_-]*:' paw.yml | sed 's/^  //;s/://'");
+  lines.push('  end');
+  lines.push('end');
+  lines.push('');
 
-  return lines.join("\n");
+  return lines.join('\n');
 }
 
 function descriptionFor(cmd: string): string {
   const descriptions: Record<string, string> = {
-    setup: "Initialize paw in a repo",
-    up: "Spin up parallel session",
-    prime: "Orient agent and claim task",
-    status: "Show session progress",
-    done: "Mark task as completed",
-    merge: "Merge task branches into target",
-    down: "Tear down session",
-    broadcast: "Broadcast message to all agents",
-    ask: "Send directed message to agent",
-    reply: "Reply to last directed message",
-    check: "Read new messages and broadcasts",
-    completions: "Generate shell completions",
+    setup: 'Initialize paw in a repo',
+    up: 'Spin up parallel session',
+    prime: 'Orient agent and claim task',
+    status: 'Show session progress',
+    done: 'Mark task as completed',
+    merge: 'Merge task branches into target',
+    down: 'Tear down session',
+    broadcast: 'Broadcast message to all agents',
+    ask: 'Send directed message to agent',
+    reply: 'Reply to last directed message',
+    check: 'Read new messages and broadcasts',
+    completions: 'Generate shell completions',
   };
   return descriptions[cmd] ?? cmd;
 }
