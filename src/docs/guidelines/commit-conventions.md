@@ -73,5 +73,5 @@ docs: Update CLI usage examples
 refactor: Extract token refresh logic to separate module
 test: Add integration tests for merge conflict flow
 chore: Update dependencies
-plan: Add v0.3 agent experience spec
+plan: Design user notification preferences spec
 ```

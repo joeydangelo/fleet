@@ -8,11 +8,11 @@ Run `paw setup` to update. -->
 # paw
 
 paw orchestrates parallel AI coding agents across git worktrees. It handles the
-full fan-out/fan-in lifecycle: define tasks, spin up isolated worktrees, orient
+fan-out/fan-in lifecycle: define tasks, spin up isolated worktrees, orient
 agents, coordinate through broadcasts and summaries, and merge results back with
 full context about what each agent intended.
 
-There are two distinct roles. You are one of them:
+There are two roles. You are one of them:
 
 - **Orchestrator** — runs in the main repo, operates paw on behalf of the user.
   Decomposes work into tasks, sets up worktrees, monitors progress, merges
@@ -42,16 +42,19 @@ The user never runs paw commands — that's your job.
 
 1. **Create `paw.yaml`.** Run `paw shortcut generate-paw-yaml` to decompose
    work into parallel tasks with focus areas and prompts.
-2. **`paw up`** — creates worktrees, branches, task files, and sync state.
+2. **`paw up`** — creates worktrees, branches, and task files.
 3. **Launch agents.** Start one agent per worktree. Each agent runs
    `paw shortcut session-start` as their first action.
 4. **Monitor.** `paw status` to check progress. `paw check` to read broadcasts.
    `paw ask <task> "..."` to redirect an agent.
 5. **`paw merge`** — merges completed task branches into the target branch.
-6. **Handle conflicts.** You are responsible for resolving merge conflicts.
-   When `paw merge` hits a conflict, it writes a conflict brief and stops.
-   Run `paw shortcut resolve-conflict` to read the brief and fix it, then
-   `paw merge --continue` to resume.
+6. **Handle merge failures.** Two things can stop a merge:
+   - **Conflict**: paw writes a conflict brief and stops. Run
+     `paw shortcut resolve-conflict` to read the brief, fix it, then
+     `paw merge --continue`.
+   - **Hook failure**: the post-merge hook failed. Fix the issue, then
+     `paw merge --continue`. To roll back instead:
+     `git reset --hard refs/paw-backup/{task}`.
 7. **`paw down`** — removes worktrees and cleans up. The merged target branch
    remains.
 
@@ -59,9 +62,10 @@ The user never runs paw commands — that's your job.
 
 ```bash
 paw up                           # Create worktrees for all tasks
+paw up --dry-run                 # Preview what would be created
 paw status                       # Check progress across all tasks
 paw merge                        # Merge completed task branches
-paw merge --continue             # Resume after resolving a conflict
+paw merge --continue             # Resume after conflict or hook failure
 paw merge --pick <task>          # Merge a specific task only
 paw down                         # Remove worktrees and clean up
 paw ask <task> "..."             # Send a directed message to an agent
@@ -95,7 +99,7 @@ so the merge process understands your work.
 2. **Broadcast your intent** before starting work.
 3. **Work on your task**, staying within your focus areas.
 4. **`paw broadcast "..."`** when you change interfaces other agents depend on.
-5. **`paw check`** periodically for messages from other agents.
+5. **`paw check`** periodically for new messages.
 6. **`paw shortcut precommit-process`** when committing.
 7. **`paw shortcut session-end`** when finished.
 
@@ -108,6 +112,7 @@ paw check                        # Read new messages and broadcasts
 paw ask <task> "..."             # Send a directed message to an agent
 paw reply "..."                  # Reply to the most recent message
 paw done --summary "..."         # Mark task completed with summary
+paw done --force --summary "..." # Bypass validation and pre-done hook
 paw status                       # Check progress across all tasks
 ```
 
