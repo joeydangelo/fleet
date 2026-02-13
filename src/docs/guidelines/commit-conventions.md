@@ -30,8 +30,11 @@ Software development:
 - `fix`: Bug fix
 - `style`: Code formatting (no logic change)
 - `refactor`: Code restructuring (no behavior change)
+- `perf`: Performance improvement
 - `test`: Adding or updating tests
-- `chore`: Maintenance (deps, config, build)
+- `build`: Build system or external dependencies
+- `ci`: CI/CD configuration and scripts
+- `chore`: Maintenance (deps, config, upgrades)
 - `docs`: User-facing documentation
 
 Agentic project work:
