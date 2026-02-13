@@ -1,6 +1,6 @@
 ---
 title: Pre-Commit Process
-description: Review, test, broadcast, and commit -- the checklist before every commit
+description: Check messages, review, validate, broadcast, and commit -- the checklist before every commit
 category: worktree agent
 ---
 Follow this process before every commit. It keeps your work clean and keeps other
@@ -8,20 +8,47 @@ agents informed.
 
 ## Checklist
 
-1. **Review your changes.**
+1. **Check for incoming messages.**
+
+   ```
+   paw check
+   ```
+
+   See what other agents have broadcast or sent you before reviewing your own work.
+   If another agent changed an interface you depend on, you want to know that before
+   your review -- not after.
+
+2. **Review your changes.**
 
    Look at the diff. Check for:
    - Leftover debug code, TODOs, commented-out blocks
    - Files outside your focus area that you didn't mean to touch
    - Interface changes that other agents depend on
+   - Conflicts with anything another agent just broadcast
 
-2. **Run tests.**
+3. **Format, lint, and test.**
 
-   Run whatever test command the project uses. Fix failures before committing.
-   If you're unsure what to run, check the project's README, package.json scripts,
-   or Makefile.
+   Run the project's validation commands. Fix failures before committing. Look for
+   these in the project's README, package.json scripts, Makefile, or pyproject.toml:
 
-3. **Broadcast interface changes.**
+   ```bash
+   # TypeScript / JavaScript
+   pnpm format && pnpm lint && pnpm test    # or npm run, yarn, bun
+   npx prettier --write . && npx eslint --fix . && npx vitest run
+
+   # Python
+   uv run ruff format . && uv run ruff check --fix . && uv run pytest
+
+   # Rust
+   cargo fmt && cargo clippy && cargo test
+
+   # Go
+   gofmt -w . && golangci-lint run && go test ./...
+   ```
+
+   Use whatever the project already has. Don't guess -- check the config files.
+
+4. **Broadcast interface changes.**
 
    If your changes affect anything other agents might depend on (types, exports,
    API endpoints, shared config), broadcast before committing:
@@ -32,16 +59,6 @@ agents informed.
 
    This gives other agents a chance to see the change via `paw check` before they
    hit a merge conflict.
-
-4. **Check for incoming messages.**
-
-   ```
-   paw check
-   ```
-
-   If another agent sent you a message or broadcast something relevant, handle it
-   now rather than after committing. Adapting before you commit is cheaper than
-   fixing after.
 
 5. **Commit with a clear message.**
 

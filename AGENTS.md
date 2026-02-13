@@ -120,7 +120,7 @@ paw status                       # Check progress across all tasks
 | `session-start` | First actions in a worktree |
 | `session-end` | Wrap up: broadcast final state, write done summary |
 | `build-task` | TDD workflow from task assignment to done |
-| `precommit-process` | Review, test, broadcast, and commit checklist |
+| `precommit-process` | Check messages, review, validate, broadcast, commit |
 
 ### Key principles
 
