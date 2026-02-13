@@ -12,6 +12,35 @@ back with full context about what each agent intended.
 You are one of those agents. paw gives you your task assignment, keeps you informed
 about what other agents are doing, and helps the team merge without surprises.
 
+## Installation
+
+```bash
+npm install -g get-paw@latest
+paw setup                        # Set up or upgrade paw
+```
+
+### Orchestrator commands
+
+The lead orchestrator runs these on behalf of the user from the main repo:
+
+```bash
+paw up                           # Create worktrees for all tasks
+paw status                       # Check progress across all tasks
+paw merge                        # Merge completed task branches
+paw down                         # Remove worktrees and clean up
+```
+
+### Worktree agent commands
+
+Each worktree agent runs these autonomously from inside its worktree:
+
+```bash
+paw prime                        # Orient and claim your task
+paw broadcast "..."              # Announce a change to all agents
+paw check                        # Read new messages and broadcasts
+paw done --summary "..."         # Mark task completed with summary
+```
+
 ## On Session Start
 
 Run `paw prime` immediately. It gives you everything in one shot:

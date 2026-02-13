@@ -6,7 +6,6 @@ import { statusCommand } from './commands/status.js';
 import { doneCommand } from './commands/done.js';
 import { mergeCommand } from './commands/merge.js';
 import { downCommand } from './commands/down.js';
-import { completionsCommand } from './commands/completions.js';
 import { broadcastCommand } from './commands/broadcast.js';
 import { askCommand } from './commands/ask.js';
 import { replyCommand } from './commands/reply.js';
@@ -37,7 +36,5 @@ export function createCli(): Command {
   program.addCommand(shortcutCommand());
   program.addCommand(guidelinesCommand());
   program.addCommand(templateCommand());
-  program.addCommand(completionsCommand());
-
   return program;
 }
