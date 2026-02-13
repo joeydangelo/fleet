@@ -1,7 +1,7 @@
 ---
 title: Pre-Commit Process
 description: Review, test, broadcast, and commit -- the checklist before every commit
-category: git
+category: worktree agent
 ---
 Follow this process before every commit. It keeps your work clean and keeps other
 agents informed.

@@ -1,7 +1,7 @@
 ---
 title: Session Start
 description: Agent's first actions in a paw worktree -- orient, plan, broadcast intent
-category: session
+category: worktree agent
 ---
 You're starting work in a paw worktree. Orient yourself, plan your approach, and let
 the team know what you're about to do.

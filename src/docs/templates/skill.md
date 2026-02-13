@@ -5,12 +5,21 @@ globs: "paw.yaml,paw.yml,.paw/**"
 
 # paw
 
-paw orchestrates parallel AI coding agents across git worktrees. Agents work in
-isolated worktrees, communicate through a shared sync branch, and merge results
-back with full context about what each agent intended.
+paw orchestrates parallel AI coding agents across git worktrees. It handles the
+full fan-out/fan-in lifecycle: define tasks, spin up isolated worktrees, orient
+agents, coordinate through broadcasts and summaries, and merge results back with
+full context about what each agent intended.
 
-You are one of those agents. paw gives you your task assignment, keeps you informed
-about what other agents are doing, and helps the team merge without surprises.
+There are two distinct roles. You are one of them:
+
+- **Orchestrator** — runs in the main repo, operates paw on behalf of the user.
+  Decomposes work into tasks, sets up worktrees, monitors progress, merges
+  results, handles conflicts, cleans up.
+- **Worktree agent** — runs inside an isolated worktree. Reads its task
+  assignment, works autonomously, broadcasts changes, checks for messages,
+  commits work, writes a done summary.
+
+Read the section for your role.
 
 ## Installation
 
@@ -19,76 +28,114 @@ npm install -g get-paw@latest
 paw setup                        # Set up or upgrade paw
 ```
 
-### Orchestrator commands
+---
 
-The lead orchestrator runs these on behalf of the user from the main repo:
+## Orchestrator
+
+You operate paw on behalf of the user. The user describes what they want done;
+you translate that into a `paw.yaml`, spin up agents, and merge the results.
+The user never runs paw commands — that's your job.
+
+### Orchestrator workflow
+
+1. **Create `paw.yaml`.** Run `paw shortcut generate-paw-yaml` to decompose
+   work into parallel tasks with focus areas and prompts.
+2. **`paw up`** — creates worktrees, branches, task files, and sync state.
+3. **Launch agents.** Start one agent per worktree. Each agent runs
+   `paw shortcut session-start` as their first action.
+4. **Monitor.** `paw status` to check progress. `paw check` to read broadcasts.
+   `paw ask <task> "..."` to redirect an agent.
+5. **`paw merge`** — merges completed task branches into the target branch.
+6. **Handle conflicts.** You are responsible for resolving merge conflicts.
+   When `paw merge` hits a conflict, it writes a conflict brief and stops.
+   Run `paw shortcut resolve-conflict` to read the brief and fix it, then
+   `paw merge --continue` to resume.
+7. **`paw down`** — removes worktrees and cleans up. The merged target branch
+   remains.
+
+### Orchestrator commands
 
 ```bash
 paw up                           # Create worktrees for all tasks
 paw status                       # Check progress across all tasks
 paw merge                        # Merge completed task branches
+paw merge --continue             # Resume after resolving a conflict
+paw merge --pick <task>          # Merge a specific task only
 paw down                         # Remove worktrees and clean up
+paw ask <task> "..."             # Send a directed message to an agent
+paw check                        # Read broadcasts and messages
 ```
 
-### Worktree agent commands
+### Orchestrator shortcuts
 
-Each worktree agent runs these autonomously from inside its worktree:
+| Shortcut | Purpose |
+|---|---|
+| `generate-paw-yaml` | Analyze a codebase and create a paw.yaml |
+| `fan-out-in` | Full orchestrator workflow reference |
+| `resolve-conflict` | Read conflict brief, resolve, merge --continue |
+
+---
+
+## Worktree Agent
+
+You work autonomously inside an isolated worktree. Your job is to complete your
+assigned task, communicate changes that affect other agents, and write a summary
+so the merge process understands your work.
+
+### Agent workflow
+
+1. **`paw prime`** — orient yourself. Gives you everything in one shot:
+   - Your task assignment (focus areas, instructions)
+   - Team status (who's working, who's done)
+   - Recent broadcasts from other agents
+   - Messages directed at you
+   - Completed summaries from finished agents
+2. **Broadcast your intent** before starting work.
+3. **Work on your task**, staying within your focus areas.
+4. **`paw broadcast "..."`** when you change interfaces other agents depend on.
+5. **`paw check`** periodically for messages from other agents.
+6. **`paw shortcut precommit-process`** when committing.
+7. **`paw shortcut session-end`** when finished.
+
+### Agent commands
 
 ```bash
 paw prime                        # Orient and claim your task
 paw broadcast "..."              # Announce a change to all agents
 paw check                        # Read new messages and broadcasts
+paw ask <task> "..."             # Send a directed message to an agent
+paw reply "..."                  # Reply to the most recent message
 paw done --summary "..."         # Mark task completed with summary
+paw status                       # Check progress across all tasks
 ```
 
-## On Session Start
-
-Run `paw prime` immediately. It gives you everything in one shot:
-- Your task assignment (focus areas, instructions)
-- Team status (who's working, who's done)
-- Recent broadcasts from other agents
-- Messages directed at you
-- Completed summaries from finished agents
-
-For the full session-start workflow, run `paw shortcut session-start`.
-
-## Commands
-
-```
-paw prime              # orient + self-assign (run this first)
-paw status             # check progress across all tasks
-paw broadcast "..."    # announce a change to all agents
-paw ask <task> "..."   # send a directed message to a specific agent
-paw reply "..."        # reply to the most recent directed message
-paw check              # read new messages and broadcasts
-paw done --summary "." # mark task completed with summary
-```
-
-## Workflow
-
-1. `paw prime` -- read your assignment, see the team state
-2. Broadcast your intent before starting work
-3. Work on your task, staying within your focus areas
-4. `paw broadcast "..."` when you change interfaces other agents depend on
-5. `paw check` periodically for messages from other agents
-6. Follow `paw shortcut precommit-process` when committing
-7. `paw shortcut session-end` when finished
-
-## Shortcuts
-
-Run `paw shortcut <name>` for step-by-step workflows:
+### Agent shortcuts
 
 | Shortcut | Purpose |
 |---|---|
-| `generate-paw-yaml` | Analyze a codebase and create a paw.yaml |
-| `lead-orchestrator` | Coordinate parallel agents from the main repo |
-| `session-start` | Agent's first actions in a worktree |
+| `session-start` | First actions in a worktree |
 | `session-end` | Wrap up: broadcast final state, write done summary |
-| `implement-and-validate` | TDD workflow from task assignment to done |
-| `resolve-conflict` | Read conflict brief, resolve, merge --continue |
+| `build-task` | TDD workflow from task assignment to done |
 | `precommit-process` | Review, test, broadcast, and commit checklist |
 
-## Guidelines
+### Key principles
+
+- **Broadcast interface changes.** If you change a type, export, or API that
+  another task might depend on, broadcast it. This is the most important
+  coordination action.
+- **Stay in your focus area.** Your task file lists which files you own. Editing
+  files outside your focus area causes merge conflicts.
+- **Read before you plan.** `paw prime` shows what other agents have done and
+  said. Adapt your approach to the current state, not your initial assumptions.
+- **Write a good summary.** Your done summary is what the merge process and
+  resolver agents use to understand your work. Use `paw template task-summary`
+  for the structure.
+
+---
+
+## Reference
+
+### Guidelines
 
 Run `paw guidelines <name>` for reference knowledge:
 
@@ -100,7 +147,7 @@ Run `paw guidelines <name>` for reference knowledge:
 | `paw-task-decomposition` | How to split work into good parallel tasks |
 | `typescript-testing-guidelines` | Test behavior and data flow, not mock existence |
 
-## Templates
+### Templates
 
 Run `paw template <name>` for document structures:
 
@@ -109,9 +156,9 @@ Run `paw template <name>` for document structures:
 | `paw-yaml` | Annotated paw.yaml config structure |
 | `task-summary` | Done summary structure (what/interfaces/watch-out) |
 
-## Hooks
+### Hooks
 
-paw can run validation commands at two points. Configure them in paw.yaml:
+Configure validation hooks in paw.yaml:
 
 ```yaml
 hooks:
@@ -119,24 +166,9 @@ hooks:
   post-merge: npm test
 ```
 
-**`pre-done`** runs before `paw done` marks a task complete. If it fails, done is
-blocked and the agent must fix the issue before trying again. Use `--force` to bypass.
+**`pre-done`** runs before `paw done` marks a task complete. If it fails, done
+is blocked. Use `--force` to bypass.
 
-**`post-merge`** runs after each clean merge in `paw merge`. If it fails, paw stops
-and shows rollback guidance. Use `paw merge --continue` after fixing the issue, or
-roll back with `git reset --hard refs/paw-backup/{task}`.
-
-Backup refs are created automatically before each merge for safe rollback.
-
-## Key Principles
-
-- **Broadcast interface changes.** If you change a type, export, or API that another
-  task might depend on, broadcast it. This is the most important coordination action.
-- **Stay in your focus area.** Your task file lists which files you own. Editing files
-  outside your focus area causes merge conflicts.
-- **Read before you plan.** `paw prime` shows what other agents have done and said.
-  Adapt your approach to the current state, not your initial assumptions.
-- **Write a good summary.** Your done summary is what the merge process and resolver
-  agents use to understand your work. `paw done` requires a structured summary with
-  sections: What I did, Interface changes, Watch out. Use `--force` to bypass for
-  trivial tasks. See `paw template task-summary`.
+**`post-merge`** runs after each clean merge. If it fails, paw stops and shows
+rollback guidance. Use `paw merge --continue` after fixing, or roll back with
+`git reset --hard refs/paw-backup/{task}`.

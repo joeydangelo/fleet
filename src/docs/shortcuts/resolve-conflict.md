@@ -1,7 +1,7 @@
 ---
 title: Resolve Conflict
 description: Read a conflict brief, resolve the merge conflict, and continue merging
-category: git
+category: orchestrator
 ---
 A `paw merge` hit a conflict and generated a conflict brief. You're the resolver --
 use the brief to understand what happened and fix it.

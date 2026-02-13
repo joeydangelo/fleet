@@ -1,7 +1,7 @@
 ---
 title: Session End
 description: Agent's final actions -- broadcast final state, write done summary
-category: session
+category: worktree agent
 ---
 You're wrapping up your task in a paw worktree. Make sure other agents and the person
 running the merge have full context about what you did.

@@ -1,21 +1,23 @@
 ---
 title: Generate paw.yaml
 description: Analyze a codebase and generate a paw.yaml with well-decomposed parallel tasks
-category: planning
+category: orchestrator
 ---
 Generate a `paw.yaml` that splits the user's feature request into parallel agent tasks.
 
 ## Instructions
 
 1. **Gather context.** If you already have a spec, feature plan, or clear build
-   description, use that directly. Otherwise, ask the user what they want to build --
-   get enough detail to identify the major pieces of work.
+   description, use that directly. Otherwise, ask the user what they want to build.
+   Ask good questions — clarify scope, priorities, and constraints until you have
+   enough detail to identify the major pieces of work.
 
 2. **Analyze the codebase.** Look at the directory structure, module boundaries, and
    existing patterns. Identify natural seams where work can be parallelized without
    agents stepping on each other.
 
-3. **Decompose into tasks.** Each task should:
+3. **Decompose into tasks.** Run `paw guidelines paw-task-decomposition` for
+   the full decomposition framework. Each task should:
    - Have a clear, independent focus area (files/directories the agent owns)
    - Minimize overlap with other tasks' focus areas
    - Be roughly similar in size

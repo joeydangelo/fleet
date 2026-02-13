@@ -1,7 +1,7 @@
 ---
-title: Lead Orchestrator
-description: Coordinate parallel agents from the main repo -- setup, monitor, merge, cleanup
-category: session
+title: Fan Out In
+description: Full orchestrator workflow -- decompose, dispatch agents, monitor, merge, clean up
+category: orchestrator
 ---
 You're the lead orchestrator running a paw session from the main repo. Your job is
 to set up the session, merge results, and clean up. During the session, agents work

@@ -1,21 +1,18 @@
 ---
-title: Implement and Validate
+title: Build Task
 description: Take a task from assignment to done with TDD, testing, and atomic commits
-category: planning
+category: worktree agent
 ---
 A workflow for implementing your paw task assignment with full test coverage and
 clean commits.
 
 ## Steps
 
-1. **Load context.** Run `paw prime` to get your task assignment, team status, and
-   recent broadcasts. Load relevant guidelines with `paw guidelines <name>`. Read
-   the task prompt in your `.paw/tasks/<task>.md` file. If it references external
-   specs, issues, or beads, read those too.
+1. **Start.** Run `paw shortcut session-start` to orient yourself, load
+   context, and broadcast your intent.
 
 2. **Plan the work.** Break your task into small, testable increments. Bugs first,
-   then features. If the project uses an external tracker (beads, GitHub Issues, etc.),
-   update the tracker as you go. If not, the paw task file is your tracking.
+   then features.
 
 3. **Implement with TDD.** For each increment:
    - Write a failing test first (Red)
