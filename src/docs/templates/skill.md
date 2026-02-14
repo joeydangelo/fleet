@@ -66,6 +66,7 @@ paw launch --dry-run             # Preview launch commands without spawning
 paw launch --task <name>         # Launch agent in a specific worktree
 paw launch --wait                # Launch and block until all agents done
 paw status                       # Check progress across all tasks
+paw watch                        # Continuous terminal monitor (auto-exits when done)
 paw merge                        # Merge completed task branches
 paw merge --continue             # Resume after conflict or hook failure
 paw merge --pick <task>          # Merge a specific task only

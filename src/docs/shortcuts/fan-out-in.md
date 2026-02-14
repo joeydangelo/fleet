@@ -25,10 +25,13 @@ independently -- you can check in, but you're not actively managing them.
 
 ## Check-in (optional)
 
-PAW's communication is async and pull-based. There's no real-time monitoring --
-you check in when you want.
+PAW's communication is async and pull-based. You check in when you want, or
+leave `paw watch` running for a continuous view.
 
-- **`paw status`** -- see which agents are working, done, or pending
+- **`paw watch`** -- continuous terminal monitor. Streams broadcasts, status
+  changes, and commit counts as they happen. Auto-exits when all agents are done.
+  Use `--interval 10` to adjust polling frequency, `--no-exit` to keep running.
+- **`paw status`** -- point-in-time snapshot of agent progress
 - **`paw check`** -- read broadcasts and messages from agents
 - **`paw ask <task> "..."`** -- send a message to redirect an agent
 
