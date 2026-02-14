@@ -10,6 +10,7 @@ import {
   writeTaskFiles,
   ensureGitignore,
   detectTaskName,
+  copyIncludes,
 } from '../src/lib/session.js';
 
 function makeTempDir(): string {
@@ -390,5 +391,102 @@ describe('ensureGitignore with baseBranch (paw-numd)', () => {
 
     const content = readFileSync(resolve(repoDir, '.gitignore'), 'utf-8');
     expect(content).toBe('.paw/\n');
+  });
+});
+
+describe('copyIncludes', () => {
+  it('copies files matching literal patterns', async () => {
+    const repoRoot = makeTempDir();
+    const worktree = makeTempDir();
+
+    writeFileSync(resolve(repoRoot, '.env'), 'SECRET=abc');
+
+    const copied = await copyIncludes(repoRoot, worktree, ['.env']);
+
+    expect(readFileSync(resolve(worktree, '.env'), 'utf-8')).toBe('SECRET=abc');
+    expect(copied).toEqual(['.env']);
+
+    rmSync(repoRoot, { recursive: true });
+    rmSync(worktree, { recursive: true });
+  });
+
+  it('creates parent directories as needed', async () => {
+    const repoRoot = makeTempDir();
+    const worktree = makeTempDir();
+
+    mkdirSync(resolve(repoRoot, 'config'), { recursive: true });
+    writeFileSync(resolve(repoRoot, 'config', 'local.json'), '{}');
+
+    const copied = await copyIncludes(repoRoot, worktree, ['config/local.json']);
+
+    expect(readFileSync(resolve(worktree, 'config', 'local.json'), 'utf-8')).toBe('{}');
+    expect(copied).toEqual(['config/local.json']);
+
+    rmSync(repoRoot, { recursive: true });
+    rmSync(worktree, { recursive: true });
+  });
+
+  it('skips files that already exist in worktree', async () => {
+    const repoRoot = makeTempDir();
+    const worktree = makeTempDir();
+
+    writeFileSync(resolve(repoRoot, '.env'), 'NEW=value');
+    writeFileSync(resolve(worktree, '.env'), 'OLD=value');
+
+    const copied = await copyIncludes(repoRoot, worktree, ['.env']);
+
+    // Should not overwrite
+    expect(readFileSync(resolve(worktree, '.env'), 'utf-8')).toBe('OLD=value');
+    expect(copied).toEqual([]);
+
+    rmSync(repoRoot, { recursive: true });
+    rmSync(worktree, { recursive: true });
+  });
+
+  it('resolves glob patterns', async () => {
+    const repoRoot = makeTempDir();
+    const worktree = makeTempDir();
+
+    writeFileSync(resolve(repoRoot, '.env'), 'A=1');
+    writeFileSync(resolve(repoRoot, '.env.local'), 'B=2');
+    writeFileSync(resolve(repoRoot, '.env.test'), 'C=3');
+
+    const copied = await copyIncludes(repoRoot, worktree, ['.env*']);
+
+    expect(copied.sort()).toEqual(['.env', '.env.local', '.env.test']);
+    expect(existsSync(resolve(worktree, '.env'))).toBe(true);
+    expect(existsSync(resolve(worktree, '.env.local'))).toBe(true);
+    expect(existsSync(resolve(worktree, '.env.test'))).toBe(true);
+
+    rmSync(repoRoot, { recursive: true });
+    rmSync(worktree, { recursive: true });
+  });
+
+  it('returns empty array when no patterns match', async () => {
+    const repoRoot = makeTempDir();
+    const worktree = makeTempDir();
+
+    const copied = await copyIncludes(repoRoot, worktree, ['nonexistent.*']);
+
+    expect(copied).toEqual([]);
+
+    rmSync(repoRoot, { recursive: true });
+    rmSync(worktree, { recursive: true });
+  });
+
+  it('handles multiple patterns', async () => {
+    const repoRoot = makeTempDir();
+    const worktree = makeTempDir();
+
+    writeFileSync(resolve(repoRoot, '.env'), 'A=1');
+    mkdirSync(resolve(repoRoot, 'config'), { recursive: true });
+    writeFileSync(resolve(repoRoot, 'config', 'local.json'), '{}');
+
+    const copied = await copyIncludes(repoRoot, worktree, ['.env', 'config/local.json']);
+
+    expect(copied.sort()).toEqual(['.env', 'config/local.json']);
+
+    rmSync(repoRoot, { recursive: true });
+    rmSync(worktree, { recursive: true });
   });
 });

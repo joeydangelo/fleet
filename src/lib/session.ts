@@ -1,5 +1,13 @@
 import { resolve, dirname, basename } from 'node:path';
-import { mkdirSync, writeFileSync, readFileSync, existsSync, readdirSync } from 'node:fs';
+import {
+  mkdirSync,
+  writeFileSync,
+  readFileSync,
+  existsSync,
+  readdirSync,
+  copyFileSync,
+} from 'node:fs';
+import fg from 'fast-glob';
 import type { PawConfig } from './config.js';
 import { branchExists, createBranch, createWorktree, getFileFromBranch } from './git.js';
 import { REQUIRED_SECTIONS } from './summary.js';
@@ -129,6 +137,31 @@ export function detectTaskName(cwd: string): string | null {
     }
   }
   return null;
+}
+
+/**
+ * Copy files matching glob patterns from repo root into a worktree.
+ * Skips files that already exist in the worktree (e.g. tracked files).
+ * Returns the list of relative paths that were actually copied.
+ */
+export async function copyIncludes(
+  repoRoot: string,
+  worktreePath: string,
+  patterns: string[],
+): Promise<string[]> {
+  const matches = await fg(patterns, { cwd: repoRoot, dot: true, onlyFiles: true });
+  const copied: string[] = [];
+
+  for (const file of matches) {
+    const dest = resolve(worktreePath, file);
+    if (existsSync(dest)) continue;
+
+    mkdirSync(dirname(dest), { recursive: true });
+    copyFileSync(resolve(repoRoot, file), dest);
+    copied.push(file);
+  }
+
+  return copied;
 }
 
 export function writeTaskFiles(

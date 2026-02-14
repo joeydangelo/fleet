@@ -18,6 +18,15 @@ target: feature/my-feature
 # Can be any CLI command: claude, codex, "claude --print", etc.
 agent: claude
 
+# Files to copy from the main repo into each worktree during `paw up`.
+# Useful for gitignored files like .env, local configs, and credentials that
+# git worktree add doesn't bring along. Supports glob patterns.
+# Skips files that already exist in the worktree.
+# include:
+#   - .env
+#   - .env.local
+#   - "config/local.json"
+
 # Optional hooks.
 # pre-done runs before `paw done` marks a task complete. If it fails, done is blocked.
 # post-merge runs after each clean merge in `paw merge`. If it fails, paw stops

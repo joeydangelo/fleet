@@ -165,6 +165,22 @@ Run `paw template <name>` for document structures:
 | `paw-yaml` | Annotated paw.yaml config structure |
 | `task-summary` | Done summary structure (what/interfaces/watch-out) |
 
+### Include (gitignored file copying)
+
+Copy gitignored files from the main repo into each worktree during `paw up`.
+Files that already exist in the worktree are skipped.
+
+```yaml
+include:
+  - .env
+  - .env.local
+  - "config/local.json"
+  - "**/.secret*"
+```
+
+Patterns use glob syntax (powered by fast-glob). `paw up --dry-run` previews
+which files would be copied.
+
 ### Hooks
 
 Configure validation hooks in paw.yaml:

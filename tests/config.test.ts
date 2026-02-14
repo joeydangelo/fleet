@@ -205,6 +205,50 @@ tasks:
   });
 });
 
+describe('include config', () => {
+  it('parses include as array of strings', () => {
+    const dir = makeTempDir();
+    const configPath = resolve(dir, 'paw.yaml');
+    writeFileSync(
+      configPath,
+      `
+target: feature/x
+include:
+  - .env
+  - .env.local
+  - "config/local.json"
+tasks:
+  a:
+    focus: src/
+`,
+    );
+
+    const config = loadConfig(configPath);
+    expect(config.include).toEqual(['.env', '.env.local', 'config/local.json']);
+
+    rmSync(dir, { recursive: true });
+  });
+
+  it('accepts config without include', () => {
+    const dir = makeTempDir();
+    const configPath = resolve(dir, 'paw.yaml');
+    writeFileSync(
+      configPath,
+      `
+target: feature/x
+tasks:
+  a:
+    focus: src/
+`,
+    );
+
+    const config = loadConfig(configPath);
+    expect(config.include).toBeUndefined();
+
+    rmSync(dir, { recursive: true });
+  });
+});
+
 describe('resolveConfigPath', () => {
   it('finds paw.yaml', () => {
     const dir = makeTempDir();
