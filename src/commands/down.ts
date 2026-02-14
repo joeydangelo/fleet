@@ -82,7 +82,7 @@ export function downCommand(): Command {
           try {
             const doc = readDoc('templates', 'paw-yaml');
             if (doc) {
-              const yamlMatch = doc.content.match(/```yaml\n([\s\S]*?)```/);
+              const yamlMatch = doc.content.match(/```yaml\r?\n([\s\S]*?)```/);
               if (yamlMatch) {
                 const configDir = resolve(repoRoot, '.paw');
                 mkdirSync(configDir, { recursive: true });
