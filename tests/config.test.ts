@@ -93,7 +93,7 @@ tasks:
 `,
     );
 
-    expect(() => loadConfig(configPath)).toThrow(/Invalid paw\.yaml/);
+    expect(() => loadConfig(configPath)).toThrow(/Invalid \.paw\/paw\.yaml/);
     rmSync(dir, { recursive: true });
   });
 });
@@ -250,29 +250,31 @@ tasks:
 });
 
 describe('resolveConfigPath', () => {
-  it('finds paw.yaml', () => {
+  it('finds .paw/paw.yaml', () => {
     const dir = makeTempDir();
-    writeFileSync(resolve(dir, 'paw.yaml'), 'target: x\ntasks:\n  a:\n    focus: b\n');
+    mkdirSync(resolve(dir, '.paw'), { recursive: true });
+    writeFileSync(resolve(dir, '.paw/paw.yaml'), 'target: x\ntasks:\n  a:\n    focus: b\n');
 
     const result = resolveConfigPath(dir);
-    expect(result).toBe(resolve(dir, 'paw.yaml'));
+    expect(result).toBe(resolve(dir, '.paw/paw.yaml'));
 
     rmSync(dir, { recursive: true });
   });
 
-  it('finds paw.yml', () => {
+  it('finds .paw/paw.yml', () => {
     const dir = makeTempDir();
-    writeFileSync(resolve(dir, 'paw.yml'), 'target: x\ntasks:\n  a:\n    focus: b\n');
+    mkdirSync(resolve(dir, '.paw'), { recursive: true });
+    writeFileSync(resolve(dir, '.paw/paw.yml'), 'target: x\ntasks:\n  a:\n    focus: b\n');
 
     const result = resolveConfigPath(dir);
-    expect(result).toBe(resolve(dir, 'paw.yml'));
+    expect(result).toBe(resolve(dir, '.paw/paw.yml'));
 
     rmSync(dir, { recursive: true });
   });
 
   it('throws when no config found', () => {
     const dir = makeTempDir();
-    expect(() => resolveConfigPath(dir)).toThrow('No paw.yaml found');
+    expect(() => resolveConfigPath(dir)).toThrow('No .paw/paw.yaml found');
     rmSync(dir, { recursive: true });
   });
 });

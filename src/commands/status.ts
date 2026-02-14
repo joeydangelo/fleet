@@ -20,7 +20,7 @@ import {
 export function statusCommand(): Command {
   return new Command('status')
     .description('Check progress of all task worktrees')
-    .option('-c, --config <path>', 'Path to paw.yaml')
+    .option('-c, --config <path>', 'Path to .paw/paw.yaml')
     .action((opts: { config?: string }) => {
       try {
         const repoRoot = getRepoRoot();

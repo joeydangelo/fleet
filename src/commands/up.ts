@@ -9,7 +9,7 @@ import { success, pending, handleError } from '../lib/output.js';
 export function upCommand(): Command {
   return new Command('up')
     .description('Create worktrees and branches for all tasks')
-    .option('-c, --config <path>', 'Path to paw.yaml')
+    .option('-c, --config <path>', 'Path to .paw/paw.yaml')
     .option('--dry-run', 'Show what would be created without making changes')
     .action(async (opts: { config?: string; dryRun?: boolean }) => {
       try {

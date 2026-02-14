@@ -9,14 +9,14 @@ independently -- you can check in, but you're not actively managing them.
 
 ## Setup
 
-1. **Write `paw.yaml`.** Use `paw shortcut generate-paw-yaml` to decompose work
+1. **Write `.paw/paw.yaml`.** Use `paw shortcut generate-paw-yaml` to decompose work
    into parallel tasks with focus areas and prompts.
 
 2. **Run `paw up`.** Creates worktrees, branches, and sync state. Verify the output
    shows all tasks created.
 
 3. **Launch agents.** Run `paw launch` to open a terminal with the agent command
-   in each worktree. Requires `agent: <command>` in `paw.yaml`. Each agent
+   in each worktree. Requires `agent: <command>` in `.paw/paw.yaml`. Each agent
    auto-orients via `paw prime` on startup.
 
    Use `paw launch --dry-run` to preview commands, `paw launch --task <name>` to

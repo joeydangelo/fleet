@@ -275,7 +275,7 @@ async function runWatchLoop(opts: {
 export function watchCommand(): Command {
   return new Command('watch')
     .description('Continuously monitor agent progress')
-    .option('-c, --config <path>', 'Path to paw.yaml')
+    .option('-c, --config <path>', 'Path to .paw/paw.yaml')
     .option('--interval <seconds>', 'Poll interval in seconds', '5')
     .option('--no-exit', 'Keep running after all agents are done')
     .action(async (opts: { config?: string; interval: string; exit: boolean }) => {

@@ -16,7 +16,7 @@ import { success, error, skip, pending, handleError } from '../lib/output.js';
 export function downCommand(): Command {
   return new Command('down')
     .description('Remove all task worktrees and clean up')
-    .option('-c, --config <path>', 'Path to paw.yaml')
+    .option('-c, --config <path>', 'Path to .paw/paw.yaml')
     .option('--dry-run', 'Show what would be removed without making changes')
     .option('--keep-branches', 'Keep branches after removing worktrees', false)
     .action((opts: { config?: string; dryRun?: boolean; keepBranches: boolean }) => {

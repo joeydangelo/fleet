@@ -188,7 +188,7 @@ function printFull(
 }
 
 /**
- * When run from the main repo root (no task file), read paw.yaml and
+ * When run from the main repo root (no task file), read .paw/paw.yaml and
  * the sync branch to claim the next pending task and direct the agent
  * to its worktree.
  */
@@ -197,7 +197,7 @@ function selfAssignFromRoot(repoRoot: string): void {
   try {
     configPath = resolveConfigPath(repoRoot);
   } catch {
-    // No paw.yaml -- fall back to the original error
+    // No .paw/paw.yaml -- fall back to the original error
     console.error(pc.red('Could not detect task name. Are you in a paw worktree?'));
     console.error(
       pc.dim('Expected a single .md file in .paw/tasks/. Run `paw up` to create worktrees.'),
@@ -230,7 +230,7 @@ function selfAssignFromRoot(repoRoot: string): void {
   const wt = worktrees.find((w) => w.taskName === pendingTask);
 
   console.log('No task file found in current directory.');
-  console.log('Checking paw.yaml for unclaimed tasks...\n');
+  console.log('Checking .paw/paw.yaml for unclaimed tasks...\n');
   console.log(pc.green(`Claimed task: ${pendingTask}`));
   if (wt) {
     console.log(`Worktree: ${wt.worktreePath}\n`);

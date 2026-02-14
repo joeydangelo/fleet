@@ -36,16 +36,16 @@ export function loadConfig(configPath: string): PawConfig {
   const result = PawConfigSchema.safeParse(parsed);
   if (!result.success) {
     const issues = result.error.issues.map((i) => `  ${i.path.join('.')}: ${i.message}`).join('\n');
-    throw new Error(`Invalid paw.yaml:\n${issues}`);
+    throw new Error(`Invalid .paw/paw.yaml:\n${issues}`);
   }
   return result.data;
 }
 
 export function resolveConfigPath(cwd: string): string {
-  const candidates = ['paw.yaml', 'paw.yml'];
+  const candidates = ['.paw/paw.yaml', '.paw/paw.yml'];
   for (const name of candidates) {
     const p = resolve(cwd, name);
     if (existsSync(p)) return p;
   }
-  throw new Error('No paw.yaml found. Create one or specify --config <path>');
+  throw new Error('No .paw/paw.yaml found. Create one or specify --config <path>');
 }

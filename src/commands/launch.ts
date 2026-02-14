@@ -29,7 +29,7 @@ function allTasksDone(repoRoot: string): boolean {
 export function launchCommand(): Command {
   return new Command('launch')
     .description('Open a terminal with the agent command for each task worktree')
-    .option('-c, --config <path>', 'Path to paw.yaml')
+    .option('-c, --config <path>', 'Path to .paw/paw.yaml')
     .option('--dry-run', 'Show what would be spawned without launching')
     .option('-t, --task <name>', 'Launch agent in a specific worktree only')
     .option('--terminal <emulator>', 'Override terminal emulator (Linux)')
@@ -42,7 +42,9 @@ export function launchCommand(): Command {
 
         if (!config.agent) {
           console.error(
-            pc.red('No agent configured. Add an agent field to paw.yaml:\n\n  agent: claude\n'),
+            pc.red(
+              'No agent configured. Add an agent field to .paw/paw.yaml:\n\n  agent: claude\n',
+            ),
           );
           process.exit(1);
         }

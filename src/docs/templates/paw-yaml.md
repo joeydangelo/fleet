@@ -1,9 +1,9 @@
 ---
 title: paw.yaml Template
-description: Annotated config structure for paw.yaml
+description: Annotated config structure for .paw/paw.yaml
 ---
 ```yaml
-# paw.yaml -- defines parallel agent tasks for a paw session
+# .paw/paw.yaml -- defines parallel agent tasks for a paw session
 #
 # Run `paw up` to create worktrees and branches from this file.
 # Run `paw guidelines paw-task-decomposition` for guidance on splitting work.

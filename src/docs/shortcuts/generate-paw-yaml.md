@@ -1,9 +1,9 @@
 ---
 title: Generate paw.yaml
-description: Analyze a codebase and generate a paw.yaml with well-decomposed parallel tasks
+description: Analyze a codebase and generate .paw/paw.yaml with well-decomposed parallel tasks
 category: orchestrator
 ---
-Generate a `paw.yaml` that splits the user's feature request into parallel agent tasks.
+Generate `.paw/paw.yaml` to split the user's feature request into parallel agent tasks.
 
 ## Instructions
 
@@ -31,7 +31,7 @@ Generate a `paw.yaml` that splits the user's feature request into parallel agent
    - What other tasks should expect from it
    - Tell the owning agent to `paw broadcast` when it changes the interface
 
-5. **Write the `paw.yaml`:**
+5. **Write `.paw/paw.yaml`:**
 
    ```yaml
    target: feature/branch-name

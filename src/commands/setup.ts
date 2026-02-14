@@ -87,7 +87,7 @@ export function setupCommand(): Command {
         gitignore = readFileSync(gitignorePath, 'utf-8');
       }
 
-      const gitignoreEntries = ['.paw/', 'paw.yaml', 'paw.yml'];
+      const gitignoreEntries = ['.paw/'];
       const missing = gitignoreEntries.filter((entry) => !gitignore.includes(entry));
 
       if (missing.length === 0) {
@@ -117,7 +117,7 @@ export function setupCommand(): Command {
       // Install Claude Code hooks and wrapper script
       installHooks(repoRoot);
 
-      console.log(pc.dim('\nCreate a paw.yaml and run `paw up` to start a session.'));
+      console.log(pc.dim('\nCreate .paw/paw.yaml and run `paw up` to start a session.'));
     } catch (err) {
       handleError(err);
     }
