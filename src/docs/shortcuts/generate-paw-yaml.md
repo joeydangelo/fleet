@@ -10,7 +10,10 @@ Generate `.paw/paw.yaml` to split the user's feature request into parallel agent
 1. **Gather context.** If you already have a spec, feature plan, or clear build
    description, use that directly. Otherwise, ask the user what they want to build.
    Ask good questions — clarify scope, priorities, and constraints until you have
-   enough detail to identify the major pieces of work.
+   enough detail to identify the major pieces of work. Also ask which agent CLI
+   to use (claude, codex, opencode, gemini, or a custom command). This becomes
+   the `agent:` field in paw.yaml — it's the command `paw launch` runs in each
+   worktree terminal.
 
 2. **Analyze the codebase.** Look at the directory structure, module boundaries, and
    existing patterns. Identify natural seams where work can be parallelized without
@@ -35,6 +38,7 @@ Generate `.paw/paw.yaml` to split the user's feature request into parallel agent
 
    ```yaml
    target: feature/branch-name
+   agent: claude          # or codex, opencode, gemini, etc.
    tasks:
      task-name:
        focus:
