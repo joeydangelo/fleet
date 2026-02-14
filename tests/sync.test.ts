@@ -17,7 +17,9 @@ import {
   initSyncWorktree,
   removeSyncWorktree,
   resolveSyncDir,
+  archiveSession,
 } from '../src/lib/sync.js';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { deleteBranch, createBranch, createWorktree, removeWorktree } from '../src/lib/git.js';
 
 function makeTempDir(): string {
@@ -401,5 +403,70 @@ describe('resolveSyncDir', () => {
   it('resolves from a task worktree to the main repo .paw/sync/', () => {
     const syncDir = resolveSyncDir(taskWorktreePath);
     expect(syncDir).toBe(resolve(repoDir, '.paw', 'sync'));
+  });
+});
+
+describe('archiveSession', () => {
+  let repoDir: string;
+
+  beforeEach(() => {
+    repoDir = makeTempDir();
+    gitInit(repoDir);
+  });
+
+  afterEach(() => {
+    try {
+      removeSyncWorktree(repoDir);
+    } catch {
+      // already removed
+    }
+    rmSync(repoDir, { recursive: true, force: true });
+  });
+
+  it('returns null when no sync worktree exists', () => {
+    expect(archiveSession(repoDir, 'feature/foo')).toBeNull();
+  });
+
+  it('archives state.json, journal, and summaries', () => {
+    initSyncWorktree(repoDir);
+    const state = initSyncState('feature/dash', ['auth', 'api'], 'paw.yaml');
+    writeSyncState(state, repoDir);
+    writeSyncFile('journal/auth.jsonl', '{"type":"broadcast"}\n', repoDir);
+    writeSyncFile('summaries/auth.md', '# Auth summary\n', repoDir);
+
+    const archivePath = archiveSession(repoDir, 'feature/dash');
+
+    expect(archivePath).not.toBeNull();
+    expect(archivePath!).toContain('feature-dash');
+    expect(existsSync(resolve(archivePath!, 'state.json'))).toBe(true);
+    expect(existsSync(resolve(archivePath!, 'journal', 'auth.jsonl'))).toBe(true);
+    expect(existsSync(resolve(archivePath!, 'summaries', 'auth.md'))).toBe(true);
+  });
+
+  it('copies paw.yaml from .paw/ into archive', () => {
+    initSyncWorktree(repoDir);
+    const state = initSyncState('feature/dash', ['auth'], 'paw.yaml');
+    writeSyncState(state, repoDir);
+
+    // Write a paw.yaml in .paw/
+    const configDir = resolve(repoDir, '.paw');
+    writeFileSync(resolve(configDir, 'paw.yaml'), 'target: feature/dash\n');
+
+    const archivePath = archiveSession(repoDir, 'feature/dash');
+
+    expect(existsSync(resolve(archivePath!, 'paw.yaml'))).toBe(true);
+    expect(readFileSync(resolve(archivePath!, 'paw.yaml'), 'utf-8')).toBe('target: feature/dash\n');
+  });
+
+  it('uses session date from state.json for folder name', () => {
+    initSyncWorktree(repoDir);
+    const state = initSyncState('feature/dash', ['auth'], 'paw.yaml');
+    writeSyncState(state, repoDir);
+
+    const archivePath = archiveSession(repoDir, 'feature/dash');
+
+    const folderName = archivePath!.split(/[\\/]/).pop()!;
+    // Folder should start with a date prefix like 2026-02-14
+    expect(folderName).toMatch(/^\d{4}-\d{2}-\d{2}-feature-dash$/);
   });
 });

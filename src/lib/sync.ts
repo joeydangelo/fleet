@@ -1,5 +1,14 @@
 import { resolve, join, dirname } from 'node:path';
-import { existsSync, rmSync, readFileSync, writeFileSync, mkdirSync, readdirSync } from 'node:fs';
+import {
+  existsSync,
+  rmSync,
+  readFileSync,
+  writeFileSync,
+  mkdirSync,
+  readdirSync,
+  cpSync,
+  copyFileSync,
+} from 'node:fs';
 import { git } from './git.js';
 
 const SYNC_BRANCH = 'paw-sync';
@@ -281,4 +290,50 @@ export function updateMergeEntry(state: SyncState, taskName: string, entry: Merg
       [taskName]: entry,
     },
   };
+}
+
+/**
+ * Archive the sync worktree contents to .paw/sessions/<date>-<target>/.
+ * Copies state.json, journal/, summaries/, conflicts/, and paw.yaml.
+ * Returns the archive path, or null if nothing to archive.
+ */
+export function archiveSession(repoRoot: string, target: string): string | null {
+  const syncDir = resolve(repoRoot, '.paw', 'sync');
+  if (!existsSync(syncDir)) return null;
+
+  const stateFile = resolve(syncDir, STATE_FILE);
+  if (!existsSync(stateFile)) return null;
+
+  // Read session date from state.json
+  let datePrefix: string;
+  try {
+    const state = JSON.parse(readFileSync(stateFile, 'utf-8')) as SyncState;
+    datePrefix = state.session.slice(0, 10); // ISO date portion
+  } catch {
+    datePrefix = new Date().toISOString().slice(0, 10);
+  }
+
+  // Sanitize target branch for folder name (feature/foo-bar → feature-foo-bar)
+  const sanitized = target.replace(/\//g, '-');
+  const archiveDir = resolve(repoRoot, '.paw', 'sessions', `${datePrefix}-${sanitized}`);
+  mkdirSync(archiveDir, { recursive: true });
+
+  // Copy state.json
+  copyFileSync(stateFile, resolve(archiveDir, 'state.json'));
+
+  // Copy directories that exist
+  for (const dir of ['journal', 'summaries', 'conflicts']) {
+    const src = resolve(syncDir, dir);
+    if (existsSync(src)) {
+      cpSync(src, resolve(archiveDir, dir), { recursive: true });
+    }
+  }
+
+  // Copy paw.yaml from .paw/
+  const configPath = resolve(repoRoot, '.paw', 'paw.yaml');
+  if (existsSync(configPath)) {
+    copyFileSync(configPath, resolve(archiveDir, 'paw.yaml'));
+  }
+
+  return archiveDir;
 }
