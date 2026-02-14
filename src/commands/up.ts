@@ -2,7 +2,7 @@ import { Command } from 'commander';
 import pc from 'picocolors';
 import { getRepoRoot } from '../lib/git.js';
 import { loadConfig, resolveConfigPath } from '../lib/config.js';
-import { createSession, planWorktrees, writeTaskFiles } from '../lib/session.js';
+import { createSession, planWorktrees, writeTaskFiles, copyIncludes } from '../lib/session.js';
 import { initSyncState, writeSyncStateAndFiles, initSyncWorktree } from '../lib/sync.js';
 import { success, pending, handleError } from '../lib/output.js';
 
@@ -11,7 +11,7 @@ export function upCommand(): Command {
     .description('Create worktrees and branches for all tasks')
     .option('-c, --config <path>', 'Path to paw.yaml')
     .option('--dry-run', 'Show what would be created without making changes')
-    .action((opts: { config?: string; dryRun?: boolean }) => {
+    .action(async (opts: { config?: string; dryRun?: boolean }) => {
       try {
         const repoRoot = getRepoRoot();
         const configPath = opts.config ?? resolveConfigPath(repoRoot);
@@ -27,12 +27,26 @@ export function upCommand(): Command {
           for (const wt of worktrees) {
             pending(wt.taskName, `${wt.branch} -> ${wt.worktreePath}`);
           }
+          if (config.include?.length) {
+            console.log(pc.dim(`\n  include: ${config.include.join(', ')}`));
+          }
           console.log(pc.dim('\nDry run -- no changes made.'));
           return;
         }
 
         const worktrees = createSession(config, repoRoot);
         writeTaskFiles(config, worktrees, config.target);
+
+        if (config.include?.length) {
+          for (const wt of worktrees) {
+            const copied = await copyIncludes(repoRoot, wt.worktreePath, config.include);
+            if (copied.length > 0) {
+              console.log(
+                pc.dim(`  copied ${copied.length} file(s) to ${wt.taskName}: ${copied.join(', ')}`),
+              );
+            }
+          }
+        }
 
         initSyncWorktree(repoRoot);
         const focusMap: Record<string, string[]> = {};

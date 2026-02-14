@@ -16,6 +16,7 @@ const HooksSchema = z.object({
 const PawConfigSchema = z.object({
   base: z.string().default('main'),
   target: z.string(),
+  include: z.array(z.string()).optional(),
   hooks: HooksSchema.optional(),
   tasks: z.record(z.string(), TaskSchema),
 });
