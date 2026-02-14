@@ -62,6 +62,7 @@ The user never runs paw commands — that's your job.
 paw up                           # Create worktrees for all tasks
 paw up --dry-run                 # Preview what would be created
 paw status                       # Check progress across all tasks
+paw watch                        # Continuous terminal monitor (auto-exits when done)
 paw merge                        # Merge completed task branches
 paw merge --continue             # Resume after conflict or hook failure
 paw merge --pick <task>          # Merge a specific task only
