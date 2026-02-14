@@ -53,8 +53,9 @@ The user never runs paw commands — that's your job.
    - **Hook failure**: the post-merge hook failed. Fix the issue, then
      `paw merge --continue`. To roll back instead:
      `git reset --hard refs/paw-backup/{task}`.
-7. **`paw down`** — removes worktrees and cleans up. The merged target branch
-   remains.
+7. **`paw down`** — archives session data to `.paw/sessions/`, removes worktrees,
+   and resets `.paw/paw.yaml` to template. The merged target branch remains.
+   Use `--no-archive` to skip archival.
 
 ### Orchestrator commands
 
@@ -70,7 +71,8 @@ paw watch                        # Continuous terminal monitor (auto-exits when 
 paw merge                        # Merge completed task branches
 paw merge --continue             # Resume after conflict or hook failure
 paw merge --pick <task>          # Merge a specific task only
-paw down                         # Remove worktrees and clean up
+paw down                         # Archive session, remove worktrees, reset config
+paw down --no-archive            # Skip archiving session data
 paw ask <task> "..."             # Send a directed message to an agent
 paw check                        # Read broadcasts and messages
 ```

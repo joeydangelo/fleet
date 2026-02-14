@@ -47,8 +47,10 @@ leave `paw watch` running for a continuous view.
    - On hook failure: fix the issue and `paw merge --continue`, or roll back
      with the backup ref paw printed.
 
-3. **Run `paw down`.** Removes worktrees and task branches. The target branch with
-   all merged work remains.
+3. **Run `paw down`.** Archives session data (journals, summaries, conflict briefs,
+   config) to `.paw/sessions/`, then removes worktrees and sync branch. Resets
+   `.paw/paw.yaml` to template. The target branch with all merged work remains.
+   Use `--no-archive` to skip archival.
 
 4. **Review the target branch.** Merge or rebase into main when ready.
 
