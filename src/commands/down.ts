@@ -1,6 +1,7 @@
 import { Command } from 'commander';
 import pc from 'picocolors';
-import { existsSync } from 'node:fs';
+import { existsSync, writeFileSync, mkdirSync } from 'node:fs';
+import { resolve } from 'node:path';
 import {
   getRepoRoot,
   removeWorktree,
@@ -11,6 +12,7 @@ import {
 import { loadConfig, resolveConfigPath } from '../lib/config.js';
 import { planWorktrees } from '../lib/session.js';
 import { removeSyncWorktree, archiveSession } from '../lib/sync.js';
+import { readDoc } from '../lib/docs.js';
 import { success, error, skip, pending, handleError } from '../lib/output.js';
 
 export function downCommand(): Command {
@@ -74,6 +76,22 @@ export function downCommand(): Command {
               const message = err instanceof Error ? err.message : String(err);
               error('archive', `failed: ${message}`);
             }
+          }
+
+          // Reset .paw/paw.yaml to template
+          try {
+            const doc = readDoc('templates', 'paw-yaml');
+            if (doc) {
+              const yamlMatch = doc.content.match(/```yaml\n([\s\S]*?)```/);
+              if (yamlMatch) {
+                const configDir = resolve(repoRoot, '.paw');
+                mkdirSync(configDir, { recursive: true });
+                writeFileSync(resolve(configDir, 'paw.yaml'), yamlMatch[1]!);
+                success('config', 'reset .paw/paw.yaml to template');
+              }
+            }
+          } catch {
+            // Non-critical -- skip silently
           }
 
           // Remove sync worktree, then delete sync branch
