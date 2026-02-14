@@ -1,4 +1,4 @@
-import { execFileSync } from 'node:child_process';
+import { execFileSync, execSync } from 'node:child_process';
 
 export type Platform = 'windows' | 'macos' | 'linux';
 
@@ -57,9 +57,11 @@ export function buildLaunchCommand(opts: LaunchOptions, platform?: Platform): La
 
   switch (plat) {
     case 'windows':
+      // Use start /d to set working directory directly. The empty "" is the
+      // window title (required by start when the next arg is quoted).
       return {
         command: 'cmd',
-        args: ['/c', 'start', 'cmd', '/k', `cd /d "${worktreePath}" && ${agentCommand}`],
+        args: ['/c', `start "" /d "${worktreePath}" cmd /k ${agentCommand}`],
       };
 
     case 'macos':
@@ -126,10 +128,40 @@ function buildLinuxCommand(
 }
 
 /**
+ * Build a clean environment for spawned terminals by stripping env vars
+ * that prevent agent CLIs from starting (e.g., Claude Code sets CLAUDECODE
+ * and CLAUDE_CODE_ENTRYPOINT — child terminals that inherit these refuse
+ * to launch).
+ */
+export function cleanAgentEnv(
+  env: Record<string, string | undefined> = process.env,
+): Record<string, string | undefined> {
+  const cleaned = { ...env };
+  delete cleaned.CLAUDECODE;
+  delete cleaned.CLAUDE_CODE_ENTRYPOINT;
+  return cleaned;
+}
+
+/**
  * Spawn a terminal window running the agent command. Fire-and-forget —
  * returns immediately after launching.
  */
 export function spawnTerminal(opts: LaunchOptions, platform?: Platform): void {
-  const { command, args } = buildLaunchCommand(opts, platform);
-  execFileSync(command, args, { stdio: 'ignore' });
+  const plat = platform ?? detectPlatform();
+  const env = cleanAgentEnv();
+
+  if (plat === 'windows') {
+    // On Windows, `start` is a cmd.exe builtin. Using execFileSync with an
+    // args array applies C-runtime quoting (backslash-escaped quotes) which
+    // cmd.exe doesn't understand. Use execSync with a string command instead.
+    const { worktreePath, agentCommand } = opts;
+    execSync(`start "" /d "${worktreePath}" cmd /k ${agentCommand}`, {
+      stdio: 'ignore',
+      env,
+    });
+    return;
+  }
+
+  const { command, args } = buildLaunchCommand(opts, plat);
+  execFileSync(command, args, { stdio: 'ignore', env });
 }

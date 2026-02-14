@@ -66,8 +66,8 @@ describe('launch: dry-run command building', () => {
 
     const win = buildLaunchCommand(opts, 'windows');
     expect(win.command).toBe('cmd');
-    expect(win.args.join(' ')).toContain('cd /d');
-    expect(win.args.join(' ')).toContain('claude');
+    expect(win.args.join(' ')).toContain('/d');
+    expect(win.args.join(' ')).toContain('cmd /k claude');
 
     const mac = buildLaunchCommand(opts, 'macos');
     expect(mac.command).toBe('osascript');

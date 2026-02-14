@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildLaunchCommand, detectPlatform } from '../src/lib/launcher.js';
+import { buildLaunchCommand, cleanAgentEnv, detectPlatform } from '../src/lib/launcher.js';
 
 describe('detectPlatform', () => {
   it('returns a valid platform', () => {
@@ -15,13 +15,22 @@ describe('buildLaunchCommand', () => {
   };
 
   describe('windows', () => {
-    it('builds a start cmd /k command', () => {
+    it('builds a start /d command with working directory', () => {
       const result = buildLaunchCommand(baseOpts, 'windows');
       expect(result.command).toBe('cmd');
-      expect(result.args).toContain('/c');
-      expect(result.args).toContain('start');
-      expect(result.args.some((a) => a.includes('cd /d'))).toBe(true);
-      expect(result.args.some((a) => a.includes('claude'))).toBe(true);
+      expect(result.args[0]).toBe('/c');
+      expect(result.args[1]).toContain('start ""');
+      expect(result.args[1]).toContain('/d');
+      expect(result.args[1]).toContain(baseOpts.worktreePath);
+      expect(result.args[1]).toContain('cmd /k claude');
+    });
+
+    it('handles paths with spaces', () => {
+      const result = buildLaunchCommand(
+        { worktreePath: '/home/user/my project/paw-auth', agentCommand: 'claude' },
+        'windows',
+      );
+      expect(result.args[1]).toContain('"/home/user/my project/paw-auth"');
     });
   });
 
@@ -82,11 +91,33 @@ describe('buildLaunchCommand', () => {
     });
   });
 
+  describe('cleanAgentEnv', () => {
+    it('strips CLAUDECODE and CLAUDE_CODE_ENTRYPOINT', () => {
+      const env = {
+        PATH: '/usr/bin',
+        CLAUDECODE: '1',
+        CLAUDE_CODE_ENTRYPOINT: 'cli',
+        HOME: '/home/user',
+      };
+      const cleaned = cleanAgentEnv(env);
+      expect(cleaned).not.toHaveProperty('CLAUDECODE');
+      expect(cleaned).not.toHaveProperty('CLAUDE_CODE_ENTRYPOINT');
+      expect(cleaned.PATH).toBe('/usr/bin');
+      expect(cleaned.HOME).toBe('/home/user');
+    });
+
+    it('returns env unchanged when no agent vars present', () => {
+      const env = { PATH: '/usr/bin', HOME: '/home/user' };
+      const cleaned = cleanAgentEnv(env);
+      expect(cleaned).toEqual(env);
+    });
+  });
+
   it('includes the agent command with flags', () => {
     const result = buildLaunchCommand(
       { worktreePath: '/tmp/wt', agentCommand: 'claude --print' },
       'windows',
     );
-    expect(result.args.some((a) => a.includes('claude --print'))).toBe(true);
+    expect(result.args[1]).toContain('cmd /k claude --print');
   });
 });
