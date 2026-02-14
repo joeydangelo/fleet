@@ -13,6 +13,7 @@ import { checkCommand } from './commands/check.js';
 import { shortcutCommand } from './commands/shortcut.js';
 import { guidelinesCommand } from './commands/guidelines.js';
 import { templateCommand } from './commands/template.js';
+import { launchCommand } from './commands/launch.js';
 
 export function createCli(): Command {
   const program = new Command();
@@ -36,5 +37,6 @@ export function createCli(): Command {
   program.addCommand(shortcutCommand());
   program.addCommand(guidelinesCommand());
   program.addCommand(templateCommand());
+  program.addCommand(launchCommand());
   return program;
 }

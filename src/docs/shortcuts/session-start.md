@@ -39,6 +39,17 @@ the team know what you're about to do.
 6. **Check in periodically.** Run `paw check` to see if other agents have sent you
    messages or made announcements you need to react to.
 
+## When to Broadcast Problems
+
+If you're stuck, hitting repeated errors, or blocked on something outside your
+focus area, broadcast it. The orchestrator and other agents can only help if
+they know. Don't suffer in silence — a quick broadcast lets the team adapt.
+
+```
+paw broadcast "Blocked: can't find the AuthConfig type. Was it moved? Need help from auth task."
+paw broadcast "Hitting ENOENT on src/lib/config.ts — is the include task modifying it?"
+```
+
 ## What Makes a Good Broadcast
 
 Broadcasts are how agents coordinate without blocking each other. Good broadcasts are

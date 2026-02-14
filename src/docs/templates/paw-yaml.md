@@ -14,6 +14,10 @@ target: feature/my-feature
 # Base branch to create target from (default: main). Usually you leave this alone.
 # base: main
 
+# The command to run in each worktree terminal. Required for `paw launch`.
+# Can be any CLI command: claude, codex, "claude --print", etc.
+agent: claude
+
 # Optional hooks.
 # pre-done runs before `paw done` marks a task complete. If it fails, done is blocked.
 # post-merge runs after each clean merge in `paw merge`. If it fails, paw stops

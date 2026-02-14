@@ -41,8 +41,8 @@ The user never runs paw commands — that's your job.
 1. **Create `paw.yaml`.** Run `paw shortcut generate-paw-yaml` to decompose
    work into parallel tasks with focus areas and prompts.
 2. **`paw up`** — creates worktrees, branches, and task files.
-3. **Launch agents.** Start one agent per worktree. Each agent runs
-   `paw shortcut session-start` as their first action.
+3. **`paw launch`** — opens a terminal with the agent command in each worktree.
+   Each agent auto-orients via `paw prime` on startup.
 4. **Monitor.** `paw status` to check progress. `paw check` to read broadcasts.
    `paw ask <task> "..."` to redirect an agent.
 5. **`paw merge`** — merges completed task branches into the target branch.
@@ -61,6 +61,10 @@ The user never runs paw commands — that's your job.
 ```bash
 paw up                           # Create worktrees for all tasks
 paw up --dry-run                 # Preview what would be created
+paw launch                       # Open terminal + agent in each worktree
+paw launch --dry-run             # Preview launch commands without spawning
+paw launch --task <name>         # Launch agent in a specific worktree
+paw launch --wait                # Launch and block until all agents done
 paw status                       # Check progress across all tasks
 paw merge                        # Merge completed task branches
 paw merge --continue             # Resume after conflict or hook failure

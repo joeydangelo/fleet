@@ -98,6 +98,47 @@ tasks:
   });
 });
 
+describe('agent config', () => {
+  it('parses the agent field', () => {
+    const dir = makeTempDir();
+    const configPath = resolve(dir, 'paw.yaml');
+    writeFileSync(
+      configPath,
+      `
+target: feature/x
+agent: claude
+tasks:
+  a:
+    focus: src/
+`,
+    );
+
+    const config = loadConfig(configPath);
+    expect(config.agent).toBe('claude');
+
+    rmSync(dir, { recursive: true });
+  });
+
+  it('accepts config without agent', () => {
+    const dir = makeTempDir();
+    const configPath = resolve(dir, 'paw.yaml');
+    writeFileSync(
+      configPath,
+      `
+target: feature/x
+tasks:
+  a:
+    focus: src/
+`,
+    );
+
+    const config = loadConfig(configPath);
+    expect(config.agent).toBeUndefined();
+
+    rmSync(dir, { recursive: true });
+  });
+});
+
 describe('hooks config', () => {
   it('parses pre-done and post-merge hooks', () => {
     const dir = makeTempDir();
