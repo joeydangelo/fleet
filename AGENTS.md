@@ -34,12 +34,12 @@ paw setup                        # Set up or upgrade paw
 ## Orchestrator
 
 You operate paw on behalf of the user. The user describes what they want done;
-you translate that into a `paw.yaml`, spin up agents, and merge the results.
+you translate that into `.paw/paw.yaml`, spin up agents, and merge the results.
 The user never runs paw commands — that's your job.
 
 ### Orchestrator workflow
 
-1. **Create `paw.yaml`.** Run `paw shortcut generate-paw-yaml` to decompose
+1. **Create `.paw/paw.yaml`.** Run `paw shortcut generate-paw-yaml` to decompose
    work into parallel tasks with focus areas and prompts.
 2. **`paw up`** — creates worktrees, branches, and task files.
 3. **`paw launch`** — opens a terminal with the agent command in each worktree.
@@ -54,8 +54,9 @@ The user never runs paw commands — that's your job.
    - **Hook failure**: the post-merge hook failed. Fix the issue, then
      `paw merge --continue`. To roll back instead:
      `git reset --hard refs/paw-backup/{task}`.
-7. **`paw down`** — removes worktrees and cleans up. The merged target branch
-   remains.
+7. **`paw down`** — archives session data to `.paw/sessions/`, removes worktrees,
+   and resets `.paw/paw.yaml` to template. The merged target branch remains.
+   Use `--no-archive` to skip archival.
 
 ### Orchestrator commands
 
@@ -71,7 +72,8 @@ paw watch                        # Continuous terminal monitor (auto-exits when 
 paw merge                        # Merge completed task branches
 paw merge --continue             # Resume after conflict or hook failure
 paw merge --pick <task>          # Merge a specific task only
-paw down                         # Remove worktrees and clean up
+paw down                         # Archive session, remove worktrees, reset config
+paw down --no-archive            # Skip archiving session data
 paw ask <task> "..."             # Send a directed message to an agent
 paw check                        # Read broadcasts and messages
 ```
@@ -80,7 +82,7 @@ paw check                        # Read broadcasts and messages
 
 | Shortcut | Purpose |
 |---|---|
-| `generate-paw-yaml` | Analyze a codebase and create a paw.yaml |
+| `generate-paw-yaml` | Analyze a codebase and create .paw/paw.yaml |
 | `fan-out-in` | Full orchestrator workflow reference |
 | `resolve-conflict` | Read conflict brief, resolve, merge --continue |
 
@@ -164,7 +166,7 @@ Run `paw template <name>` for document structures:
 
 | Template | Purpose |
 |---|---|
-| `paw-yaml` | Annotated paw.yaml config structure |
+| `paw-yaml` | Annotated .paw/paw.yaml config structure |
 | `task-summary` | Done summary structure (what/interfaces/watch-out) |
 
 ### Include (gitignored file copying)
@@ -185,7 +187,7 @@ which files would be copied.
 
 ### Hooks
 
-Configure validation hooks in paw.yaml:
+Configure validation hooks in .paw/paw.yaml:
 
 ```yaml
 hooks:
