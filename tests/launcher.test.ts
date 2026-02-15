@@ -1,5 +1,16 @@
-import { describe, it, expect } from 'vitest';
-import { buildLaunchCommand, cleanAgentEnv, detectPlatform } from '../src/lib/launcher.js';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { mkdirSync, rmSync, writeFileSync, existsSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { tmpdir } from 'node:os';
+import {
+  buildLaunchCommand,
+  cleanAgentEnv,
+  detectPlatform,
+  readPidFile,
+  writePidFile,
+  removePidFile,
+  killTrackedProcesses,
+} from '../src/lib/launcher.js';
 
 describe('detectPlatform', () => {
   it('returns a valid platform', () => {
@@ -119,5 +130,101 @@ describe('buildLaunchCommand', () => {
       'windows',
     );
     expect(result.args[1]).toContain('cmd /k claude --print');
+  });
+});
+
+describe('PID file helpers', () => {
+  let tempDir: string;
+
+  beforeEach(() => {
+    tempDir = resolve(
+      tmpdir(),
+      `paw-pid-test-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    );
+    mkdirSync(resolve(tempDir, '.paw'), { recursive: true });
+  });
+
+  afterEach(() => {
+    rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  it('readPidFile returns empty object when file does not exist', () => {
+    expect(readPidFile(tempDir)).toEqual({});
+  });
+
+  it('writePidFile creates .paw/pids.json and readPidFile reads it back', () => {
+    const pids = { auth: 1234, api: 5678 };
+    writePidFile(tempDir, pids);
+
+    const result = readPidFile(tempDir);
+    expect(result).toEqual(pids);
+  });
+
+  it('writePidFile overwrites existing file', () => {
+    writePidFile(tempDir, { auth: 1111 });
+    writePidFile(tempDir, { auth: 2222, api: 3333 });
+
+    const result = readPidFile(tempDir);
+    expect(result).toEqual({ auth: 2222, api: 3333 });
+  });
+
+  it('readPidFile returns empty object on invalid JSON', () => {
+    writeFileSync(resolve(tempDir, '.paw', 'pids.json'), 'not-json');
+    expect(readPidFile(tempDir)).toEqual({});
+  });
+
+  it('removePidFile deletes the file', () => {
+    writePidFile(tempDir, { auth: 1234 });
+    removePidFile(tempDir);
+    expect(existsSync(resolve(tempDir, '.paw', 'pids.json'))).toBe(false);
+  });
+
+  it('removePidFile is a no-op when file does not exist', () => {
+    // Should not throw
+    removePidFile(tempDir);
+  });
+});
+
+describe('killTrackedProcesses', () => {
+  let tempDir: string;
+
+  beforeEach(() => {
+    tempDir = resolve(
+      tmpdir(),
+      `paw-kill-test-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    );
+    mkdirSync(resolve(tempDir, '.paw'), { recursive: true });
+  });
+
+  afterEach(() => {
+    rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  it('returns 0 and removes pids.json when no processes are tracked', () => {
+    writePidFile(tempDir, {});
+    const killed = killTrackedProcesses(tempDir, 'linux');
+    expect(killed).toBe(0);
+    expect(existsSync(resolve(tempDir, '.paw', 'pids.json'))).toBe(false);
+  });
+
+  it('returns 0 when pids.json does not exist', () => {
+    const killed = killTrackedProcesses(tempDir, 'linux');
+    expect(killed).toBe(0);
+  });
+
+  it('handles already-exited processes gracefully on linux', () => {
+    // Use a PID that almost certainly does not exist
+    writePidFile(tempDir, { auth: 999999999 });
+    const killed = killTrackedProcesses(tempDir, 'linux');
+    // Process doesn't exist, so kill throws and we catch it — killed stays 0
+    expect(killed).toBe(0);
+    expect(existsSync(resolve(tempDir, '.paw', 'pids.json'))).toBe(false);
+  });
+
+  it('handles already-exited processes gracefully on windows', () => {
+    writePidFile(tempDir, { auth: 999999999 });
+    const killed = killTrackedProcesses(tempDir, 'windows');
+    expect(killed).toBe(0);
+    expect(existsSync(resolve(tempDir, '.paw', 'pids.json'))).toBe(false);
   });
 });

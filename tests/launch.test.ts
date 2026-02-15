@@ -1,9 +1,9 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, afterEach } from 'vitest';
 import { writeFileSync, mkdirSync, rmSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { loadConfig } from '../src/lib/config.js';
-import { buildLaunchCommand } from '../src/lib/launcher.js';
+import { buildLaunchCommand, readPidFile, writePidFile } from '../src/lib/launcher.js';
 import type { LaunchOptions } from '../src/lib/launcher.js';
 
 function makeTempDir(): string {
@@ -109,5 +109,55 @@ describe('launch: --task filter', () => {
 
     const filtered = worktrees.filter((wt) => wt.taskName === 'nope');
     expect(filtered).toHaveLength(0);
+  });
+});
+
+describe('launch: PID tracking integration', () => {
+  const dirs: string[] = [];
+
+  afterEach(() => {
+    for (const d of dirs) {
+      rmSync(d, { recursive: true, force: true });
+    }
+    dirs.length = 0;
+  });
+
+  function makeTempRepo(): string {
+    const dir = resolve(
+      tmpdir(),
+      `paw-pid-launch-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    );
+    mkdirSync(resolve(dir, '.paw'), { recursive: true });
+    dirs.push(dir);
+    return dir;
+  }
+
+  it('re-launch appends to existing pids.json rather than overwriting', () => {
+    const repo = makeTempRepo();
+
+    // Simulate first launch wrote some PIDs
+    writePidFile(repo, { auth: 1111 });
+
+    // Simulate second launch: read existing, add new
+    const existing = readPidFile(repo);
+    existing['api'] = 2222;
+    writePidFile(repo, existing);
+
+    const result = readPidFile(repo);
+    expect(result).toEqual({ auth: 1111, api: 2222 });
+  });
+
+  it('re-launch updates PID for re-launched task', () => {
+    const repo = makeTempRepo();
+
+    writePidFile(repo, { auth: 1111, api: 2222 });
+
+    // Simulate re-launching auth: the PID changes
+    const existing = readPidFile(repo);
+    existing['auth'] = 3333;
+    writePidFile(repo, existing);
+
+    const result = readPidFile(repo);
+    expect(result).toEqual({ auth: 3333, api: 2222 });
   });
 });

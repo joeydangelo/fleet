@@ -5,7 +5,13 @@ import { getRepoRoot } from '../lib/git.js';
 import { loadConfig, resolveConfigPath } from '../lib/config.js';
 import { planWorktrees } from '../lib/session.js';
 import { readSyncState } from '../lib/sync.js';
-import { buildLaunchCommand, spawnTerminal, detectPlatform } from '../lib/launcher.js';
+import {
+  buildLaunchCommand,
+  spawnTerminal,
+  detectPlatform,
+  readPidFile,
+  writePidFile,
+} from '../lib/launcher.js';
 import { success, skip, error, pending, handleError } from '../lib/output.js';
 
 interface LaunchOpts {
@@ -68,6 +74,8 @@ export function launchCommand(): Command {
         console.log(`  platform: ${platform}\n`);
 
         let launched = 0;
+        // Read existing PIDs so re-launches append rather than overwrite
+        const trackedPids = readPidFile(repoRoot);
 
         for (const wt of targets) {
           const taskState = syncState?.tasks[wt.taskName];
@@ -95,7 +103,10 @@ export function launchCommand(): Command {
             pending(wt.taskName, `${result.command} ${result.args.join(' ')}`);
           } else {
             try {
-              spawnTerminal(launchOpts, platform);
+              const pid = spawnTerminal(launchOpts, platform);
+              if (pid !== undefined) {
+                trackedPids[wt.taskName] = pid;
+              }
               success(wt.taskName, wt.worktreePath);
               launched++;
             } catch (err) {
@@ -103,6 +114,11 @@ export function launchCommand(): Command {
               error(wt.taskName, `failed to launch: ${msg}`);
             }
           }
+        }
+
+        // Persist tracked PIDs so `paw down` can kill them later
+        if (!opts.dryRun && Object.keys(trackedPids).length > 0) {
+          writePidFile(repoRoot, trackedPids);
         }
 
         if (opts.dryRun) {
