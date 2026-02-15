@@ -52,7 +52,7 @@ tasks:
     # Optional: link this task to its source issue (any tracker ID format).
     # Bridge shortcuts like from-issues and from-github-issue populate this.
     # to-pr uses it to reference issues in the PR body.
-    issue: paw-za72                    # tbd/beads ID, GH#123, JIRA-456, etc.
+    issue: GH#123                      # any tracker ID format works
 
     # Optional: link this task to a planning spec.
     # from-github-issue and generate-paw-yaml populate this when working from specs.

@@ -20,7 +20,7 @@ Run `paw shortcut setup-github-cli` to ensure `gh` is installed and authenticate
    and "Watch out" sections.
 
 3. **Collect issue references.** Scan the paw.yaml `issue` fields and the done
-   summaries for tracker IDs (e.g., `GH#42`, `paw-za72`). These go in the PR
+   summaries for tracker IDs (e.g., `GH#42`). Any tracker ID format works. These go in the PR
    body so GitHub auto-links or closes them.
 
 4. **Build the PR body.** Combine the summaries into a single PR description:
@@ -36,7 +36,7 @@ Run `paw shortcut setup-github-cli` to ensure `gh` is installed and authenticate
 
    ## Issues
    - Closes #42
-   - References paw-za72
+   - References GH#45
 
    ## Watch Out
    - Any cross-cutting concerns from the agent summaries
@@ -49,8 +49,19 @@ Run `paw shortcut setup-github-cli` to ensure `gh` is installed and authenticate
    paw.yaml (usually `main`). The head branch is the `target` branch where
    task branches were merged.
 
-6. **Create the PR:**
+6. **Check for an existing PR.** The target branch may already have a PR
+   (e.g., from a previous session or manual creation):
 
+   ```bash
+   BRANCH=$(git rev-parse --abbrev-ref HEAD)
+   gh pr view $BRANCH --json number,url 2>/dev/null
+   ```
+
+   If this returns JSON, a PR exists -- update it instead of creating a new one.
+
+7. **Create or update the PR:**
+
+   If creating:
    ```bash
    gh pr create \
      --base main \
@@ -66,8 +77,13 @@ Run `paw shortcut setup-github-cli` to ensure `gh` is installed and authenticate
    )"
    ```
 
+   If updating:
+   ```bash
+   gh pr edit $BRANCH --title "Updated title" --body "...updated body..."
+   ```
+
    Use `Closes #N` syntax for GitHub issues so they auto-close when the PR
    merges. For non-GitHub tracker IDs (tbd, beads, etc.), just reference them
    -- the agent closes those manually after verifying the merge.
 
-7. **Report the PR URL.** Tell the user the PR URL so they can review it.
+8. **Report the PR URL.** Tell the user the PR URL so they can review it.

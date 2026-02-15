@@ -66,6 +66,8 @@ paw launch                       # Open terminal + agent in each worktree
 paw launch --dry-run             # Preview launch commands without spawning
 paw launch --task <name>         # Launch agent in a specific worktree
 paw launch --wait                # Launch and block until all agents done
+paw go                           # Full workflow: up → launch → watch → merge → down
+paw go --poll-interval 10       # Adjust watch polling frequency (default 5s)
 paw status                       # Check progress across all tasks
 paw watch                        # Continuous terminal monitor (auto-exits when done)
 paw merge                        # Merge completed task branches
@@ -82,6 +84,10 @@ paw check                        # Read broadcasts and messages
 | Shortcut | Purpose |
 |---|---|
 | `generate-paw-yaml` | Analyze a codebase and create .paw/paw.yaml |
+| `from-issues` | Generate paw.yaml from CLI issue tracker |
+| `from-github-issue` | Generate paw.yaml from GitHub issue(s) |
+| `to-pr` | Create PR from merged agent work |
+| `setup-github-cli` | Ensure gh CLI is installed and authenticated |
 | `fan-out-in` | Full orchestrator workflow reference |
 | `resolve-conflict` | Read conflict brief, resolve, merge --continue |
 

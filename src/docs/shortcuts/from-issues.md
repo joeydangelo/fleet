@@ -49,9 +49,9 @@ Read open issues from whatever CLI issue tracker this repo uses and feed them in
    tasks:
      auth-bug:
        focus: [src/auth/]
-       issue: paw-za72
+       issue: GH#45
        prompt: |
-         Fix: OAuth token refresh fails silently (paw-za72).
+         Fix: OAuth token refresh fails silently (GH#45).
          The refresh endpoint returns 401 but the error is swallowed...
    ```
 

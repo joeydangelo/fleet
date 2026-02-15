@@ -66,3 +66,23 @@ with their own branch. This means:
 
 If you need to make changes yourself (e.g., a shared config file), do it on the
 target branch before or after the merge -- not during agent work.
+
+## `paw go` -- automated mode
+
+`paw go` runs this entire workflow as a single command:
+up → launch → watch → merge → down. Use it for straightforward sessions
+where you don't expect conflicts or need to intervene mid-session.
+
+```bash
+paw go                         # requires paw.yaml to exist
+paw go --poll-interval 10     # poll every 10 seconds (default 5)
+```
+
+If merge hits a conflict, `paw go` stops with a clear message and leaves
+worktrees intact. Resolve manually, then run `paw merge --continue` and
+`paw down` yourself.
+
+Use the manual workflow above when you need to:
+- Redirect agents mid-session with `paw ask`
+- Cherry-pick which tasks to merge with `paw merge --pick`
+- Make changes on the target branch between merge and cleanup

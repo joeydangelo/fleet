@@ -10,8 +10,6 @@ import { readJournal } from '../lib/journal.js';
 import { handleError } from '../lib/output.js';
 import { diffJournal, diffStatuses, diffCommitCounts, isAllDone, assignColor } from './watch.js';
 
-// --- Watch output formatting (reused from watch.ts display logic) ---
-
 function timestamp(): string {
   const now = new Date();
   return pc.dim(
@@ -24,8 +22,7 @@ function colorTask(name: string, taskIndex: Map<string, number>): string {
   return assignColor(idx)(name);
 }
 
-// --- Shell out to paw subcommands ---
-
+/** Shell out to a paw subcommand. Returns the exit code. */
 export function runPawCommand(args: string[]): { exitCode: number } {
   try {
     execFileSync(process.execPath, [process.argv[1]!, ...args], {
@@ -38,8 +35,6 @@ export function runPawCommand(args: string[]): { exitCode: number } {
     return { exitCode: code ?? 1 };
   }
 }
-
-// --- Wait loop with inline watch output ---
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -162,8 +157,6 @@ export async function waitForAgents(opts: {
   }
 }
 
-// --- Main go workflow ---
-
 export interface GoOpts {
   config?: string;
   pollInterval: string;
@@ -226,8 +219,6 @@ export async function runGo(opts: GoOpts): Promise<void> {
 
   console.log(pc.green(`\nDone. Work merged to ${config.target}.`));
 }
-
-// --- Command registration ---
 
 export function goCommand(): Command {
   return new Command('go')

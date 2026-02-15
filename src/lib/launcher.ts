@@ -179,10 +179,7 @@ export function spawnTerminal(opts: LaunchOptions, platform?: Platform): number 
   return pid;
 }
 
-// ---------------------------------------------------------------------------
-// PID file helpers
-// ---------------------------------------------------------------------------
-
+/** Task-name-to-PID mapping persisted by launch, consumed by down. */
 export type PidMap = Record<string, number>;
 
 const PIDS_FILE = 'pids.json';
@@ -191,6 +188,7 @@ function pidsPath(repoRoot: string): string {
   return resolve(repoRoot, '.paw', PIDS_FILE);
 }
 
+/** Read tracked PIDs from .paw/pids.json. Returns empty map if missing or corrupt. */
 export function readPidFile(repoRoot: string): PidMap {
   const p = pidsPath(repoRoot);
   if (!existsSync(p)) return {};
@@ -201,12 +199,14 @@ export function readPidFile(repoRoot: string): PidMap {
   }
 }
 
+/** Persist tracked PIDs to .paw/pids.json. */
 export function writePidFile(repoRoot: string, pids: PidMap): void {
   const dir = resolve(repoRoot, '.paw');
   mkdirSync(dir, { recursive: true });
   writeFileSync(pidsPath(repoRoot), JSON.stringify(pids, null, 2) + '\n');
 }
 
+/** Delete .paw/pids.json if it exists. */
 export function removePidFile(repoRoot: string): void {
   const p = pidsPath(repoRoot);
   if (existsSync(p)) {
@@ -238,7 +238,7 @@ export function killTrackedProcesses(repoRoot: string, platform?: Platform): num
       }
       killed++;
     } catch {
-      // Process already exited (ESRCH) or permission denied — ignore
+      // Process already exited (ESRCH) or permission denied -- ignore
     }
   }
 

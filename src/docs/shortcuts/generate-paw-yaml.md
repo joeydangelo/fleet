@@ -36,7 +36,7 @@ Generate `.paw/paw.yaml` to split the user's feature request into parallel agent
 
 5. **Link tasks to sources.** If tasks originate from issues or specs, set the
    optional `issue` and `spec` fields on each task:
-   - `issue`: the tracker ID (e.g., `paw-za72`, `GH#123`, `JIRA-456`). Set this
+   - `issue`: the tracker ID (e.g., `GH#123`). Any tracker ID format works. Set this
      when generating from `paw shortcut from-issues` or `from-github-issue`.
    - `spec`: path to the planning spec (e.g.,
      `docs/project/specs/active/plan-auth.md`). Set this when generating from a
