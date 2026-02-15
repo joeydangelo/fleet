@@ -74,6 +74,17 @@ export const PAW_DONE_REMINDER_SCRIPT = `#!/bin/bash
 input=$(cat)
 command=$(echo "$input" | jq -r '.tool_input.command // empty')
 
+# Block git push when no remote is configured
+if [[ "$command" == git\\ push* ]] || [[ "$command" == *"git push"* ]]; then
+  if ! git remote -v 2>/dev/null | grep -q .; then
+    echo ""
+    echo "PAW WARNING: No git remote configured. Do NOT push."
+    echo "  Paw handles merging locally. Skip the push and run 'paw done'."
+    echo ""
+    exit 2
+  fi
+fi
+
 # Only trigger on git push or git commit
 if [[ "$command" == git\\ push* ]] || [[ "$command" == *"git push"* ]] || \\
    [[ "$command" == git\\ commit* ]] || [[ "$command" == *"git commit"* ]]; then

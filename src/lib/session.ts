@@ -52,7 +52,10 @@ const COLLABORATION_RULES = `## Collaboration Rules
   interface changes that affect other agents.
 - Run \`paw check\` periodically to read broadcasts from other agents.
 - Stay within your focus areas. If you need to modify files outside your
-  focus, broadcast first.`;
+  focus, broadcast first.
+- Do NOT run \`git push\`. Paw handles merging locally. Only push if
+  \`git remote -v\` shows a configured remote and you have been explicitly
+  asked to push.`;
 
 const SECTION_DESCRIPTIONS: Record<string, string> = {
   'What I did': '- Bullet list of what you built or changed',
