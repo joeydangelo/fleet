@@ -15,6 +15,7 @@ import { guidelinesCommand } from './commands/guidelines.js';
 import { templateCommand } from './commands/template.js';
 import { launchCommand } from './commands/launch.js';
 import { watchCommand } from './commands/watch.js';
+import { goCommand } from './commands/go.js';
 
 export function createCli(): Command {
   const program = new Command();
@@ -40,5 +41,6 @@ export function createCli(): Command {
   program.addCommand(templateCommand());
   program.addCommand(launchCommand());
   program.addCommand(watchCommand());
+  program.addCommand(goCommand());
   return program;
 }
