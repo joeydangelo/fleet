@@ -1,7 +1,13 @@
 import { Command } from 'commander';
 import { execFileSync } from 'node:child_process';
 import pc from 'picocolors';
-import { getRepoRoot, getCommitCount, getChangedFileCount } from '../lib/git.js';
+import {
+  getRepoRoot,
+  getCommitCount,
+  getChangedFileCount,
+  getCurrentBranch,
+  git,
+} from '../lib/git.js';
 import { loadConfig, resolveConfigPath } from '../lib/config.js';
 import { planWorktrees } from '../lib/session.js';
 import { readSyncState } from '../lib/sync.js';
@@ -200,6 +206,14 @@ export async function runGo(opts: GoOpts): Promise<void> {
 
   // Step 3: paw merge
   console.log(pc.bold('Step 3/4: paw merge\n'));
+
+  // Checkout the target branch -- paw merge requires it
+  const currentBranch = getCurrentBranch(repoRoot);
+  if (currentBranch !== config.target) {
+    console.log(pc.dim(`Switching to target branch: ${config.target}`));
+    git(['checkout', config.target], { cwd: repoRoot });
+  }
+
   const mergeResult = runPawCommand(['merge', ...configArgs]);
   if (mergeResult.exitCode !== 0) {
     console.log(
