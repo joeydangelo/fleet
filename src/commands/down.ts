@@ -13,6 +13,7 @@ import { loadConfig, resolveConfigPath } from '../lib/config.js';
 import { planWorktrees } from '../lib/session.js';
 import { removeSyncWorktree, archiveSession } from '../lib/sync.js';
 import { readDoc } from '../lib/docs.js';
+import { killTrackedProcesses } from '../lib/launcher.js';
 import { success, error, skip, pending, handleError } from '../lib/output.js';
 
 export function downCommand(): Command {
@@ -42,6 +43,12 @@ export function downCommand(): Command {
             }
             console.log(pc.dim('\nDry run -- no changes made.'));
             return;
+          }
+
+          // Kill tracked terminal processes before removing worktrees
+          const killed = killTrackedProcesses(repoRoot);
+          if (killed > 0) {
+            success('terminals', `killed ${killed} tracked process(es)`);
           }
 
           let removed = 0;
