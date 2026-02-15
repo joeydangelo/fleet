@@ -6,6 +6,8 @@ import { z } from 'zod';
 const TaskSchema = z.object({
   focus: z.union([z.string(), z.array(z.string())]),
   prompt: z.string().optional(),
+  issue: z.string().optional(),
+  spec: z.string().optional(),
 });
 
 const HooksSchema = z.object({
