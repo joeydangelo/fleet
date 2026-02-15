@@ -193,7 +193,7 @@ function runMergeLoop(
     if (mergeEntry?.status === 'conflict') {
       warn(wt.taskName, 'unresolved conflict');
       console.log(pc.yellow('\nResolve the conflict, commit, then run: paw merge --continue'));
-      return;
+      process.exit(1);
     }
     if (mergeEntry?.status === 'hook_failed') {
       warn(wt.taskName, 'post-merge hook failed');
@@ -201,7 +201,7 @@ function runMergeLoop(
       console.log(
         pc.yellow(`To roll back:        git reset --hard refs/paw-backup/${wt.taskName}`),
       );
-      return;
+      process.exit(1);
     }
 
     const commits = getCommitCount(wt.branch, target, repoRoot);
@@ -240,7 +240,7 @@ function runMergeLoop(
           console.log(
             pc.yellow(`  To roll back:        git reset --hard refs/paw-backup/${wt.taskName}`),
           );
-          return;
+          process.exit(1);
         }
       }
 
@@ -269,7 +269,7 @@ function runMergeLoop(
       console.log(pc.dim(`    ${result.message.split('\n')[0]}`));
       console.log(pc.dim(`    Brief written to ${briefPath} on sync branch`));
       console.log(pc.yellow('\nResolve the conflict, commit, then run: paw merge --continue'));
-      return;
+      process.exit(1);
     }
   }
 }
