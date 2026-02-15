@@ -24,7 +24,12 @@ export function downCommand(): Command {
     .option('--keep-branches', 'Keep branches after removing worktrees', false)
     .option('--no-archive', 'Skip archiving session data to .paw/sessions/')
     .action(
-      (opts: { config?: string; dryRun?: boolean; keepBranches: boolean; archive: boolean }) => {
+      async (opts: {
+        config?: string;
+        dryRun?: boolean;
+        keepBranches: boolean;
+        archive: boolean;
+      }) => {
         try {
           const repoRoot = getRepoRoot();
           const configPath = opts.config ?? resolveConfigPath(repoRoot);
@@ -45,10 +50,12 @@ export function downCommand(): Command {
             return;
           }
 
-          // Kill tracked terminal processes before removing worktrees
+          // Kill tracked terminal processes before removing worktrees.
+          // Sleep briefly after kill to let the OS release file handles.
           const killed = killTrackedProcesses(repoRoot);
           if (killed > 0) {
             success('terminals', `killed ${killed} tracked process(es)`);
+            await new Promise((r) => setTimeout(r, 1500));
           }
 
           let removed = 0;

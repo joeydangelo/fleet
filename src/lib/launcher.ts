@@ -154,14 +154,15 @@ export function spawnTerminal(opts: LaunchOptions, platform?: Platform): number 
   const env = cleanAgentEnv();
 
   if (plat === 'windows') {
-    // On Windows, `start` is a cmd.exe builtin. We spawn cmd.exe with
-    // the start command. The PID returned is the cmd.exe parent — use
-    // `taskkill /pid <pid> /t /f` to kill the process tree.
+    // spawn with detached: true opens a new console window on Windows.
+    // This gives us the real terminal PID so paw down can close it.
     const { worktreePath, agentCommand } = opts;
-    const child = spawn('cmd', ['/c', `start "" /d "${worktreePath}" cmd /k ${agentCommand}`], {
+    const child = spawn('cmd', ['/k', agentCommand], {
+      cwd: worktreePath,
       stdio: 'ignore',
       detached: true,
       env,
+      windowsVerbatimArguments: true,
     });
     const pid = child.pid;
     child.unref();
