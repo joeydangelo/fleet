@@ -49,6 +49,15 @@ tasks:
       - src/auth/
       - src/middleware/auth.ts
 
+    # Optional: link this task to its source issue (any tracker ID format).
+    # Bridge shortcuts like from-issues and from-github-issue populate this.
+    # to-pr uses it to reference issues in the PR body.
+    issue: paw-za72                    # tbd/beads ID, GH#123, JIRA-456, etc.
+
+    # Optional: link this task to a planning spec.
+    # from-github-issue and generate-paw-yaml populate this when working from specs.
+    spec: docs/project/specs/active/plan-2026-02-14-auth.md
+
     # Instructions for the agent. Be specific: what to build, what interfaces
     # are shared, what to broadcast. Optional but strongly recommended.
     prompt: |
@@ -60,6 +69,7 @@ tasks:
     focus:
       - src/api/
       - src/routes/
+    issue: GH#42
     prompt: |
       Build REST endpoints for user profiles.
       Import AuthConfig from src/auth/types.ts (owned by the auth task).
