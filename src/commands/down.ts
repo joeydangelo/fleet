@@ -52,6 +52,7 @@ export function downCommand(): Command {
           }
 
           let removed = 0;
+          let failed = 0;
 
           for (const wt of worktrees) {
             if (!existsSync(wt.worktreePath)) {
@@ -64,9 +65,21 @@ export function downCommand(): Command {
               removed++;
               success(wt.taskName, 'worktree removed');
             } catch (err) {
+              failed++;
               const message = err instanceof Error ? err.message : String(err);
               error(wt.taskName, `failed: ${message}`);
             }
+          }
+
+          if (failed > 0) {
+            console.log(
+              pc.yellow(
+                `\n${failed} worktree(s) could not be removed (files may be in use).` +
+                  '\nClose terminals and editors in the worktree directories, then retry `paw down`.' +
+                  '\nConfig and sync branch left intact for retry.',
+              ),
+            );
+            process.exit(1);
           }
 
           // Remove backup refs
