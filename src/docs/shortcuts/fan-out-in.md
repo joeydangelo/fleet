@@ -52,7 +52,21 @@ leave `paw watch` running for a continuous view.
    `.paw/paw.yaml` to template. The target branch with all merged work remains.
    Use `--no-archive` to skip archival.
 
-4. **Review the target branch.** Merge or rebase into main when ready.
+4. **Ask the user what to do next.** The merged work is on the target branch.
+   Check if a remote is configured (`git remote -v`), then ask:
+
+   - **Create a PR** — push the target branch and open a pull request against
+     main. Gets reviewed before anything changes on main. Requires a remote.
+     Use `paw shortcut to-pr`.
+   - **Merge or rebase into main** — combine the target branch into main
+     directly. Merge preserves branch history; rebase gives linear history.
+     Push after if a remote exists.
+   - **Keep working** — stay on the target branch. The user wants to review,
+     test, or make more changes before sharing. Ask what they'd like to do
+     next — use your context about the project and session to suggest
+     relevant next steps.
+
+   If the user doesn't specify, default to creating a PR.
 
 ## Delegate mode
 
