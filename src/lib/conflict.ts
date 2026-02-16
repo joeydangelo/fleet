@@ -3,7 +3,7 @@ import { readJournal } from './journal.js';
 import { getDiffOutput, getConflictingFiles } from './git.js';
 import type { SyncState } from './sync.js';
 
-export interface ConflictBriefOpts {
+interface ConflictBriefOpts {
   /** The task being merged that caused the conflict. */
   conflictingTask: string;
   /** The target branch name. */

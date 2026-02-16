@@ -96,6 +96,9 @@ export function statusCommand(): Command {
               case 'conflict':
                 warn(wt.taskName, 'conflict (unresolved)');
                 break;
+              case 'hook_failed':
+                warn(wt.taskName, 'post-merge hook failed');
+                break;
               case 'pending':
                 pending(wt.taskName, 'pending');
                 break;

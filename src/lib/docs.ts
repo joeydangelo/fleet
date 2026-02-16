@@ -21,7 +21,7 @@ export function getDocsBasePath(): string {
   throw new Error('paw docs not found');
 }
 
-export interface DocInfo {
+interface DocInfo {
   name: string;
   title: string;
   description: string;

@@ -1,8 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { resolve } from 'node:path';
+import { resolve, dirname } from 'node:path';
 import { mkdirSync, writeFileSync, existsSync, rmSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
+import { fileURLToPath } from 'node:url';
 import { loadConfig } from '../src/lib/config.js';
 import {
   git,
@@ -257,6 +258,47 @@ describe('backup refs during merge', () => {
 
     const headRestored = getHeadRef(repoDir);
     expect(headRestored).toBe(headBefore);
+  });
+});
+
+describe('hook_failed status display', () => {
+  it('paw status renders hook_failed merge state', () => {
+    const dir = makeTempDir();
+    gitInit(dir);
+
+    // Create paw config so status command can load it
+    const pawDir = resolve(dir, '.paw');
+    mkdirSync(pawDir, { recursive: true });
+    writeFileSync(
+      resolve(pawDir, 'paw.yaml'),
+      `target: feature/dash\ntasks:\n  auth:\n    focus: src/auth/\n  api:\n    focus: src/api/\n`,
+    );
+
+    // Set up sync state with hook_failed
+    initSyncWorktree(dir);
+    const state = initSyncState('feature/dash', ['auth', 'api'], 'paw.yaml');
+    const withMerges = {
+      ...state,
+      merges: initMergeState(['auth', 'api']),
+    };
+    const hookFailed = updateMergeEntry(withMerges, 'auth', {
+      status: 'hook_failed' as const,
+    });
+    writeSyncState(hookFailed, dir);
+
+    // Run paw status via the built CLI entry point
+    const testDir = dirname(fileURLToPath(import.meta.url));
+    const binPath = resolve(testDir, '..', 'dist', 'bin.mjs');
+    const output = execFileSync(process.execPath, [binPath, 'status'], {
+      cwd: dir,
+      encoding: 'utf-8',
+      stdio: 'pipe',
+    });
+
+    expect(output).toContain('hook failed');
+
+    removeSyncWorktree(dir);
+    rmSync(dir, { recursive: true, force: true });
   });
 });
 

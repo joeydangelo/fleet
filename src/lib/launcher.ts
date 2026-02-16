@@ -2,11 +2,11 @@ import { execFileSync, execSync, spawn } from 'node:child_process';
 import { existsSync, readFileSync, writeFileSync, unlinkSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-export type Platform = 'windows' | 'macos' | 'linux';
+type Platform = 'windows' | 'macos' | 'linux';
 
 const LINUX_TERMINALS = ['gnome-terminal', 'konsole', 'xfce4-terminal', 'xterm', 'tmux'] as const;
 
-export type LinuxTerminal = (typeof LINUX_TERMINALS)[number];
+type LinuxTerminal = (typeof LINUX_TERMINALS)[number];
 
 export function detectPlatform(): Platform {
   switch (process.platform) {
@@ -30,7 +30,7 @@ function commandExists(cmd: string): boolean {
   }
 }
 
-export function detectLinuxTerminal(): LinuxTerminal | null {
+function detectLinuxTerminal(): LinuxTerminal | null {
   for (const term of LINUX_TERMINALS) {
     if (commandExists(term)) return term;
   }
@@ -181,7 +181,7 @@ export function spawnTerminal(opts: LaunchOptions, platform?: Platform): number 
 }
 
 /** Task-name-to-PID mapping persisted by launch, consumed by down. */
-export type PidMap = Record<string, number>;
+type PidMap = Record<string, number>;
 
 const PIDS_FILE = 'pids.json';
 

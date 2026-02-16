@@ -26,7 +26,6 @@ const PawConfigSchema = z.object({
 });
 
 export type PawConfig = z.infer<typeof PawConfigSchema>;
-export type TaskConfig = z.infer<typeof TaskSchema>;
 
 export function loadConfig(configPath: string): PawConfig {
   if (!existsSync(configPath)) {

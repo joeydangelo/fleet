@@ -277,32 +277,18 @@ export function installHooks(repoRoot: string): void {
   }
 
   const existing = (settings.hooks ?? {}) as Record<string, unknown[]>;
-  let changed = false;
 
   for (const [event, newGroups] of Object.entries(pawHooks)) {
     const current = existing[event] ?? [];
-
-    // Remove any old paw hooks (flat or correct format)
     const filtered = current.filter((entry) => !isPawHookEntry(entry));
-
-    const hadPaw = filtered.length < current.length;
     existing[event] = [...filtered, ...newGroups];
-
-    if (!hadPaw || filtered.length < current.length) {
-      changed = true;
-    }
   }
 
-  // Always write if we got here -- ensures old formats are replaced
   settings.hooks = existing;
   mkdirSync(resolve(settingsPath, '..'), { recursive: true });
   writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + '\n', 'utf-8');
 
-  if (changed) {
-    success('hooks', 'SessionStart + PreCompact + PostToolUse');
-  } else {
-    success('hooks', 'SessionStart + PreCompact + PostToolUse (updated)');
-  }
+  success('hooks', 'SessionStart + PreCompact + PostToolUse');
 
   success('script', SCRIPT_RELATIVE);
   success('script', GH_SCRIPT_RELATIVE);

@@ -29,7 +29,7 @@ import { success, warn, skip, handleError } from '../lib/output.js';
 
 export function mergeCommand(): Command {
   return new Command('merge')
-    .description('Merge completed task branches into the target branch')
+    .description('Merge done task branches into the target branch')
     .option('-c, --config <path>', 'Path to .paw/paw.yaml')
     .option('--pick <task>', 'Merge only a specific task')
     .option('--continue', 'Continue merging after resolving a conflict')

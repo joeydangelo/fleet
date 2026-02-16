@@ -143,7 +143,7 @@ function printFull(
     console.log();
   }
 
-  // Completed summaries
+  // Done summaries
   const doneTasks = Object.entries(state.tasks).filter(
     ([name, task]) => name !== taskName && task.status === 'done',
   );

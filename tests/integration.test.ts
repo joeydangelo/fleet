@@ -11,7 +11,7 @@ import {
   initSyncWorktree,
   removeSyncWorktree,
 } from '../src/lib/sync.js';
-import { branchExists, listWorktrees, removeWorktree, deleteBranch } from '../src/lib/git.js';
+import { branchExists, removeWorktree, deleteBranch } from '../src/lib/git.js';
 import { writeSyncStateAndFiles } from '../src/lib/sync.js';
 import type { PawConfig } from '../src/lib/config.js';
 
@@ -85,10 +85,8 @@ describe('paw session lifecycle', () => {
       expect(existsSync(wt.worktreePath)).toBe(true);
     }
 
-    const listed = listWorktrees(repoDir);
-    const branches = listed.map((w) => w.branch);
-    expect(branches).toContain('feature/dash-auth');
-    expect(branches).toContain('feature/dash-api');
+    expect(branchExists('feature/dash-auth', repoDir)).toBe(true);
+    expect(branchExists('feature/dash-api', repoDir)).toBe(true);
   });
 
   it('writes task files into worktrees', () => {

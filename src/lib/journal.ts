@@ -9,7 +9,7 @@ export interface JournalEntry {
 }
 
 /** Fields required when appending (ts and from are auto-populated). */
-export type JournalAppendOpts = Omit<JournalEntry, 'ts' | 'from'>;
+type JournalAppendOpts = Omit<JournalEntry, 'ts' | 'from'>;
 
 /**
  * Append a journal entry to the agent's own JSONL file on the sync branch.

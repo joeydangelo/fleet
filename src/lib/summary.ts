@@ -1,6 +1,6 @@
 export const REQUIRED_SECTIONS = ['What I did', 'Interface changes', 'Watch out'] as const;
 
-export interface ValidationResult {
+interface ValidationResult {
   valid: boolean;
   missing: string[];
 }

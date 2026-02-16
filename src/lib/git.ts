@@ -46,23 +46,6 @@ export function removeWorktree(path: string, cwd?: string): void {
   }
 }
 
-export function listWorktrees(cwd?: string): Array<{ path: string; branch: string }> {
-  const output = git(['worktree', 'list', '--porcelain'], { cwd });
-  const worktrees: Array<{ path: string; branch: string }> = [];
-  let currentPath = '';
-
-  for (const line of output.split('\n')) {
-    if (line.startsWith('worktree ')) {
-      currentPath = line.slice('worktree '.length);
-    } else if (line.startsWith('branch ')) {
-      const branch = line.slice('branch refs/heads/'.length);
-      worktrees.push({ path: currentPath, branch });
-    }
-  }
-
-  return worktrees;
-}
-
 export function getCommitCount(branch: string, base: string, cwd?: string): number {
   const output = git(['rev-list', '--count', `${base}..${branch}`], {
     cwd,

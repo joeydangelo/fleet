@@ -15,7 +15,7 @@ export function handleError(err: unknown): never {
   process.exit(1);
 }
 
-export const ICONS = {
+const ICONS = {
   SUCCESS: '+',
   ERROR: 'x',
   WARN: '!',
