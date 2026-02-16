@@ -107,12 +107,103 @@ fi
 exit 0
 `;
 
+/** SessionStart hook that confirms gh CLI is installed and checks authentication. */
+export const CONFIRM_GH_CLI_SCRIPT = `#!/bin/bash
+# Confirm GitHub CLI (gh) is available for paw bridge shortcuts
+# Installed by: paw setup
+# This script runs on SessionStart
+
+# Add common binary locations to PATH
+export PATH="$HOME/.local/bin:$HOME/bin:/usr/local/bin:$PATH"
+
+# Check if gh is already installed
+if command -v gh &> /dev/null; then
+    echo "[gh] CLI found at $(which gh)"
+else
+    echo "[gh] CLI not found, installing..."
+
+    # Detect platform
+    OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+    ARCH=$(uname -m)
+    [ "$ARCH" = "x86_64" ] && ARCH="amd64"
+    [ "$ARCH" = "aarch64" ] && ARCH="arm64"
+
+    echo "[gh] Detected platform: \${OS}_\${ARCH}"
+
+    # Get latest version from GitHub API (with fallback)
+    GH_VERSION=$(curl -fsSL https://api.github.com/repos/cli/cli/releases/latest 2>/dev/null \\
+        | grep -o '"tag_name": *"v[^"]*"' | head -1 | sed 's/.*"v\\([^"]*\\)".*/\\1/')
+
+    # Fallback version if API fails
+    GH_VERSION=\${GH_VERSION:-2.83.1}
+
+    echo "[gh] Version: \${GH_VERSION}"
+
+    # Build download URL based on platform
+    if [ "$OS" = "darwin" ]; then
+        DOWNLOAD_URL="https://github.com/cli/cli/releases/download/v\${GH_VERSION}/gh_\${GH_VERSION}_macOS_\${ARCH}.zip"
+        ARCHIVE_EXT="zip"
+    else
+        DOWNLOAD_URL="https://github.com/cli/cli/releases/download/v\${GH_VERSION}/gh_\${GH_VERSION}_\${OS}_\${ARCH}.tar.gz"
+        ARCHIVE_EXT="tar.gz"
+    fi
+
+    echo "[gh] Downloading from \${DOWNLOAD_URL}..."
+
+    # Download
+    curl -fsSL -o "/tmp/gh.\${ARCHIVE_EXT}" "$DOWNLOAD_URL"
+
+    # Extract based on archive type
+    if [ "$ARCHIVE_EXT" = "zip" ]; then
+        unzip -q "/tmp/gh.zip" -d /tmp
+        EXTRACT_DIR="/tmp/gh_\${GH_VERSION}_macOS_\${ARCH}"
+    else
+        tar -xzf "/tmp/gh.tar.gz" -C /tmp
+        EXTRACT_DIR="/tmp/gh_\${GH_VERSION}_\${OS}_\${ARCH}"
+    fi
+
+    # Install to ~/.local/bin (works in cloud and local)
+    mkdir -p ~/.local/bin
+    cp "\${EXTRACT_DIR}/bin/gh" ~/.local/bin/gh
+    chmod +x ~/.local/bin/gh
+
+    # Clean up
+    rm -rf "\${EXTRACT_DIR}" "/tmp/gh.\${ARCHIVE_EXT}"
+
+    echo "[gh] Installed to ~/.local/bin/gh"
+fi
+
+# Verify gh is now in PATH
+if ! command -v gh &> /dev/null; then
+    echo "[gh] ERROR: gh CLI still not found in PATH after installation"
+    echo "[gh] Confirm ~/.local/bin is in your PATH"
+    exit 1
+fi
+
+# Check authentication status
+if gh auth status &> /dev/null; then
+    echo "[gh] Authenticated successfully"
+else
+    if [ -n "$GH_TOKEN" ]; then
+        echo "[gh] WARNING: GH_TOKEN is set but authentication check failed"
+        echo "[gh] Token may be invalid or expired"
+    else
+        echo "[gh] NOTE: Not authenticated - some operations may require authentication"
+        echo "[gh] Run: paw shortcut setup-github-cli"
+    fi
+fi
+
+exit 0
+`;
+
 const SCRIPT_RELATIVE = '.claude/scripts/paw-session.sh';
+const GH_SCRIPT_RELATIVE = '.claude/scripts/confirm-gh-cli.sh';
 const REMINDER_RELATIVE = '.claude/hooks/paw-done-reminder.sh';
 
 interface HookHandler {
   type: 'command';
   command: string;
+  timeout?: number;
 }
 
 interface MatcherGroup {
@@ -125,6 +216,7 @@ export function installHooks(repoRoot: string): void {
   const scriptDir = resolve(repoRoot, '.claude', 'scripts');
   mkdirSync(scriptDir, { recursive: true });
   writeFileSync(resolve(repoRoot, SCRIPT_RELATIVE), PAW_SESSION_SCRIPT, 'utf-8');
+  writeFileSync(resolve(repoRoot, GH_SCRIPT_RELATIVE), CONFIRM_GH_CLI_SCRIPT, 'utf-8');
 
   const hooksDir = resolve(repoRoot, '.claude', 'hooks');
   mkdirSync(hooksDir, { recursive: true });
@@ -132,6 +224,16 @@ export function installHooks(repoRoot: string): void {
 
   const pawHooks: Record<string, MatcherGroup[]> = {
     SessionStart: [
+      {
+        matcher: '',
+        hooks: [
+          {
+            type: 'command',
+            command: `bash ${GH_SCRIPT_RELATIVE}`,
+            timeout: 120,
+          },
+        ],
+      },
       {
         matcher: '',
         hooks: [
@@ -205,6 +307,7 @@ export function installHooks(repoRoot: string): void {
   }
 
   success('script', SCRIPT_RELATIVE);
+  success('script', GH_SCRIPT_RELATIVE);
   success('script', REMINDER_RELATIVE);
 }
 
@@ -214,7 +317,7 @@ function isPawHookEntry(entry: unknown): boolean {
   const obj = entry as Record<string, unknown>;
 
   // Old flat format: { command: "paw prime --brief" }
-  if ('command' in obj && typeof obj.command === 'string' && obj.command.includes('paw')) {
+  if ('command' in obj && typeof obj.command === 'string' && isPawCommand(obj.command)) {
     return true;
   }
 
@@ -223,9 +326,14 @@ function isPawHookEntry(entry: unknown): boolean {
     return obj.hooks.some((h: unknown) => {
       if (typeof h !== 'object' || h === null) return false;
       const rec = h as Record<string, unknown>;
-      return typeof rec.command === 'string' && rec.command.includes('paw');
+      return typeof rec.command === 'string' && isPawCommand(rec.command);
     });
   }
 
   return false;
+}
+
+/** Check if a hook command belongs to paw (includes paw scripts and confirm-gh-cli). */
+function isPawCommand(command: string): boolean {
+  return command.includes('paw') || command.includes('confirm-gh-cli');
 }
