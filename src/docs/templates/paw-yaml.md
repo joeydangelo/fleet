@@ -28,10 +28,13 @@ agent: claude
 #   - "config/local.json"
 
 # Optional hooks.
+# post-up runs in each worktree after creation and file copying during `paw up`.
+# Useful for installing dependencies, running codegen, or any per-worktree setup.
 # pre-done runs before `paw done` marks a task complete. If it fails, done is blocked.
 # post-merge runs after each clean merge in `paw merge`. If it fails, paw stops
 # and shows rollback guidance.
-# hooks:
+hooks:
+  post-up: npm install
 #   pre-done: npm test
 #   post-merge: npm test
 

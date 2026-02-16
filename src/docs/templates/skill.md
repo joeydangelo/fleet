@@ -208,13 +208,18 @@ which files would be copied.
 
 ### Hooks
 
-Configure validation hooks in .paw/paw.yaml:
+Configure hooks in .paw/paw.yaml:
 
 ```yaml
 hooks:
+  post-up: npm install
   pre-done: npm test
   post-merge: npm test
 ```
+
+**`post-up`** runs in each worktree after creation and file copying during
+`paw up`. Useful for installing dependencies, running codegen, or any
+per-worktree setup that needs to happen before the agent starts working.
 
 **`pre-done`** runs before `paw done` marks a task complete. If it fails, done
 is blocked. Use `--force` to bypass.
