@@ -1,32 +1,10 @@
 import { Command } from 'commander';
 import { execFileSync } from 'node:child_process';
 import pc from 'picocolors';
-import {
-  getRepoRoot,
-  getCommitCount,
-  getChangedFileCount,
-  getCurrentBranch,
-  git,
-} from '../lib/git.js';
+import { getRepoRoot, getCurrentBranch, git } from '../lib/git.js';
 import { loadConfig, resolveConfigPath } from '../lib/config.js';
-import { planWorktrees } from '../lib/session.js';
-import { readSyncState } from '../lib/sync.js';
-import type { TaskState } from '../lib/sync.js';
-import { readJournal } from '../lib/journal.js';
 import { handleError } from '../lib/output.js';
-import { diffJournal, diffStatuses, diffCommitCounts, isAllDone, assignColor } from './watch.js';
-
-function timestamp(): string {
-  const now = new Date();
-  return pc.dim(
-    `[${now.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })}]`,
-  );
-}
-
-function colorTask(name: string, taskIndex: Map<string, number>): string {
-  const idx = taskIndex.get(name) ?? 0;
-  return assignColor(idx)(name);
-}
+import { runWatchLoop } from './watch.js';
 
 /** Shell out to a paw subcommand. Returns the exit code. */
 export function runPawCommand(args: string[]): { exitCode: number } {
@@ -39,127 +17,6 @@ export function runPawCommand(args: string[]): { exitCode: number } {
     const code =
       err && typeof err === 'object' && 'status' in err ? (err.status as number | null) : null;
     return { exitCode: code ?? 1 };
-  }
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-export async function waitForAgents(opts: {
-  repoRoot: string;
-  configPath: string;
-  pollInterval: number;
-}): Promise<void> {
-  const { repoRoot, configPath, pollInterval } = opts;
-  const config = loadConfig(configPath);
-  const worktrees = planWorktrees(config, repoRoot);
-  const taskNames = worktrees.map((w) => w.taskName);
-
-  const taskIndex = new Map<string, number>();
-  taskNames.forEach((name, i) => taskIndex.set(name, i));
-
-  let lastSeenTs: string | undefined;
-  let prevStatuses: Record<string, TaskState['status']> = {};
-  let prevCommitCounts: Record<string, number> = {};
-
-  let aborted = false;
-  const onSignal = () => {
-    aborted = true;
-  };
-  process.on('SIGINT', onSignal);
-  process.on('SIGTERM', onSignal);
-
-  console.log(pc.dim(`Watching ${taskNames.length} task(s), polling every ${pollInterval}s...`));
-  console.log(pc.dim(`Tasks: ${taskNames.map((n, i) => assignColor(i)(n)).join(', ')}`));
-  console.log();
-
-  try {
-    while (!aborted) {
-      const syncState = readSyncState(repoRoot);
-      if (!syncState) {
-        await sleep(pollInterval * 1000);
-        continue;
-      }
-
-      // Journal diff
-      const journal = readJournal(repoRoot);
-      const journalDiff = diffJournal(journal, lastSeenTs);
-      lastSeenTs = journalDiff.lastSeenTs;
-
-      for (const entry of journalDiff.newEntries) {
-        const from = colorTask(entry.from, taskIndex);
-        if (entry.type === 'broadcast') {
-          console.log(`${timestamp()}   ${from} broadcast: ${entry.msg}`);
-        } else if (entry.to) {
-          const to = colorTask(entry.to, taskIndex);
-          console.log(`${timestamp()}   ${from} → ${to}: ${entry.msg}`);
-        } else {
-          console.log(`${timestamp()}   ${from}: ${entry.msg}`);
-        }
-      }
-
-      // Status diff
-      const statusDiff = diffStatuses(prevStatuses, syncState.tasks);
-      prevStatuses = statusDiff.currentStatuses;
-
-      for (const t of statusDiff.transitions) {
-        const name = colorTask(t.task, taskIndex);
-        if (t.to === 'in_progress') {
-          console.log(`${timestamp()} ${pc.green('+')} ${name} claimed task`);
-        } else if (t.to === 'done') {
-          console.log(`${timestamp()} ${pc.green('✓')} ${name} done`);
-        } else if (t.from !== undefined) {
-          console.log(`${timestamp()}   ${name} ${t.from} → ${t.to}`);
-        }
-      }
-
-      // Commit count diff
-      const currentCommitCounts: Record<string, number> = {};
-      for (const wt of worktrees) {
-        try {
-          currentCommitCounts[wt.taskName] = getCommitCount(wt.branch, config.target, repoRoot);
-        } catch {
-          currentCommitCounts[wt.taskName] = prevCommitCounts[wt.taskName] ?? 0;
-        }
-      }
-
-      const commitDiff = diffCommitCounts(prevCommitCounts, currentCommitCounts);
-      prevCommitCounts = commitDiff.currentCounts;
-
-      for (const d of commitDiff.deltas) {
-        const name = colorTask(d.task, taskIndex);
-        let fileCount: number | undefined;
-        try {
-          const wt = worktrees.find((w) => w.taskName === d.task);
-          if (wt) {
-            fileCount = getChangedFileCount(wt.branch, config.target, repoRoot);
-          }
-        } catch {
-          // skip
-        }
-        const filesStr = fileCount !== undefined ? `, ${fileCount} file(s)` : '';
-        console.log(
-          `${timestamp()}   ${name} +${d.to - d.from} commit(s) (${d.to} total${filesStr})`,
-        );
-      }
-
-      // Check completion
-      if (isAllDone(syncState.tasks)) {
-        console.log(`${timestamp()} All agents done.\n`);
-        break;
-      }
-
-      await sleep(pollInterval * 1000);
-    }
-  } finally {
-    process.off('SIGINT', onSignal);
-    process.off('SIGTERM', onSignal);
-  }
-
-  if (aborted) {
-    console.log(pc.dim('\nAborted.'));
-    process.exit(130);
   }
 }
 
@@ -192,7 +49,7 @@ export async function runGo(opts: GoOpts): Promise<void> {
     process.exit(upResult.exitCode);
   }
 
-  // Step 2: paw launch (+ inline watch)
+  // Step 2: paw launch (+ watch)
   console.log(pc.bold('\nStep 2/4: paw launch\n'));
   const launchResult = runPawCommand(['launch', ...configArgs]);
   if (launchResult.exitCode !== 0) {
@@ -200,9 +57,21 @@ export async function runGo(opts: GoOpts): Promise<void> {
     process.exit(launchResult.exitCode);
   }
 
-  // Wait for agents with inline watch output
+  // Wait for agents using the shared watch loop
   console.log();
-  await waitForAgents({ repoRoot, configPath, pollInterval });
+  await runWatchLoop({
+    repoRoot,
+    configPath,
+    interval: pollInterval,
+    noExit: false,
+    header: pc.dim(
+      `Watching ${Object.keys(config.tasks).length} task(s), polling every ${pollInterval}s...`,
+    ),
+    onAbort: () => {
+      console.log(pc.dim('\nAborted.'));
+      process.exit(130);
+    },
+  });
 
   // Step 3: paw merge
   console.log(pc.bold('Step 3/4: paw merge\n'));

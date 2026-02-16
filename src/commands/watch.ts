@@ -164,13 +164,15 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function runWatchLoop(opts: {
+export async function runWatchLoop(opts: {
   repoRoot: string;
   configPath: string;
   interval: number;
   noExit: boolean;
+  header?: string;
+  onAbort?: () => void;
 }): Promise<void> {
-  const { repoRoot, configPath, interval, noExit } = opts;
+  const { repoRoot, configPath, interval, noExit, onAbort } = opts;
   const config = loadConfig(configPath);
   const worktrees = planWorktrees(config, repoRoot);
   const taskNames = worktrees.map((w) => w.taskName);
@@ -191,9 +193,13 @@ async function runWatchLoop(opts: {
   process.on('SIGINT', onSignal);
   process.on('SIGTERM', onSignal);
 
-  console.log(
-    pc.bold('paw watch') + pc.dim(` (polling every ${interval}s, ${taskNames.length} task(s))`),
-  );
+  if (opts.header !== undefined) {
+    console.log(opts.header);
+  } else {
+    console.log(
+      pc.bold('paw watch') + pc.dim(` (polling every ${interval}s, ${taskNames.length} task(s))`),
+    );
+  }
   console.log(pc.dim(`Tasks: ${taskNames.map((n, i) => assignColor(i)(n)).join(', ')}`));
   console.log();
 
@@ -266,7 +272,11 @@ async function runWatchLoop(opts: {
   }
 
   if (aborted) {
-    console.log(pc.dim('\nWatch stopped.'));
+    if (onAbort) {
+      onAbort();
+    } else {
+      console.log(pc.dim('\nWatch stopped.'));
+    }
   }
 }
 

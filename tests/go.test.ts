@@ -39,7 +39,8 @@ vi.mock('../src/lib/journal.js', () => ({
 
 import { execFileSync } from 'node:child_process';
 import { readSyncState } from '../src/lib/sync.js';
-import { runPawCommand, waitForAgents } from '../src/commands/go.js';
+import { runPawCommand } from '../src/commands/go.js';
+import { runWatchLoop } from '../src/commands/watch.js';
 
 const mockExecFileSync = vi.mocked(execFileSync);
 const mockReadSyncState = vi.mocked(readSyncState);
@@ -129,7 +130,7 @@ describe('go: merge conflict stops without teardown', () => {
   });
 });
 
-describe('waitForAgents: skips done agents', () => {
+describe('runWatchLoop', () => {
   it('exits immediately when all tasks are done', async () => {
     mockReadSyncState.mockReturnValue({
       session: 'test',
@@ -141,13 +142,14 @@ describe('waitForAgents: skips done agents', () => {
       },
     });
 
-    await waitForAgents({
+    await runWatchLoop({
       repoRoot: '/fake/repo',
       configPath: '/fake/repo/.paw/paw.yaml',
-      pollInterval: 1,
+      interval: 1,
+      noExit: false,
     });
 
-    // If we got here without hanging, the wait loop detected all done and exited
+    // If we got here without hanging, the watch loop detected all done and exited
     expect(mockReadSyncState).toHaveBeenCalled();
   });
 
@@ -177,10 +179,11 @@ describe('waitForAgents: skips done agents', () => {
       };
     });
 
-    await waitForAgents({
+    await runWatchLoop({
       repoRoot: '/fake/repo',
       configPath: '/fake/repo/.paw/paw.yaml',
-      pollInterval: 0.01, // very short for testing
+      interval: 0.01, // very short for testing
+      noExit: false,
     });
 
     expect(callCount).toBeGreaterThanOrEqual(3);
