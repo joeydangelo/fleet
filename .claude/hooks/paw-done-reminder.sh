@@ -4,23 +4,21 @@
 # Fires on PostToolUse:Bash for git commit/push commands
 
 input=$(cat)
-command=$(echo "$input" | jq -r '.tool_input.command // empty')
 
-# Block git push when no remote is configured
-if [[ "$command" == git\ push* ]] || [[ "$command" == *"git push"* ]]; then
-  if ! git remote -v 2>/dev/null | grep -q .; then
+# Block git push from paw worktrees — paw handles merging locally
+if [[ "$input" == *"git push"* ]]; then
+  if ls .paw/tasks/*.md 1>/dev/null 2>&1; then
     echo ""
-    echo "PAW WARNING: No git remote configured. Do NOT push."
-    echo "  Paw handles merging locally. Skip the push and run 'paw done'."
+    echo "PAW WARNING: Do NOT push from a paw worktree."
+    echo "  The orchestrator pushes the merged target branch after conflict resolution."
+    echo "  Commit your work, then run 'paw done'."
     echo ""
     exit 2
   fi
 fi
 
-# Only trigger on git push or git commit
-if [[ "$command" == git\ push* ]] || [[ "$command" == *"git push"* ]] || \
-   [[ "$command" == git\ commit* ]] || [[ "$command" == *"git commit"* ]]; then
-  # Check if we're in a paw worktree
+# Remind about paw done on git commit
+if [[ "$input" == *"git commit"* ]]; then
   if ls .paw/tasks/*.md 1>/dev/null 2>&1; then
     task_file=$(ls .paw/tasks/*.md 2>/dev/null | head -1)
     task_name=$(basename "$task_file" .md)
