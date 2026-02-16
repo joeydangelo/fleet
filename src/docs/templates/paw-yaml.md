@@ -33,8 +33,8 @@ agent: claude
 # pre-done runs before `paw done` marks a task complete. If it fails, done is blocked.
 # post-merge runs after each clean merge in `paw merge`. If it fails, paw stops
 # and shows rollback guidance.
-hooks:
-  post-up: npm install
+# hooks:
+#   post-up: pnpm install
 #   pre-done: npm test
 #   post-merge: npm test
 
