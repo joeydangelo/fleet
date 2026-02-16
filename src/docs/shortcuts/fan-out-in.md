@@ -25,7 +25,7 @@ independently -- you can check in, but you're not actively managing them.
 
 ## Check-in (optional)
 
-PAW's communication is async and pull-based. You check in when you want, or
+paw's communication is async and pull-based. You check in when you want, or
 leave `paw watch` running for a continuous view.
 
 - **`paw watch`** -- continuous terminal monitor. Streams broadcasts, status
@@ -70,7 +70,7 @@ leave `paw watch` running for a continuous view.
 
 ## Delegate mode
 
-PAW's worktree architecture already separates the coordinator from implementers.
+paw's worktree architecture already separates the coordinator from implementers.
 As the lead, you stay in the main repo. Each agent works in an isolated worktree
 with their own branch. This means:
 

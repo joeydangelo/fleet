@@ -16,7 +16,7 @@ the team know what you're about to do.
    - Done summaries from finished agents
 
 2. **Read your task file.** It's at `.paw/tasks/<your-task-name>.md`. Understand your
-   focus areas and instructions. If a spec or bead is referenced, read that too.
+   focus areas and instructions. If a spec or issue is referenced, read that too.
 
 3. **Adapt to what's already happened.** If other agents have completed work or
    broadcast interface changes, factor that into your approach. Don't plan against
