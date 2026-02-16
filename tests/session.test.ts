@@ -112,6 +112,36 @@ describe('generateTaskFile', () => {
     expect(result).not.toContain('## Instructions');
   });
 
+  it('includes spec path in header when spec field is set', () => {
+    const config: PawConfig = {
+      ...baseConfig,
+      tasks: {
+        auth: { focus: 'src/auth/', spec: 'docs/project/specs/active/plan-auth.md' },
+      },
+    };
+    const worktree = {
+      taskName: 'auth',
+      branch: 'feature/dashboard-auth',
+      worktreePath: '/projects/acme-app-paw-auth',
+    };
+
+    const result = generateTaskFile(config, 'auth', worktree);
+
+    expect(result).toContain('**Spec:** docs/project/specs/active/plan-auth.md');
+  });
+
+  it('omits spec line when spec field is not set', () => {
+    const worktree = {
+      taskName: 'auth',
+      branch: 'feature/dashboard-auth',
+      worktreePath: '/projects/acme-app-paw-auth',
+    };
+
+    const result = generateTaskFile(baseConfig, 'auth', worktree);
+
+    expect(result).not.toContain('**Spec:**');
+  });
+
   it('includes collaboration rules section', () => {
     const worktree = {
       taskName: 'auth',

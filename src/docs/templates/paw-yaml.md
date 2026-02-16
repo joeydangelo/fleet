@@ -56,7 +56,9 @@ tasks:
 
     # Optional: link this task to a planning spec.
     # from-github-issue and generate-paw-yaml populate this when working from specs.
-    spec: docs/project/specs/active/plan-2026-02-14-auth.md
+    # When set, the spec path appears in the agent's task file header so the agent
+    # knows where to find it.
+    spec: <path>
 
     # Instructions for the agent. Be specific: what to build, what interfaces
     # are shared, what to broadcast. Optional but strongly recommended.
