@@ -77,16 +77,16 @@ describe('launch: dry-run command building', () => {
     expect(linux.command).toBe('gnome-terminal');
   });
 
-  it('skip logic: completed tasks should not generate commands', () => {
+  it('skip logic: done tasks should not generate commands', () => {
     // Simulate the skip logic from launch.ts:
-    // tasks with status === 'completed' are skipped
+    // tasks with status === 'done' are skipped
     const tasks = {
-      auth: { status: 'completed' as const },
+      auth: { status: 'done' as const },
       api: { status: 'in_progress' as const },
       tests: { status: 'pending' as const },
     };
 
-    const launchable = Object.entries(tasks).filter(([_, t]) => t.status !== 'completed');
+    const launchable = Object.entries(tasks).filter(([_, t]) => t.status !== 'done');
     expect(launchable.map(([name]) => name)).toEqual(['api', 'tests']);
   });
 });

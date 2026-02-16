@@ -29,7 +29,7 @@ function sleep(ms: number): Promise<void> {
 function allTasksDone(repoRoot: string): boolean {
   const state = readSyncState(repoRoot);
   if (!state) return false;
-  return Object.values(state.tasks).every((t) => t.status === 'completed');
+  return Object.values(state.tasks).every((t) => t.status === 'done');
 }
 
 export function launchCommand(): Command {
@@ -80,9 +80,9 @@ export function launchCommand(): Command {
         for (const wt of targets) {
           const taskState = syncState?.tasks[wt.taskName];
 
-          // Skip completed tasks
-          if (taskState?.status === 'completed') {
-            skip(wt.taskName, 'completed');
+          // Skip done tasks
+          if (taskState?.status === 'done') {
+            skip(wt.taskName, 'done');
             continue;
           }
 

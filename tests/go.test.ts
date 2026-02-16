@@ -129,15 +129,15 @@ describe('go: merge conflict stops without teardown', () => {
   });
 });
 
-describe('waitForAgents: skips completed agents', () => {
-  it('exits immediately when all tasks are completed', async () => {
+describe('waitForAgents: skips done agents', () => {
+  it('exits immediately when all tasks are done', async () => {
     mockReadSyncState.mockReturnValue({
       session: 'test',
       config: '/fake/config',
       target: 'feature/x',
       tasks: {
-        auth: { status: 'completed', completed: '2026-02-15T00:00:00Z' },
-        api: { status: 'completed', completed: '2026-02-15T00:01:00Z' },
+        auth: { status: 'done', doneAt: '2026-02-15T00:00:00Z' },
+        api: { status: 'done', doneAt: '2026-02-15T00:01:00Z' },
       },
     });
 
@@ -161,7 +161,7 @@ describe('waitForAgents: skips completed agents', () => {
           config: '/fake/config',
           target: 'feature/x',
           tasks: {
-            auth: { status: 'completed' as const, completed: '2026-02-15T00:00:00Z' },
+            auth: { status: 'done' as const, doneAt: '2026-02-15T00:00:00Z' },
             api: { status: 'in_progress' as const, claimed: '2026-02-15T00:00:00Z' },
           },
         };
@@ -171,8 +171,8 @@ describe('waitForAgents: skips completed agents', () => {
         config: '/fake/config',
         target: 'feature/x',
         tasks: {
-          auth: { status: 'completed' as const, completed: '2026-02-15T00:00:00Z' },
-          api: { status: 'completed' as const, completed: '2026-02-15T00:01:00Z' },
+          auth: { status: 'done' as const, doneAt: '2026-02-15T00:00:00Z' },
+          api: { status: 'done' as const, doneAt: '2026-02-15T00:01:00Z' },
         },
       };
     });

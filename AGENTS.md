@@ -108,7 +108,7 @@ so the merge process understands your work.
    - Team status (who's working, who's done)
    - Recent broadcasts from other agents
    - Messages directed at you
-   - Completed summaries from finished agents
+   - Done summaries from finished agents
 2. **Broadcast your intent** before starting work.
 3. **Work on your task**, staying within your focus areas.
 4. **`paw broadcast "..."`** when you change interfaces other agents depend on.
@@ -124,7 +124,7 @@ paw broadcast "..."              # Announce a change to all agents
 paw check                        # Read new messages and broadcasts
 paw ask <task> "..."             # Send a directed message to an agent
 paw reply "..."                  # Reply to the most recent message
-paw done --summary "..."         # Mark task completed with summary
+paw done --summary "..."         # Mark task done with summary
 paw done --force --summary "..." # Bypass validation and pre-done hook
 paw status                       # Check progress across all tasks
 ```
@@ -150,6 +150,22 @@ paw status                       # Check progress across all tasks
 - **Write a good summary.** Your done summary is what the merge process and
   resolver agents use to understand your work. Use `paw template task-summary`
   for the structure.
+
+### CRITICAL: What agents must NEVER do
+
+- **NEVER manually edit `state.json` or any file on the sync branch.** The paw
+  CLI manages all sync state. If you write to state.json directly, you will
+  corrupt the coordination state and break `paw watch`, `paw go`, and `paw merge`.
+- **NEVER `git checkout paw-sync`** or switch to the sync branch. It is managed
+  by a dedicated worktree. Checking it out will fail or corrupt state.
+- **NEVER merge branches.** Merging is the orchestrator's job (`paw merge`).
+  You work on your task branch only.
+- **NEVER create pull requests.** The orchestrator handles PRs after merge.
+- **NEVER run `paw up`, `paw down`, `paw merge`, or `paw go`.** These are
+  orchestrator commands. Running them from a worktree will break the session.
+
+Use the CLI for everything: `paw done`, `paw broadcast`, `paw check`.
+The CLI handles sync state correctly. You don't need to touch it.
 
 ---
 

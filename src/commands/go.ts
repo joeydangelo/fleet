@@ -107,7 +107,7 @@ export async function waitForAgents(opts: {
         const name = colorTask(t.task, taskIndex);
         if (t.to === 'in_progress') {
           console.log(`${timestamp()} ${pc.green('+')} ${name} claimed task`);
-        } else if (t.to === 'completed') {
+        } else if (t.to === 'done') {
           console.log(`${timestamp()} ${pc.green('✓')} ${name} done`);
         } else if (t.from !== undefined) {
           console.log(`${timestamp()}   ${name} ${t.from} → ${t.to}`);

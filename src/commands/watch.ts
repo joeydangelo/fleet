@@ -99,7 +99,7 @@ export function diffCommitCounts(
 export function isAllDone(tasks: Record<string, TaskState>): boolean {
   const entries = Object.values(tasks);
   if (entries.length === 0) return false;
-  return entries.every((t) => t.status === 'completed');
+  return entries.every((t) => t.status === 'done');
 }
 
 // --- Output formatting ---
@@ -134,7 +134,7 @@ function printStatusTransition(t: StatusTransition, taskIndex: Map<string, numbe
 
   if (t.to === 'in_progress') {
     console.log(`${timestamp()} ${pc.green('+')} ${name} claimed task`);
-  } else if (t.to === 'completed') {
+  } else if (t.to === 'done') {
     console.log(`${timestamp()} ${pc.green('✓')} ${name} done`);
   } else if (t.from === undefined) {
     // New task appearing -- skip silent "pending" entries on first poll
