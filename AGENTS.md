@@ -73,7 +73,6 @@ paw up --dry-run                 # Preview what would be created
 paw launch                       # Open terminal + agent in each worktree
 paw launch --dry-run             # Preview launch commands without spawning
 paw launch --task <name>         # Launch agent in a specific worktree
-paw launch --wait                # Launch and block until all agents done
 paw go                           # Full workflow: up → launch → watch → merge → down
 paw go --poll-interval 10       # Adjust watch polling frequency (default 5s)
 paw status                       # Check progress across all tasks
@@ -166,6 +165,8 @@ paw status                       # Check progress across all tasks
   by a dedicated worktree. Checking it out will fail or corrupt state.
 - **NEVER merge branches.** Merging is the orchestrator's job (`paw merge`).
   You work on your task branch only.
+- **NEVER run `git push`.** The orchestrator pushes the merged target branch
+  after `paw merge`. Pushing from a worktree bypasses conflict resolution.
 - **NEVER create pull requests.** The orchestrator handles PRs after merge.
 - **NEVER run `paw up`, `paw down`, `paw merge`, or `paw go`.** These are
   orchestrator commands. Running them from a worktree will break the session.
