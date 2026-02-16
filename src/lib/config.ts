@@ -13,6 +13,7 @@ const TaskSchema = z.object({
 const HooksSchema = z.object({
   'pre-done': z.string().optional(),
   'post-merge': z.string().optional(),
+  'post-up': z.string().optional(),
 });
 
 const PawConfigSchema = z.object({

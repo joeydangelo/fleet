@@ -2,7 +2,13 @@ import { Command } from 'commander';
 import pc from 'picocolors';
 import { getRepoRoot } from '../lib/git.js';
 import { loadConfig, resolveConfigPath } from '../lib/config.js';
-import { createSession, planWorktrees, writeTaskFiles, copyIncludes } from '../lib/session.js';
+import {
+  createSession,
+  planWorktrees,
+  writeTaskFiles,
+  copyIncludes,
+  runHook,
+} from '../lib/session.js';
 import { initSyncState, writeSyncStateAndFiles, initSyncWorktree } from '../lib/sync.js';
 import { success, pending, handleError } from '../lib/output.js';
 
@@ -30,6 +36,9 @@ export function upCommand(): Command {
           if (config.include?.length) {
             console.log(pc.dim(`\n  include: ${config.include.join(', ')}`));
           }
+          if (config.hooks?.['post-up']) {
+            console.log(pc.dim(`  post-up: ${config.hooks['post-up']}`));
+          }
           console.log(pc.dim('\nDry run -- no changes made.'));
           return;
         }
@@ -45,6 +54,15 @@ export function upCommand(): Command {
                 pc.dim(`  copied ${copied.length} file(s) to ${wt.taskName}: ${copied.join(', ')}`),
               );
             }
+          }
+        }
+
+        const postUpHook = config.hooks?.['post-up'];
+        if (postUpHook) {
+          for (const wt of worktrees) {
+            console.log(pc.dim(`  running post-up hook in ${wt.taskName}: ${postUpHook}`));
+            runHook(wt.worktreePath, postUpHook);
+            success(wt.taskName, 'post-up hook passed');
           }
         }
 

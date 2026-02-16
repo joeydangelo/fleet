@@ -203,6 +203,48 @@ tasks:
 
     rmSync(dir, { recursive: true });
   });
+
+  it('parses optional post-up hook', () => {
+    const dir = makeTempDir();
+    const configPath = resolve(dir, 'paw.yaml');
+    writeFileSync(
+      configPath,
+      `
+target: feature/x
+hooks:
+  post-up: pnpm install
+tasks:
+  a:
+    focus: src/
+`,
+    );
+
+    const config = loadConfig(configPath);
+    expect(config.hooks?.['post-up']).toBe('pnpm install');
+
+    rmSync(dir, { recursive: true });
+  });
+
+  it('accepts hooks without post-up', () => {
+    const dir = makeTempDir();
+    const configPath = resolve(dir, 'paw.yaml');
+    writeFileSync(
+      configPath,
+      `
+target: feature/x
+hooks:
+  pre-done: npm test
+tasks:
+  a:
+    focus: src/
+`,
+    );
+
+    const config = loadConfig(configPath);
+    expect(config.hooks?.['post-up']).toBeUndefined();
+
+    rmSync(dir, { recursive: true });
+  });
 });
 
 describe('include config', () => {

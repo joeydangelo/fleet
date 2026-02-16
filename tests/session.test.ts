@@ -11,6 +11,7 @@ import {
   ensureGitignore,
   detectTaskName,
   copyIncludes,
+  runHook,
 } from '../src/lib/session.js';
 
 function makeTempDir(): string {
@@ -548,5 +549,26 @@ describe('copyIncludes', () => {
 
     rmSync(repoRoot, { recursive: true });
     rmSync(worktree, { recursive: true });
+  });
+});
+
+describe('runHook', () => {
+  it('executes command with correct cwd', () => {
+    const dir = makeTempDir();
+
+    // Write a marker file from within the hook to prove cwd is correct
+    runHook(dir, `node -e "require('fs').writeFileSync('marker.txt', 'ok')"`);
+
+    expect(readFileSync(resolve(dir, 'marker.txt'), 'utf-8')).toBe('ok');
+
+    rmSync(dir, { recursive: true });
+  });
+
+  it('throws on non-zero exit', () => {
+    const dir = makeTempDir();
+
+    expect(() => runHook(dir, 'node -e "process.exit(1)"')).toThrow();
+
+    rmSync(dir, { recursive: true });
   });
 });

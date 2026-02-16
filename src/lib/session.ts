@@ -7,6 +7,7 @@ import {
   readdirSync,
   copyFileSync,
 } from 'node:fs';
+import { execSync } from 'node:child_process';
 import fg from 'fast-glob';
 import type { PawConfig } from './config.js';
 import { branchExists, createBranch, createWorktree, getFileFromBranch } from './git.js';
@@ -183,4 +184,9 @@ export function writeTaskFiles(
 
     ensureGitignore(wt.worktreePath, baseBranch);
   }
+}
+
+/** Run a hook command in a worktree directory. Throws on non-zero exit. */
+export function runHook(worktreePath: string, command: string): void {
+  execSync(command, { cwd: worktreePath, stdio: 'inherit' });
 }
