@@ -19,17 +19,6 @@ interface LaunchOpts {
   dryRun?: boolean;
   task?: string;
   terminal?: string;
-  wait?: boolean;
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-function allTasksDone(repoRoot: string): boolean {
-  const state = readSyncState(repoRoot);
-  if (!state) return false;
-  return Object.values(state.tasks).every((t) => t.status === 'done');
 }
 
 export function launchCommand(): Command {
@@ -39,8 +28,7 @@ export function launchCommand(): Command {
     .option('--dry-run', 'Show what would be spawned without launching')
     .option('-t, --task <name>', 'Launch agent in a specific worktree only')
     .option('--terminal <emulator>', 'Override terminal emulator (Linux)')
-    .option('--wait', 'Poll paw status until all agents are done')
-    .action(async (opts: LaunchOpts) => {
+    .action((opts: LaunchOpts) => {
       try {
         const repoRoot = getRepoRoot();
         const configPath = opts.config ?? resolveConfigPath(repoRoot);
@@ -128,15 +116,6 @@ export function launchCommand(): Command {
 
         if (launched > 0) {
           console.log(pc.dim(`\nLaunched ${launched} agent(s).`));
-        }
-
-        if (opts.wait) {
-          console.log(pc.dim('Waiting for all agents to complete...\n'));
-          const POLL_INTERVAL_MS = 5000;
-          while (!allTasksDone(repoRoot)) {
-            await sleep(POLL_INTERVAL_MS);
-          }
-          console.log(pc.green('All agents done.'));
         }
       } catch (err) {
         handleError(err);

@@ -19,9 +19,8 @@ independently -- you can check in, but you're not actively managing them.
    in each worktree. Requires `agent: <command>` in `.paw/paw.yaml`. Each agent
    auto-orients via `paw prime` on startup.
 
-   Use `paw launch --dry-run` to preview commands, `paw launch --task <name>` to
-   launch a single worktree, or `paw launch --wait` to block until all agents
-   finish.
+   Use `paw launch --dry-run` to preview commands or `paw launch --task <name>`
+   to launch a single worktree.
 
 ## Check-in (optional)
 
