@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { tmpdir } from 'node:os';
-import { installHooks, PAW_SESSION_SCRIPT } from '../src/lib/hooks.js';
+import { installHooks, PAW_SESSION_SCRIPT, CONFIRM_GH_CLI_SCRIPT } from '../src/lib/hooks.js';
 import { readDoc } from '../src/lib/docs.js';
 
 function makeTempDir(): string {
@@ -28,13 +28,17 @@ describe('installHooks', () => {
     const settingsPath = resolve(repoRoot, '.claude', 'settings.json');
     const settings = JSON.parse(readFileSync(settingsPath, 'utf-8'));
 
-    // SessionStart should have matcher group format
+    // SessionStart should have matcher group format: gh CLI + paw session
     const sessionStart = settings.hooks.SessionStart;
-    expect(sessionStart).toHaveLength(1);
+    expect(sessionStart).toHaveLength(2);
     expect(sessionStart[0]).toHaveProperty('matcher', '');
-    expect(sessionStart[0]).toHaveProperty('hooks');
-    expect(sessionStart[0].hooks).toHaveLength(1);
     expect(sessionStart[0].hooks[0]).toEqual({
+      type: 'command',
+      command: 'bash .claude/scripts/confirm-gh-cli.sh',
+      timeout: 120,
+    });
+    expect(sessionStart[1]).toHaveProperty('matcher', '');
+    expect(sessionStart[1].hooks[0]).toEqual({
       type: 'command',
       command: 'bash .claude/scripts/paw-session.sh',
     });
@@ -48,6 +52,18 @@ describe('installHooks', () => {
       type: 'command',
       command: 'bash .claude/scripts/paw-session.sh --brief',
     });
+  });
+
+  it('writes the confirm-gh-cli script', () => {
+    installHooks(repoRoot);
+
+    const scriptPath = resolve(repoRoot, '.claude', 'scripts', 'confirm-gh-cli.sh');
+    expect(existsSync(scriptPath)).toBe(true);
+
+    const content = readFileSync(scriptPath, 'utf-8');
+    expect(content).toContain('#!/bin/bash');
+    expect(content).toContain('command -v gh');
+    expect(content).toContain('gh auth status');
   });
 
   it('writes the wrapper script', () => {
@@ -88,10 +104,11 @@ describe('installHooks', () => {
 
     const settings = JSON.parse(readFileSync(resolve(settingsDir, 'settings.json'), 'utf-8'));
 
-    // Should have both tbd and paw hooks
-    expect(settings.hooks.SessionStart).toHaveLength(2);
+    // Should have tbd + gh CLI + paw session hooks
+    expect(settings.hooks.SessionStart).toHaveLength(3);
     expect(settings.hooks.SessionStart[0].hooks[0].command).toContain('tbd');
-    expect(settings.hooks.SessionStart[1].hooks[0].command).toContain('paw');
+    expect(settings.hooks.SessionStart[1].hooks[0].command).toContain('confirm-gh-cli');
+    expect(settings.hooks.SessionStart[2].hooks[0].command).toContain('paw-session');
   });
 
   it('registers PostToolUse hook for paw done reminder (paw-xlg3)', () => {
@@ -125,7 +142,7 @@ describe('installHooks', () => {
     const settings = JSON.parse(
       readFileSync(resolve(repoRoot, '.claude', 'settings.json'), 'utf-8'),
     );
-    expect(settings.hooks.SessionStart).toHaveLength(1);
+    expect(settings.hooks.SessionStart).toHaveLength(2);
     expect(settings.hooks.PreCompact).toHaveLength(1);
     expect(settings.hooks.PostToolUse).toHaveLength(1);
   });
@@ -147,10 +164,12 @@ describe('installHooks', () => {
 
     const settings = JSON.parse(readFileSync(resolve(settingsDir, 'settings.json'), 'utf-8'));
 
-    // Old flat format should be replaced, not appended
-    expect(settings.hooks.SessionStart).toHaveLength(1);
+    // Old flat format should be replaced with gh CLI + paw session
+    expect(settings.hooks.SessionStart).toHaveLength(2);
     expect(settings.hooks.SessionStart[0]).toHaveProperty('matcher');
     expect(settings.hooks.SessionStart[0]).toHaveProperty('hooks');
+    expect(settings.hooks.SessionStart[0].hooks[0].command).toContain('confirm-gh-cli');
+    expect(settings.hooks.SessionStart[1].hooks[0].command).toContain('paw-session');
   });
 });
 
@@ -199,5 +218,21 @@ describe('PAW_SESSION_SCRIPT', () => {
 
   it('passes arguments through to paw prime', () => {
     expect(PAW_SESSION_SCRIPT).toContain('paw prime "$@"');
+  });
+});
+
+describe('CONFIRM_GH_CLI_SCRIPT', () => {
+  it('checks for gh CLI', () => {
+    expect(CONFIRM_GH_CLI_SCRIPT).toContain('command -v gh');
+  });
+
+  it('installs gh if missing', () => {
+    expect(CONFIRM_GH_CLI_SCRIPT).toContain('cli/cli/releases');
+    expect(CONFIRM_GH_CLI_SCRIPT).toContain('~/.local/bin/gh');
+  });
+
+  it('checks authentication status', () => {
+    expect(CONFIRM_GH_CLI_SCRIPT).toContain('gh auth status');
+    expect(CONFIRM_GH_CLI_SCRIPT).toContain('GH_TOKEN');
   });
 });

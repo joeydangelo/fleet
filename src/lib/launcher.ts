@@ -1,4 +1,6 @@
-import { execFileSync, execSync } from 'node:child_process';
+import { execFileSync, execSync, spawn } from 'node:child_process';
+import { existsSync, readFileSync, writeFileSync, unlinkSync, mkdirSync } from 'node:fs';
+import { resolve } from 'node:path';
 
 export type Platform = 'windows' | 'macos' | 'linux';
 
@@ -144,24 +146,103 @@ export function cleanAgentEnv(
 
 /**
  * Spawn a terminal window running the agent command. Fire-and-forget —
- * returns immediately after launching.
+ * returns immediately after launching. Returns the PID of the spawned
+ * process (if available) so callers can track and kill it later.
  */
-export function spawnTerminal(opts: LaunchOptions, platform?: Platform): void {
+export function spawnTerminal(opts: LaunchOptions, platform?: Platform): number | undefined {
   const plat = platform ?? detectPlatform();
   const env = cleanAgentEnv();
 
   if (plat === 'windows') {
-    // On Windows, `start` is a cmd.exe builtin. Using execFileSync with an
-    // args array applies C-runtime quoting (backslash-escaped quotes) which
-    // cmd.exe doesn't understand. Use execSync with a string command instead.
+    // spawn with detached: true opens a new console window on Windows.
+    // This gives us the real terminal PID so paw down can close it.
     const { worktreePath, agentCommand } = opts;
-    execSync(`start "" /d "${worktreePath}" cmd /k ${agentCommand}`, {
+    const child = spawn('cmd', ['/k', agentCommand], {
+      cwd: worktreePath,
       stdio: 'ignore',
+      detached: true,
       env,
+      windowsVerbatimArguments: true,
     });
-    return;
+    const pid = child.pid;
+    child.unref();
+    return pid;
   }
 
   const { command, args } = buildLaunchCommand(opts, plat);
-  execFileSync(command, args, { stdio: 'ignore', env });
+  const child = spawn(command, args, {
+    stdio: 'ignore',
+    detached: true,
+    env,
+  });
+  const pid = child.pid;
+  child.unref();
+  return pid;
+}
+
+/** Task-name-to-PID mapping persisted by launch, consumed by down. */
+export type PidMap = Record<string, number>;
+
+const PIDS_FILE = 'pids.json';
+
+function pidsPath(repoRoot: string): string {
+  return resolve(repoRoot, '.paw', PIDS_FILE);
+}
+
+/** Read tracked PIDs from .paw/pids.json. Returns empty map if missing or corrupt. */
+export function readPidFile(repoRoot: string): PidMap {
+  const p = pidsPath(repoRoot);
+  if (!existsSync(p)) return {};
+  try {
+    return JSON.parse(readFileSync(p, 'utf-8')) as PidMap;
+  } catch {
+    return {};
+  }
+}
+
+/** Persist tracked PIDs to .paw/pids.json. */
+export function writePidFile(repoRoot: string, pids: PidMap): void {
+  const dir = resolve(repoRoot, '.paw');
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(pidsPath(repoRoot), JSON.stringify(pids, null, 2) + '\n');
+}
+
+/** Delete .paw/pids.json if it exists. */
+export function removePidFile(repoRoot: string): void {
+  const p = pidsPath(repoRoot);
+  if (existsSync(p)) {
+    try {
+      unlinkSync(p);
+    } catch {
+      // already removed
+    }
+  }
+}
+
+/**
+ * Kill all tracked processes from pids.json. Returns the count of
+ * processes that were successfully killed. Already-exited processes
+ * are silently ignored.
+ */
+export function killTrackedProcesses(repoRoot: string, platform?: Platform): number {
+  const pids = readPidFile(repoRoot);
+  const plat = platform ?? detectPlatform();
+  let killed = 0;
+
+  for (const [, pid] of Object.entries(pids)) {
+    try {
+      if (plat === 'windows') {
+        // Kill the process tree — the tracked PID is the cmd.exe parent
+        execSync(`taskkill /pid ${pid} /t /f`, { stdio: 'ignore' });
+      } else {
+        process.kill(pid, 'SIGTERM');
+      }
+      killed++;
+    } catch {
+      // Process already exited (ESRCH) or permission denied -- ignore
+    }
+  }
+
+  removePidFile(repoRoot);
+  return killed;
 }

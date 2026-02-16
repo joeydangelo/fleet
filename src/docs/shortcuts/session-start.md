@@ -13,7 +13,7 @@ the team know what you're about to do.
    - Team status (who's working, who's done, who's pending)
    - Recent broadcasts from other agents
    - Messages directed at you
-   - Completed summaries from finished agents
+   - Done summaries from finished agents
 
 2. **Read your task file.** It's at `.paw/tasks/<your-task-name>.md`. Understand your
    focus areas and instructions. If a spec or bead is referenced, read that too.

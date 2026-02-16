@@ -40,8 +40,8 @@ export function statusCommand(): Command {
             continue;
           }
 
-          if (taskSync?.status === 'completed') {
-            skip(wt.taskName, 'completed');
+          if (taskSync?.status === 'done') {
+            skip(wt.taskName, 'done');
             continue;
           }
 

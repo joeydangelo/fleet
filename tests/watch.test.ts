@@ -77,7 +77,7 @@ describe('diffStatuses', () => {
       api: 'pending',
     };
     const curr: Record<string, TaskState> = {
-      auth: { status: 'completed', completed: '2026-02-14T10:05:00.000Z' },
+      auth: { status: 'done', doneAt: '2026-02-14T10:05:00.000Z' },
       api: { status: 'in_progress', claimed: '2026-02-14T10:03:00.000Z' },
     };
 
@@ -86,7 +86,7 @@ describe('diffStatuses', () => {
     expect(result.transitions).toContainEqual({
       task: 'auth',
       from: 'in_progress',
-      to: 'completed',
+      to: 'done',
     });
     expect(result.transitions).toContainEqual({ task: 'api', from: 'pending', to: 'in_progress' });
   });
@@ -140,17 +140,17 @@ describe('diffCommitCounts', () => {
 });
 
 describe('isAllDone', () => {
-  it('returns true when all tasks are completed', () => {
+  it('returns true when all tasks are done', () => {
     const tasks: Record<string, TaskState> = {
-      auth: { status: 'completed' },
-      api: { status: 'completed' },
+      auth: { status: 'done' },
+      api: { status: 'done' },
     };
     expect(isAllDone(tasks)).toBe(true);
   });
 
-  it('returns false when some tasks are not completed', () => {
+  it('returns false when some tasks are not done', () => {
     const tasks: Record<string, TaskState> = {
-      auth: { status: 'completed' },
+      auth: { status: 'done' },
       api: { status: 'in_progress' },
     };
     expect(isAllDone(tasks)).toBe(false);

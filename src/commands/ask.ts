@@ -14,12 +14,7 @@ export function askCommand(): Command {
     .action((task: string, message: string) => {
       try {
         const repoRoot = getRepoRoot();
-        const taskName = detectTaskName(repoRoot);
-
-        if (!taskName) {
-          console.error(pc.red('Could not detect task name. Are you in a paw worktree?'));
-          process.exit(1);
-        }
+        const taskName = detectTaskName(repoRoot) ?? 'orchestrator';
 
         const state = readSyncState(repoRoot);
         if (!state) {

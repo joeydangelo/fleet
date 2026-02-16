@@ -83,12 +83,12 @@ describe('claimTask', () => {
 });
 
 describe('completeTask', () => {
-  it('sets status to completed with timestamp', () => {
+  it('sets status to done with timestamp', () => {
     const state = initSyncState('feature/dash', ['auth', 'api'], 'paw.yaml');
     const completed = completeTask(state, 'auth');
 
-    expect(completed.tasks['auth']?.status).toBe('completed');
-    expect(completed.tasks['auth']?.completed).toBeTruthy();
+    expect(completed.tasks['auth']?.status).toBe('done');
+    expect(completed.tasks['auth']?.doneAt).toBeTruthy();
     expect(completed.tasks['api']?.status).toBe('pending');
   });
 
@@ -233,7 +233,7 @@ describe('writeSyncStateAndFiles', () => {
     );
 
     const readState = readSyncState(repoDir);
-    expect(readState?.tasks['auth']?.status).toBe('completed');
+    expect(readState?.tasks['auth']?.status).toBe('done');
 
     const summary = readSyncFile('summaries/auth.md', repoDir);
     expect(summary).toBe('auth done');

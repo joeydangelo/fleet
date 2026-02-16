@@ -52,7 +52,21 @@ leave `paw watch` running for a continuous view.
    `.paw/paw.yaml` to template. The target branch with all merged work remains.
    Use `--no-archive` to skip archival.
 
-4. **Review the target branch.** Merge or rebase into main when ready.
+4. **Ask the user what to do next.** The merged work is on the target branch.
+   Check if a remote is configured (`git remote -v`), then ask:
+
+   - **Create a PR** — push the target branch and open a pull request against
+     main. Gets reviewed before anything changes on main. Requires a remote.
+     Use `paw shortcut to-pr`.
+   - **Merge or rebase into main** — combine the target branch into main
+     directly. Merge preserves branch history; rebase gives linear history.
+     Push after if a remote exists.
+   - **Keep working** — stay on the target branch. The user wants to review,
+     test, or make more changes before sharing. Ask what they'd like to do
+     next — use your context about the project and session to suggest
+     relevant next steps.
+
+   If the user doesn't specify, default to creating a PR.
 
 ## Delegate mode
 
@@ -66,3 +80,23 @@ with their own branch. This means:
 
 If you need to make changes yourself (e.g., a shared config file), do it on the
 target branch before or after the merge -- not during agent work.
+
+## `paw go` -- automated mode
+
+`paw go` runs this entire workflow as a single command:
+up → launch → watch → merge → down. Use it for straightforward sessions
+where you don't expect conflicts or need to intervene mid-session.
+
+```bash
+paw go                         # requires paw.yaml to exist
+paw go --poll-interval 10     # poll every 10 seconds (default 5)
+```
+
+If merge hits a conflict, `paw go` stops with a clear message and leaves
+worktrees intact. Resolve manually, then run `paw merge --continue` and
+`paw down` yourself.
+
+Use the manual workflow above when you need to:
+- Redirect agents mid-session with `paw ask`
+- Cherry-pick which tasks to merge with `paw merge --pick`
+- Make changes on the target branch between merge and cleanup

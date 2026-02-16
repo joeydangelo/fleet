@@ -57,7 +57,7 @@ function printTeamStatus(taskName: string, state: SyncState): void {
   console.log(pc.bold('Team Status'));
   for (const [name, task] of otherTasks) {
     const statusColor =
-      task.status === 'completed' ? pc.green : task.status === 'in_progress' ? pc.yellow : pc.dim;
+      task.status === 'done' ? pc.green : task.status === 'in_progress' ? pc.yellow : pc.dim;
     const focus = formatFocusAreas(task.focus);
     const focusSuffix = focus ? `  ${pc.dim(focus)}` : '';
     console.log(`  ${statusColor(task.status.padEnd(12))} ${name}${focusSuffix}`);
@@ -144,13 +144,13 @@ function printFull(
   }
 
   // Completed summaries
-  const completedTasks = Object.entries(state.tasks).filter(
-    ([name, task]) => name !== taskName && task.status === 'completed',
+  const doneTasks = Object.entries(state.tasks).filter(
+    ([name, task]) => name !== taskName && task.status === 'done',
   );
-  if (completedTasks.length > 0) {
+  if (doneTasks.length > 0) {
     console.log(separator);
-    console.log(pc.bold('Completed Summaries\n'));
-    for (const [name] of completedTasks) {
+    console.log(pc.bold('Done Summaries\n'));
+    for (const [name] of doneTasks) {
       const summary = readSyncFile(`summaries/${name}.md`, repoRoot);
       if (summary) {
         console.log(pc.bold(`### ${name}`));
@@ -216,7 +216,7 @@ function selfAssignFromRoot(repoRoot: string): void {
   const pendingTask = findFirstPendingTask(state);
 
   if (!pendingTask) {
-    console.log(pc.yellow('All tasks are already claimed or completed.\n'));
+    console.log(pc.yellow('All tasks are already claimed or done.\n'));
     printTeamStatus('', state);
     process.exit(0);
   }

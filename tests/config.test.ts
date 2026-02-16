@@ -249,6 +249,94 @@ tasks:
   });
 });
 
+describe('task issue and spec fields', () => {
+  it('parses tasks with issue and spec fields', () => {
+    const dir = makeTempDir();
+    const configPath = resolve(dir, 'paw.yaml');
+    writeFileSync(
+      configPath,
+      `
+target: feature/x
+tasks:
+  auth:
+    focus: src/auth/
+    issue: paw-za72
+    spec: docs/project/specs/active/plan-auth.md
+    prompt: Add OAuth2 login
+`,
+    );
+
+    const config = loadConfig(configPath);
+    expect(config.tasks['auth']?.issue).toBe('paw-za72');
+    expect(config.tasks['auth']?.spec).toBe('docs/project/specs/active/plan-auth.md');
+
+    rmSync(dir, { recursive: true });
+  });
+
+  it('accepts tasks without issue and spec fields', () => {
+    const dir = makeTempDir();
+    const configPath = resolve(dir, 'paw.yaml');
+    writeFileSync(
+      configPath,
+      `
+target: feature/x
+tasks:
+  api:
+    focus: src/api/
+    prompt: Build REST endpoints
+`,
+    );
+
+    const config = loadConfig(configPath);
+    expect(config.tasks['api']?.issue).toBeUndefined();
+    expect(config.tasks['api']?.spec).toBeUndefined();
+
+    rmSync(dir, { recursive: true });
+  });
+
+  it('accepts tasks with only issue field', () => {
+    const dir = makeTempDir();
+    const configPath = resolve(dir, 'paw.yaml');
+    writeFileSync(
+      configPath,
+      `
+target: feature/x
+tasks:
+  bugfix:
+    focus: src/lib/
+    issue: GH#42
+`,
+    );
+
+    const config = loadConfig(configPath);
+    expect(config.tasks['bugfix']?.issue).toBe('GH#42');
+    expect(config.tasks['bugfix']?.spec).toBeUndefined();
+
+    rmSync(dir, { recursive: true });
+  });
+
+  it('accepts tasks with only spec field', () => {
+    const dir = makeTempDir();
+    const configPath = resolve(dir, 'paw.yaml');
+    writeFileSync(
+      configPath,
+      `
+target: feature/x
+tasks:
+  dashboard:
+    focus: src/ui/
+    spec: docs/specs/dashboard.md
+`,
+    );
+
+    const config = loadConfig(configPath);
+    expect(config.tasks['dashboard']?.issue).toBeUndefined();
+    expect(config.tasks['dashboard']?.spec).toBe('docs/specs/dashboard.md');
+
+    rmSync(dir, { recursive: true });
+  });
+});
+
 describe('resolveConfigPath', () => {
   it('finds .paw/paw.yaml', () => {
     const dir = makeTempDir();

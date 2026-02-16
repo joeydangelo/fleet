@@ -13,6 +13,7 @@ import { loadConfig, resolveConfigPath } from '../lib/config.js';
 import { planWorktrees } from '../lib/session.js';
 import { removeSyncWorktree, archiveSession } from '../lib/sync.js';
 import { readDoc } from '../lib/docs.js';
+import { killTrackedProcesses } from '../lib/launcher.js';
 import { success, error, skip, pending, handleError } from '../lib/output.js';
 
 export function downCommand(): Command {
@@ -23,7 +24,12 @@ export function downCommand(): Command {
     .option('--keep-branches', 'Keep branches after removing worktrees', false)
     .option('--no-archive', 'Skip archiving session data to .paw/sessions/')
     .action(
-      (opts: { config?: string; dryRun?: boolean; keepBranches: boolean; archive: boolean }) => {
+      async (opts: {
+        config?: string;
+        dryRun?: boolean;
+        keepBranches: boolean;
+        archive: boolean;
+      }) => {
         try {
           const repoRoot = getRepoRoot();
           const configPath = opts.config ?? resolveConfigPath(repoRoot);
@@ -44,7 +50,16 @@ export function downCommand(): Command {
             return;
           }
 
+          // Kill tracked terminal processes before removing worktrees.
+          // Sleep briefly after kill to let the OS release file handles.
+          const killed = killTrackedProcesses(repoRoot);
+          if (killed > 0) {
+            success('terminals', `killed ${killed} tracked process(es)`);
+            await new Promise((r) => setTimeout(r, 1500));
+          }
+
           let removed = 0;
+          let failed = 0;
 
           for (const wt of worktrees) {
             if (!existsSync(wt.worktreePath)) {
@@ -57,9 +72,21 @@ export function downCommand(): Command {
               removed++;
               success(wt.taskName, 'worktree removed');
             } catch (err) {
+              failed++;
               const message = err instanceof Error ? err.message : String(err);
               error(wt.taskName, `failed: ${message}`);
             }
+          }
+
+          if (failed > 0) {
+            console.log(
+              pc.yellow(
+                `\n${failed} worktree(s) could not be removed (files may be in use).` +
+                  '\nClose terminals and editors in the worktree directories, then retry `paw down`.' +
+                  '\nConfig and sync branch left intact for retry.',
+              ),
+            );
+            process.exit(1);
           }
 
           // Remove backup refs

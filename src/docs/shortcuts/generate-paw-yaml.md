@@ -34,7 +34,18 @@ Generate `.paw/paw.yaml` to split the user's feature request into parallel agent
    - What other tasks should expect from it
    - Tell the owning agent to `paw broadcast` when it changes the interface
 
-5. **Write `.paw/paw.yaml`:**
+5. **Link tasks to sources.** If tasks originate from issues or specs, set the
+   optional `issue` and `spec` fields on each task:
+   - `issue`: the tracker ID (e.g., `GH#123`). Any tracker ID format works. Set this
+     when generating from `paw shortcut from-issues` or `from-github-issue`.
+   - `spec`: path to the planning spec (e.g.,
+     `docs/project/specs/active/plan-auth.md`). Set this when generating from a
+     spec or feature plan.
+
+   These fields are optional. When present, `paw shortcut to-pr` uses them to
+   reference issues in the PR body.
+
+6. **Write `.paw/paw.yaml`:**
 
    ```yaml
    target: feature/branch-name
@@ -43,12 +54,14 @@ Generate `.paw/paw.yaml` to split the user's feature request into parallel agent
      task-name:
        focus:
          - src/relevant/directory/
+       issue: GH#123              # optional: source issue ID
+       spec: docs/specs/plan.md   # optional: source spec path
        prompt: |
          What to build. Be specific.
          Mention interfaces shared with other tasks.
    ```
 
-6. **Validate the decomposition:**
+7. **Validate the decomposition:**
    - [ ] No two tasks share the same focus files (minimal overlap)
    - [ ] Each task can start immediately (no hidden sequencing)
    - [ ] Instructions mention shared interfaces and who owns them

@@ -16,9 +16,9 @@ const STATE_FILE = 'state.json';
 const MAX_RETRIES = 3;
 
 export interface TaskState {
-  status: 'pending' | 'in_progress' | 'completed';
+  status: 'pending' | 'in_progress' | 'done';
   claimed?: string;
-  completed?: string;
+  doneAt?: string;
   focus?: string[];
 }
 
@@ -265,8 +265,8 @@ export function completeTask(state: SyncState, taskName: string): SyncState {
       ...state.tasks,
       [taskName]: {
         ...task,
-        status: 'completed',
-        completed: new Date().toISOString(),
+        status: 'done',
+        doneAt: new Date().toISOString(),
       },
     },
   };

@@ -10,7 +10,7 @@ import { validateSummary, generateErrorTemplate } from '../lib/summary.js';
 
 export function doneCommand(): Command {
   return new Command('done')
-    .description('Mark current task as completed')
+    .description('Mark current task as done')
     .option('--summary <text>', 'Completion summary (what you did, interface changes, warnings)')
     .option('--force', 'Bypass summary validation')
     .action((opts: { summary?: string; force?: boolean }) => {
@@ -86,7 +86,7 @@ export function doneCommand(): Command {
         const updated = completeTask(state, taskName);
         const summaryPath = `summaries/${taskName}.md`;
         writeSyncStateAndFiles(updated, [{ path: summaryPath, content: opts.summary }], repoRoot);
-        console.log(pc.green(`+ ${taskName} -- marked as completed`));
+        console.log(pc.green(`+ ${taskName} -- marked as done`));
         console.log(pc.dim(`  Summary written to ${summaryPath} on sync branch`));
       } catch (err) {
         handleError(err);
