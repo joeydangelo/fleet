@@ -112,6 +112,36 @@ describe('generateTaskFile', () => {
     expect(result).not.toContain('## Instructions');
   });
 
+  it('includes issue in header when issue field is set', () => {
+    const config: PawConfig = {
+      ...baseConfig,
+      tasks: {
+        auth: { focus: 'src/auth/', issue: 'GH#123' },
+      },
+    };
+    const worktree = {
+      taskName: 'auth',
+      branch: 'feature/dashboard-auth',
+      worktreePath: '/projects/acme-app-paw-auth',
+    };
+
+    const result = generateTaskFile(config, 'auth', worktree);
+
+    expect(result).toContain('**Issue:** GH#123');
+  });
+
+  it('omits issue line when issue field is not set', () => {
+    const worktree = {
+      taskName: 'auth',
+      branch: 'feature/dashboard-auth',
+      worktreePath: '/projects/acme-app-paw-auth',
+    };
+
+    const result = generateTaskFile(baseConfig, 'auth', worktree);
+
+    expect(result).not.toContain('**Issue:**');
+  });
+
   it('includes spec path in header when spec field is set', () => {
     const config: PawConfig = {
       ...baseConfig,

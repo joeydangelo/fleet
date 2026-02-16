@@ -89,6 +89,7 @@ export function generateTaskFile(
     `**Branch:** ${worktreeInfo.branch}`,
     `**Target:** ${config.target}`,
     `**Worktree:** ${worktreeInfo.worktreePath}`,
+    ...(task.issue ? [`**Issue:** ${task.issue}`] : []),
     ...(task.spec ? [`**Spec:** ${task.spec}`] : []),
     ``,
     `## Focus`,
