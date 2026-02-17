@@ -45,11 +45,46 @@ Generate `.paw/paw.yaml` to split the user's feature request into parallel agent
    These fields are optional. When present, `paw shortcut to-pr` uses them to
    reference issues in the PR body.
 
-6. **Write `.paw/paw.yaml`:**
+6. **Detect project toolchain and configure hooks.** Look at the project's
+   language, package manager, and test runner. Set hooks so agents and the merge
+   process run the right commands automatically:
+   - `post-up`: runs in each worktree after creation during `paw up`. Use for
+     dependency installation, codegen, or any setup needed before agents start.
+     Git worktrees don't inherit `node_modules`, virtual environments, or build
+     artifacts — this hook makes worktrees ready to work.
+   - `pre-done`: runs before `paw done` marks a task complete. Quality gate that
+     prevents agents from declaring done when tests fail.
+   - `post-merge`: runs after each clean merge in `paw merge`. Catches integration
+     failures when two task branches combine.
+
+   Detect the right commands from the project (e.g., `package.json` scripts,
+   `Makefile` targets, `pyproject.toml` config, `Cargo.toml`, `go.mod`).
+
+7. **Check for gitignored files that need copying.** Git worktrees only contain
+   tracked files. If the project has gitignored files that agents need (`.env`,
+   `.env.local`, local configs, credentials), list them under `include:`. Supports
+   glob patterns. Files that already exist in the worktree are skipped.
+
+8. **Set `base` if needed.** The `base` field controls which branch `target` is
+   created from (defaults to `main`). Set it explicitly when the work should fork
+   from a branch other than main (e.g., a release branch or existing feature branch).
+
+9. **Write `.paw/paw.yaml`:**
 
    ```yaml
    target: feature/branch-name
-   agent: claude          # or codex, opencode, gemini, etc.
+   # base: main                  # branch to create target from (default: main)
+   agent: claude                  # or codex, opencode, gemini, etc.
+
+   # include:                     # gitignored files to copy into each worktree
+   #   - .env
+   #   - .env.local
+
+   hooks:
+     post-up: <install command>   # e.g., pnpm install, uv sync, cargo build
+     pre-done: <test command>     # e.g., pnpm test, uv run pytest, go test ./...
+     post-merge: <test command>   # e.g., pnpm test, uv run pytest, cargo test
+
    tasks:
      task-name:
        focus:
@@ -61,12 +96,14 @@ Generate `.paw/paw.yaml` to split the user's feature request into parallel agent
          Mention interfaces shared with other tasks.
    ```
 
-7. **Validate the decomposition:**
-   - [ ] No two tasks share the same focus files (minimal overlap)
-   - [ ] Each task can start immediately (no hidden sequencing)
-   - [ ] Instructions mention shared interfaces and who owns them
-   - [ ] 2-5 tasks (fewer is better; more agents != faster)
-   - [ ] A `tests` task exists if the feature needs cross-cutting test coverage
+10. **Validate the decomposition:**
+    - [ ] No two tasks share the same focus files (minimal overlap)
+    - [ ] Each task can start immediately (no hidden sequencing)
+    - [ ] Instructions mention shared interfaces and who owns them
+    - [ ] 2-5 tasks (fewer is better; more agents != faster)
+    - [ ] A `tests` task exists if the feature needs cross-cutting test coverage
+    - [ ] Hooks are set for the project's toolchain
+    - [ ] Gitignored files agents need are listed under `include`
 
 ## Common Patterns
 

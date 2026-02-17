@@ -27,16 +27,16 @@ agent: claude
 #   - .env.local
 #   - "config/local.json"
 
-# Optional hooks.
+# Hooks. Detect the project's toolchain and set the right commands.
 # post-up runs in each worktree after creation and file copying during `paw up`.
 # Useful for installing dependencies, running codegen, or any per-worktree setup.
 # pre-done runs before `paw done` marks a task complete. If it fails, done is blocked.
 # post-merge runs after each clean merge in `paw merge`. If it fails, paw stops
 # and shows rollback guidance.
 # hooks:
-#   post-up: pnpm install
-#   pre-done: npm test
-#   post-merge: npm test
+#   post-up: <install command>    # e.g., pnpm install, uv sync, cargo build
+#   pre-done: <test command>      # e.g., pnpm test, uv run pytest, go test ./...
+#   post-merge: <test command>    # e.g., pnpm test, uv run pytest, cargo test
 
 tasks:
   # Each key is the task name. It becomes the branch name suffix, worktree directory
