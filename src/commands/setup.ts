@@ -114,10 +114,26 @@ export function setupCommand(): Command {
         skip('docs', 'bundled docs not found (run pnpm build)');
       }
 
+      // Write .paw/paw.yaml from bundled template (always refresh on setup)
+      try {
+        const pawYamlDoc = readDoc('templates', 'paw-yaml');
+        if (pawYamlDoc) {
+          const yamlMatch = pawYamlDoc.content.match(/```yaml\r?\n([\s\S]*?)```/);
+          if (yamlMatch) {
+            const configDir = resolve(repoRoot, '.paw');
+            mkdirSync(configDir, { recursive: true });
+            writeFileSync(resolve(configDir, 'paw.yaml'), yamlMatch[1]!);
+            success('config', resolve(configDir, 'paw.yaml'));
+          }
+        }
+      } catch {
+        skip('config', 'paw-yaml template not found (run pnpm build)');
+      }
+
       // Install Claude Code hooks and wrapper script
       installHooks(repoRoot);
 
-      console.log(pc.dim('\nCreate .paw/paw.yaml and run `paw up` to start a session.'));
+      console.log(pc.dim('\nEdit .paw/paw.yaml and run `paw up` to start a session.'));
     } catch (err) {
       handleError(err);
     }
