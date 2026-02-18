@@ -4,13 +4,18 @@ import { getRepoRoot } from '../lib/git.js';
 import { detectTaskName } from '../lib/session.js';
 import { readSyncState } from '../lib/sync.js';
 import { appendJournalEntry, readJournal } from '../lib/journal.js';
+import type { JournalEntry } from '../lib/journal.js';
 import { handleError } from '../lib/output.js';
+
+/** Entry with optional thread (schema task adds this to JournalEntry). */
+type ThreadedEntry = JournalEntry & { thread?: string };
 
 export function replyCommand(): Command {
   return new Command('reply')
     .description('Reply to the most recent directed message')
     .argument('<message>', 'Reply message')
-    .action((message: string) => {
+    .option('--to <thread>', 'Reply to a specific ask by thread ID')
+    .action((message: string, opts: { to?: string }) => {
       try {
         const repoRoot = getRepoRoot();
         const taskName = detectTaskName(repoRoot) ?? 'orchestrator';
@@ -21,20 +26,53 @@ export function replyCommand(): Command {
           process.exit(1);
         }
 
-        // Find most recent ask directed at this task
-        const all = readJournal(repoRoot);
-        const asks = all.filter((e) => e.type === 'ask' && e.to === taskName);
+        const all = readJournal(repoRoot) as ThreadedEntry[];
+        let resolvedAsk: ThreadedEntry;
 
-        if (asks.length === 0) {
-          console.error(pc.yellow('No messages to reply to.'));
-          process.exit(1);
+        if (opts.to) {
+          // Find ask by thread ID directed at this task
+          const matches = all.filter(
+            (e) => e.type === 'ask' && e.to === taskName && e.thread === opts.to,
+          );
+          if (matches.length === 0) {
+            // Check if thread exists but is directed at a different task
+            const wrongTask = all.find(
+              (e) => e.type === 'ask' && e.thread === opts.to && e.to !== taskName,
+            );
+            if (wrongTask) {
+              console.error(
+                pc.red(`Thread '${opts.to}' is directed at '${wrongTask.to}', not '${taskName}'.`),
+              );
+            } else {
+              console.error(pc.red(`No ask found with thread ID '${opts.to}'.`));
+            }
+            process.exit(1);
+          }
+          resolvedAsk = matches[matches.length - 1]!;
+        } else {
+          // Find most recent ask directed at this task
+          const asks = all.filter((e) => e.type === 'ask' && e.to === taskName);
+          if (asks.length === 0) {
+            console.error(pc.yellow('No messages to reply to.'));
+            process.exit(1);
+          }
+          resolvedAsk = asks[asks.length - 1]!;
         }
 
-        const lastAsk = asks[asks.length - 1]!;
+        const thread = resolvedAsk.thread;
+        appendJournalEntry(
+          taskName,
+          {
+            type: 'reply',
+            to: resolvedAsk.from,
+            msg: message,
+            ...(thread ? { thread } : {}),
+          } as ThreadedEntry,
+          repoRoot,
+        );
 
-        appendJournalEntry(taskName, { type: 'reply', to: lastAsk.from, msg: message }, repoRoot);
-
-        console.log(pc.green(`[${taskName} → ${lastAsk.from}] ${message}`));
+        const prefix = thread ? `(${thread}) ` : '';
+        console.log(pc.green(`[${taskName} → ${resolvedAsk.from}] ${prefix}${message}`));
       } catch (err) {
         handleError(err);
       }
