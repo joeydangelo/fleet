@@ -38,7 +38,7 @@ export interface SyncState {
   target: string;
   tasks: Record<string, TaskState>;
   merges?: Record<string, MergeEntry>;
-  /** Per-task timestamp of last `paw check` run. */
+  /** Per-task timestamp of last message read, written by `paw prime`. */
   lastCheck?: Record<string, string>;
 }
 

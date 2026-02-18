@@ -88,7 +88,7 @@ function printBrief(taskName: string, taskContent: string | null, state: SyncSta
     console.log(pc.dim('No sync state found. Run `paw up` first.\n'));
   }
 
-  console.log(pc.dim('Commands: paw check | paw broadcast | paw done'));
+  console.log(pc.dim('Commands: paw threads | paw broadcast | paw done'));
   console.log(pc.dim('Full context: paw prime'));
 }
 
@@ -143,6 +143,10 @@ function printFull(
     console.log();
   }
 
+  // Update last-check cursor so next prime run skips already-seen messages
+  const now = new Date().toISOString();
+  writeSyncState({ ...state, lastCheck: { ...state.lastCheck, [taskName]: now } }, repoRoot);
+
   // Done summaries
   const doneTasks = Object.entries(state.tasks).filter(
     ([name, task]) => name !== taskName && task.status === 'done',
@@ -183,7 +187,7 @@ function printFull(
   console.log(pc.dim('── Workflow ──'));
   console.log(pc.dim('1. Follow `paw shortcut precommit-process` when committing'));
   console.log(pc.dim('2. Run `paw broadcast "..."` when you change shared interfaces'));
-  console.log(pc.dim('3. Run `paw check` to read messages from other agents'));
+  console.log(pc.dim('3. Run `paw threads` to see open Q&A threads'));
   console.log(pc.dim('4. Run `paw shortcut session-end` when finished'));
 }
 
