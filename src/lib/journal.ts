@@ -6,6 +6,12 @@ export interface JournalEntry {
   type: 'broadcast' | 'ask' | 'reply';
   to?: string;
   msg: string;
+  thread?: string;
+}
+
+/** Generate a 4-char random lowercase alphanumeric thread ID. */
+export function generateThreadId(): string {
+  return Math.random().toString(36).slice(2, 6);
 }
 
 /** Fields required when appending (ts and from are auto-populated). */

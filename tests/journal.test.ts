@@ -9,7 +9,12 @@ import {
   initSyncWorktree,
   removeSyncWorktree,
 } from '../src/lib/sync.js';
-import { appendJournalEntry, readJournal, readJournalForTask } from '../src/lib/journal.js';
+import {
+  appendJournalEntry,
+  readJournal,
+  readJournalForTask,
+  generateThreadId,
+} from '../src/lib/journal.js';
 
 function makeTempDir(): string {
   const dir = resolve(tmpdir(), `paw-journal-${Date.now()}-${Math.random().toString(36).slice(2)}`);
@@ -99,6 +104,68 @@ describe('appendJournalEntry / readJournal', () => {
   it('returns empty array when no journal entries exist', () => {
     const entries = readJournal(repoDir);
     expect(entries).toEqual([]);
+  });
+});
+
+describe('generateThreadId', () => {
+  it('returns a 4-character string', () => {
+    const id = generateThreadId();
+    expect(id).toHaveLength(4);
+  });
+
+  it('contains only lowercase alphanumeric characters', () => {
+    for (let i = 0; i < 50; i++) {
+      const id = generateThreadId();
+      expect(id).toMatch(/^[a-z0-9]{4}$/);
+    }
+  });
+
+  it('generates distinct values across calls', () => {
+    const ids = new Set<string>();
+    for (let i = 0; i < 20; i++) {
+      ids.add(generateThreadId());
+    }
+    // With 36^4 = ~1.7M possibilities, 20 calls should all be unique
+    expect(ids.size).toBe(20);
+  });
+});
+
+describe('JournalEntry thread field', () => {
+  let repoDir: string;
+
+  beforeEach(() => {
+    repoDir = makeTempDir();
+    gitInit(repoDir);
+    initSyncWorktree(repoDir);
+    const state = initSyncState('feature/dash', ['auth', 'api'], 'paw.yaml');
+    writeSyncState(state, repoDir);
+  });
+
+  afterEach(() => {
+    removeSyncWorktree(repoDir);
+    rmSync(repoDir, { recursive: true, force: true });
+  });
+
+  it('round-trips a journal entry with thread', () => {
+    const threadId = generateThreadId();
+    appendJournalEntry(
+      'api',
+      { type: 'ask', to: 'auth', msg: 'What type?', thread: threadId },
+      repoDir,
+    );
+
+    const entries = readJournal(repoDir);
+    expect(entries).toHaveLength(1);
+    expect(entries[0]!.thread).toBe(threadId);
+  });
+
+  it('parses old entries without thread field cleanly', () => {
+    appendJournalEntry('auth', { type: 'broadcast', msg: 'No thread here' }, repoDir);
+
+    const entries = readJournal(repoDir);
+    expect(entries).toHaveLength(1);
+    expect(entries[0]!.thread).toBeUndefined();
+    expect(entries[0]!.msg).toBe('No thread here');
   });
 });
 
