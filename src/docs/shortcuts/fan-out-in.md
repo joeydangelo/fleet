@@ -17,9 +17,9 @@ paw go --poll-interval 10     # poll every 10 seconds (default 5)
 ```
 
 `paw go` creates worktrees, launches agents, watches until all are done, merges
-task branches into the target, and tears down. When `on-conflict` or
-`on-hook-failure` hooks are configured, merge conflicts and validation failures
-are resolved autonomously -- no human intervention needed.
+task branches into the target, and tears down. When conflicts or post-merge
+failures arise, the orchestrator reads the output, resolves the issue, and
+runs `paw merge --continue` to resume.
 
 Use the manual workflow below when you need to:
 - Redirect agents mid-session with `paw ask`
@@ -52,7 +52,7 @@ leave `paw watch` running for a continuous view.
   changes, and commit counts as they happen. Auto-exits when all agents are done.
   Use `--interval 10` to adjust polling frequency, `--no-exit` to keep running.
 - **`paw status`** -- point-in-time snapshot of agent progress
-- **`paw threads`** -- see open Q&A threads and broadcasts from agents
+- **`paw threads`** -- see open Q&A threads and answer directed questions
 - **`paw ask <task> "..."`** -- send a message to redirect an agent
 
 ### Merge
@@ -62,14 +62,12 @@ leave `paw watch` running for a continuous view.
 
 2. **Run `paw merge`.** Merges each task branch into the target branch in
    topological order (respecting `depends_on`). Clean merges are automatic.
-   - On conflict with `on-conflict` hook: paw invokes the hook to resolve
-     autonomously and continues merging.
-   - On conflict without hook: paw writes a conflict brief and stops. Run
-     `paw shortcut resolve-conflict`, then `paw merge --continue`.
-   - On hook failure with `on-hook-failure` hook: paw invokes the hook to
-     fix and re-validates automatically.
-   - On hook failure without hook: fix the issue and `paw merge --continue`,
-     or roll back with the backup ref paw printed.
+   - On conflict: paw writes a conflict brief and stops. The orchestrator
+     reads the brief, resolves the conflict markers, and runs
+     `paw merge --continue` to resume.
+   - On `post-merge` failure: the orchestrator fixes the issue and runs
+     `paw merge --continue`, or rolls back with
+     `git reset --hard refs/paw-backup/{task}`.
 
 ### Cleanup
 

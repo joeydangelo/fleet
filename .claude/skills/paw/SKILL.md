@@ -43,19 +43,15 @@ The user never runs paw commands — that's your job.
 2. **`paw up`** — creates worktrees, branches, and task files.
 3. **`paw launch`** — opens a terminal with the agent command in each worktree.
    Each agent auto-orients via `paw prime` on startup (triggered by the SessionStart hook).
-4. **Monitor.** `paw status` to check progress. `paw check` to read broadcasts.
+4. **Monitor.** `paw status` to check progress. `paw threads` to see open threads.
    `paw ask <task> "..."` to redirect an agent.
 5. **`paw merge`** — merges completed task branches into the target branch.
 6. **Handle merge failures.** Two things can stop a merge:
-   - **Conflict**: paw writes a conflict brief and stops. If `on-conflict` is
-     configured, paw runs the hook automatically.
-     If the hook resolves it, merging continues. Otherwise, run
-     `paw shortcut resolve-conflict` to read the brief, fix it, then
-     `paw merge --continue`.
-   - **Hook failure**: the post-merge hook failed. If `on-hook-failure` is
-     configured, paw runs the hook automatically and re-runs post-merge to
-     verify. Otherwise, fix the issue, then
-     `paw merge --continue`. To roll back instead:
+   - **Conflict**: paw writes a conflict brief and stops. The orchestrator
+     reads the brief, resolves the conflict, then runs `paw merge --continue`.
+     Use `paw shortcut resolve-conflict` for the full resolution workflow.
+   - **Hook failure**: the post-merge hook failed. The orchestrator fixes
+     the issue and runs `paw merge --continue`. To roll back instead:
      `git reset --hard refs/paw-backup/{task}`.
 7. **`paw down`** — archives session data to `.paw/sessions/`, removes worktrees
    and sync branch, cleans up `.paw/tmp/`, and resets `.paw/paw.yaml` to
@@ -82,7 +78,8 @@ paw merge --pick <task>          # Merge a specific task only
 paw down                         # Archive session, remove worktrees, reset config
 paw down --no-archive            # Skip archiving session data
 paw ask <task> "..."             # Send a directed message to an agent
-paw check                        # Read broadcasts and messages
+paw threads                      # See open Q&A threads
+paw threads --all                # See all threads including resolved
 ```
 
 ### Orchestrator shortcuts
@@ -116,7 +113,7 @@ so the merge process understands your work.
 2. **Broadcast your intent** before starting work.
 3. **Work on your task**, staying within your focus areas.
 4. **`paw broadcast "..."`** when you change interfaces other agents depend on.
-5. **`paw check`** periodically for new messages.
+5. **`paw threads`** periodically to check for open threads.
 6. **`paw shortcut precommit-process`** when committing.
 7. **`paw shortcut session-end`** when finished.
 
@@ -125,9 +122,10 @@ so the merge process understands your work.
 ```bash
 paw prime                        # Orient and claim your task
 paw broadcast "..."              # Announce a change to all agents
-paw check                        # Read new messages and broadcasts
+paw threads                      # See open Q&A threads
 paw ask <task> "..."             # Send a directed message to an agent
 paw reply "..."                  # Reply to the most recent message
+paw reply --to <thread> "..."   # Reply to a specific thread
 paw done --summary "..."         # Mark task done with summary
 paw done --force --summary "..." # Bypass validation and pre-done hook
 paw status                       # Check progress across all tasks
@@ -170,7 +168,7 @@ paw status                       # Check progress across all tasks
 - **NEVER run `paw up`, `paw down`, `paw merge`, or `paw go`.** These are
   orchestrator commands. Running them from a worktree will break the session.
 
-Use the CLI for everything: `paw done`, `paw broadcast`, `paw check`.
+Use the CLI for everything: `paw done`, `paw broadcast`, `paw threads`.
 The CLI handles sync state correctly. You don't need to touch it.
 
 ---
@@ -223,18 +221,10 @@ hooks:
   post-up: npm install
   pre-done: npm test
   post-merge: npm test
-  on-conflict: claude --print "resolve the merge conflict"
-  on-hook-failure: claude --print "fix the failing tests"
 ```
 
 Hooks run via bash, so you can write multi-line scripts inline using YAML's
-block scalar syntax (`|`), or call an external script. Environment variables
-(like `PAW_CONFLICT_BRIEF`) are passed to the process via `process.env` —
-agent CLIs can read them directly.
-
-The agent command can be any CLI that reads context and edits code —
-`claude --print`, `codex`, `opencode`, `gemini`, or a custom script. paw is
-agent-agnostic.
+block scalar syntax (`|`), or call an external script.
 
 **`post-up`** runs in each worktree after creation and file copying during
 `paw up`. Useful for installing dependencies, running codegen, or any
@@ -246,16 +236,6 @@ is blocked. Use `--force` to bypass.
 **`post-merge`** runs after each clean merge. If it fails, paw stops and shows
 rollback guidance. Use `paw merge --continue` after fixing, or roll back with
 `git reset --hard refs/paw-backup/{task}`.
-
-**`on-conflict`** runs when `paw merge` hits a git conflict. The hook receives
-environment variables (`PAW_CONFLICT_TASK`, `PAW_CONFLICT_BRIEF`, `PAW_TARGET`)
-and must resolve conflict markers, `git add`, and `git commit` to complete the
-merge. If unresolved, paw falls back to `exit(1)`.
-
-**`on-hook-failure`** runs when the `post-merge` hook fails after a clean merge.
-The hook receives environment variables (`PAW_FAILED_TASK`, `PAW_HOOK_COMMAND`,
-`PAW_BACKUP_REF`, `PAW_TARGET`) and must fix the code and commit. The
-post-merge hook is re-run to verify the fix.
 
 ### Dependencies
 

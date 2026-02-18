@@ -59,16 +59,9 @@ Generate `.paw/paw.yaml` to split the user's feature request into parallel agent
      prevents agents from declaring done when tests fail.
    - `post-merge`: runs after each clean merge in `paw merge`. Catches integration
      failures when two task branches combine.
-   - `on-conflict`: runs when `paw merge` hits a git conflict. Receives env vars
-     (`PAW_CONFLICT_TASK`, `PAW_CONFLICT_BRIEF`, `PAW_TARGET`). Must resolve
-     conflict markers, `git add`, and `git commit`.
-   - `on-hook-failure`: runs when `post-merge` fails. Receives env vars
-     (`PAW_FAILED_TASK`, `PAW_HOOK_COMMAND`, `PAW_BACKUP_REF`, `PAW_TARGET`).
-     Must fix the code and commit. Post-merge is re-run to verify.
 
    Hooks run via bash. Use YAML block scalar (`|`) for multi-line scripts
-   inline, or call an external script. Environment variables are passed to
-   the process via `process.env` — agent CLIs can read them directly.
+   inline, or call an external script.
 
    Detect the right commands from the project (e.g., `package.json` scripts,
    `Makefile` targets, `pyproject.toml` config, `Cargo.toml`, `go.mod`).
@@ -98,8 +91,6 @@ Generate `.paw/paw.yaml` to split the user's feature request into parallel agent
      post-up: pnpm install                                     # or: uv sync, cargo build
      pre-done: pnpm test                                       # or: uv run pytest, go test ./...
      post-merge: pnpm test                                     # or: uv run pytest, cargo test
-     # on-conflict: claude --print "resolve the merge conflict" # any agent CLI
-     # on-hook-failure: claude --print "fix the failing tests"  # any agent CLI
 
    tasks:
      task-name:
