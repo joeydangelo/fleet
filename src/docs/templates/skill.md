@@ -43,7 +43,7 @@ The user never runs paw commands — that's your job.
 2. **`paw up`** — creates worktrees, branches, and task files.
 3. **`paw launch`** — opens a terminal with the agent command in each worktree.
    Each agent auto-orients via `paw prime` on startup (triggered by the SessionStart hook).
-4. **Monitor.** `paw status` to check progress. `paw check` to read broadcasts.
+4. **Monitor.** `paw status` to check progress. `paw threads` to see open threads.
    `paw ask <task> "..."` to redirect an agent.
 5. **`paw merge`** — merges completed task branches into the target branch.
 6. **Handle merge failures.** Two things can stop a merge:
@@ -82,7 +82,8 @@ paw merge --pick <task>          # Merge a specific task only
 paw down                         # Archive session, remove worktrees, reset config
 paw down --no-archive            # Skip archiving session data
 paw ask <task> "..."             # Send a directed message to an agent
-paw check                        # Read broadcasts and messages
+paw threads                      # See open Q&A threads
+paw threads --all                # See all threads including resolved
 ```
 
 ### Orchestrator shortcuts
@@ -116,7 +117,7 @@ so the merge process understands your work.
 2. **Broadcast your intent** before starting work.
 3. **Work on your task**, staying within your focus areas.
 4. **`paw broadcast "..."`** when you change interfaces other agents depend on.
-5. **`paw check`** periodically for new messages.
+5. **`paw threads`** periodically to check for open threads.
 6. **`paw shortcut precommit-process`** when committing.
 7. **`paw shortcut session-end`** when finished.
 
@@ -125,9 +126,10 @@ so the merge process understands your work.
 ```bash
 paw prime                        # Orient and claim your task
 paw broadcast "..."              # Announce a change to all agents
-paw check                        # Read new messages and broadcasts
+paw threads                      # See open Q&A threads
 paw ask <task> "..."             # Send a directed message to an agent
 paw reply "..."                  # Reply to the most recent message
+paw reply --to <thread> "..."   # Reply to a specific thread
 paw done --summary "..."         # Mark task done with summary
 paw done --force --summary "..." # Bypass validation and pre-done hook
 paw status                       # Check progress across all tasks
@@ -170,7 +172,7 @@ paw status                       # Check progress across all tasks
 - **NEVER run `paw up`, `paw down`, `paw merge`, or `paw go`.** These are
   orchestrator commands. Running them from a worktree will break the session.
 
-Use the CLI for everything: `paw done`, `paw broadcast`, `paw check`.
+Use the CLI for everything: `paw done`, `paw broadcast`, `paw threads`.
 The CLI handles sync state correctly. You don't need to touch it.
 
 ---
