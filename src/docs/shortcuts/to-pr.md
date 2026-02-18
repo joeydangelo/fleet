@@ -15,7 +15,7 @@ Run `paw shortcut setup-github-cli` to ensure `gh` is installed and authenticate
 1. **Verify the merge is complete.** Run `paw status` and confirm all tasks are
    done and merged. If tasks are still in progress, wait for them to finish.
 
-2. **Read done summaries.** Run `paw status` to see completed task summaries.
+2. **Read done summaries.** Run `paw prime` to see completed task summaries.
    Each agent wrote a structured summary with "What I did", "Interface changes",
    and "Watch out" sections.
 

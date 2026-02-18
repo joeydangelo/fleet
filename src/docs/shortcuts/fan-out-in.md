@@ -17,7 +17,7 @@ independently -- you can check in, but you're not actively managing them.
 
 3. **Launch agents.** Run `paw launch` to open a terminal with the agent command
    in each worktree. Requires `agent: <command>` in `.paw/paw.yaml`. Each agent
-   auto-orients via `paw prime` on startup.
+   auto-orients via `paw prime` on startup (triggered by the SessionStart hook).
 
    Use `paw launch --dry-run` to preview commands or `paw launch --task <name>`
    to launch a single worktree.
