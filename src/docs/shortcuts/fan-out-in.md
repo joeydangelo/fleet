@@ -52,7 +52,7 @@ leave `paw watch` running for a continuous view.
   changes, and commit counts as they happen. Auto-exits when all agents are done.
   Use `--interval 10` to adjust polling frequency, `--no-exit` to keep running.
 - **`paw status`** -- point-in-time snapshot of agent progress
-- **`paw check`** -- read broadcasts and messages from agents
+- **`paw threads`** -- see open Q&A threads and broadcasts from agents
 - **`paw ask <task> "..."`** -- send a message to redirect an agent
 
 ### Merge

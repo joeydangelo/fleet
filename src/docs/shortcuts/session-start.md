@@ -36,8 +36,8 @@ the team know what you're about to do.
    `paw shortcut precommit-process` -- it covers review, testing, broadcasting
    interface changes, and commit message conventions.
 
-6. **Check in periodically.** Run `paw check` to see if other agents have sent you
-   messages or made announcements you need to react to.
+6. **Check in periodically.** Run `paw threads` to see if you have open questions
+   to answer.
 
 ## When to Broadcast Problems
 

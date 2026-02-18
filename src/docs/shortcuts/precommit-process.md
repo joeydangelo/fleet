@@ -8,13 +8,13 @@ agents informed.
 
 ## Checklist
 
-1. **Check for incoming messages.**
+1. **Check for open threads.**
 
    ```
-   paw check
+   paw threads
    ```
 
-   See what other agents have broadcast or sent you before reviewing your own work.
+   See open Q&A threads and answer directed questions before reviewing your own work.
    If another agent changed an interface you depend on, you want to know that before
    your review -- not after.
 
@@ -57,8 +57,8 @@ agents informed.
    paw broadcast "Changed UserProfile.email to optional, added UserProfile.emailVerified"
    ```
 
-   This gives other agents a chance to see the change via `paw check` before they
-   hit a merge conflict.
+   This gives other agents a chance to see the change before they hit a merge
+   conflict.
 
 5. **Commit with a clear message.**
 
