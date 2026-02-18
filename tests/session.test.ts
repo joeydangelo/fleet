@@ -235,7 +235,7 @@ describe('generateTaskFile', () => {
 
     expect(result).toContain('## Collaboration Rules');
     expect(result).toContain('paw broadcast');
-    expect(result).toContain('paw check');
+    expect(result).toContain('paw threads');
     expect(result).toContain('Stay within your focus areas');
   });
 
