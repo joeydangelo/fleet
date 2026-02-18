@@ -28,7 +28,7 @@ export function launchCommand(): Command {
     .option('--dry-run', 'Show what would be spawned without launching')
     .option('-t, --task <name>', 'Launch agent in a specific worktree only')
     .option('--terminal <emulator>', 'Override terminal emulator (Linux)')
-    .action((opts: LaunchOpts) => {
+    .action(async (opts: LaunchOpts) => {
       try {
         const repoRoot = getRepoRoot();
         const configPath = opts.config ?? resolveConfigPath(repoRoot);
@@ -65,6 +65,8 @@ export function launchCommand(): Command {
         // Read existing PIDs so re-launches append rather than overwrite
         const trackedPids = readPidFile(repoRoot);
 
+        const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
         for (const wt of targets) {
           const taskState = syncState?.tasks[wt.taskName];
 
@@ -90,6 +92,9 @@ export function launchCommand(): Command {
             const result = buildLaunchCommand(launchOpts, platform);
             pending(wt.taskName, `${result.command} ${result.args.join(' ')}`);
           } else {
+            // Stagger launches so concurrent Claude instances don't race on
+            // ~/.claude.json initialization and corrupt the file.
+            if (launched > 0) await sleep(1500);
             try {
               const pid = spawnTerminal(launchOpts, platform);
               if (pid !== undefined) {
