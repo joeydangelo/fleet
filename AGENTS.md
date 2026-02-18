@@ -236,3 +236,26 @@ is blocked. Use `--force` to bypass.
 **`post-merge`** runs after each clean merge. If it fails, paw stops and shows
 rollback guidance. Use `paw merge --continue` after fixing, or roll back with
 `git reset --hard refs/paw-backup/{task}`.
+
+### Dependencies
+
+Control merge order with `depends_on` on tasks:
+
+```yaml
+tasks:
+  auth:
+    focus: src/auth/
+  api:
+    focus: src/api/
+    depends_on: auth        # merged after auth
+  tests:
+    focus: tests/
+    depends_on:             # merged after both
+      - auth
+      - api
+```
+
+`paw merge` processes tasks in topological order — dependencies merge first
+so shared interfaces exist on the target branch before dependent code arrives.
+Tasks without dependencies merge in YAML definition order. Cycles and invalid
+references are caught at config load time.

@@ -12,7 +12,7 @@ import {
   getHeadRef,
   createBackupRef,
 } from '../lib/git.js';
-import { loadConfig, resolveConfigPath } from '../lib/config.js';
+import { loadConfig, resolveConfigPath, topologicalSort } from '../lib/config.js';
 import type { PawConfig } from '../lib/config.js';
 import { planWorktrees } from '../lib/session.js';
 import type { WorktreeInfo } from '../lib/session.js';
@@ -55,7 +55,11 @@ export function mergeCommand(): Command {
           process.exit(1);
         }
 
-        const worktrees = planWorktrees(config, repoRoot);
+        const allWorktrees = planWorktrees(config, repoRoot);
+        const sortedNames = topologicalSort(config.tasks);
+        const worktrees = sortedNames.map(
+          (name) => allWorktrees.find((wt) => wt.taskName === name)!,
+        );
 
         if (opts.continue) {
           state = handleMergeContinue(state, worktrees, repoRoot);

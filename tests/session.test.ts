@@ -173,6 +173,57 @@ describe('generateTaskFile', () => {
     expect(result).not.toContain('**Spec:**');
   });
 
+  it('includes depends_on in header when depends_on is a string', () => {
+    const config: PawConfig = {
+      ...baseConfig,
+      tasks: {
+        auth: { focus: 'src/auth/' },
+        api: { focus: 'src/api/', depends_on: 'auth' },
+      },
+    };
+    const worktree = {
+      taskName: 'api',
+      branch: 'feature/dashboard-api',
+      worktreePath: '/projects/acme-app-paw-api',
+    };
+
+    const result = generateTaskFile(config, 'api', worktree);
+
+    expect(result).toContain('**Depends on:** auth');
+  });
+
+  it('includes depends_on in header when depends_on is an array', () => {
+    const config: PawConfig = {
+      ...baseConfig,
+      tasks: {
+        auth: { focus: 'src/auth/' },
+        api: { focus: 'src/api/' },
+        tests: { focus: 'tests/', depends_on: ['auth', 'api'] },
+      },
+    };
+    const worktree = {
+      taskName: 'tests',
+      branch: 'feature/dashboard-tests',
+      worktreePath: '/projects/acme-app-paw-tests',
+    };
+
+    const result = generateTaskFile(config, 'tests', worktree);
+
+    expect(result).toContain('**Depends on:** auth, api');
+  });
+
+  it('omits depends_on line when not set', () => {
+    const worktree = {
+      taskName: 'auth',
+      branch: 'feature/dashboard-auth',
+      worktreePath: '/projects/acme-app-paw-auth',
+    };
+
+    const result = generateTaskFile(baseConfig, 'auth', worktree);
+
+    expect(result).not.toContain('**Depends on:**');
+  });
+
   it('includes collaboration rules section', () => {
     const worktree = {
       taskName: 'auth',

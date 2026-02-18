@@ -8,6 +8,7 @@ const TaskSchema = z.object({
   prompt: z.string().optional(),
   issue: z.string().optional(),
   spec: z.string().optional(),
+  depends_on: z.union([z.string(), z.array(z.string())]).optional(),
 });
 
 const HooksSchema = z.object({
@@ -40,7 +41,123 @@ export function loadConfig(configPath: string): PawConfig {
     const issues = result.error.issues.map((i) => `  ${i.path.join('.')}: ${i.message}`).join('\n');
     throw new Error(`Invalid .paw/paw.yaml:\n${issues}`);
   }
+
+  validateDependsOn(result.data);
+
   return result.data;
+}
+
+/** Normalize depends_on to an array (empty if undefined). */
+export function normalizeDeps(deps: string | string[] | undefined): string[] {
+  if (!deps) return [];
+  return Array.isArray(deps) ? deps : [deps];
+}
+
+function validateDependsOn(config: PawConfig): void {
+  const taskNames = new Set(Object.keys(config.tasks));
+
+  // Reference integrity and self-reference checks
+  for (const [name, task] of Object.entries(config.tasks)) {
+    const deps = normalizeDeps(task.depends_on);
+    for (const dep of deps) {
+      if (dep === name) {
+        throw new Error(
+          `Invalid .paw/paw.yaml:\n  tasks.${name}.depends_on references "${dep}" (itself)`,
+        );
+      }
+      if (!taskNames.has(dep)) {
+        throw new Error(
+          `Invalid .paw/paw.yaml:\n  tasks.${name}.depends_on references "${dep}" which does not exist in tasks`,
+        );
+      }
+    }
+  }
+
+  // Cycle detection using DFS
+  const visited = new Set<string>();
+  const inStack = new Set<string>();
+
+  function visit(name: string): void {
+    if (inStack.has(name)) {
+      throw new Error(
+        `Invalid .paw/paw.yaml:\n  Cycle detected in depends_on: ${[...inStack, name].join(' → ')}`,
+      );
+    }
+    if (visited.has(name)) return;
+
+    inStack.add(name);
+    const deps = normalizeDeps(config.tasks[name]?.depends_on);
+    for (const dep of deps) {
+      visit(dep);
+    }
+    inStack.delete(name);
+    visited.add(name);
+  }
+
+  for (const name of taskNames) {
+    visit(name);
+  }
+}
+
+/**
+ * Topological sort of tasks using Kahn's algorithm.
+ * Tasks with no dependencies come first. Tasks at the same depth
+ * preserve their YAML definition order (stable sort).
+ */
+export function topologicalSort(
+  tasks: Record<string, { depends_on?: string | string[]; [key: string]: unknown }>,
+): string[] {
+  const names = Object.keys(tasks);
+  const inDegree = new Map<string, number>();
+  const dependents = new Map<string, string[]>();
+
+  for (const name of names) {
+    inDegree.set(name, 0);
+    dependents.set(name, []);
+  }
+
+  for (const name of names) {
+    const deps = normalizeDeps(tasks[name]?.depends_on);
+    inDegree.set(name, deps.length);
+    for (const dep of deps) {
+      dependents.get(dep)!.push(name);
+    }
+  }
+
+  // Seed queue with tasks that have no dependencies, in YAML order
+  const queue: string[] = names.filter((n) => inDegree.get(n) === 0);
+  const result: string[] = [];
+
+  while (queue.length > 0) {
+    const current = queue.shift()!;
+    result.push(current);
+
+    // Collect newly unblocked tasks, preserving YAML order
+    const unblocked: string[] = [];
+    for (const dep of dependents.get(current)!) {
+      const newDegree = inDegree.get(dep)! - 1;
+      inDegree.set(dep, newDegree);
+      if (newDegree === 0) {
+        unblocked.push(dep);
+      }
+    }
+    // Insert unblocked tasks in YAML order relative to existing queue
+    for (const u of unblocked) {
+      // Find insertion point that maintains YAML order
+      const uIndex = names.indexOf(u);
+      let inserted = false;
+      for (let i = 0; i < queue.length; i++) {
+        if (names.indexOf(queue[i]!) > uIndex) {
+          queue.splice(i, 0, u);
+          inserted = true;
+          break;
+        }
+      }
+      if (!inserted) queue.push(u);
+    }
+  }
+
+  return result;
 }
 
 export function resolveConfigPath(cwd: string): string {

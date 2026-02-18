@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { writeFileSync, mkdirSync, rmSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { tmpdir } from 'node:os';
-import { loadConfig, resolveConfigPath } from '../src/lib/config.js';
+import { loadConfig, resolveConfigPath, topologicalSort } from '../src/lib/config.js';
 
 function makeTempDir(): string {
   const dir = resolve(tmpdir(), `paw-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
@@ -376,6 +376,270 @@ tasks:
     expect(config.tasks['dashboard']?.spec).toBe('docs/specs/dashboard.md');
 
     rmSync(dir, { recursive: true });
+  });
+});
+
+describe('depends_on config', () => {
+  it('accepts depends_on as a string', () => {
+    const dir = makeTempDir();
+    const configPath = resolve(dir, 'paw.yaml');
+    writeFileSync(
+      configPath,
+      `
+target: feature/x
+tasks:
+  auth:
+    focus: src/auth/
+  api:
+    focus: src/api/
+    depends_on: auth
+`,
+    );
+
+    const config = loadConfig(configPath);
+    expect(config.tasks['api']?.depends_on).toBe('auth');
+
+    rmSync(dir, { recursive: true });
+  });
+
+  it('accepts depends_on as an array', () => {
+    const dir = makeTempDir();
+    const configPath = resolve(dir, 'paw.yaml');
+    writeFileSync(
+      configPath,
+      `
+target: feature/x
+tasks:
+  auth:
+    focus: src/auth/
+  api:
+    focus: src/api/
+  tests:
+    focus: tests/
+    depends_on:
+      - auth
+      - api
+`,
+    );
+
+    const config = loadConfig(configPath);
+    expect(config.tasks['tests']?.depends_on).toEqual(['auth', 'api']);
+
+    rmSync(dir, { recursive: true });
+  });
+
+  it('accepts tasks without depends_on', () => {
+    const dir = makeTempDir();
+    const configPath = resolve(dir, 'paw.yaml');
+    writeFileSync(
+      configPath,
+      `
+target: feature/x
+tasks:
+  auth:
+    focus: src/auth/
+`,
+    );
+
+    const config = loadConfig(configPath);
+    expect(config.tasks['auth']?.depends_on).toBeUndefined();
+
+    rmSync(dir, { recursive: true });
+  });
+
+  it('throws when depends_on references a nonexistent task', () => {
+    const dir = makeTempDir();
+    const configPath = resolve(dir, 'paw.yaml');
+    writeFileSync(
+      configPath,
+      `
+target: feature/x
+tasks:
+  api:
+    focus: src/api/
+    depends_on: auth
+`,
+    );
+
+    expect(() => loadConfig(configPath)).toThrow(/depends_on.*"auth".*does not exist/);
+
+    rmSync(dir, { recursive: true });
+  });
+
+  it('throws when depends_on array references a nonexistent task', () => {
+    const dir = makeTempDir();
+    const configPath = resolve(dir, 'paw.yaml');
+    writeFileSync(
+      configPath,
+      `
+target: feature/x
+tasks:
+  auth:
+    focus: src/auth/
+  tests:
+    focus: tests/
+    depends_on:
+      - auth
+      - api
+`,
+    );
+
+    expect(() => loadConfig(configPath)).toThrow(/depends_on.*"api".*does not exist/);
+
+    rmSync(dir, { recursive: true });
+  });
+
+  it('throws on a two-node cycle (A→B→A)', () => {
+    const dir = makeTempDir();
+    const configPath = resolve(dir, 'paw.yaml');
+    writeFileSync(
+      configPath,
+      `
+target: feature/x
+tasks:
+  auth:
+    focus: src/auth/
+    depends_on: api
+  api:
+    focus: src/api/
+    depends_on: auth
+`,
+    );
+
+    expect(() => loadConfig(configPath)).toThrow(/cycle.*depends_on/i);
+
+    rmSync(dir, { recursive: true });
+  });
+
+  it('throws on a three-node cycle (A→B→C→A)', () => {
+    const dir = makeTempDir();
+    const configPath = resolve(dir, 'paw.yaml');
+    writeFileSync(
+      configPath,
+      `
+target: feature/x
+tasks:
+  auth:
+    focus: src/auth/
+    depends_on: tests
+  api:
+    focus: src/api/
+    depends_on: auth
+  tests:
+    focus: tests/
+    depends_on: api
+`,
+    );
+
+    expect(() => loadConfig(configPath)).toThrow(/cycle.*depends_on/i);
+
+    rmSync(dir, { recursive: true });
+  });
+
+  it('accepts a valid diamond dependency (no cycle)', () => {
+    const dir = makeTempDir();
+    const configPath = resolve(dir, 'paw.yaml');
+    writeFileSync(
+      configPath,
+      `
+target: feature/x
+tasks:
+  core:
+    focus: src/core/
+  auth:
+    focus: src/auth/
+    depends_on: core
+  api:
+    focus: src/api/
+    depends_on: core
+  tests:
+    focus: tests/
+    depends_on:
+      - auth
+      - api
+`,
+    );
+
+    const config = loadConfig(configPath);
+    expect(config.tasks['tests']?.depends_on).toEqual(['auth', 'api']);
+
+    rmSync(dir, { recursive: true });
+  });
+
+  it('throws when a task depends on itself', () => {
+    const dir = makeTempDir();
+    const configPath = resolve(dir, 'paw.yaml');
+    writeFileSync(
+      configPath,
+      `
+target: feature/x
+tasks:
+  auth:
+    focus: src/auth/
+    depends_on: auth
+`,
+    );
+
+    expect(() => loadConfig(configPath)).toThrow(/depends_on.*"auth".*itself/);
+
+    rmSync(dir, { recursive: true });
+  });
+});
+
+describe('topologicalSort', () => {
+  it('returns YAML order when no dependencies exist', () => {
+    const tasks = {
+      auth: { focus: 'src/auth/' },
+      api: { focus: 'src/api/' },
+      tests: { focus: 'tests/' },
+    };
+
+    expect(topologicalSort(tasks)).toEqual(['auth', 'api', 'tests']);
+  });
+
+  it('sorts a linear chain (A←B←C)', () => {
+    const tasks = {
+      tests: { focus: 'tests/', depends_on: 'api' },
+      api: { focus: 'src/api/', depends_on: 'auth' },
+      auth: { focus: 'src/auth/' },
+    };
+
+    const result = topologicalSort(tasks);
+    expect(result.indexOf('auth')).toBeLessThan(result.indexOf('api'));
+    expect(result.indexOf('api')).toBeLessThan(result.indexOf('tests'));
+  });
+
+  it('sorts a diamond (core←auth,api←tests)', () => {
+    const tasks = {
+      tests: { focus: 'tests/', depends_on: ['auth', 'api'] },
+      api: { focus: 'src/api/', depends_on: 'core' },
+      auth: { focus: 'src/auth/', depends_on: 'core' },
+      core: { focus: 'src/core/' },
+    };
+
+    const result = topologicalSort(tasks);
+    expect(result.indexOf('core')).toBeLessThan(result.indexOf('auth'));
+    expect(result.indexOf('core')).toBeLessThan(result.indexOf('api'));
+    expect(result.indexOf('auth')).toBeLessThan(result.indexOf('tests'));
+    expect(result.indexOf('api')).toBeLessThan(result.indexOf('tests'));
+  });
+
+  it('preserves YAML order for tasks at the same depth', () => {
+    const tasks = {
+      auth: { focus: 'src/auth/' },
+      api: { focus: 'src/api/' },
+      tests: { focus: 'tests/', depends_on: ['auth', 'api'] },
+    };
+
+    const result = topologicalSort(tasks);
+    // auth and api are both at depth 0, should keep YAML order
+    expect(result).toEqual(['auth', 'api', 'tests']);
+  });
+
+  it('handles single task', () => {
+    const tasks = { auth: { focus: 'src/auth/' } };
+
+    expect(topologicalSort(tasks)).toEqual(['auth']);
   });
 });
 

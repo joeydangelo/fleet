@@ -33,6 +33,9 @@ Generate `.paw/paw.yaml` to split the user's feature request into parallel agent
    - Which task owns the interface definition
    - What other tasks should expect from it
    - Tell the owning agent to `paw broadcast` when it changes the interface
+   - Set `depends_on` on consumer tasks so they merge after the producer.
+     This ensures shared types and interfaces exist on the target branch
+     before dependent code merges in, reducing avoidable merge conflicts.
 
 5. **Link tasks to sources.** If tasks originate from issues or specs, set the
    optional `issue` and `spec` fields on each task:
@@ -89,6 +92,7 @@ Generate `.paw/paw.yaml` to split the user's feature request into parallel agent
      task-name:
        focus:
          - src/relevant/directory/
+       depends_on: other-task      # optional: merge after this task
        issue: GH#123              # optional: source issue ID
        spec: docs/specs/plan.md   # optional: source spec path
        prompt: |
@@ -100,6 +104,7 @@ Generate `.paw/paw.yaml` to split the user's feature request into parallel agent
     - [ ] No two tasks share the same focus files (minimal overlap)
     - [ ] Each task can start immediately (no hidden sequencing)
     - [ ] Instructions mention shared interfaces and who owns them
+    - [ ] Consumer tasks set `depends_on` to merge after their producers
     - [ ] 2-5 tasks (fewer is better; more agents != faster)
     - [ ] A `tests` task exists if the feature needs cross-cutting test coverage
     - [ ] Hooks are set for the project's toolchain

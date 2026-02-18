@@ -10,6 +10,7 @@ import {
 import { execSync } from 'node:child_process';
 import fg from 'fast-glob';
 import type { PawConfig } from './config.js';
+import { normalizeDeps } from './config.js';
 import { branchExists, createBranch, createWorktree, getFileFromBranch } from './git.js';
 import { REQUIRED_SECTIONS } from './summary.js';
 
@@ -92,6 +93,7 @@ export function generateTaskFile(
     `**Worktree:** ${worktreeInfo.worktreePath}`,
     ...(task.issue ? [`**Issue:** ${task.issue}`] : []),
     ...(task.spec ? [`**Spec:** ${task.spec}`] : []),
+    ...(task.depends_on ? [`**Depends on:** ${normalizeDeps(task.depends_on).join(', ')}`] : []),
     ``,
     `## Focus`,
     ``,

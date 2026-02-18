@@ -63,6 +63,15 @@ tasks:
     # knows where to find it.
     spec: <path>
 
+    # Optional: declare merge-order dependencies. When this task depends_on
+    # another, `paw merge` processes the dependency first so shared interfaces
+    # exist on the target branch before dependent code merges in.
+    # Accepts a single task name or a list. All names must exist in tasks.
+    # depends_on: other-task
+    # depends_on:
+    #   - task-a
+    #   - task-b
+
     # Instructions for the agent. Be specific: what to build, what interfaces
     # are shared, what to broadcast. Optional but strongly recommended.
     prompt: |
@@ -74,6 +83,7 @@ tasks:
     focus:
       - src/api/
       - src/routes/
+    depends_on: auth                   # merged after auth
     issue: GH#42
     prompt: |
       Build REST endpoints for user profiles.
@@ -83,6 +93,9 @@ tasks:
   tests:
     focus:
       - tests/
+    depends_on:                        # merged after both auth and api
+      - auth
+      - api
     prompt: |
       Write integration tests for the auth and api tasks.
       Read their done summaries via `paw prime` to understand what to test.
