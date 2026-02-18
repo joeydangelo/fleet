@@ -4,7 +4,16 @@ import { getRepoRoot } from '../lib/git.js';
 import { detectTaskName } from '../lib/session.js';
 import { readSyncState } from '../lib/sync.js';
 import { appendJournalEntry } from '../lib/journal.js';
+import type { JournalEntry } from '../lib/journal.js';
 import { handleError } from '../lib/output.js';
+
+/** Entry with optional thread (schema task adds this to JournalEntry). */
+type ThreadedEntry = JournalEntry & { thread?: string };
+
+/** Generate a 4-char base-36 thread ID. Schema task exports this from journal.ts. */
+function generateThreadId(): string {
+  return Math.random().toString(36).slice(2, 6).padEnd(4, '0');
+}
 
 export function askCommand(): Command {
   return new Command('ask')
@@ -27,9 +36,14 @@ export function askCommand(): Command {
           process.exit(1);
         }
 
-        appendJournalEntry(taskName, { type: 'ask', to: task, msg: message }, repoRoot);
+        const thread = generateThreadId();
+        appendJournalEntry(
+          taskName,
+          { type: 'ask', to: task, msg: message, thread } as ThreadedEntry,
+          repoRoot,
+        );
 
-        console.log(pc.green(`[${taskName} → ${task}] ${message}`));
+        console.log(pc.green(`[${taskName} → ${task}] (${thread}) ${message}`));
       } catch (err) {
         handleError(err);
       }
