@@ -12,7 +12,11 @@ running the merge have full context about what you did.
    `paw shortcut precommit-process`. If your work is in a partial state and not ready
    to commit, that's fine -- skip this step, but note it in your summary.
 
-2. **Broadcast your final state.** Let other agents know you're finishing and what
+2. **Answer any open threads.** Run `paw threads` to check for directed questions
+   you haven't replied to. Answer with `paw reply --to <thread> "..."`. Other agents
+   and the orchestrator may be waiting on your answers before they can continue.
+
+3. **Broadcast your final state.** Let other agents know you're finishing and what
    the end result looks like:
 
    ```
