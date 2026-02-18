@@ -190,5 +190,5 @@ export function writeTaskFiles(
 
 /** Run a hook command in a worktree directory. Throws on non-zero exit. */
 export function runHook(worktreePath: string, command: string): void {
-  execSync(command, { cwd: worktreePath, stdio: 'inherit' });
+  execSync(command, { cwd: worktreePath, stdio: 'inherit', shell: 'bash' });
 }

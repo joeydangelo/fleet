@@ -85,9 +85,13 @@ export async function runGo(opts: GoOpts): Promise<void> {
 
   const mergeResult = runPawCommand(['merge', ...configArgs]);
   if (mergeResult.exitCode !== 0) {
-    console.log(
-      pc.yellow('\nMerge conflict detected. Resolve manually, then run: paw merge --continue'),
-    );
+    const hasAutoResolve = config.hooks?.['on-conflict'] || config.hooks?.['on-hook-failure'];
+    if (hasAutoResolve) {
+      console.log(pc.yellow('\nAuto-resolve hooks ran but could not fix the merge failure.'));
+      console.log(pc.yellow('Review the output above, then run: paw merge --continue'));
+    } else {
+      console.log(pc.yellow('\nMerge failed. Resolve the issue, then run: paw merge --continue'));
+    }
     console.log(pc.yellow('Worktrees left intact (skipping paw down).'));
     return;
   }

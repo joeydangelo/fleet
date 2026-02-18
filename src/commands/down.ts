@@ -1,6 +1,6 @@
 import { Command } from 'commander';
 import pc from 'picocolors';
-import { existsSync, writeFileSync, mkdirSync } from 'node:fs';
+import { existsSync, writeFileSync, mkdirSync, rmSync } from 'node:fs';
 import { resolve } from 'node:path';
 import {
   getRepoRoot,
@@ -84,6 +84,12 @@ export function downCommand(): Command {
 
         // Remove backup refs
         cleanupBackupRefs(repoRoot);
+
+        // Clean up .paw/tmp/ (used by merge hooks for conflict briefs)
+        const pawTmpDir = resolve(repoRoot, '.paw', 'tmp');
+        if (existsSync(pawTmpDir)) {
+          rmSync(pawTmpDir, { recursive: true, force: true });
+        }
 
         // Archive session data before destroying it
         if (opts.archive) {

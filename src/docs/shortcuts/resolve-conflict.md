@@ -6,6 +6,10 @@ category: orchestrator
 A `paw merge` hit a conflict and generated a conflict brief. You're the resolver --
 use the brief to understand what happened and fix it.
 
+> **Note:** If `on-conflict` is configured in `.paw/paw.yaml`, paw runs the hook
+> automatically to resolve conflicts. This shortcut is for manual resolution when
+> the hook is not configured or when auto-resolve fails.
+
 ## Instructions
 
 1. **Read the conflict brief.** Run `paw prime` to see the active conflict, or read

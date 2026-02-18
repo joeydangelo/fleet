@@ -7,7 +7,28 @@ You're the lead orchestrator running a paw session from the main repo. Your job 
 to set up the session, merge results, and clean up. During the session, agents work
 independently -- you can check in, but you're not actively managing them.
 
-## Setup
+## Quick start: `paw go`
+
+For most sessions, one command runs the entire lifecycle:
+
+```bash
+paw go                         # up → launch → watch → merge → down
+paw go --poll-interval 10     # poll every 10 seconds (default 5)
+```
+
+`paw go` creates worktrees, launches agents, watches until all are done, merges
+task branches into the target, and tears down. When `on-conflict` or
+`on-hook-failure` hooks are configured, merge conflicts and validation failures
+are resolved autonomously -- no human intervention needed.
+
+Use the manual workflow below when you need to:
+- Redirect agents mid-session with `paw ask`
+- Cherry-pick which tasks to merge with `paw merge --pick`
+- Make changes on the target branch between merge and cleanup
+
+## Manual workflow
+
+### Setup
 
 1. **Write `.paw/paw.yaml`.** Use `paw shortcut generate-paw-yaml` to decompose work
    into parallel tasks with focus areas and prompts.
@@ -22,7 +43,7 @@ independently -- you can check in, but you're not actively managing them.
    Use `paw launch --dry-run` to preview commands or `paw launch --task <name>`
    to launch a single worktree.
 
-## Check-in (optional)
+### Monitoring
 
 paw's communication is async and pull-based. You check in when you want, or
 leave `paw watch` running for a continuous view.
@@ -34,24 +55,30 @@ leave `paw watch` running for a continuous view.
 - **`paw check`** -- read broadcasts and messages from agents
 - **`paw ask <task> "..."`** -- send a message to redirect an agent
 
-## Merge & cleanup
+### Merge
 
 1. **Verify completions.** `paw status` should show all tasks as "done" with
    summaries written.
 
-2. **Run `paw merge`.** Merges each task branch into the target branch in order.
-   - Clean merges are automatic.
-   - On conflict: paw writes a conflict brief and stops. Run
+2. **Run `paw merge`.** Merges each task branch into the target branch in
+   topological order (respecting `depends_on`). Clean merges are automatic.
+   - On conflict with `on-conflict` hook: paw invokes the hook to resolve
+     autonomously and continues merging.
+   - On conflict without hook: paw writes a conflict brief and stops. Run
      `paw shortcut resolve-conflict`, then `paw merge --continue`.
-   - On hook failure: fix the issue and `paw merge --continue`, or roll back
-     with the backup ref paw printed.
+   - On hook failure with `on-hook-failure` hook: paw invokes the hook to
+     fix and re-validates automatically.
+   - On hook failure without hook: fix the issue and `paw merge --continue`,
+     or roll back with the backup ref paw printed.
 
-3. **Run `paw down`.** Archives session data (journals, summaries, conflict briefs,
+### Cleanup
+
+1. **Run `paw down`.** Archives session data (journals, summaries, conflict briefs,
    config) to `.paw/sessions/`, then removes worktrees and sync branch. Resets
    `.paw/paw.yaml` to template. The target branch with all merged work remains.
    Use `--no-archive` to skip archival.
 
-4. **Ask the user what to do next.** The merged work is on the target branch.
+2. **Ask the user what to do next.** The merged work is on the target branch.
    Check if a remote is configured (`git remote -v`), then ask:
 
    - **Create a PR** — push the target branch and open a pull request against
@@ -79,23 +106,3 @@ with their own branch. This means:
 
 If you need to make changes yourself (e.g., a shared config file), do it on the
 target branch before or after the merge -- not during agent work.
-
-## `paw go` -- automated mode
-
-`paw go` runs this entire workflow as a single command:
-up → launch → watch → merge → down. Use it for straightforward sessions
-where you don't expect conflicts or need to intervene mid-session.
-
-```bash
-paw go                         # requires paw.yaml to exist
-paw go --poll-interval 10     # poll every 10 seconds (default 5)
-```
-
-If merge hits a conflict, `paw go` stops with a clear message and leaves
-worktrees intact. Resolve manually, then run `paw merge --continue` and
-`paw down` yourself.
-
-Use the manual workflow above when you need to:
-- Redirect agents mid-session with `paw ask`
-- Cherry-pick which tasks to merge with `paw merge --pick`
-- Make changes on the target branch between merge and cleanup

@@ -55,15 +55,19 @@ The user never runs paw commands — that's your job.
    `paw ask <task> "..."` to redirect an agent.
 5. **`paw merge`** — merges completed task branches into the target branch.
 6. **Handle merge failures.** Two things can stop a merge:
-   - **Conflict**: paw writes a conflict brief and stops. Run
+   - **Conflict**: paw writes a conflict brief and stops. If `on-conflict` is
+     configured, paw runs the hook automatically.
+     If the hook resolves it, merging continues. Otherwise, run
      `paw shortcut resolve-conflict` to read the brief, fix it, then
      `paw merge --continue`.
-   - **Hook failure**: the post-merge hook failed. Fix the issue, then
+   - **Hook failure**: the post-merge hook failed. If `on-hook-failure` is
+     configured, paw runs the hook automatically and re-runs post-merge to
+     verify. Otherwise, fix the issue, then
      `paw merge --continue`. To roll back instead:
      `git reset --hard refs/paw-backup/{task}`.
-7. **`paw down`** — archives session data to `.paw/sessions/`, removes worktrees,
-   and resets `.paw/paw.yaml` to template. The merged target branch remains.
-   Use `--no-archive` to skip archival.
+7. **`paw down`** — archives session data to `.paw/sessions/`, removes worktrees
+   and sync branch, cleans up `.paw/tmp/`, and resets `.paw/paw.yaml` to
+   template. The merged target branch remains. Use `--no-archive` to skip archival.
 
 ### Orchestrator commands
 
@@ -75,8 +79,11 @@ paw launch --dry-run             # Preview launch commands without spawning
 paw launch --task <name>         # Launch agent in a specific worktree
 paw go                           # Full workflow: up → launch → watch → merge → down
 paw go --poll-interval 10       # Adjust watch polling frequency (default 5s)
+paw prime                        # View task summaries, conflict state, broadcasts
 paw status                       # Check progress across all tasks
 paw watch                        # Continuous terminal monitor (auto-exits when done)
+paw watch --interval 10          # Adjust polling frequency (default 5s)
+paw watch --no-exit              # Keep running after all tasks are done
 paw merge                        # Merge completed task branches
 paw merge --continue             # Resume after conflict or hook failure
 paw merge --pick <task>          # Merge a specific task only
@@ -224,7 +231,18 @@ hooks:
   post-up: npm install
   pre-done: npm test
   post-merge: npm test
+  on-conflict: claude --print "resolve the merge conflict"
+  on-hook-failure: claude --print "fix the failing tests"
 ```
+
+Hooks run via bash, so you can write multi-line scripts inline using YAML's
+block scalar syntax (`|`), or call an external script. Environment variables
+(like `PAW_CONFLICT_BRIEF`) are passed to the process via `process.env` —
+agent CLIs can read them directly.
+
+The agent command can be any CLI that reads context and edits code —
+`claude --print`, `codex`, `opencode`, `gemini`, or a custom script. paw is
+agent-agnostic.
 
 **`post-up`** runs in each worktree after creation and file copying during
 `paw up`. Useful for installing dependencies, running codegen, or any
@@ -236,6 +254,16 @@ is blocked. Use `--force` to bypass.
 **`post-merge`** runs after each clean merge. If it fails, paw stops and shows
 rollback guidance. Use `paw merge --continue` after fixing, or roll back with
 `git reset --hard refs/paw-backup/{task}`.
+
+**`on-conflict`** runs when `paw merge` hits a git conflict. The hook receives
+environment variables (`PAW_CONFLICT_TASK`, `PAW_CONFLICT_BRIEF`, `PAW_TARGET`)
+and must resolve conflict markers, `git add`, and `git commit` to complete the
+merge. If unresolved, paw falls back to `exit(1)`.
+
+**`on-hook-failure`** runs when the `post-merge` hook fails after a clean merge.
+The hook receives environment variables (`PAW_FAILED_TASK`, `PAW_HOOK_COMMAND`,
+`PAW_BACKUP_REF`, `PAW_TARGET`) and must fix the code and commit. The
+post-merge hook is re-run to verify the fix.
 
 ### Dependencies
 

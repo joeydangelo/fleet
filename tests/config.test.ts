@@ -245,6 +245,52 @@ tasks:
 
     rmSync(dir, { recursive: true });
   });
+
+  it('parses on-conflict and on-hook-failure hooks', () => {
+    const dir = makeTempDir();
+    const configPath = resolve(dir, 'paw.yaml');
+    writeFileSync(
+      configPath,
+      `
+target: feature/x
+hooks:
+  post-merge: pnpm test
+  on-conflict: claude --print "resolve conflict"
+  on-hook-failure: claude --print "fix hook failure"
+tasks:
+  a:
+    focus: src/
+`,
+    );
+
+    const config = loadConfig(configPath);
+    expect(config.hooks?.['on-conflict']).toBe('claude --print "resolve conflict"');
+    expect(config.hooks?.['on-hook-failure']).toBe('claude --print "fix hook failure"');
+
+    rmSync(dir, { recursive: true });
+  });
+
+  it('accepts hooks without on-conflict and on-hook-failure', () => {
+    const dir = makeTempDir();
+    const configPath = resolve(dir, 'paw.yaml');
+    writeFileSync(
+      configPath,
+      `
+target: feature/x
+hooks:
+  pre-done: npm test
+tasks:
+  a:
+    focus: src/
+`,
+    );
+
+    const config = loadConfig(configPath);
+    expect(config.hooks?.['on-conflict']).toBeUndefined();
+    expect(config.hooks?.['on-hook-failure']).toBeUndefined();
+
+    rmSync(dir, { recursive: true });
+  });
 });
 
 describe('include config', () => {

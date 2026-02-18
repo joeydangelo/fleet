@@ -71,7 +71,7 @@ export function doneCommand(): Command {
             if (preDoneHook) {
               console.log(pc.dim(`Running pre-done hook: ${preDoneHook}`));
               try {
-                execSync(preDoneHook, { cwd: repoRoot, stdio: 'inherit' });
+                execSync(preDoneHook, { cwd: repoRoot, stdio: 'inherit', shell: 'bash' });
               } catch {
                 console.error(pc.red('Pre-done hook failed. Fix the issue and try again.'));
                 console.error(pc.dim('Use --force to bypass the pre-done hook.'));

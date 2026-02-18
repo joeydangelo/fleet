@@ -28,15 +28,24 @@ agent: claude
 #   - "config/local.json"
 
 # Hooks. Detect the project's toolchain and set the right commands.
-# post-up runs in each worktree after creation and file copying during `paw up`.
-# Useful for installing dependencies, running codegen, or any per-worktree setup.
-# pre-done runs before `paw done` marks a task complete. If it fails, done is blocked.
-# post-merge runs after each clean merge in `paw merge`. If it fails, paw stops
-# and shows rollback guidance.
+# Hooks run via bash. Use YAML block scalar (|) for multi-line scripts inline,
+# or call an external script.
+#
+# post-up: runs in each worktree after creation. Install deps, run codegen, etc.
+# pre-done: runs before `paw done`. Quality gate — blocks done if it fails.
+# post-merge: runs after each clean merge. Catches integration failures.
+# on-conflict: runs when merge hits a git conflict. Must resolve markers,
+#   git add, and git commit. Env vars: PAW_CONFLICT_TASK, PAW_CONFLICT_BRIEF,
+#   PAW_TARGET.
+# on-hook-failure: runs when post-merge fails. Must fix the code and commit.
+#   Env vars: PAW_FAILED_TASK, PAW_HOOK_COMMAND, PAW_BACKUP_REF, PAW_TARGET.
+#   Post-merge is re-run to verify.
 # hooks:
-#   post-up: <install command>    # e.g., pnpm install, uv sync, cargo build
-#   pre-done: <test command>      # e.g., pnpm test, uv run pytest, go test ./...
-#   post-merge: <test command>    # e.g., pnpm test, uv run pytest, cargo test
+#   post-up: pnpm install
+#   pre-done: pnpm test
+#   post-merge: pnpm test
+#   on-conflict: claude --print "resolve the merge conflict"
+#   on-hook-failure: claude --print "fix the failing tests"
 
 tasks:
   # Each key is the task name. It becomes the branch name suffix, worktree directory

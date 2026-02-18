@@ -8,6 +8,8 @@ vi.mock('node:child_process', () => ({
 // Mock lib modules
 vi.mock('../src/lib/git.js', () => ({
   getRepoRoot: vi.fn(() => '/fake/repo'),
+  getCurrentBranch: vi.fn(() => 'feature/x'),
+  git: vi.fn(),
   getCommitCount: vi.fn(() => 3),
   getChangedFileCount: vi.fn(() => 5),
 }));
@@ -39,7 +41,9 @@ vi.mock('../src/lib/journal.js', () => ({
 
 import { execFileSync } from 'node:child_process';
 import { readSyncState } from '../src/lib/sync.js';
-import { runPawCommand } from '../src/commands/go.js';
+import { loadConfig } from '../src/lib/config.js';
+import { runPawCommand, runGo } from '../src/commands/go.js';
+import * as watchModule from '../src/commands/watch.js';
 import { runWatchLoop } from '../src/commands/watch.js';
 
 const mockExecFileSync = vi.mocked(execFileSync);
@@ -187,5 +191,62 @@ describe('runWatchLoop', () => {
     });
 
     expect(callCount).toBeGreaterThanOrEqual(3);
+  });
+});
+
+describe('runGo: merge failure message (paw-lk9k)', () => {
+  const mockLoadConfig = vi.mocked(loadConfig);
+
+  beforeEach(() => {
+    // Make up and launch succeed, merge fail
+    mockExecFileSync.mockImplementation((_cmd, args) => {
+      const subcommand = (args as string[])[1];
+      if (subcommand === 'merge') {
+        const err = new Error('merge failed') as Error & { status: number };
+        err.status = 1;
+        throw err;
+      }
+      return Buffer.from('');
+    });
+
+    // Mock runWatchLoop to resolve immediately for runGo tests
+    vi.spyOn(watchModule, 'runWatchLoop').mockResolvedValue(undefined);
+  });
+
+  it('shows auto-resolve context when hooks are configured', async () => {
+    mockLoadConfig.mockReturnValueOnce({
+      base: 'main',
+      target: 'feature/x',
+      agent: 'claude',
+      hooks: {
+        'post-merge': 'pnpm test',
+        'on-conflict': 'claude --print "resolve"',
+        'on-hook-failure': 'claude --print "fix"',
+      },
+      tasks: { auth: { focus: 'src/auth/' }, api: { focus: 'src/api/' } },
+    });
+
+    await runGo({ pollInterval: '5' });
+
+    const logs = vi.mocked(console.log).mock.calls.map((c) => String(c[0]));
+    const hasAutoResolveMsg = logs.some((msg) => msg.includes('Auto-resolve'));
+    expect(hasAutoResolveMsg).toBe(true);
+  });
+
+  it('shows manual resolve message when no hooks configured', async () => {
+    mockLoadConfig.mockReturnValueOnce({
+      base: 'main',
+      target: 'feature/x',
+      agent: 'claude',
+      tasks: { auth: { focus: 'src/auth/' }, api: { focus: 'src/api/' } },
+    });
+
+    await runGo({ pollInterval: '5' });
+
+    const logs = vi.mocked(console.log).mock.calls.map((c) => String(c[0]));
+    const hasManualMsg = logs.some((msg) => msg.includes('Merge failed'));
+    expect(hasManualMsg).toBe(true);
+    const hasAutoResolveMsg = logs.some((msg) => msg.includes('Auto-resolve'));
+    expect(hasAutoResolveMsg).toBe(false);
   });
 });
