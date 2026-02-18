@@ -9,6 +9,7 @@ import { downCommand } from './commands/down.js';
 import { broadcastCommand } from './commands/broadcast.js';
 import { askCommand } from './commands/ask.js';
 import { replyCommand } from './commands/reply.js';
+import { threadsCommand } from './commands/threads.js';
 import { shortcutCommand } from './commands/shortcut.js';
 import { guidelinesCommand } from './commands/guidelines.js';
 import { templateCommand } from './commands/template.js';
@@ -34,6 +35,7 @@ export function createCli(): Command {
   program.addCommand(broadcastCommand());
   program.addCommand(askCommand());
   program.addCommand(replyCommand());
+  program.addCommand(threadsCommand());
   program.addCommand(shortcutCommand());
   program.addCommand(guidelinesCommand());
   program.addCommand(templateCommand());
