@@ -100,7 +100,7 @@ failure: fix the issue and run `paw merge --continue`, or roll back with
 `git reset --hard refs/paw-backup/{task}`.
 
 **`paw down`** — archives session data to `.paw/sessions/`, removes worktrees
-and sync branch, cleans up `.paw/tmp/`, and resets `.paw/paw.yaml` to template.
+and sync branch, and resets `.paw/paw.yaml` to template.
 The merged target branch remains. Use `--no-archive` to skip archival.
 
 For post-session steps, see `paw shortcut fan-out-in`.

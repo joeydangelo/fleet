@@ -25,11 +25,6 @@ import {
 } from '../lib/sync.js';
 import type { SyncState } from '../lib/sync.js';
 import { generateConflictBrief } from '../lib/conflict.js';
-import {
-  extractConflictBrief,
-  tryAutoResolveConflict,
-  tryAutoResolveHookFailure,
-} from '../lib/merge-hooks.js';
 import { success, warn, skip, handleError } from '../lib/output.js';
 
 export function mergeCommand(): Command {
@@ -238,29 +233,6 @@ function runMergeLoop(
         console.log(pc.dim(`    Running post-merge hook: ${postMergeHook}`));
         const hookOk = runPostMergeHook(postMergeHook, repoRoot);
         if (!hookOk) {
-          // Try on-hook-failure auto-resolve if configured
-          const onHookFailure = config.hooks?.['on-hook-failure'];
-          if (onHookFailure) {
-            const resolved = tryAutoResolveHookFailure({
-              hookCommand: onHookFailure,
-              taskName: wt.taskName,
-              target,
-              postMergeHook,
-              backupRef: `refs/paw-backup/${wt.taskName}`,
-              cwd: repoRoot,
-            });
-
-            if (resolved) {
-              success(wt.taskName, 'hook failure auto-resolved');
-              state = updateMergeEntry(state, wt.taskName, {
-                status: 'merged',
-                merged: new Date().toISOString(),
-              });
-              writeSyncState(state, repoRoot);
-              continue;
-            }
-          }
-
           state = updateMergeEntry(state, wt.taskName, {
             status: 'hook_failed',
           });
@@ -296,31 +268,6 @@ function runMergeLoop(
         brief: briefPath,
       });
       writeSyncStateAndFiles(state, [{ path: briefPath, content: brief }], repoRoot);
-
-      // Try on-conflict auto-resolve if configured
-      const onConflict = config.hooks?.['on-conflict'];
-      if (onConflict) {
-        const extracted = extractConflictBrief(wt.taskName, repoRoot);
-        const resolvedBriefPath = extracted ?? '';
-
-        const resolved = tryAutoResolveConflict({
-          hookCommand: onConflict,
-          taskName: wt.taskName,
-          target,
-          briefPath: resolvedBriefPath,
-          cwd: repoRoot,
-        });
-
-        if (resolved) {
-          success(wt.taskName, 'conflict auto-resolved');
-          state = updateMergeEntry(state, wt.taskName, {
-            status: 'merged',
-            merged: new Date().toISOString(),
-          });
-          writeSyncState(state, repoRoot);
-          continue;
-        }
-      }
 
       warn(wt.taskName, 'conflicts');
       console.log(pc.dim(`    ${result.message.split('\n')[0]}`));
