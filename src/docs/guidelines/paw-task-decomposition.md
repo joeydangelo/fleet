@@ -29,7 +29,9 @@ middleware. These layers usually live in different files and can be worked on in
 **Interface contracts.** When two tasks share an interface (a type definition, an API
 endpoint, a config schema), one task must own the definition and the other must consume
 it. Call this out explicitly in both tasks' instructions and tell the owning agent to
-broadcast changes.
+broadcast changes. Set `depends_on` on the consumer task so it merges after the
+producer — this ensures the interface exists on the target branch before the consumer's
+code arrives.
 
 ## Sizing Tasks
 
@@ -46,13 +48,13 @@ broadcast changes.
 Before finalizing your decomposition, check each pair of tasks:
 
 1. **Can both start immediately?** If task B needs task A's output to begin, they're
-   sequential -- combine them or accept that B will need to adapt mid-session via
+   sequential — combine them or accept that B will need to adapt mid-session via
    broadcasts.
 2. **Do they touch the same files?** List each task's focus files. Overlap means merge
    conflicts. Restructure so each file has one owner.
 3. **Do they share interfaces?** This is fine as long as ownership is explicit. One
-   task defines the interface, the other consumes it, and the definer broadcasts
-   changes.
+   task defines the interface, the other consumes it, the definer broadcasts changes,
+   and the consumer task sets `depends_on` so it merges after the producer.
 
 ## Common Decomposition Patterns
 

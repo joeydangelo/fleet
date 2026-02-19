@@ -5,15 +5,51 @@ category: orchestrator
 ---
 Generate `.paw/paw.yaml` to split the user's feature request into parallel agent tasks.
 
+## Before you write
+
+Ask these questions first — before analyzing the codebase or writing the yaml.
+
+### What to ask (only if not in the request)
+
+Ask only what you can't infer from context:
+
+**1. Agent type** (if not obvious)
+> Which CLI agent will run the tasks?
+> Options: `claude`, `codex`, `gemini`, `opencode`, or a custom command.
+> This becomes the `agent:` field — it's what `paw launch` runs in each worktree.
+
+Skip if: the user is on Claude Code and hasn't mentioned another agent, or they've said "use codex" in their request.
+
+**2. Spec or issue link** (if not provided)
+> Is there a spec file or issue IDs to link to these tasks?
+> If yes, what's the path or ID? Goes into the `spec:` and `issue:` fields.
+
+Skip if: already in the user's message.
+
+**If you are Claude Code:** use the `AskUserQuestion` tool.
+
+**If you are Codex, Gemini, opencode, or another CLI agent:**
+1. Restate what you understood from the request
+2. Ask open questions as a numbered list with options
+3. Wait for answers before writing the yaml
+
+### What to infer (never ask)
+
+From the request, codebase, and `paw guidelines paw-task-decomposition`:
+
+- Task names and focus areas — derived from module/layer boundaries
+- `depends_on` — from interface ownership patterns
+- Target branch — use `paw-<feature-name>` convention
+- Number of tasks — 2–5; LLM decides
+- Task prompts — from the request and codebase analysis
+- Hooks — detected from the toolchain (package.json, pyproject.toml, etc.)
+
 ## Instructions
 
 1. **Gather context.** If you already have a spec, feature plan, or clear build
-   description, use that directly. Otherwise, ask the user what they want to build.
-   Ask good questions — clarify scope, priorities, and constraints until you have
-   enough detail to identify the major pieces of work. Also ask which agent CLI
-   to use (claude, codex, opencode, gemini, or a custom command). This becomes
-   the `agent:` field in paw.yaml — it's the command `paw launch` runs in each
-   worktree terminal.
+   description, use it directly. Otherwise, ask what the user wants to build —
+   enough to identify the major pieces of work. Ask only the questions listed
+   above; don't ask what you can infer.
 
 2. **Analyze the codebase.** Look at the directory structure, module boundaries, and
    existing patterns. Identify natural seams where work can be parallelized without
@@ -105,6 +141,7 @@ Generate `.paw/paw.yaml` to split the user's feature request into parallel agent
    ```
 
 10. **Validate the decomposition:**
+    - [ ] `agent:` field is set
     - [ ] No two tasks share the same focus files (minimal overlap)
     - [ ] Each task can start immediately (no hidden sequencing)
     - [ ] Instructions mention shared interfaces and who owns them
@@ -132,3 +169,14 @@ Generate `.paw/paw.yaml` to split the user's feature request into parallel agent
   conflicts.
 - **Vague instructions.** "Build the API" isn't actionable. "Build REST endpoints for
   user profiles at src/api/users.ts, returning UserProfile from src/types.ts" is.
+
+## After writing
+
+The human sees the yaml diff in the standard permission prompt and approves it
+there — no separate review step needed.
+
+Once approved, follow up:
+> "I've written the plan to `.paw/paw.yaml`. Would you like me to run `paw go`
+> to start the session?"
+
+The human responds. Act accordingly.
