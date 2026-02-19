@@ -1,6 +1,6 @@
 ---
 title: Session End
-description: Agent's final actions -- broadcast final state, write done summary
+description: Agent's final actions — broadcast final state, write done summary
 category: worktree agent
 ---
 You're wrapping up your task in a paw worktree. Make sure other agents and the person
@@ -10,7 +10,7 @@ running the merge have full context about what you did.
 
 1. **Commit any outstanding work.** If you have uncommitted changes, follow
    `paw shortcut precommit-process`. If your work is in a partial state and not ready
-   to commit, that's fine -- skip this step, but note it in your summary.
+   to commit, that's fine — skip this step, but note it in your summary.
 
 2. **Answer any open threads.** Run `paw threads` to check for directed questions
    you haven't replied to. Answer with `paw reply --to <thread> "..."`. Other agents
@@ -23,12 +23,13 @@ running the merge have full context about what you did.
    paw broadcast "Auth task done. OAuth2 flow working, AuthConfig type finalized at src/auth/types.ts"
    ```
 
-3. **Write your done summary.** This is the most important step. The summary is what
+4. **Write your done summary.** This is the most important step. The summary is what
    the merge process and resolver agents use to understand your work. Use
    `paw template task-summary` for the structure.
 
-   ```
-   paw done --summary "## What I did
+   ```bash
+   paw done << 'EOF'
+   ## What I did
    - Added OAuth2 login flow with Google and GitHub providers
    - Refactored AuthMiddleware to accept OAuthConfig
 
@@ -39,10 +40,11 @@ running the merge have full context about what you did.
 
    ## Watch out
    - Any code importing from src/auth/types.ts needs to handle OAuthConfig
-   - Token refresh requires OAUTH_SECRET env var"
+   - Token refresh requires OAUTH_SECRET env var
+   EOF
    ```
 
-   If your work is incomplete, say so clearly -- what's done, what's not, and why.
+   If your work is incomplete, say so clearly — what's done, what's not, and why.
 
 ## What Makes a Good Summary
 

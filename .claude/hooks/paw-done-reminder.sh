@@ -27,7 +27,17 @@ if [[ "$input" == *"git commit"* ]]; then
     if ! git show "paw-sync:summaries/$task_name.md" >/dev/null 2>&1; then
       echo ""
       echo "PAW REMINDER: You have not run 'paw done' yet."
-      echo "  Run 'paw done --summary \"...\"' before ending your session."
+      echo "  Use a heredoc to write your summary:"
+      echo "    paw done << 'EOF'"
+      echo "    ## What I did"
+      echo "    - ..."
+      echo ""
+      echo "    ## Interface changes"
+      echo "    - ..."
+      echo ""
+      echo "    ## Watch out"
+      echo "    - ..."
+      echo "    EOF"
       echo "  Your summary is critical for merge conflict resolution."
       echo ""
     fi

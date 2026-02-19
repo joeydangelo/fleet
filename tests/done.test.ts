@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
-import { execSync } from 'node:child_process';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { execSync, execFileSync } from 'node:child_process';
 import { writeFileSync, mkdirSync, rmSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -7,6 +7,13 @@ import { validateSummary, REQUIRED_SECTIONS, generateErrorTemplate } from '../sr
 import { generateTaskFile } from '../src/lib/session.js';
 import { loadConfig } from '../src/lib/config.js';
 import type { PawConfig } from '../src/lib/config.js';
+import {
+  initSyncState,
+  writeSyncState,
+  initSyncWorktree,
+  removeSyncWorktree,
+  readSyncFile,
+} from '../src/lib/sync.js';
 
 function makeTempDir(): string {
   const dir = resolve(tmpdir(), `paw-done-${Date.now()}-${Math.random().toString(36).slice(2)}`);
@@ -212,5 +219,84 @@ tasks:
     expect(config.hooks?.['pre-done']).toBeUndefined();
 
     rmSync(dir, { recursive: true, force: true });
+  });
+});
+
+describe('paw done stdin (paw-icic)', () => {
+  let repoDir: string;
+  const binPath = resolve(process.cwd(), 'dist', 'bin.mjs');
+
+  const validSummary = `## What I did
+- Added OAuth2 login flow with Google and GitHub providers
+
+## Interface changes
+- AuthMiddleware now takes OAuthConfig instead of raw token
+
+## Watch out
+- Token refresh requires OAUTH_SECRET env var`;
+
+  beforeEach(() => {
+    repoDir = resolve(
+      tmpdir(),
+      `paw-done-stdin-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    );
+    mkdirSync(repoDir, { recursive: true });
+    execFileSync('git', ['init', repoDir], { stdio: 'pipe' });
+    execFileSync('git', ['commit', '--allow-empty', '-m', 'init'], { cwd: repoDir, stdio: 'pipe' });
+    initSyncWorktree(repoDir);
+    const state = initSyncState('feature/dash', ['auth'], 'paw.yaml');
+    writeSyncState(state, repoDir);
+    mkdirSync(resolve(repoDir, '.paw', 'tasks'), { recursive: true });
+    writeFileSync(resolve(repoDir, '.paw', 'tasks', 'auth.md'), '# auth task');
+  });
+
+  afterEach(() => {
+    removeSyncWorktree(repoDir);
+    rmSync(repoDir, { recursive: true, force: true });
+  });
+
+  it('reads summary from piped stdin when --summary is not provided', () => {
+    const result = execFileSync(process.execPath, [binPath, 'done'], {
+      cwd: repoDir,
+      input: validSummary,
+      stdio: ['pipe', 'pipe', 'pipe'],
+    });
+
+    expect(result.toString()).toContain('auth -- marked as done');
+  });
+
+  it('summary written via stdin matches piped content exactly', () => {
+    execFileSync(process.execPath, [binPath, 'done'], {
+      cwd: repoDir,
+      input: validSummary,
+      stdio: ['pipe', 'pipe', 'pipe'],
+    });
+
+    const written = readSyncFile('summaries/auth.md', repoDir);
+    expect(written).toBe(validSummary);
+  });
+
+  it('--summary flag still works unchanged', () => {
+    const result = execFileSync(process.execPath, [binPath, 'done', '--summary', validSummary], {
+      cwd: repoDir,
+      stdio: 'pipe',
+    });
+
+    expect(result.toString()).toContain('auth -- marked as done');
+  });
+
+  it('piped invalid summary exits 1 with validation error', () => {
+    try {
+      execFileSync(process.execPath, [binPath, 'done'], {
+        cwd: repoDir,
+        input: 'Just a paragraph, no sections.',
+        stdio: ['pipe', 'pipe', 'pipe'],
+      });
+      expect.fail('should have exited with code 1');
+    } catch (err: any) {
+      expect(err.status).toBe(1);
+      const stderr = err.stderr?.toString() ?? '';
+      expect(stderr).toMatch(/missing required sections/i);
+    }
   });
 });

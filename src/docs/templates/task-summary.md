@@ -18,10 +18,11 @@ description: Structure for paw done summaries -- what you did, interface changes
 
 ## Usage
 
-Pass this as the `--summary` flag to `paw done`:
+Use a heredoc to pass the summary to `paw done`:
 
-```
-paw done --summary "## What I did
+```bash
+paw done << 'EOF'
+## What I did
 - Added OAuth2 login flow with Google and GitHub providers
 - Refactored AuthMiddleware to accept OAuthConfig
 
@@ -32,8 +33,11 @@ paw done --summary "## What I did
 
 ## Watch out
 - Any code importing from src/auth/types.ts needs to handle OAuthConfig
-- Token refresh requires OAUTH_SECRET env var"
+- Token refresh requires OAUTH_SECRET env var
+EOF
 ```
+
+`--summary "..."` also works for short, single-line summaries.
 
 ## Guidelines
 

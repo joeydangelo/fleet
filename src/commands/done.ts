@@ -1,5 +1,6 @@
 import { Command } from 'commander';
 import { execSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import pc from 'picocolors';
 import { getRepoRoot } from '../lib/git.js';
 import { loadConfig, resolveConfigPath } from '../lib/config.js';
@@ -37,17 +38,30 @@ export function doneCommand(): Command {
           process.exit(1);
         }
 
-        if (!opts.summary) {
-          console.error(pc.red('Missing --summary flag. A structured summary is required.'));
+        let summary: string;
+        if (opts.summary) {
+          summary = opts.summary;
+        } else if (!process.stdin.isTTY) {
+          summary = readFileSync(0, 'utf-8').trim();
+        } else {
+          console.error(pc.red('No summary provided. Pass via --summary or heredoc:'));
           console.error('');
-          console.error(pc.bold('Expected format:'));
-          console.error(pc.dim(generateErrorTemplate()));
+          console.error("  paw done << 'EOF'");
+          console.error('  ## What I did');
+          console.error('  - What you built');
+          console.error('');
+          console.error('  ## Interface changes');
+          console.error('  - Types, exports, API changes');
+          console.error('');
+          console.error('  ## Watch out');
+          console.error('  - Non-obvious things');
+          console.error('  EOF');
           console.error('');
           console.error(pc.dim('Run `paw template task-summary` for full details.'));
           process.exit(1);
         }
 
-        const validation = validateSummary(opts.summary);
+        const validation = validateSummary(summary);
         if (!validation.valid && !opts.force) {
           console.error(
             pc.yellow(`Summary is missing required sections: ${validation.missing.join(', ')}`),
@@ -85,7 +99,7 @@ export function doneCommand(): Command {
 
         const updated = completeTask(state, taskName);
         const summaryPath = `summaries/${taskName}.md`;
-        writeSyncStateAndFiles(updated, [{ path: summaryPath, content: opts.summary }], repoRoot);
+        writeSyncStateAndFiles(updated, [{ path: summaryPath, content: summary }], repoRoot);
         console.log(pc.green(`+ ${taskName} -- marked as done`));
         console.log(pc.dim(`  Summary written to ${summaryPath} on sync branch`));
       } catch (err) {
