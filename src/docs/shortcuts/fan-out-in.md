@@ -3,114 +3,95 @@ title: Fan Out In
 description: Full orchestrator workflow — decompose, dispatch agents, monitor, merge, clean up
 category: orchestrator
 ---
-You're the lead orchestrator running a paw session from the main repo. Your job is
-to set up the session, merge results, and clean up. During the session, agents work
-independently — you can check in, but you're not actively managing them.
+You're the lead orchestrator. Your job: decompose work into tasks, run the
+session, monitor agents, handle conflicts, and ask the user what to do next.
 
-## Quick start: `paw go`
+## Start the session
 
-For most sessions, one command runs the entire lifecycle:
+1. **Decompose work.** Run `paw shortcut generate-paw-yaml` to write `.paw/paw.yaml`.
+   Review and approve the yaml before continuing.
 
-```bash
-paw go                         # up → launch → watch → merge → down
-paw go --poll-interval 10     # poll every 10 seconds (default 5)
+2. **Run the session.**
+
+   ```bash
+   paw go    # up → launch → watch → merge → down
+   ```
+
+   `paw go` creates worktrees, launches agents, merges when all are done, and
+   tears down. That's the full automated loop — monitor and intervene as needed
+   while it runs.
+
+## During the session
+
+`paw go` is running. Agents are working autonomously. You don't need to manage
+them — but you can check in or intervene at any time:
+
+- **`paw watch`** — continuous monitor. Shows broadcasts, status changes, commit
+  counts. Auto-exits when all agents are done. Use `--interval 10` to adjust polling.
+- **`paw status`** — point-in-time snapshot of agent progress
+- **`paw threads`** — see open Q&A threads; answer questions agents directed at you
+- **`paw ask <task> "..."`** — send a message to redirect an agent mid-session
+
+## On conflict
+
+When `paw go` or `paw merge` hits a conflict, it stops and prints:
+
+```
+Conflict: api into target
+Brief written to: .paw-sync/conflicts/api-into-target.md
+Fix the conflict, commit, then run: paw merge --continue
 ```
 
-`paw go` creates worktrees, launches agents, watches until all are done, merges
-task branches into the target, and tears down. When conflicts or post-merge
-failures arise, the orchestrator reads the output, resolves the issue, and
-runs `paw merge --continue` to resume.
+1. Read the conflict brief at the path printed above
+2. Understand both agents' intent from the brief's done summaries and journal entries
+3. Resolve the conflicted files — edit to correctly merge both changes
+4. `git add <resolved-files>`
+5. `git commit -m "resolve: <description>"`
+6. `paw merge --continue` — paw resumes merging remaining tasks
 
-Use the manual workflow below when you need to:
-- Redirect agents mid-session with `paw ask`
-- Cherry-pick which tasks to merge with `paw merge --pick`
-- Make changes on the target branch between merge and cleanup
+Run `paw shortcut resolve-merge-conflict` for the full resolution workflow.
 
-## Manual workflow
+On `post-merge` hook failure: fix the issue and run `paw merge --continue`,
+or roll back with `git reset --hard refs/paw-backup/{task}`.
 
-### Setup
+## After paw go completes
 
-1. **Write `.paw/paw.yaml`.** Use `paw shortcut generate-paw-yaml` to decompose work
-   into parallel tasks with focus areas and prompts.
+`paw go` runs `paw down` automatically — archives session data, removes worktrees,
+resets `.paw/paw.yaml` to template. The merged work is on the target branch.
 
-2. **Run `paw up`.** Creates worktrees, branches, and sync state. Verify the output
-   shows all tasks created.
+Ask the user what to do next. First, check what's actually available:
 
-3. **Launch agents.** Run `paw launch` to open a terminal with the agent command
-   in each worktree. Requires `agent: <command>` in `.paw/paw.yaml`. Each agent
-   auto-orients via `paw prime` on startup (triggered by the SessionStart hook).
+```bash
+git remote -v     # is there a remote?
+git branch        # which local branches exist?
+```
 
-   Use `paw launch --dry-run` to preview commands or `paw launch --task <name>`
-   to launch a single worktree.
+**If a remote is configured**, ask the user:
+- Open a pull request — use `paw shortcut to-pr`
+- Merge into an existing branch and push (name the actual branches)
+- Stay on the target branch — review, test, or iterate
 
-### Monitoring
+**If no remote**, ask the user:
+- Merge into an existing branch locally (name the actual branches)
+- Stay on the target branch — review, test, or iterate
 
-paw's communication is async and pull-based. You check in when you want, or
-leave `paw watch` running for a continuous view.
+Don't suggest branches that aren't in the repo. Don't default to PR — ask.
 
-- **`paw watch`** — continuous terminal monitor. Streams broadcasts, status
-  changes, and commit counts as they happen. Auto-exits when all agents are done.
-  Use `--interval 10` to adjust polling frequency, `--no-exit` to keep running.
-- **`paw status`** — point-in-time snapshot of agent progress
-- **`paw threads`** — see open Q&A threads and answer directed questions
-- **`paw ask <task> "..."`** — send a message to redirect an agent
+## Manual step-by-step
 
-### Merge
+Skip `paw go` when you need individual control — to redirect agents mid-session,
+cherry-pick merges, or make changes on the target branch between merge and cleanup:
 
-1. **Verify completions.** `paw status` should show all tasks as "done" with
-   summaries written.
-
-2. **Run `paw merge`.** Merges each task branch into the target branch in
-   topological order (respecting `depends_on`). Clean merges are automatic.
-   - **On conflict:** paw stops and prints:
-     ```
-     Conflict: api into target
-     Brief written to: .paw-sync/conflicts/api-into-target.md
-     Fix the conflict, commit, then run: paw merge --continue
-     ```
-     1. Read the conflict brief at the path printed above
-     2. Understand both agents' intent from the brief's done summaries and journal entries
-     3. Resolve the conflicted files — edit to correctly merge both changes
-     4. `git add <resolved-files>`
-     5. `git commit -m "resolve: <description>"`
-     6. `paw merge --continue` — paw resumes merging remaining tasks
-
-     Run `paw shortcut resolve-merge-conflict` for the full resolution workflow.
-   - **On `post-merge` failure:** fix the issue and run `paw merge --continue`,
-     or roll back with `git reset --hard refs/paw-backup/{task}`.
-
-### Cleanup
-
-1. **Run `paw down`.** Archives session data (journals, summaries, conflict briefs,
-   config) to `.paw/sessions/`, then removes worktrees and sync branch. Resets
-   `.paw/paw.yaml` to template. The target branch with all merged work remains.
-   Use `--no-archive` to skip archival.
-
-2. **Ask the user what to do next.** The merged work is on the target branch.
-   Check if a remote is configured (`git remote -v`), then ask:
-
-   - **Create a PR** — push the target branch and open a pull request against
-     main. Gets reviewed before anything changes on main. Requires a remote.
-     Use `paw shortcut to-pr`.
-   - **Merge or rebase into main** — combine the target branch into main
-     directly. Merge preserves branch history; rebase gives linear history.
-     Push after if a remote exists.
-   - **Keep working** — stay on the target branch. The user wants to review,
-     test, or make more changes before sharing. Ask what they'd like to do
-     next — use your context about the project and session to suggest
-     relevant next steps.
-
-   If the user doesn't specify, default to creating a PR.
-
-## Delegate mode
-
-paw's worktree architecture already separates the coordinator from implementers.
-As the lead, you stay in the main repo. Each agent works in an isolated worktree
-with their own branch. This means:
-
-- You can review summaries and broadcasts without touching agent code
-- Messages via `paw ask` don't create merge conflicts
-- `paw merge` runs from the main repo where no agent is working
+```bash
+paw up                           # create worktrees, branches, task files
+paw launch                       # open terminal + agent in each worktree
+paw launch --task <name>         # launch a single worktree
+# [monitor and intervene — same commands as above]
+paw merge                        # merge when all tasks are done
+paw merge --pick <task>          # merge a specific task only
+paw down                         # archive, tear down, reset config
+paw down --no-archive            # skip archiving session data
+```
 
 If you need to make changes yourself (e.g., a shared config file), do it on the
-target branch before or after the merge — not during agent work.
+target branch before or after `paw merge` — not during agent work.

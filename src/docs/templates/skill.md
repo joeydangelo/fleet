@@ -45,8 +45,11 @@ Run `paw shortcut generate-paw-yaml` to decompose the user's request into
 paw go    # fan-out → agents work → fan-in → tear down
 ```
 
-That's the full session. For conflict resolution, post-session steps, or
-mid-session intervention, see below.
+That's the full session. When `paw go` completes, the merged work is on the
+target branch. Run `paw shortcut fan-out-in` for post-session steps: check
+what's available (remote? branches?), then ask the user what to do next.
+
+For conflict resolution or mid-session intervention, see below.
 
 #### When `paw go` exits with a conflict
 

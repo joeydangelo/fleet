@@ -37,9 +37,6 @@ Run `paw shortcut setup-github-cli` to ensure `gh` is installed and authenticate
    ## Issues
    - Closes #42
    - References GH#45
-
-   ## Watch Out
-   - Any cross-cutting concerns from the agent summaries
    ```
 
    Keep it concise. Extract the key points from each summary rather than
@@ -57,7 +54,7 @@ Run `paw shortcut setup-github-cli` to ensure `gh` is installed and authenticate
    gh pr view $BRANCH --json number,url 2>/dev/null
    ```
 
-   If this returns JSON, a PR exists -- update it instead of creating a new one.
+   If this returns JSON, a PR exists — update it instead of creating a new one.
 
 7. **Create or update the PR:**
 
@@ -84,6 +81,16 @@ Run `paw shortcut setup-github-cli` to ensure `gh` is installed and authenticate
 
    Use `Closes #N` syntax for GitHub issues so they auto-close when the PR
    merges. For non-GitHub tracker IDs (tbd, beads, etc.), just reference them
-   -- the agent closes those manually after verifying the merge.
+   — the agent closes those manually after verifying the merge.
 
-8. **Report the PR URL.** Tell the user the PR URL so they can review it.
+8. **Wait for CI.** Run:
+
+   ```bash
+   gh pr checks $BRANCH --watch 2>&1
+   ```
+
+   Wait for the final summary before reporting. If checks fail, fix the issue,
+   push, and wait again.
+
+9. **Report the PR URL and CI status.** Tell the user the PR URL and whether
+   checks passed.
