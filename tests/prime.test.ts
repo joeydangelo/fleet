@@ -83,3 +83,32 @@ describe('prime cursor write', () => {
     expect(entries2).toHaveLength(0);
   });
 });
+
+describe('prime from root (not inside worktree)', () => {
+  let repoDir: string;
+
+  beforeEach(() => {
+    repoDir = makeTempDir();
+    gitInit(repoDir);
+  });
+
+  afterEach(() => {
+    rmSync(repoDir, { recursive: true, force: true });
+  });
+
+  it('exits 1 with error message when run from repo root', () => {
+    const binPath = resolve(process.cwd(), 'dist', 'bin.mjs');
+    try {
+      execFileSync(process.execPath, [binPath, 'prime'], {
+        cwd: repoDir,
+        stdio: 'pipe',
+      });
+      expect.fail('should have exited with code 1');
+    } catch (err: any) {
+      expect(err.status).toBe(1);
+      const stderr = err.stderr?.toString() ?? '';
+      expect(stderr).toMatch(/not inside a worktree/i);
+      expect(stderr).toMatch(/paw launch/);
+    }
+  });
+});

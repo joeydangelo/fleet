@@ -20,7 +20,7 @@ the team know what you're about to do.
 
 3. **Adapt to what's already happened.** If other agents have completed work or
    broadcast interface changes, factor that into your approach. Don't plan against
-   stale assumptions -- the summaries and broadcasts in `paw prime` tell you the
+   stale assumptions — the summaries and broadcasts in `paw prime` tell you the
    current state of the world.
 
 4. **Broadcast your intent.** Before writing code, announce your plan so other agents

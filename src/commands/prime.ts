@@ -3,22 +3,15 @@ import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import pc from 'picocolors';
 import { getRepoRoot } from '../lib/git.js';
-import { detectTaskName, planWorktrees } from '../lib/session.js';
-import { loadConfig, resolveConfigPath } from '../lib/config.js';
+import { detectTaskName } from '../lib/session.js';
 import type { SyncState } from '../lib/sync.js';
-import {
-  readSyncState,
-  claimTask,
-  findFirstPendingTask,
-  writeSyncState,
-  readSyncFile,
-} from '../lib/sync.js';
+import { readSyncState, claimTask, writeSyncState, readSyncFile } from '../lib/sync.js';
 import { readJournalForTask } from '../lib/journal.js';
 import { handleError, formatFocusAreas } from '../lib/output.js';
 
 export function primeCommand(): Command {
   return new Command('prime')
-    .description('Orient agent and claim task (worktree or repo root)')
+    .description('Orient agent and claim task (run inside a worktree)')
     .option('--brief', 'Condensed output for hooks and constrained contexts')
     .action((opts: { brief?: boolean }) => {
       try {
@@ -26,7 +19,17 @@ export function primeCommand(): Command {
         const taskName = detectTaskName(repoRoot);
 
         if (!taskName) {
-          selfAssignFromRoot(repoRoot);
+          console.error(
+            pc.red('Error: paw prime is an agent command — you are not inside a worktree.'),
+          );
+          console.error('');
+          console.error('To start agents in their worktrees:');
+          console.error('  paw launch      # opens terminals and starts agents automatically');
+          console.error('');
+          console.error('Or manually:');
+          console.error('  cd .paw/worktrees/<task-name>');
+          console.error('  paw prime');
+          process.exit(1);
           return;
         }
 
@@ -177,7 +180,7 @@ function printFull(
         if (brief) {
           console.log(brief);
         } else {
-          console.log(pc.yellow(`Conflict on ${name} -- brief at ${entry.brief}`));
+          console.log(pc.yellow(`Conflict on ${name} — brief at ${entry.brief}`));
         }
       }
     }
@@ -189,56 +192,4 @@ function printFull(
   console.log(pc.dim('2. Run `paw broadcast "..."` when you change shared interfaces'));
   console.log(pc.dim('3. Run `paw threads` to see open Q&A threads'));
   console.log(pc.dim('4. Run `paw shortcut session-end` when finished'));
-}
-
-/**
- * When run from the main repo root (no task file), read .paw/paw.yaml and
- * the sync branch to claim the next pending task and direct the agent
- * to its worktree.
- */
-function selfAssignFromRoot(repoRoot: string): void {
-  let configPath: string;
-  try {
-    configPath = resolveConfigPath(repoRoot);
-  } catch {
-    // No .paw/paw.yaml -- fall back to the original error
-    console.error(pc.red('Could not detect task name. Are you in a paw worktree?'));
-    console.error(
-      pc.dim('Expected a single .md file in .paw/tasks/. Run `paw up` to create worktrees.'),
-    );
-    process.exit(1);
-  }
-
-  const config = loadConfig(configPath);
-  const state = readSyncState(repoRoot);
-
-  if (!state) {
-    console.error(pc.red('No sync state found. Run `paw up` first.'));
-    process.exit(1);
-  }
-
-  const pendingTask = findFirstPendingTask(state);
-
-  if (!pendingTask) {
-    console.log(pc.yellow('All tasks are already claimed or done.\n'));
-    printTeamStatus('', state);
-    process.exit(0);
-  }
-
-  // Claim the task
-  const updated = claimTask(state, pendingTask);
-  writeSyncState(updated, repoRoot);
-
-  // Find the worktree path
-  const worktrees = planWorktrees(config, repoRoot);
-  const wt = worktrees.find((w) => w.taskName === pendingTask);
-
-  console.log('No task file found in current directory.');
-  console.log('Checking .paw/paw.yaml for unclaimed tasks...\n');
-  console.log(pc.green(`Claimed task: ${pendingTask}`));
-  if (wt) {
-    console.log(`Worktree: ${wt.worktreePath}\n`);
-    console.log('Change to the worktree directory and run `paw prime` again for full context:');
-    console.log(`  cd "${wt.worktreePath}"`);
-  }
 }

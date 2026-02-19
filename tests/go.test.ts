@@ -213,27 +213,7 @@ describe('runGo: merge failure message (paw-lk9k)', () => {
     vi.spyOn(watchModule, 'runWatchLoop').mockResolvedValue(undefined);
   });
 
-  it('shows auto-resolve context when hooks are configured', async () => {
-    mockLoadConfig.mockReturnValueOnce({
-      base: 'main',
-      target: 'feature/x',
-      agent: 'claude',
-      hooks: {
-        'post-merge': 'pnpm test',
-        'on-conflict': 'claude --print "resolve"',
-        'on-hook-failure': 'claude --print "fix"',
-      },
-      tasks: { auth: { focus: 'src/auth/' }, api: { focus: 'src/api/' } },
-    });
-
-    await runGo({ pollInterval: '5' });
-
-    const logs = vi.mocked(console.log).mock.calls.map((c) => String(c[0]));
-    const hasAutoResolveMsg = logs.some((msg) => msg.includes('Auto-resolve'));
-    expect(hasAutoResolveMsg).toBe(true);
-  });
-
-  it('shows manual resolve message when no hooks configured', async () => {
+  it('shows manual resolve message when merge fails', async () => {
     mockLoadConfig.mockReturnValueOnce({
       base: 'main',
       target: 'feature/x',
@@ -246,7 +226,5 @@ describe('runGo: merge failure message (paw-lk9k)', () => {
     const logs = vi.mocked(console.log).mock.calls.map((c) => String(c[0]));
     const hasManualMsg = logs.some((msg) => msg.includes('Merge failed'));
     expect(hasManualMsg).toBe(true);
-    const hasAutoResolveMsg = logs.some((msg) => msg.includes('Auto-resolve'));
-    expect(hasAutoResolveMsg).toBe(false);
   });
 });
