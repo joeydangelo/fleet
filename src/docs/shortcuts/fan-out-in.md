@@ -1,11 +1,11 @@
 ---
 title: Fan Out In
-description: Full orchestrator workflow -- decompose, dispatch agents, monitor, merge, clean up
+description: Full orchestrator workflow — decompose, dispatch agents, monitor, merge, clean up
 category: orchestrator
 ---
 You're the lead orchestrator running a paw session from the main repo. Your job is
 to set up the session, merge results, and clean up. During the session, agents work
-independently -- you can check in, but you're not actively managing them.
+independently — you can check in, but you're not actively managing them.
 
 ## Quick start: `paw go`
 
@@ -48,12 +48,12 @@ Use the manual workflow below when you need to:
 paw's communication is async and pull-based. You check in when you want, or
 leave `paw watch` running for a continuous view.
 
-- **`paw watch`** -- continuous terminal monitor. Streams broadcasts, status
+- **`paw watch`** — continuous terminal monitor. Streams broadcasts, status
   changes, and commit counts as they happen. Auto-exits when all agents are done.
   Use `--interval 10` to adjust polling frequency, `--no-exit` to keep running.
-- **`paw status`** -- point-in-time snapshot of agent progress
-- **`paw threads`** -- see open Q&A threads and answer directed questions
-- **`paw ask <task> "..."`** -- send a message to redirect an agent
+- **`paw status`** — point-in-time snapshot of agent progress
+- **`paw threads`** — see open Q&A threads and answer directed questions
+- **`paw ask <task> "..."`** — send a message to redirect an agent
 
 ### Merge
 
@@ -62,12 +62,22 @@ leave `paw watch` running for a continuous view.
 
 2. **Run `paw merge`.** Merges each task branch into the target branch in
    topological order (respecting `depends_on`). Clean merges are automatic.
-   - On conflict: paw writes a conflict brief and stops. The orchestrator
-     reads the brief, resolves the conflict markers, and runs
-     `paw merge --continue` to resume.
-   - On `post-merge` failure: the orchestrator fixes the issue and runs
-     `paw merge --continue`, or rolls back with
-     `git reset --hard refs/paw-backup/{task}`.
+   - **On conflict:** paw stops and prints:
+     ```
+     Conflict: api into target
+     Brief written to: .paw-sync/conflicts/api-into-target.md
+     Fix the conflict, commit, then run: paw merge --continue
+     ```
+     1. Read the conflict brief at the path printed above
+     2. Understand both agents' intent from the brief's done summaries and journal entries
+     3. Resolve the conflicted files — edit to correctly merge both changes
+     4. `git add <resolved-files>`
+     5. `git commit -m "resolve: <description>"`
+     6. `paw merge --continue` — paw resumes merging remaining tasks
+
+     Run `paw shortcut resolve-merge-conflict` for the full resolution workflow.
+   - **On `post-merge` failure:** fix the issue and run `paw merge --continue`,
+     or roll back with `git reset --hard refs/paw-backup/{task}`.
 
 ### Cleanup
 
@@ -103,4 +113,4 @@ with their own branch. This means:
 - `paw merge` runs from the main repo where no agent is working
 
 If you need to make changes yourself (e.g., a shared config file), do it on the
-target branch before or after the merge -- not during agent work.
+target branch before or after the merge — not during agent work.

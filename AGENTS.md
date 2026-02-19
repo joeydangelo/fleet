@@ -46,24 +46,66 @@ The user never runs paw commands — that's your job.
 
 ### Orchestrator workflow
 
-1. **Create `.paw/paw.yaml`.** Run `paw shortcut generate-paw-yaml` to decompose
-   work into parallel tasks with focus areas and prompts.
-2. **`paw up`** — creates worktrees, branches, and task files.
-3. **`paw launch`** — opens a terminal with the agent command in each worktree.
-   Each agent auto-orients via `paw prime` on startup (triggered by the SessionStart hook).
-4. **Monitor.** `paw status` to check progress. `paw threads` to see open threads.
-   `paw ask <task> "..."` to redirect an agent.
-5. **`paw merge`** — merges completed task branches into the target branch.
-6. **Handle merge failures.** Two things can stop a merge:
-   - **Conflict**: paw writes a conflict brief and stops. The orchestrator
-     reads the brief, resolves the conflict, then runs `paw merge --continue`.
-     Use `paw shortcut resolve-conflict` for the full resolution workflow.
-   - **Hook failure**: the post-merge hook failed. The orchestrator fixes
-     the issue and runs `paw merge --continue`. To roll back instead:
-     `git reset --hard refs/paw-backup/{task}`.
-7. **`paw down`** — archives session data to `.paw/sessions/`, removes worktrees
-   and sync branch, cleans up `.paw/tmp/`, and resets `.paw/paw.yaml` to
-   template. The merged target branch remains. Use `--no-archive` to skip archival.
+Run `paw shortcut generate-paw-yaml` to decompose the user's request into
+`.paw/paw.yaml`, review and approve the yaml, then:
+
+```bash
+paw go    # fan-out → agents work → fan-in → tear down
+```
+
+That's the full session. For conflict resolution, post-session steps, or
+mid-session intervention, see below.
+
+#### When `paw go` exits with a conflict
+
+When `paw go` or `paw merge` exits on a conflict, the output shows:
+
+```
+Conflict: api into target
+Brief written to: .paw-sync/conflicts/api-into-target.md
+Fix the conflict, commit, then run: paw merge --continue
+```
+
+Orchestrator steps:
+
+1. Read the conflict brief at the path printed above
+2. Understand both agents' intent from the brief's done summaries and journal entries
+3. Resolve the conflicted files — edit to correctly merge both changes
+4. `git add <resolved-files>`
+5. `git commit -m "resolve: <description>"`
+6. `paw merge --continue` — paw resumes merging remaining tasks
+
+No human needed. Run `paw shortcut resolve-merge-conflict` for the full resolution workflow.
+
+#### Request → command
+
+| User says | Run |
+|---|---|
+| "Build feature X" / "Run this spec" | `paw shortcut generate-paw-yaml` → `paw go` |
+| "There's a conflict" | `paw shortcut resolve-merge-conflict` |
+| "Create a PR" | `paw shortcut to-pr` |
+| "Check what agents are doing" | `paw status` or `paw watch` |
+| "Ask the auth agent about X" | `paw ask auth "..."` |
+
+#### Manual commands (what `paw go` does step by step)
+
+**`paw up`** — creates worktrees, branches, and task files.
+
+**`paw launch`** — opens a terminal with the agent command in each worktree.
+Each agent auto-orients via `paw prime` on startup (triggered by the SessionStart hook).
+
+**Monitor** — `paw status` to check progress. `paw threads` to see open threads.
+`paw ask <task> "..."` to redirect an agent.
+
+**`paw merge`** — merges completed task branches into the target branch. On hook
+failure: fix the issue and run `paw merge --continue`, or roll back with
+`git reset --hard refs/paw-backup/{task}`.
+
+**`paw down`** — archives session data to `.paw/sessions/`, removes worktrees
+and sync branch, cleans up `.paw/tmp/`, and resets `.paw/paw.yaml` to template.
+The merged target branch remains. Use `--no-archive` to skip archival.
+
+For post-session steps, see `paw shortcut fan-out-in`.
 
 ### Orchestrator commands
 
@@ -75,7 +117,6 @@ paw launch --dry-run             # Preview launch commands without spawning
 paw launch --task <name>         # Launch agent in a specific worktree
 paw go                           # Full workflow: up → launch → watch → merge → down
 paw go --poll-interval 10       # Adjust watch polling frequency (default 5s)
-paw prime                        # View task summaries, conflict state, broadcasts
 paw status                       # Check progress across all tasks
 paw watch                        # Continuous terminal monitor (auto-exits when done)
 paw watch --interval 10          # Adjust polling frequency (default 5s)
@@ -100,7 +141,7 @@ paw threads --all                # See all threads including resolved
 | `to-pr` | Create PR from merged agent work |
 | `setup-github-cli` | Ensure gh CLI is installed and authenticated |
 | `fan-out-in` | Full orchestrator workflow reference |
-| `resolve-conflict` | Read conflict brief, resolve, merge --continue |
+| `resolve-merge-conflict` | Read conflict brief, resolve, merge --continue |
 
 ---
 
