@@ -1,18 +1,31 @@
 ---
-title: Generate paw.yaml from GitHub Issue
-description: Fetch a GitHub issue, decompose it into tasks, and generate paw.yaml
+title: Generate paw.yaml from GitHub Issues
+description: Fetch GitHub issues, decompose them into tasks, and generate paw.yaml
 category: orchestrator
 ---
-Fetch one or more GitHub issues and decompose them into parallel agent tasks
-for `.paw/paw.yaml`.
+Fetch GitHub issues — by number, or by listing what's open — and decompose them
+into parallel agent tasks for `.paw/paw.yaml`.
 
 ## Prerequisites
 
-Run `paw shortcut setup-github-cli` to ensure `gh` is installed and authenticated.
+1. **GitHub CLI.** Run `paw shortcut setup-github-cli` to ensure `gh` is installed
+   and authenticated.
+
+2. **GitHub remote.** Verify this repo has a GitHub remote:
+
+   ```bash
+   gh repo view --json name 2>/dev/null
+   ```
+
+   If this fails, the repo has no GitHub remote. Tell the user and suggest
+   `paw shortcut from-issues` (for local trackers) or
+   `paw shortcut generate-paw-yaml` (to write paw.yaml directly).
 
 ## Instructions
 
-1. **Fetch the issue.** Use `gh issue view` to get the issue details:
+1. **Get the issues.** Two paths depending on what the user gave you:
+
+   **If the user specified issue numbers or links:**
 
    ```bash
    gh issue view <number> --json title,body,labels,number
@@ -24,11 +37,30 @@ Run `paw shortcut setup-github-cli` to ensure `gh` is installed and authenticate
    gh issue view 43 --json title,body,labels,number
    ```
 
-2. **Understand the issue.** Read the title, body, and labels. Look for:
+   **If the user wants to browse open issues:**
+
+   ```bash
+   gh issue list --state open --limit 20 --json number,title,labels
+   ```
+
+   Filter by label or assignee if the user asked:
+   ```bash
+   gh issue list --state open --label bug --limit 20 --json number,title,labels
+   gh issue list --state open --assignee @me --limit 20 --json number,title,labels
+   ```
+
+   Show the user the list and ask which issues to work on. Group related or
+   duplicate issues together — if two issues describe the same problem, they
+   can share a task and both get closed after merge. If there are many, suggest
+   a manageable subset (3–5 that form a coherent unit of work). Then fetch
+   full details for the selected issues with `gh issue view`.
+
+2. **Understand the issues.** Read the title, body, and labels. Look for:
    - A task breakdown already in the issue body (checkboxes, numbered lists)
    - Acceptance criteria or requirements
    - Labels that indicate scope or priority
-   - References to specs or other issues
+   - References to related or duplicate issues — these can be solved together
+     and closed in one session
 
 3. **Decompose into tasks.** Run `paw guidelines paw-task-decomposition` for
    sizing guidance. Then decide how to map issues to tasks:
@@ -62,8 +94,10 @@ Run `paw shortcut setup-github-cli` to ensure `gh` is installed and authenticate
    ```
 
 6. **After merge, close issues.** After verifying the merge worked (`paw merge`
-   succeeded, tests pass), close each GitHub issue:
+   succeeded, tests pass), close each GitHub issue — including duplicates that
+   were grouped with a resolved issue:
 
    ```bash
-   gh issue close <number> --comment "Fixed in <branch>"
+   gh issue close 42 --comment "Fixed in <branch>"
+   gh issue close 43 --comment "Duplicate of #42, fixed in <branch>"
    ```
