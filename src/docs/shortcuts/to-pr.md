@@ -15,9 +15,11 @@ Run `paw shortcut setup-github-cli` to ensure `gh` is installed and authenticate
 1. **Verify the merge is complete.** Run `paw status` and confirm all tasks are
    done and merged. If tasks are still in progress, wait for them to finish.
 
-2. **Read done summaries.** Run `paw prime` to see completed task summaries.
-   Each agent wrote a structured summary with "What I did", "Interface changes",
-   and "Watch out" sections.
+2. **Read done summaries.** After `paw go` (which runs `paw down`), summaries
+   are archived at `.paw/sessions/<latest>/summaries/`. If you haven't run
+   `paw down` yet, they're at `.paw/sync/summaries/`. Each agent wrote a
+   structured summary with "What I did", "Interface changes", and "Watch out"
+   sections.
 
 3. **Collect issue references.** Scan the paw.yaml `issue` fields and the done
    summaries for tracker IDs (e.g., `GH#42`). Any tracker ID format works. These go in the PR

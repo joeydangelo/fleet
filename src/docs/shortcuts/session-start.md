@@ -1,6 +1,6 @@
 ---
 title: Session Start
-description: Agent's first actions in a paw worktree -- orient, plan, broadcast intent
+description: Agent's first actions in a paw worktree — orient, plan, broadcast intent
 category: worktree agent
 ---
 You're starting work in a paw worktree. Orient yourself, plan your approach, and let
@@ -33,7 +33,7 @@ the team know what you're about to do.
    This is especially important when your work touches shared interfaces.
 
 5. **Start working.** When you're ready to commit, follow
-   `paw shortcut precommit-process` -- it covers review, testing, broadcasting
+   `paw shortcut precommit-process` — it covers review, testing, broadcasting
    interface changes, and commit message conventions.
 
 6. **Check in periodically.** Run `paw threads` to see if you have open questions
@@ -53,10 +53,10 @@ paw broadcast "Hitting ENOENT on src/lib/config.ts — is the include task modif
 ## What Makes a Good Broadcast
 
 Broadcasts are how agents coordinate without blocking each other. Good broadcasts are
-**actionable** -- they tell other agents something they might need to change their work.
+**actionable** — they tell other agents something they might need to change their work.
 
 | Good | Bad |
 |---|---|
 | "Changed UserProfile.email to be optional" | "Working on user profiles" |
 | "Added /api/auth/refresh endpoint, returns new AccessToken" | "Made some API changes" |
-| "Deleted src/legacy/auth.ts -- use src/auth/oauth.ts instead" | "Cleaned up some files" |
+| "Deleted src/legacy/auth.ts — use src/auth/oauth.ts instead" | "Cleaned up some files" |

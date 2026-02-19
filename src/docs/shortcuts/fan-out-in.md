@@ -18,8 +18,9 @@ session, monitor agents, handle conflicts, and ask the user what to do next.
    ```
 
    `paw go` creates worktrees, launches agents, merges when all are done, and
-   tears down. That's the full automated loop — monitor and intervene as needed
-   while it runs.
+   tears down. That's the full automated loop. While it runs, check in with
+   `paw status` or `paw watch` — intervene if an agent is stuck, broadcasting
+   errors, or working outside its focus area.
 
 ## During the session
 
@@ -86,7 +87,7 @@ cherry-pick merges, or make changes on the target branch between merge and clean
 paw up                           # create worktrees, branches, task files
 paw launch                       # open terminal + agent in each worktree
 paw launch --task <name>         # launch a single worktree
-# [monitor and intervene — same commands as above]
+# monitor: paw status, paw watch, paw threads, paw ask <task> "..."
 paw merge                        # merge when all tasks are done
 paw merge --pick <task>          # merge a specific task only
 paw down                         # archive, tear down, reset config

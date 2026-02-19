@@ -69,26 +69,21 @@ Brief written to: .paw-sync/conflicts/api-into-target.md
 Fix the conflict, commit, then run: paw merge --continue
 ```
 
-Orchestrator steps:
-
-1. Read the conflict brief at the path printed above
-2. Understand both agents' intent from the brief's done summaries and journal entries
-3. Resolve the conflicted files — edit to correctly merge both changes
-4. `git add <resolved-files>`
-5. `git commit -m "resolve: <description>"`
-6. `paw merge --continue` — paw resumes merging remaining tasks
-
-No human needed. Run `paw shortcut resolve-merge-conflict` for the full resolution workflow.
+Run `paw shortcut resolve-merge-conflict` — it walks through reading
+the brief, resolving files, and running `paw merge --continue`.
 
 #### Request → command
 
 | User says | Run |
 |---|---|
 | "Build feature X" / "Run this spec" | `paw shortcut generate-paw-yaml` → `paw go` |
+| "Build from this GitHub issue" | `paw shortcut from-github-issue` → `paw go` |
+| "Build from open issues" / "What issues are there?" | `paw shortcut from-issues` → `paw go` |
 | "There's a conflict" | `paw shortcut resolve-merge-conflict` |
 | "Create a PR" | `paw shortcut to-pr` |
 | "Check what agents are doing" | `paw status` or `paw watch` |
 | "Ask the auth agent about X" | `paw ask auth "..."` |
+| "Set up GitHub" / "gh isn't working" | `paw shortcut setup-github-cli` |
 
 #### Manual commands (what `paw go` does step by step)
 
@@ -128,6 +123,7 @@ paw merge                        # Merge completed task branches
 paw merge --continue             # Resume after conflict or hook failure
 paw merge --pick <task>          # Merge a specific task only
 paw down                         # Archive session, remove worktrees, reset config
+paw down --dry-run               # Preview what would be removed
 paw down --no-archive            # Skip archiving session data
 paw ask <task> "..."             # Send a directed message to an agent
 paw threads                      # See open Q&A threads
@@ -143,8 +139,8 @@ paw threads --all                # See all threads including resolved
 | `from-github-issue` | Generate paw.yaml from GitHub issue(s) |
 | `to-pr` | Create PR from merged agent work |
 | `setup-github-cli` | Ensure gh CLI is installed and authenticated |
-| `fan-out-in` | Full orchestrator workflow reference |
-| `resolve-merge-conflict` | Read conflict brief, resolve, merge --continue |
+| `fan-out-in` | Full orchestrator lifecycle: monitor, conflicts, post-session |
+| `resolve-merge-conflict` | Read conflict brief, resolve files, `paw merge --continue` |
 
 ---
 
@@ -173,12 +169,16 @@ so the merge process understands your work.
 
 ```bash
 paw prime                        # Orient and claim your task
+paw prime --brief                # Condensed output (focus + team status only)
 paw broadcast "..."              # Announce a change to all agents
 paw threads                      # See open Q&A threads
 paw ask <task> "..."             # Send a directed message to an agent
 paw reply "..."                  # Reply to the most recent message
 paw reply --to <thread> "..."   # Reply to a specific thread
-paw done --summary "..."         # Mark task done with summary
+paw done << 'EOF'                # Mark task done with summary (heredoc)
+...summary...
+EOF
+paw done --summary "..."         # Short single-line alternative
 paw done --force --summary "..." # Bypass validation and pre-done hook
 paw status                       # Check progress across all tasks
 ```

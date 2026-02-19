@@ -53,6 +53,6 @@ If it fails for any reason, follow the steps below.
 |---|---|
 | `gh: command not found` | Install gh (see step 1) |
 | `token in keyring is invalid` | `gh auth login` or set `GH_TOKEN` |
-| `Bad credentials` | Token expired -- regenerate or `gh auth login` |
+| `Bad credentials` | Token expired — regenerate or `gh auth login` |
 | `Resource not accessible` | Token lacks `repo` scope |
-| `gh --version` fails | Broken install -- reinstall |
+| `gh --version` fails | Broken install — reinstall |

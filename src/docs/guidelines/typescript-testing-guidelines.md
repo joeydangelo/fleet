@@ -1,11 +1,11 @@
 ---
 title: TypeScript Testing Guidelines
-description: Integration testing patterns for TypeScript -- test behavior and data flow, not mock existence
+description: Integration testing patterns for TypeScript — test behavior and data flow, not mock existence
 ---
 # TypeScript Testing Guidelines
 
 Integration tests should verify that components work together correctly by testing real
-interactions, data flow, error handling, business scenarios, and data contracts -- not
+interactions, data flow, error handling, business scenarios, and data contracts — not
 that mocks exist or methods are called.
 
 ## 1. Test Real System Interactions, Not Mock Existence
@@ -14,13 +14,13 @@ Don't test that mocks were created correctly. Test actual system behavior with
 dependencies:
 
 ```typescript
-// Bad -- tests nothing useful
+// Bad — tests nothing useful
 it("should have all required methods", () => {
   const mockService = createMockService();
   expect(typeof mockService.process).toBe("function");
 });
 
-// Good -- tests real behavior
+// Good — tests real behavior
 it("should process data through the pipeline", async () => {
   const mockDatabase = createMockDatabase();
   const processor = new DataProcessor(mockDatabase);
@@ -70,10 +70,10 @@ it("should retry when external service fails", async () => {
 Structure tests by what the system does, not how it's built:
 
 ```typescript
-// Bad -- organized by technical component
+// Bad — organized by technical component
 describe("Database interface", () => { /* ... */ });
 
-// Good -- organized by behavior
+// Good — organized by behavior
 describe("Order processing workflow", () => {
   describe("when payment succeeds", () => {
     it("should update inventory");

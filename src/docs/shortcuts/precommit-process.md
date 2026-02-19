@@ -1,6 +1,6 @@
 ---
 title: Pre-Commit Process
-description: Check messages, review, validate, broadcast, and commit -- the checklist before every commit
+description: Check messages, review, validate, broadcast, and commit — the checklist before every commit
 category: worktree agent
 ---
 Follow this process before every commit. It keeps your work clean and keeps other
@@ -16,7 +16,7 @@ agents informed.
 
    See open Q&A threads and answer directed questions before reviewing your own work.
    If another agent changed an interface you depend on, you want to know that before
-   your review -- not after.
+   your review — not after.
 
 2. **Review your changes.**
 
@@ -46,7 +46,7 @@ agents informed.
    gofmt -w . && golangci-lint run && go test ./...
    ```
 
-   Use whatever the project already has. Don't guess -- check the config files.
+   Use whatever the project already has. Don't guess — check the config files.
 
 4. **Broadcast interface changes.**
 

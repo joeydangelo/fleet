@@ -179,4 +179,5 @@ Once approved, follow up:
 > "I've written the plan to `.paw/paw.yaml`. Would you like me to run `paw go`
 > to start the session?"
 
-The human responds. Act accordingly.
+If the user says yes, run `paw go`. If they want changes, revise the yaml first.
+If they say no, ask what they'd like instead.

@@ -1,6 +1,6 @@
 ---
 title: Task Summary Template
-description: Structure for paw done summaries -- what you did, interface changes, warnings
+description: Structure for paw done summaries — what you did, interface changes, warnings
 ---
 ```markdown
 ## What I did
@@ -43,7 +43,7 @@ EOF
 
 - **Interface changes** is the most important section. This is what resolver agents
   and other agents reading your summary actually need.
-- **Watch out** is for things invisible in the diff -- environment requirements,
+- **Watch out** is for things invisible in the diff — environment requirements,
   ordering constraints, implicit dependencies.
 - Skip file lists. The git history already has that. Focus on what another agent
   needs to *understand* about your changes, not *enumerate* them.

@@ -1,6 +1,6 @@
 ---
 title: TDD Guidelines
-description: Test-Driven Development methodology -- Red, Green, Refactor in small slices
+description: Test-Driven Development methodology — Red, Green, Refactor in small slices
 ---
 # Test-Driven Development (TDD) Guidelines
 
@@ -9,9 +9,9 @@ Repeat.
 
 ## Core Cycle
 
-1. **Red** -- Write the simplest failing test that describes a behavior.
-2. **Green** -- Write only the code needed to pass. No polish, no extras.
-3. **Refactor** -- Remove duplication, improve names, extract helpers. Only in Green.
+1. **Red** — Write the simplest failing test that describes a behavior.
+2. **Green** — Write only the code needed to pass. No polish, no extras.
+3. **Refactor** — Remove duplication, improve names, extract helpers. Only in Green.
 
 ## Test Writing
 
@@ -19,7 +19,7 @@ Repeat.
 - Name tests by observable behavior (`should_reject_empty_input`, not `test_validate`).
 - Prefer state-based assertions over interaction checks. Only mock at external
   boundaries (network, filesystem, databases).
-- Keep tests fast, deterministic, and isolated -- no real time, network, or randomness.
+- Keep tests fast, deterministic, and isolated — no real time, network, or randomness.
 - Minimize setup. Use simple helpers/builders when they improve clarity.
 - Grow functionality by adding the next smallest behavior-focused test.
 
@@ -27,8 +27,8 @@ Repeat.
 
 Separate structural changes from behavioral changes:
 
-- **Structural** -- rename, extract, move. No behavior change.
-- **Behavioral** -- add or modify functionality.
+- **Structural** — rename, extract, move. No behavior change.
+- **Behavioral** — add or modify functionality.
 - Don't mix them in one commit.
 - When both are needed: tidy first, then implement behavior. Run tests before and after.
 

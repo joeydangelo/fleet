@@ -3,7 +3,7 @@ title: paw.yaml Template
 description: Annotated config structure for .paw/paw.yaml
 ---
 ```yaml
-# .paw/paw.yaml -- defines parallel agent tasks for a paw session
+# .paw/paw.yaml — defines parallel agent tasks for a paw session
 #
 # Run `paw up` to create worktrees and branches from this file.
 # Run `paw guidelines paw-task-decomposition` for guidance on splitting work.
@@ -47,7 +47,7 @@ tasks:
   # Worktree:  {repoName}-paw-{taskName}  (e.g., myapp-paw-auth)
 
   auth:
-    # Focus areas -- directories and files this agent owns. Helps the agent
+    # Focus areas — directories and files this agent owns. Helps the agent
     # stay in scope and helps you verify tasks don't overlap.
     focus:
       - src/auth/
@@ -77,7 +77,7 @@ tasks:
     # are shared, what to broadcast. Optional but strongly recommended.
     prompt: |
       Add OAuth2 login flow with Google and GitHub providers.
-      Define AuthConfig type at src/auth/types.ts -- the api task depends on this.
+      Define AuthConfig type at src/auth/types.ts — the api task depends on this.
       Broadcast any changes to AuthConfig or the middleware signature.
 
   api:

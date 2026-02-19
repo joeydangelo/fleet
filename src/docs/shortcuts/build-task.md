@@ -37,8 +37,8 @@ clean commits.
 - **Broadcast interface changes.** If you change a type, export, or API another task
   depends on, `paw broadcast` before committing. This is the most important
   coordination action.
-- **Ask when blocked.** If you need something from another task -- a type definition,
-  an interface shape, a decision -- don't guess. Use `paw ask <task> "..."` to direct
+- **Ask when blocked.** If you need something from another task — a type definition,
+  an interface shape, a decision — don't guess. Use `paw ask <task> "..."` to direct
   a question, then `paw threads` to check when the answer arrives.
 - **Commit when tests are green,** not when you feel "done." Small, frequent commits
   with passing tests beat large commits at the end.

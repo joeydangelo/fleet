@@ -62,7 +62,7 @@ feat(api): Add user profile REST endpoints
 fix(dashboard): Handle missing profile gracefully
 ```
 
-This isn't mandatory -- skip scope for unambiguous changes.
+This isn't mandatory — skip scope for unambiguous changes.
 
 ## Examples
 

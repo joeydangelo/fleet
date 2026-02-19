@@ -26,13 +26,13 @@ existence.
 
 ## Test Types
 
-1. **Unit** -- fast, focused tests for small units of business logic. No network, no
+1. **Unit** — fast, focused tests for small units of business logic. No network, no
    filesystem. Run in CI.
 
-2. **Integration** -- exercise multiple components together. Mock external APIs but test
+2. **Integration** — exercise multiple components together. Mock external APIs but test
    real interactions between internal modules. Run in CI.
 
-3. **E2E** -- test real system behavior with live services. Not run on every commit
+3. **E2E** — test real system behavior with live services. Not run on every commit
    (can be slow, have costs, or cause side effects).
 
 ## Finding Tests

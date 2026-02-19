@@ -53,7 +53,7 @@ The summary serves two audiences: **other agents** (who read it via `paw prime`)
 
 - **Interface changes** are the highest-value section. If you changed types, exports,
   API shapes, or config formats that other tasks touch, spell it out.
-- **Watch out** is for things that aren't obvious from the diff -- env vars, ordering
+- **Watch out** is for things that aren't obvious from the diff — env vars, ordering
   dependencies, breaking changes to shared contracts.
-- Skip boilerplate. Don't list every file you touched -- focus on what another agent
+- Skip boilerplate. Don't list every file you touched — focus on what another agent
   needs to know to work with your changes.

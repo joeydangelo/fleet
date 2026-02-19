@@ -34,8 +34,10 @@ the conflict brief to understand what happened and fix it.
      Update the caller to match the new interface.
    - **Overlapping edits**: Both agents touched the same function. Merge the logic,
      keeping both contributions.
-   - **Deleted vs modified**: One agent deleted a file the other modified. Decide
-     which intent wins based on the summaries.
+   - **Deleted vs modified**: One agent deleted a file the other modified. Check
+     the summaries: if the deletion was intentional (replaced by a new module),
+     keep the deletion and port the modifications to the new location. If the
+     deletion was incidental cleanup, restore the file with the modifications.
 
 4. **Test the resolution.** Run the project's test suite to make sure the merged code
    actually works together. Don't just fix syntax — verify behavior.
