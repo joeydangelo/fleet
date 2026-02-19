@@ -16,8 +16,7 @@ Run `paw shortcut setup-github-cli` to ensure `gh` is installed and authenticate
    done and merged. If tasks are still in progress, wait for them to finish.
 
 2. **Read done summaries.** After `paw go` (which runs `paw down`), summaries
-   are archived at `.paw/sessions/<latest>/summaries/`. If you haven't run
-   `paw down` yet, they're at `.paw/sync/summaries/`. Each agent wrote a
+   are archived at `.paw/sessions/<latest>/summaries/`. Each agent wrote a
    structured summary with "What I did", "Interface changes", and "Watch out"
    sections.
 

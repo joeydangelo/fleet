@@ -43,14 +43,8 @@ Brief written to: .paw-sync/conflicts/api-into-target.md
 Fix the conflict, commit, then run: paw merge --continue
 ```
 
-1. Read the conflict brief at the path printed above
-2. Understand both agents' intent from the brief's done summaries and journal entries
-3. Resolve the conflicted files — edit to correctly merge both changes
-4. `git add <resolved-files>`
-5. `git commit -m "resolve: <description>"`
-6. `paw merge --continue` — paw resumes merging remaining tasks
-
-Run `paw shortcut resolve-merge-conflict` for the full resolution workflow.
+Run `paw shortcut resolve-merge-conflict` — it walks through reading the brief,
+resolving files, testing, committing, and running `paw merge --continue`.
 
 On `post-merge` hook failure: fix the issue and run `paw merge --continue`,
 or roll back with `git reset --hard refs/paw-backup/{task}`.

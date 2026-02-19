@@ -46,8 +46,8 @@ paw go    # fan-out → agents work → fan-in → tear down
 ```
 
 That's the full session. When `paw go` completes, the merged work is on the
-target branch. Run `paw shortcut fan-out-in` for post-session steps: check
-what's available (remote? branches?), then ask the user what to do next.
+target branch and the session is torn down. Check `git remote -v` and
+`git branch`, then ask the user what's next — PR, local merge, or iterate.
 
 For conflict resolution or mid-session intervention, see below.
 
@@ -77,25 +77,11 @@ the brief, resolving files, and running `paw merge --continue`.
 | "Ask the auth agent about X" | `paw ask auth "..."` |
 | "Set up GitHub" / "gh isn't working" | `paw shortcut setup-github-cli` |
 
-#### Manual commands (what `paw go` does step by step)
+#### Manual commands
 
-**`paw up`** — creates worktrees, branches, and task files.
-
-**`paw launch`** — opens a terminal with the agent command in each worktree.
-Each agent auto-orients via `paw prime` on startup (triggered by the SessionStart hook).
-
-**Monitor** — `paw status` to check progress. `paw threads` to see open threads.
-`paw ask <task> "..."` to redirect an agent.
-
-**`paw merge`** — merges completed task branches into the target branch. On hook
-failure: fix the issue and run `paw merge --continue`, or roll back with
-`git reset --hard refs/paw-backup/{task}`.
-
-**`paw down`** — archives session data to `.paw/sessions/`, removes worktrees
-and sync branch, and resets `.paw/paw.yaml` to template.
-The merged target branch remains. Use `--no-archive` to skip archival.
-
-For post-session steps, see `paw shortcut fan-out-in`.
+For step-by-step control — redirect agents mid-session, cherry-pick merges,
+or intervene between steps — see `paw shortcut fan-out-in` § "Manual
+step-by-step."
 
 ### Orchestrator commands
 
@@ -167,11 +153,12 @@ paw threads                      # See open Q&A threads
 paw ask <task> "..."             # Send a directed message to an agent
 paw reply "..."                  # Reply to the most recent message
 paw reply --to <thread> "..."   # Reply to a specific thread
-paw done << 'EOF'                # Mark task done with summary (heredoc)
+paw done << 'EOF'                # Mark task done with summary
 ...summary...
 EOF
-paw done --summary "..."         # Short single-line alternative
-paw done --force --summary "..." # Bypass validation and pre-done hook
+paw done --force << 'EOF'        # Bypass validation and pre-done hook
+...summary...
+EOF
 paw status                       # Check progress across all tasks
 ```
 

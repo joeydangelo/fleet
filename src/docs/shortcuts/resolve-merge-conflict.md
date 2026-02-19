@@ -42,12 +42,8 @@ the conflict brief to understand what happened and fix it.
 4. **Test the resolution.** Run the project's test suite to make sure the merged code
    actually works together. Don't just fix syntax — verify behavior.
 
-5. **Commit the resolution.** Follow `paw shortcut precommit-process`, then:
-
-   ```bash
-   git add <resolved-files>
-   git commit -m "resolve: <description>"
-   ```
+5. **Commit the resolution.** Follow `paw shortcut precommit-process` — use
+   type `resolve` for the commit (see `paw guidelines commit-conventions`).
 
 6. **Continue merging.** Run `paw merge --continue` to pick up the remaining tasks.
    If another conflict occurs, repeat from step 1.

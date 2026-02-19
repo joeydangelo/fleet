@@ -37,8 +37,6 @@ paw done << 'EOF'
 EOF
 ```
 
-`--summary "..."` also works for short, single-line summaries.
-
 ## Guidelines
 
 - **Interface changes** is the most important section. This is what resolver agents

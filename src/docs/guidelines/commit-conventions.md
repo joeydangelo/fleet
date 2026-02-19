@@ -43,6 +43,7 @@ Agentic project work:
 - `research`: Investigation, notes, comparison reports
 - `ops`: Operational tasks (issue tracking, publishing, maintenance)
 - `process`: Methodology, conventions, workflow changes
+- `resolve`: Merge conflict resolution (from `paw merge` conflicts)
 
 The type reflects the *category of artifact* being changed. Fixing a typo in docs is
 `docs:`, not `fix:`.
@@ -74,4 +75,5 @@ refactor: Extract token refresh logic to separate module
 test: Add integration tests for merge conflict flow
 chore: Update dependencies
 plan: Design user notification preferences spec
+resolve(api): Reconcile auth types after parallel agent edits
 ```
