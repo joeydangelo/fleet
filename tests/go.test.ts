@@ -42,6 +42,7 @@ vi.mock('../src/lib/journal.js', () => ({
 import { execFileSync } from 'node:child_process';
 import { readSyncState } from '../src/lib/sync.js';
 import { loadConfig } from '../src/lib/config.js';
+import { setVerbosity } from '../src/lib/context.js';
 import { runPawCommand, runGo } from '../src/commands/go.js';
 import * as watchModule from '../src/commands/watch.js';
 import { runWatchLoop } from '../src/commands/watch.js';
@@ -205,5 +206,47 @@ describe('runGo: merge failure message (paw-lk9k)', () => {
     const logs = vi.mocked(console.log).mock.calls.map((c) => String(c[0]));
     const hasManualMsg = logs.some((msg) => msg.includes('Merge failed'));
     expect(hasManualMsg).toBe(true);
+  });
+});
+
+describe('runGo: verbose timing display (paw-s3bg)', () => {
+  const mockLoadConfig = vi.mocked(loadConfig);
+
+  beforeEach(() => {
+    // Make all subcommands succeed
+    mockExecFileSync.mockReturnValue(Buffer.from(''));
+    vi.spyOn(watchModule, 'runWatchLoop').mockResolvedValue(undefined);
+    mockLoadConfig.mockReturnValue({
+      base: 'main',
+      target: 'feature/x',
+      agent: 'claude',
+      tasks: { auth: { focus: 'src/auth/' } },
+    });
+  });
+
+  afterEach(() => {
+    setVerbosity(false, false);
+  });
+
+  it('shows per-phase and total timing when verbose is enabled', async () => {
+    setVerbosity(true, false);
+
+    await runGo({ pollInterval: '5' });
+
+    const logs = vi.mocked(console.log).mock.calls.map((c) => String(c[0]));
+    const timingLogs = logs.filter((msg) => msg.includes('⏰'));
+    expect(timingLogs.length).toBe(5); // up, launch+watch, merge, down, total
+    expect(timingLogs.some((msg) => msg.includes('up:'))).toBe(true);
+    expect(timingLogs.some((msg) => msg.includes('total:'))).toBe(true);
+  });
+
+  it('does not show timing when verbose is disabled', async () => {
+    setVerbosity(false, false);
+
+    await runGo({ pollInterval: '5' });
+
+    const logs = vi.mocked(console.log).mock.calls.map((c) => String(c[0]));
+    const timingLogs = logs.filter((msg) => msg.includes('⏰'));
+    expect(timingLogs.length).toBe(0);
   });
 });

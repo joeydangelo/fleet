@@ -4,8 +4,17 @@ import pc from 'picocolors';
 import { getRepoRoot, getCurrentBranch, git } from '../lib/git.js';
 import { loadConfig, resolveConfigPath } from '../lib/config.js';
 import { DEFAULT_POLL_INTERVAL } from '../lib/constants.js';
+import { isVerbose } from '../lib/context.js';
 import { handleError, colors } from '../lib/output.js';
 import { runWatchLoop } from './watch.js';
+
+function formatElapsed(ms: number): string {
+  const seconds = ms / 1000;
+  if (seconds < 60) return `${seconds.toFixed(1)}s`;
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds % 60;
+  return `${minutes}m ${remainingSeconds.toFixed(0)}s`;
+}
 
 /** Shell out to a paw subcommand. Returns the exit code. */
 export function runPawCommand(args: string[]): { exitCode: number } {
@@ -37,6 +46,9 @@ export async function runGo(opts: GoOpts): Promise<void> {
   }
 
   const config = loadConfig(configPath);
+  const verbose = isVerbose();
+  const totalStart = Date.now();
+
   console.log(pc.bold('paw go'));
   console.log(`  target: ${config.target}`);
   console.log(`  tasks:  ${Object.keys(config.tasks).length}\n`);
@@ -44,14 +56,17 @@ export async function runGo(opts: GoOpts): Promise<void> {
   // Step 1: paw up
   console.log(pc.bold('Step 1/4: paw up\n'));
   const configArgs = opts.config ? ['-c', opts.config] : [];
+  let phaseStart = Date.now();
   const upResult = runPawCommand(['up', ...configArgs]);
   if (upResult.exitCode !== 0) {
     console.error(colors.error('\npaw up failed. Aborting.'));
     process.exit(upResult.exitCode);
   }
+  if (verbose) console.log(colors.info(`⏰ up: ${formatElapsed(Date.now() - phaseStart)}`));
 
   // Step 2: paw launch (+ watch)
   console.log(pc.bold('\nStep 2/4: paw launch\n'));
+  phaseStart = Date.now();
   const launchResult = runPawCommand(['launch', ...configArgs]);
   if (launchResult.exitCode !== 0) {
     console.error(colors.error('\npaw launch failed. Aborting.'));
@@ -73,9 +88,12 @@ export async function runGo(opts: GoOpts): Promise<void> {
       process.exit(130);
     },
   });
+  if (verbose)
+    console.log(colors.info(`⏰ launch + watch: ${formatElapsed(Date.now() - phaseStart)}`));
 
   // Step 3: paw merge
   console.log(pc.bold('Step 3/4: paw merge\n'));
+  phaseStart = Date.now();
 
   // Checkout the target branch -- paw merge requires it
   const currentBranch = getCurrentBranch(repoRoot);
@@ -90,15 +108,19 @@ export async function runGo(opts: GoOpts): Promise<void> {
     console.log(colors.warn('Worktrees left intact (skipping paw down).'));
     return;
   }
+  if (verbose) console.log(colors.info(`⏰ merge: ${formatElapsed(Date.now() - phaseStart)}`));
 
   // Step 4: paw down
   console.log(pc.bold('\nStep 4/4: paw down\n'));
+  phaseStart = Date.now();
   const downResult = runPawCommand(['down', ...configArgs]);
   if (downResult.exitCode !== 0) {
     console.error(colors.error('\npaw down failed.'));
     process.exit(downResult.exitCode);
   }
+  if (verbose) console.log(colors.info(`⏰ down: ${formatElapsed(Date.now() - phaseStart)}`));
 
+  if (verbose) console.log(colors.info(`⏰ total: ${formatElapsed(Date.now() - totalStart)}`));
   console.log(colors.success(`\nDone. Work merged to ${config.target}.`));
 }
 

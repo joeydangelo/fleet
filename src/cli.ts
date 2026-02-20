@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Command } from 'commander';
+import { setVerbosity } from './lib/context.js';
 import { setupCommand } from './commands/setup.js';
 import { upCommand } from './commands/up.js';
 import { primeCommand } from './commands/prime.js';
@@ -30,7 +31,17 @@ export function createCli(): Command {
   program
     .name('paw')
     .description('Parallel Agent Worktrees -- orchestrate multi-agent git worktree workflows')
-    .version(pkg.version);
+    .version(pkg.version)
+    .option('--verbose', 'Show debug output (enables SHOW_COMMANDS, timing)')
+    .option('--quiet', 'Suppress non-essential output')
+    .hook('preAction', (thisCommand) => {
+      const verbose = thisCommand.opts().verbose === true;
+      const quiet = thisCommand.opts().quiet === true;
+      setVerbosity(verbose, quiet);
+      if (verbose) {
+        process.env.SHOW_COMMANDS = '1';
+      }
+    });
 
   program.addCommand(setupCommand());
   program.addCommand(upCommand());

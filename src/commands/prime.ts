@@ -54,7 +54,9 @@ export function primeCommand(): Command {
 }
 
 function printTeamStatus(taskName: string, state: SyncState): void {
-  const otherTasks = Object.entries(state.tasks).filter(([name]) => name !== taskName);
+  const otherTasks = Object.entries(state.tasks)
+    .filter(([name]) => name !== taskName)
+    .sort((a, b) => a[0].localeCompare(b[0]));
   if (otherTasks.length === 0) return;
 
   console.log(pc.bold('Team Status'));
