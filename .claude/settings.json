@@ -6,15 +6,6 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/scripts/tbd-session.sh"
-          }
-        ]
-      },
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
             "command": "bash .claude/scripts/ensure-gh-cli.sh",
             "timeout": 120
           }
@@ -38,6 +29,15 @@
             "command": "bash .claude/scripts/paw-session.sh"
           }
         ]
+      },
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/scripts/tbd-session.sh"
+          }
+        ]
       }
     ],
     "PreCompact": [
@@ -46,7 +46,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/scripts/tbd-session.sh --brief"
+            "command": "bash .claude/scripts/paw-session.sh --brief"
           }
         ]
       },
@@ -55,7 +55,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/scripts/paw-session.sh --brief"
+            "command": "bash .claude/scripts/tbd-session.sh --brief"
           }
         ]
       }
