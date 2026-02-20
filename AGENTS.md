@@ -13,21 +13,20 @@ Run `paw setup` to update. -->
 
 # paw
 
-paw orchestrates parallel AI coding agents across git worktrees. It handles the
-fan-out/fan-in lifecycle: define tasks, spin up isolated worktrees, orient
-agents, coordinate through broadcasts and summaries, and merge results back with
-full context about what each agent intended.
+**`paw` orchestrates parallel AI coding agents across git worktrees — fan-out work, fan-in results.**
 
-There are two roles. You are one of them:
-
-- **Orchestrator** — runs in the main repo, operates paw on behalf of the user.
-  Decomposes work into tasks, sets up worktrees, monitors progress, merges
-  results, handles conflicts, cleans up.
-- **Worktree agent** — runs inside an isolated worktree. Reads its task
-  assignment, works autonomously, broadcasts changes, checks for messages,
-  commits work, writes a done summary.
-
-Read the section for your role.
+1. **Fan-out/Fan-in Lifecycle**: Decompose work into tasks, spin up isolated
+   worktrees, orient agents, merge results with full context about what each
+   agent intended.
+2. **Agent Coordination**: Broadcasts, directed messages, Q&A threads, and done
+   summaries keep agents aligned without blocking each other.
+3. **Conflict Resolution**: Context-rich conflict briefs with both agents' done
+   summaries and journal entries — not just raw diff markers.
+4. **Session Lifecycle**: `paw go` handles the full loop (up → launch → watch →
+   merge → down), or run each step manually for fine-grained control.
+5. **Shortcuts & Guidelines**: Reusable agent instructions for orchestrator and
+   worktree workflows, plus reference knowledge for TDD, testing, commits, and
+   task decomposition.
 
 ## Installation
 
@@ -36,13 +35,62 @@ npm install -g get-paw@latest
 paw setup                        # Set up or upgrade paw
 ```
 
+## Routine Commands
+
+```bash
+paw --help                       # Command reference
+paw status                       # Check progress across all tasks
+paw setup                        # Refresh setup (run after upgrades)
+```
+
+## CRITICAL: You Operate paw — The User Doesn't
+
+**You are the paw operator.** Users describe what they want built; you translate
+that into paw actions. DO NOT tell users to run paw commands — that's your job.
+
+- **WRONG**: "Run `paw go` to start the session"
+- **RIGHT**: *(you write .paw/paw.yaml, run `paw go`, and report results)*
+
+There are two roles. You are one of them:
+
+- **Orchestrator** — runs in the main repo. Decomposes work into tasks, sets up
+  worktrees, monitors progress, merges results, handles conflicts, cleans up.
+- **Worktree agent** — runs inside an isolated worktree. Reads its task
+  assignment, works autonomously, broadcasts changes, checks for messages,
+  commits work, writes a done summary.
+
+Read the section for your role.
+
+## User Request → Agent Action
+
+| User Says | You (the Agent) Run |
+|---|---|
+| **Starting a Session** | |
+| "Build feature X" / "Run this spec" | `paw shortcut generate-paw-yaml` → `paw go` |
+| "Build from this GitHub issue" | `paw shortcut from-github-issue` → `paw go` |
+| "Build from open issues" / "What issues are there?" | `paw shortcut from-issues` → `paw go` |
+| "Split this into parallel tasks" / "Decompose this" | `paw shortcut generate-paw-yaml` |
+| "Run agents on this" / "Fan out" | `paw shortcut generate-paw-yaml` → `paw go` |
+| **Monitoring & Communication** | |
+| "Check what agents are doing" / "Agent status" | `paw status` or `paw watch` |
+| "Watch the session" / "Monitor agents" | `paw watch` |
+| "Ask the auth agent about X" | `paw ask auth "..."` |
+| "Any open questions?" / "Check threads" | `paw threads` |
+| "Tell all agents about X" | `paw broadcast "..."` |
+| **Conflicts & Merging** | |
+| "There's a conflict" / "Merge conflict" | `paw shortcut resolve-merge-conflict` |
+| "Merge the agent work" | `paw merge` |
+| "Continue after conflict" / "Resume merge" | `paw merge --continue` |
+| **Post-Session** | |
+| "Create a PR" / "Open a pull request" | `paw shortcut to-pr` |
+| "Clean up the session" / "Tear down" | `paw down` |
+| **Setup & Troubleshooting** | |
+| "Set up GitHub" / "gh isn't working" | `paw shortcut setup-github-cli` |
+| "Set up paw" / "Upgrade paw" | `npm install -g get-paw@latest && paw setup` |
+
 ---
 
 ## Orchestrator
-
-You operate paw on behalf of the user. The user describes what they want done;
-you translate that into `.paw/paw.yaml`, spin up agents, and merge the results.
-The user never runs paw commands — that's your job.
 
 ### Orchestrator workflow
 
@@ -72,19 +120,6 @@ Fix the conflict, commit, then run: paw merge --continue
 Run `paw shortcut resolve-merge-conflict` — it walks through reading
 the brief, resolving files, and running `paw merge --continue`.
 
-#### Request → command
-
-| User says | Run |
-|---|---|
-| "Build feature X" / "Run this spec" | `paw shortcut generate-paw-yaml` → `paw go` |
-| "Build from this GitHub issue" | `paw shortcut from-github-issue` → `paw go` |
-| "Build from open issues" / "What issues are there?" | `paw shortcut from-issues` → `paw go` |
-| "There's a conflict" | `paw shortcut resolve-merge-conflict` |
-| "Create a PR" | `paw shortcut to-pr` |
-| "Check what agents are doing" | `paw status` or `paw watch` |
-| "Ask the auth agent about X" | `paw ask auth "..."` |
-| "Set up GitHub" / "gh isn't working" | `paw shortcut setup-github-cli` |
-
 #### Manual commands
 
 For step-by-step control — redirect agents mid-session, cherry-pick merges,
@@ -93,28 +128,45 @@ step-by-step."
 
 ### Orchestrator commands
 
-```bash
-paw up                           # Create worktrees for all tasks
-paw up --dry-run                 # Preview what would be created
-paw launch                       # Open terminal + agent in each worktree
-paw launch --dry-run             # Preview launch commands without spawning
-paw launch --task <name>         # Launch agent in a specific worktree
-paw go                           # Full workflow: up → launch → watch → merge → down
-paw go --poll-interval 10       # Adjust watch polling frequency (default 5s)
-paw status                       # Check progress across all tasks
-paw watch                        # Continuous terminal monitor (auto-exits when done)
-paw watch --interval 10          # Adjust polling frequency (default 5s)
-paw watch --no-exit              # Keep running after all tasks are done
-paw merge                        # Merge completed task branches
-paw merge --continue             # Resume after conflict or hook failure
-paw merge --pick <task>          # Merge a specific task only
-paw down                         # Archive session, remove worktrees, reset config
-paw down --dry-run               # Preview what would be removed
-paw down --no-archive            # Skip archiving session data
-paw ask <task> "..."             # Send a directed message to an agent
-paw threads                      # See open Q&A threads
-paw threads --all                # See all threads including resolved
-```
+#### Session lifecycle
+
+| Command | Purpose |
+|---|---|
+| `paw go` | Full workflow: up → launch → watch → merge → down |
+| `paw go --poll-interval 10` | Adjust watch polling frequency (default 5s) |
+| `paw up` | Create worktrees for all tasks |
+| `paw up --dry-run` | Preview what would be created |
+| `paw launch` | Open terminal + agent in each worktree |
+| `paw launch --dry-run` | Preview launch commands without spawning |
+| `paw launch --task <name>` | Launch agent in a specific worktree |
+| `paw down` | Archive session, remove worktrees, reset config |
+| `paw down --dry-run` | Preview what would be removed |
+| `paw down --no-archive` | Skip archiving session data |
+
+#### Monitoring
+
+| Command | Purpose |
+|---|---|
+| `paw status` | Check progress across all tasks |
+| `paw watch` | Continuous terminal monitor (auto-exits when done) |
+| `paw watch --interval 10` | Adjust polling frequency (default 5s) |
+| `paw watch --no-exit` | Keep running after all tasks are done |
+
+#### Merging
+
+| Command | Purpose |
+|---|---|
+| `paw merge` | Merge completed task branches |
+| `paw merge --continue` | Resume after conflict or hook failure |
+| `paw merge --pick <task>` | Merge a specific task only |
+
+#### Communication
+
+| Command | Purpose |
+|---|---|
+| `paw ask <task> "..."` | Send a directed message to an agent |
+| `paw threads` | See open Q&A threads |
+| `paw threads --all` | See all threads including resolved |
 
 ### Orchestrator shortcuts
 
@@ -153,22 +205,35 @@ so the merge process understands your work.
 
 ### Agent commands
 
-```bash
-paw prime                        # Orient and claim your task
-paw prime --brief                # Condensed output (focus + team status only)
-paw broadcast "..."              # Announce a change to all agents
-paw threads                      # See open Q&A threads
-paw ask <task> "..."             # Send a directed message to an agent
-paw reply "..."                  # Reply to the most recent message
-paw reply --to <thread> "..."   # Reply to a specific thread
-paw done << 'EOF'                # Mark task done with summary
-...summary...
-EOF
-paw done --force << 'EOF'        # Bypass validation and pre-done hook
-...summary...
-EOF
-paw status                       # Check progress across all tasks
-```
+#### Orientation
+
+| Command | Purpose |
+|---|---|
+| `paw prime` | Orient and claim your task |
+| `paw prime --brief` | Condensed output (focus + team status only) |
+
+#### Communication
+
+| Command | Purpose |
+|---|---|
+| `paw broadcast "..."` | Announce a change to all agents |
+| `paw ask <task> "..."` | Send a directed message to an agent |
+| `paw reply "..."` | Reply to the most recent message |
+| `paw reply --to <thread> "..."` | Reply to a specific thread |
+| `paw threads` | See open Q&A threads |
+
+#### Completion
+
+| Command | Purpose |
+|---|---|
+| `paw done << 'EOF'` | Mark task done with summary (heredoc) |
+| `paw done --force << 'EOF'` | Bypass validation and pre-done hook |
+
+#### Status
+
+| Command | Purpose |
+|---|---|
+| `paw status` | Check progress across all tasks |
 
 ### Agent shortcuts
 
@@ -213,6 +278,16 @@ The CLI handles sync state correctly. You don't need to touch it.
 ---
 
 ## Reference
+
+### Utility commands
+
+| Command | Purpose |
+|---|---|
+| `paw shortcut <name>` | Run a shortcut |
+| `paw shortcut --list` | List available shortcuts |
+| `paw guidelines <name>` | Load reference knowledge |
+| `paw guidelines --list` | List available guidelines |
+| `paw template <name>` | Output a document structure |
 
 ### Guidelines
 
@@ -298,3 +373,12 @@ tasks:
 so shared interfaces exist on the target branch before dependent code arrives.
 Tasks without dependencies merge in YAML definition order. Cycles and invalid
 references are caught at config load time.
+
+### Quick reference
+
+- **Roles**: orchestrator (main repo) or worktree agent (isolated worktree)
+- **Config**: `.paw/paw.yaml` — target branch, agent, tasks, hooks, includes
+- **Session archives**: `.paw/sessions/<date>/summaries/`
+- **Conflict briefs**: `.paw-sync/conflicts/<task>-into-target.md`
+- **Task files**: `.paw/tasks/<task-name>.md`
+- **Backup refs**: `refs/paw-backup/{task}` (for merge rollback)
