@@ -30,7 +30,7 @@ export function handleError(err: unknown): never {
 }
 
 const ICONS = {
-  SUCCESS: '+',
+  SUCCESS: '✓',
   ERROR: 'x',
   WARN: '!',
   PENDING: '.',
