@@ -7,7 +7,6 @@ import {
   initSyncState,
   claimTask,
   completeTask,
-  findFirstPendingTask,
   writeSyncState,
   readSyncState,
   writeSyncFile,
@@ -96,38 +95,6 @@ describe('completeTask', () => {
     const state = initSyncState('feature/dash', ['auth'], 'paw.yaml');
 
     expect(() => completeTask(state, 'nope')).toThrow('Task not found in sync state: nope');
-  });
-});
-
-describe('findFirstPendingTask', () => {
-  it('returns the first task when none are claimed', () => {
-    const state = initSyncState('feature/dash', ['auth', 'api'], 'paw.yaml');
-    expect(findFirstPendingTask(state)).toBe('auth');
-  });
-
-  it('skips in_progress tasks and returns next pending', () => {
-    const state = initSyncState('feature/dash', ['auth', 'api', 'ui'], 'paw.yaml');
-    const claimed = claimTask(state, 'auth');
-    expect(findFirstPendingTask(claimed)).toBe('api');
-  });
-
-  it('skips completed tasks and returns next pending', () => {
-    const state = initSyncState('feature/dash', ['auth', 'api', 'ui'], 'paw.yaml');
-    const completed = completeTask(state, 'auth');
-    expect(findFirstPendingTask(completed)).toBe('api');
-  });
-
-  it('returns null when all tasks are in_progress', () => {
-    const state = initSyncState('feature/dash', ['auth', 'api'], 'paw.yaml');
-    const s1 = claimTask(state, 'auth');
-    const s2 = claimTask(s1, 'api');
-    expect(findFirstPendingTask(s2)).toBeNull();
-  });
-
-  it('returns null when all tasks are completed', () => {
-    const state = initSyncState('feature/dash', ['auth'], 'paw.yaml');
-    const completed = completeTask(state, 'auth');
-    expect(findFirstPendingTask(completed)).toBeNull();
   });
 });
 

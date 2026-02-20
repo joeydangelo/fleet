@@ -236,14 +236,6 @@ export function initSyncState(
   };
 }
 
-/** Return the name of the first task with status "pending", or null if none. */
-export function findFirstPendingTask(state: SyncState): string | null {
-  for (const [name, task] of Object.entries(state.tasks)) {
-    if (task.status === 'pending') return name;
-  }
-  return null;
-}
-
 export function claimTask(state: SyncState, taskName: string): SyncState {
   const task = state.tasks[taskName];
   if (!task) throw new Error(`Task not found in sync state: ${taskName}`);
