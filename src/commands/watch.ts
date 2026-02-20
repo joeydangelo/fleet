@@ -165,6 +165,7 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+/** Polls sync state, journal, and commit counts on an interval, printing diffs. Handles SIGINT/SIGTERM for clean shutdown. */
 export async function runWatchLoop(opts: {
   repoRoot: string;
   configPath: string;

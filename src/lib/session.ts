@@ -14,6 +14,7 @@ import { normalizeDeps } from './config.js';
 import { branchExists, createBranch, createWorktree, getFileFromBranch } from './git.js';
 import { REQUIRED_SECTIONS } from './summary.js';
 
+/** Identity triple for a task worktree: task name, its branch, and the filesystem path. */
 export interface WorktreeInfo {
   taskName: string;
   branch: string;
@@ -31,6 +32,7 @@ export function planWorktrees(config: PawConfig, repoRoot: string): WorktreeInfo
   }));
 }
 
+/** Creates the target branch (if needed), per-task branches, and their worktrees. */
 export function createSession(config: PawConfig, repoRoot: string): WorktreeInfo[] {
   if (!branchExists(config.target, repoRoot)) {
     createBranch(config.target, config.base, repoRoot);
@@ -106,6 +108,7 @@ export function generateTaskFile(config: PawConfig, worktreeInfo: WorktreeInfo):
   return lines.join('\n') + '\n';
 }
 
+/** Adds `.paw/` to .gitignore unless the base branch already has it, avoiding duplicate entries that cause merge conflicts. */
 export function ensureGitignore(worktreePath: string, baseBranch?: string): void {
   const gitignorePath = resolve(worktreePath, '.gitignore');
   const entry = '.paw/';

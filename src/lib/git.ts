@@ -2,6 +2,7 @@ import { execFileSync } from 'node:child_process';
 import type { ExecFileSyncOptions } from 'node:child_process';
 import { rmSync } from 'node:fs';
 
+/** Runs a git command synchronously. Strips trailing whitespace and throws on non-zero exit. */
 export function git(args: string[], options?: ExecFileSyncOptions): string {
   const result = execFileSync('git', args, {
     ...options,
@@ -35,6 +36,7 @@ export function createWorktree(path: string, branch: string, cwd?: string): void
   git(['worktree', 'add', path, branch], { cwd });
 }
 
+/** Falls back to `rmSync` + prune when `git worktree remove` fails (common on Windows). */
 export function removeWorktree(path: string, cwd?: string): void {
   try {
     git(['worktree', 'remove', '--force', path], { cwd });
@@ -73,12 +75,11 @@ export function mergeBranch(branch: string, cwd?: string): { success: boolean; m
   }
 }
 
-/** Delete a local branch. */
 export function deleteBranch(branch: string, cwd?: string): void {
   git(['branch', '-D', branch], { cwd, stdio: 'pipe' });
 }
 
-/** Get diff output for a merge conflict (shows conflict markers). */
+/** Returns the raw diff, which includes conflict markers during an in-progress merge. */
 export function getDiffOutput(cwd?: string): string {
   try {
     return git(['diff'], { cwd, stdio: 'pipe' });
@@ -87,7 +88,6 @@ export function getDiffOutput(cwd?: string): string {
   }
 }
 
-/** Get the list of conflicting files during a merge. */
 export function getConflictingFiles(cwd?: string): string[] {
   try {
     const output = git(['diff', '--name-only', '--diff-filter=U'], {
@@ -101,7 +101,6 @@ export function getConflictingFiles(cwd?: string): string[] {
   }
 }
 
-/** Get the current HEAD commit hash. */
 export function getHeadRef(cwd?: string): string {
   return git(['rev-parse', 'HEAD'], { cwd, stdio: 'pipe' });
 }
@@ -111,7 +110,6 @@ export function createBackupRef(taskName: string, commit: string, cwd?: string):
   git(['update-ref', `refs/paw-backup/${taskName}`, commit], { cwd });
 }
 
-/** Remove all refs/paw-backup/ refs. */
 export function cleanupBackupRefs(cwd?: string): void {
   try {
     const output = git(['for-each-ref', '--format=%(refname)', 'refs/paw-backup/'], {
@@ -159,7 +157,7 @@ export function getFileFromBranch(branch: string, filepath: string, cwd?: string
   }
 }
 
-/** Check whether git is currently in a merge-conflict state (MERGE_HEAD exists). */
+/** Checks for MERGE_HEAD to detect an in-progress merge. */
 export function isMergeInProgress(cwd?: string): boolean {
   try {
     git(['rev-parse', '--verify', 'MERGE_HEAD'], { cwd, stdio: 'pipe' });

@@ -24,6 +24,7 @@ export interface TaskState {
 
 type MergeStatus = 'pending' | 'merged' | 'skipped' | 'conflict' | 'hook_failed';
 
+/** Per-task merge tracking: whether a task branch was merged, skipped, or hit a conflict. */
 export interface MergeEntry {
   status: MergeStatus;
   /** ISO timestamp when merged clean. */
@@ -32,6 +33,7 @@ export interface MergeEntry {
   brief?: string;
 }
 
+/** Session coordination state on the paw-sync branch. Tracks task statuses, merge progress, and journal cursors. */
 export interface SyncState {
   session: string;
   config: string;
@@ -162,7 +164,6 @@ export function readSyncState(cwd?: string): SyncState | null {
   }
 }
 
-/** Read a file from the sync worktree. Returns null if not found. */
 export function readSyncFile(path: string, cwd?: string): string | null {
   try {
     const syncDir = resolveSyncDir(cwd ?? process.cwd());
@@ -172,7 +173,6 @@ export function readSyncFile(path: string, cwd?: string): string | null {
   }
 }
 
-/** List files under a directory prefix in the sync worktree. */
 export function listSyncDir(prefix: string, cwd?: string): string[] {
   try {
     const syncDir = resolveSyncDir(cwd ?? process.cwd());
@@ -270,7 +270,6 @@ export function completeTask(state: SyncState, taskName: string): SyncState {
   };
 }
 
-/** Create initial merge state with all tasks pending. */
 export function initMergeState(taskNames: string[]): Record<string, MergeEntry> {
   const merges: Record<string, MergeEntry> = {};
   for (const name of taskNames) {
@@ -279,7 +278,6 @@ export function initMergeState(taskNames: string[]): Record<string, MergeEntry> 
   return merges;
 }
 
-/** Return a new SyncState with one merge entry updated. */
 export function updateMergeEntry(state: SyncState, taskName: string, entry: MergeEntry): SyncState {
   return {
     ...state,

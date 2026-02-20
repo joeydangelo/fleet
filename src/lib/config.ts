@@ -27,6 +27,7 @@ const PawConfigSchema = z.object({
   tasks: z.record(z.string(), TaskSchema),
 });
 
+/** Parsed paw.yaml configuration: target branch, task definitions, hook commands, and file-copy patterns. */
 export type PawConfig = z.infer<typeof PawConfigSchema>;
 
 export function loadConfig(configPath: string): PawConfig {
@@ -48,7 +49,6 @@ export function loadConfig(configPath: string): PawConfig {
   return result.data;
 }
 
-/** Normalize depends_on to an array (empty if undefined). */
 export function normalizeDeps(deps: string | string[] | undefined): string[] {
   if (!deps) return [];
   return Array.isArray(deps) ? deps : [deps];
