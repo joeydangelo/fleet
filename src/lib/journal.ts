@@ -11,7 +11,7 @@ export interface JournalEntry {
 
 /** Generate a 4-char random lowercase alphanumeric thread ID. */
 export function generateThreadId(): string {
-  return Math.random().toString(36).slice(2, 6);
+  return Math.random().toString(36).slice(2, 6).padEnd(4, '0');
 }
 
 /** Fields required when appending (ts and from are auto-populated). */

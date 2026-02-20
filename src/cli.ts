@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { resolve, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { Command } from 'commander';
 import { setupCommand } from './commands/setup.js';
 import { upCommand } from './commands/up.js';
@@ -23,7 +26,16 @@ export function createCli(): Command {
   program
     .name('paw')
     .description('Parallel Agent Worktrees -- orchestrate multi-agent git worktree workflows')
-    .version('0.1.0');
+    .version(
+      (
+        JSON.parse(
+          readFileSync(
+            resolve(dirname(fileURLToPath(import.meta.url)), '..', 'package.json'),
+            'utf-8',
+          ),
+        ) as { version: string }
+      ).version,
+    );
 
   program.addCommand(setupCommand());
   program.addCommand(upCommand());

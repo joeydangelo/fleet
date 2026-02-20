@@ -2,19 +2,14 @@ import { Command } from 'commander';
 import pc from 'picocolors';
 import { existsSync, writeFileSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
-import {
-  getRepoRoot,
-  removeWorktree,
-  branchExists,
-  deleteBranch,
-  cleanupBackupRefs,
-} from '../lib/git.js';
-import { loadConfig, resolveConfigPath } from '../lib/config.js';
+import { removeWorktree, branchExists, deleteBranch, cleanupBackupRefs } from '../lib/git.js';
+import { loadRepoConfig } from '../lib/config.js';
 import { planWorktrees } from '../lib/session.js';
 import { removeSyncWorktree, archiveSession } from '../lib/sync.js';
+import { SYNC_BRANCH, KILL_WAIT_MS } from '../lib/constants.js';
 import { readDoc } from '../lib/docs.js';
 import { killTrackedProcesses } from '../lib/launcher.js';
-import { success, error, skip, pending, handleError } from '../lib/output.js';
+import { success, error, skip, pending, toErrorMessage, handleError } from '../lib/output.js';
 
 export function downCommand(): Command {
   return new Command('down')
@@ -24,9 +19,7 @@ export function downCommand(): Command {
     .option('--no-archive', 'Skip archiving session data to .paw/sessions/')
     .action(async (opts: { config?: string; dryRun?: boolean; archive: boolean }) => {
       try {
-        const repoRoot = getRepoRoot();
-        const configPath = opts.config ?? resolveConfigPath(repoRoot);
-        const config = loadConfig(configPath);
+        const { repoRoot, config } = loadRepoConfig(opts.config);
         const worktrees = planWorktrees(config, repoRoot);
 
         console.log(pc.bold(`paw down${opts.dryRun ? ' (dry run)' : ''}\n`));
@@ -48,7 +41,7 @@ export function downCommand(): Command {
         const killed = killTrackedProcesses(repoRoot);
         if (killed > 0) {
           success('terminals', `killed ${killed} tracked process(es)`);
-          await new Promise((r) => setTimeout(r, 1500));
+          await new Promise((r) => setTimeout(r, KILL_WAIT_MS));
         }
 
         let removed = 0;
@@ -66,7 +59,7 @@ export function downCommand(): Command {
             success(wt.taskName, 'worktree removed');
           } catch (err) {
             failed++;
-            const message = err instanceof Error ? err.message : String(err);
+            const message = toErrorMessage(err);
             error(wt.taskName, `failed: ${message}`);
           }
         }
@@ -93,7 +86,7 @@ export function downCommand(): Command {
               success('archive', archivePath);
             }
           } catch (err) {
-            const message = err instanceof Error ? err.message : String(err);
+            const message = toErrorMessage(err);
             error('archive', `failed: ${message}`);
           }
         }
@@ -115,7 +108,6 @@ export function downCommand(): Command {
         }
 
         // Remove sync worktree, then delete sync branch
-        const SYNC_BRANCH = 'paw-sync';
         try {
           removeSyncWorktree(repoRoot);
         } catch {

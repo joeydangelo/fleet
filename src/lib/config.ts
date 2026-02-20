@@ -2,6 +2,7 @@ import { readFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { parse as parseYaml } from 'yaml';
 import { z } from 'zod';
+import { getRepoRoot } from './git.js';
 
 const TaskSchema = z.object({
   focus: z.union([z.string(), z.array(z.string())]),
@@ -158,6 +159,18 @@ export function topologicalSort(
   }
 
   return result;
+}
+
+/** Load repo root and config in one call. */
+export function loadRepoConfig(configOpt?: string): {
+  repoRoot: string;
+  configPath: string;
+  config: PawConfig;
+} {
+  const repoRoot = getRepoRoot();
+  const configPath = configOpt ?? resolveConfigPath(repoRoot);
+  const config = loadConfig(configPath);
+  return { repoRoot, configPath, config };
 }
 
 export function resolveConfigPath(cwd: string): string {

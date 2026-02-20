@@ -6,8 +6,30 @@ import { getRepoRoot } from '../lib/git.js';
 import { loadConfig, resolveConfigPath } from '../lib/config.js';
 import { detectTaskName } from '../lib/session.js';
 import { readSyncState, completeTask, writeSyncStateAndFiles } from '../lib/sync.js';
-import { handleError } from '../lib/output.js';
+import { requireSyncState, handleError } from '../lib/output.js';
 import { validateSummary, generateErrorTemplate } from '../lib/summary.js';
+
+function runPreDoneHook(repoRoot: string): void {
+  let config;
+  try {
+    const configPath = resolveConfigPath(repoRoot);
+    config = loadConfig(configPath);
+  } catch {
+    return; // No config found -- skip hook (worktree may not have paw.yaml)
+  }
+
+  const preDoneHook = config.hooks?.['pre-done'];
+  if (!preDoneHook) return;
+
+  console.log(pc.dim(`Running pre-done hook: ${preDoneHook}`));
+  try {
+    execSync(preDoneHook, { cwd: repoRoot, stdio: 'inherit', shell: 'bash' });
+  } catch {
+    console.error(pc.red('Pre-done hook failed. Fix the issue and try again.'));
+    console.error(pc.dim('Use --force to bypass the pre-done hook.'));
+    process.exit(1);
+  }
+}
 
 export function doneCommand(): Command {
   return new Command('done')
@@ -28,10 +50,7 @@ export function doneCommand(): Command {
         }
 
         const state = readSyncState(repoRoot);
-        if (!state) {
-          console.error(pc.red('No sync state found. Run `paw up` first.'));
-          process.exit(1);
-        }
+        requireSyncState(state);
 
         if (!state.tasks[taskName]) {
           console.error(pc.red(`Task '${taskName}' not found in sync state.`));
@@ -76,25 +95,8 @@ export function doneCommand(): Command {
           process.exit(1);
         }
 
-        // Run pre-done hook if configured
         if (!opts.force) {
-          try {
-            const configPath = resolveConfigPath(repoRoot);
-            const config = loadConfig(configPath);
-            const preDoneHook = config.hooks?.['pre-done'];
-            if (preDoneHook) {
-              console.log(pc.dim(`Running pre-done hook: ${preDoneHook}`));
-              try {
-                execSync(preDoneHook, { cwd: repoRoot, stdio: 'inherit', shell: 'bash' });
-              } catch {
-                console.error(pc.red('Pre-done hook failed. Fix the issue and try again.'));
-                console.error(pc.dim('Use --force to bypass the pre-done hook.'));
-                process.exit(1);
-              }
-            }
-          } catch {
-            // No config found -- skip hook (worktree may not have paw.yaml)
-          }
+          runPreDoneHook(repoRoot);
         }
 
         const updated = completeTask(state, taskName);

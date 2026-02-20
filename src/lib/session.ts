@@ -75,11 +75,8 @@ const SUMMARY_TEMPLATE = [
   `other agents depend on this information to resolve merge conflicts.`,
 ].join('\n');
 
-export function generateTaskFile(
-  config: PawConfig,
-  taskName: string,
-  worktreeInfo: WorktreeInfo,
-): string {
+export function generateTaskFile(config: PawConfig, worktreeInfo: WorktreeInfo): string {
+  const { taskName } = worktreeInfo;
   const task = config.tasks[taskName];
   if (!task) throw new Error(`Task not found: ${taskName}`);
 
@@ -146,6 +143,11 @@ export function detectTaskName(cwd: string): string | null {
   return null;
 }
 
+/** Detect task name or fall back to 'orchestrator' for the main repo. */
+export function getTaskIdentity(cwd: string): string {
+  return detectTaskName(cwd) ?? 'orchestrator';
+}
+
 /**
  * Copy files matching glob patterns from repo root into a worktree.
  * Skips files that already exist in the worktree (e.g. tracked files).
@@ -181,7 +183,7 @@ export function writeTaskFiles(
     mkdirSync(taskDir, { recursive: true });
 
     const taskFilePath = resolve(taskDir, `${wt.taskName}.md`);
-    const content = generateTaskFile(config, wt.taskName, wt);
+    const content = generateTaskFile(config, wt);
     writeFileSync(taskFilePath, content, 'utf-8');
 
     ensureGitignore(wt.worktreePath, baseBranch);

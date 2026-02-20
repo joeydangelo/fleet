@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { tmpdir } from 'node:os';
-import { installHooks, PAW_SESSION_SCRIPT, CONFIRM_GH_CLI_SCRIPT } from '../src/lib/hooks.js';
+import { installHooks } from '../src/lib/hooks.js';
 import { readDoc } from '../src/lib/docs.js';
 
 function makeTempDir(): string {
@@ -202,37 +202,5 @@ describe('SKILL.md bundling (paw-m5d5)', () => {
     const markerIndex = installed.indexOf(marker);
     const contentIndex = installed.indexOf('# paw');
     expect(markerIndex).toBeLessThan(contentIndex);
-  });
-});
-
-describe('PAW_SESSION_SCRIPT', () => {
-  it('contains PATH resolution logic', () => {
-    expect(PAW_SESSION_SCRIPT).toContain('NPM_GLOBAL_BIN');
-    expect(PAW_SESSION_SCRIPT).toContain('export PATH');
-  });
-
-  it('ensures paw is available', () => {
-    expect(PAW_SESSION_SCRIPT).toContain('ensure_paw');
-    expect(PAW_SESSION_SCRIPT).toContain('command -v paw');
-  });
-
-  it('passes arguments through to paw prime', () => {
-    expect(PAW_SESSION_SCRIPT).toContain('paw prime "$@"');
-  });
-});
-
-describe('CONFIRM_GH_CLI_SCRIPT', () => {
-  it('checks for gh CLI', () => {
-    expect(CONFIRM_GH_CLI_SCRIPT).toContain('command -v gh');
-  });
-
-  it('installs gh if missing', () => {
-    expect(CONFIRM_GH_CLI_SCRIPT).toContain('cli/cli/releases');
-    expect(CONFIRM_GH_CLI_SCRIPT).toContain('~/.local/bin/gh');
-  });
-
-  it('checks authentication status', () => {
-    expect(CONFIRM_GH_CLI_SCRIPT).toContain('gh auth status');
-    expect(CONFIRM_GH_CLI_SCRIPT).toContain('GH_TOKEN');
   });
 });

@@ -1,8 +1,8 @@
 import { Command } from 'commander';
 import { existsSync } from 'node:fs';
 import pc from 'picocolors';
-import { getRepoRoot, getCommitCount, getChangedFileCount } from '../lib/git.js';
-import { loadConfig, resolveConfigPath } from '../lib/config.js';
+import { getCommitCount, getChangedFileCount } from '../lib/git.js';
+import { loadRepoConfig } from '../lib/config.js';
 import { planWorktrees } from '../lib/session.js';
 import { readSyncState } from '../lib/sync.js';
 import { readJournal } from '../lib/journal.js';
@@ -23,9 +23,7 @@ export function statusCommand(): Command {
     .option('-c, --config <path>', 'Path to .paw/paw.yaml')
     .action((opts: { config?: string }) => {
       try {
-        const repoRoot = getRepoRoot();
-        const configPath = opts.config ?? resolveConfigPath(repoRoot);
-        const config = loadConfig(configPath);
+        const { repoRoot, config } = loadRepoConfig(opts.config);
         const worktrees = planWorktrees(config, repoRoot);
         const syncState = readSyncState(repoRoot);
 

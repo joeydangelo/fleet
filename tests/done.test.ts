@@ -150,7 +150,7 @@ describe('summary template single source of truth (paw-em2l)', () => {
       worktreePath: '/projects/acme-app-paw-auth',
     };
 
-    const taskFile = generateTaskFile(config, 'auth', worktree);
+    const taskFile = generateTaskFile(config, worktree);
     for (const section of REQUIRED_SECTIONS) {
       expect(taskFile).toContain(`### ${section}`);
     }

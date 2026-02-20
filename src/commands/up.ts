@@ -1,7 +1,6 @@
 import { Command } from 'commander';
 import pc from 'picocolors';
-import { getRepoRoot } from '../lib/git.js';
-import { loadConfig, resolveConfigPath } from '../lib/config.js';
+import { loadRepoConfig } from '../lib/config.js';
 import {
   createSession,
   planWorktrees,
@@ -19,9 +18,7 @@ export function upCommand(): Command {
     .option('--dry-run', 'Show what would be created without making changes')
     .action(async (opts: { config?: string; dryRun?: boolean }) => {
       try {
-        const repoRoot = getRepoRoot();
-        const configPath = opts.config ?? resolveConfigPath(repoRoot);
-        const config = loadConfig(configPath);
+        const { repoRoot, configPath, config } = loadRepoConfig(opts.config);
         const taskNames = Object.keys(config.tasks);
 
         console.log(pc.bold(`paw up: ${taskNames.length} tasks${opts.dryRun ? ' (dry run)' : ''}`));

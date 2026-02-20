@@ -1,8 +1,7 @@
 import { Command } from 'commander';
 import { existsSync } from 'node:fs';
 import pc from 'picocolors';
-import { getRepoRoot } from '../lib/git.js';
-import { loadConfig, resolveConfigPath } from '../lib/config.js';
+import { loadRepoConfig } from '../lib/config.js';
 import { planWorktrees } from '../lib/session.js';
 import { readSyncState } from '../lib/sync.js';
 import {
@@ -12,7 +11,8 @@ import {
   readPidFile,
   writePidFile,
 } from '../lib/launcher.js';
-import { success, skip, error, pending, handleError } from '../lib/output.js';
+import { LAUNCH_STAGGER_MS } from '../lib/constants.js';
+import { success, skip, error, pending, toErrorMessage, handleError } from '../lib/output.js';
 
 interface LaunchOpts {
   config?: string;
@@ -30,9 +30,7 @@ export function launchCommand(): Command {
     .option('--terminal <emulator>', 'Override terminal emulator (Linux)')
     .action(async (opts: LaunchOpts) => {
       try {
-        const repoRoot = getRepoRoot();
-        const configPath = opts.config ?? resolveConfigPath(repoRoot);
-        const config = loadConfig(configPath);
+        const { repoRoot, config } = loadRepoConfig(opts.config);
 
         if (!config.agent) {
           console.error(
@@ -94,7 +92,7 @@ export function launchCommand(): Command {
           } else {
             // Stagger launches so concurrent Claude instances don't race on
             // ~/.claude.json initialization and corrupt the file.
-            if (launched > 0) await sleep(1500);
+            if (launched > 0) await sleep(LAUNCH_STAGGER_MS);
             try {
               const pid = spawnTerminal(launchOpts, platform);
               if (pid !== undefined) {
@@ -103,7 +101,7 @@ export function launchCommand(): Command {
               success(wt.taskName, wt.worktreePath);
               launched++;
             } catch (err) {
-              const msg = err instanceof Error ? err.message : String(err);
+              const msg = toErrorMessage(err);
               error(wt.taskName, `failed to launch: ${msg}`);
             }
           }

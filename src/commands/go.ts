@@ -3,6 +3,7 @@ import { execFileSync } from 'node:child_process';
 import pc from 'picocolors';
 import { getRepoRoot, getCurrentBranch, git } from '../lib/git.js';
 import { loadConfig, resolveConfigPath } from '../lib/config.js';
+import { DEFAULT_POLL_INTERVAL } from '../lib/constants.js';
 import { handleError } from '../lib/output.js';
 import { runWatchLoop } from './watch.js';
 
@@ -105,7 +106,11 @@ export function goCommand(): Command {
   return new Command('go')
     .description('Run the full workflow: up → launch → watch → merge → down')
     .option('-c, --config <path>', 'Path to .paw/paw.yaml')
-    .option('--poll-interval <seconds>', 'Poll interval in seconds for watching agents', '5')
+    .option(
+      '--poll-interval <seconds>',
+      'Poll interval in seconds for watching agents',
+      DEFAULT_POLL_INTERVAL,
+    )
     .action(async (opts: GoOpts) => {
       try {
         await runGo(opts);
