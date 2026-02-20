@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { createCli } from './cli.js';
+import { handleError } from './lib/output.js';
 
 const program = createCli();
-program.parse();
+program.parseAsync().catch(handleError);
