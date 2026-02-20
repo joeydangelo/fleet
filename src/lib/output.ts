@@ -53,11 +53,6 @@ export function unknown(taskName: string, detail: string): void {
   console.log(`  ${pc.yellow(ICONS.UNKNOWN)} ${pc.bold(taskName)} -- ${detail}`);
 }
 
-/**
- * Format focus areas for display. Shows up to 3 items.
- * If more than 3, shows the first 2 and "+N more".
- * Returns empty string if no focus areas.
- */
 /** Guard that exits with an error if no sync state is available. */
 export function requireSyncState<T>(state: T | null): asserts state is T {
   if (!state) {
@@ -66,6 +61,11 @@ export function requireSyncState<T>(state: T | null): asserts state is T {
   }
 }
 
+/**
+ * Format focus areas for display. Shows up to 3 items.
+ * If more than 3, shows the first 2 and "+N more".
+ * Returns empty string if no focus areas.
+ */
 export function formatFocusAreas(focus: string[] | undefined): string {
   if (!focus || focus.length === 0) return '';
   if (focus.length <= 3) return `(${focus.join(', ')})`;

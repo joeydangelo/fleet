@@ -86,6 +86,7 @@ export function initSyncWorktree(cwd: string): string {
  * worktree lives in the main repo. This uses git-common-dir to find
  * the shared .git path and derives the main worktree from it.
  */
+/** Memoize resolved sync dirs. Safe because paw runs as a short-lived CLI process. */
 const syncDirCache = new Map<string, string>();
 
 export function resolveSyncDir(cwd: string): string {

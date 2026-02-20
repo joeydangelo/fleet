@@ -20,22 +20,17 @@ import { launchCommand } from './commands/launch.js';
 import { watchCommand } from './commands/watch.js';
 import { goCommand } from './commands/go.js';
 
+const pkg = JSON.parse(
+  readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), '..', 'package.json'), 'utf-8'),
+) as { version: string };
+
 export function createCli(): Command {
   const program = new Command();
 
   program
     .name('paw')
     .description('Parallel Agent Worktrees -- orchestrate multi-agent git worktree workflows')
-    .version(
-      (
-        JSON.parse(
-          readFileSync(
-            resolve(dirname(fileURLToPath(import.meta.url)), '..', 'package.json'),
-            'utf-8',
-          ),
-        ) as { version: string }
-      ).version,
-    );
+    .version(pkg.version);
 
   program.addCommand(setupCommand());
   program.addCommand(upCommand());

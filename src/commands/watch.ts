@@ -15,7 +15,7 @@ import { handleError } from '../lib/output.js';
 
 const COLOR_PALETTE: Formatter[] = [pc.blue, pc.green, pc.yellow, pc.magenta, pc.cyan, pc.red];
 
-export function assignColor(index: number): Formatter {
+function assignColor(index: number): Formatter {
   return COLOR_PALETTE[index % COLOR_PALETTE.length]!;
 }
 
@@ -97,7 +97,7 @@ export function diffCommitCounts(
   return { deltas, currentCounts };
 }
 
-export function isAllDone(tasks: Record<string, TaskState>): boolean {
+function isAllDone(tasks: Record<string, TaskState>): boolean {
   const entries = Object.values(tasks);
   if (entries.length === 0) return false;
   return entries.every((t) => t.status === 'done');
