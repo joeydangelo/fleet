@@ -9,7 +9,7 @@ import type { TaskState } from '../lib/sync.js';
 import { readJournal } from '../lib/journal.js';
 import type { JournalEntry } from '../lib/journal.js';
 import { DEFAULT_POLL_INTERVAL } from '../lib/constants.js';
-import { handleError } from '../lib/output.js';
+import { handleError, colors } from '../lib/output.js';
 
 // --- Color palette for task names ---
 
@@ -134,9 +134,9 @@ function printStatusTransition(t: StatusTransition, taskIndex: Map<string, numbe
   const name = colorTask(t.task, taskIndex);
 
   if (t.to === 'in_progress') {
-    console.log(`${timestamp()} ${pc.green('+')} ${name} claimed task`);
+    console.log(`${timestamp()} ${colors.success('+')} ${name} claimed task`);
   } else if (t.to === 'done') {
-    console.log(`${timestamp()} ${pc.green('✓')} ${name} done`);
+    console.log(`${timestamp()} ${colors.success('✓')} ${name} done`);
   } else if (t.from === undefined) {
     // New task appearing -- skip silent "pending" entries on first poll
   } else {
@@ -297,7 +297,7 @@ export function watchCommand(): Command {
         const interval = parseInt(opts.interval, 10);
 
         if (isNaN(interval) || interval < 1) {
-          console.error(pc.red('Interval must be a positive integer (seconds).'));
+          console.error(colors.error('Interval must be a positive integer (seconds).'));
           process.exit(1);
         }
 

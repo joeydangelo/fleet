@@ -4,7 +4,7 @@ import pc from 'picocolors';
 import { getRepoRoot, getCurrentBranch, git } from '../lib/git.js';
 import { loadConfig, resolveConfigPath } from '../lib/config.js';
 import { DEFAULT_POLL_INTERVAL } from '../lib/constants.js';
-import { handleError } from '../lib/output.js';
+import { handleError, colors } from '../lib/output.js';
 import { runWatchLoop } from './watch.js';
 
 /** Shell out to a paw subcommand. Returns the exit code. */
@@ -32,7 +32,7 @@ export async function runGo(opts: GoOpts): Promise<void> {
   const pollInterval = parseInt(opts.pollInterval, 10);
 
   if (isNaN(pollInterval) || pollInterval < 1) {
-    console.error(pc.red('Poll interval must be a positive integer (seconds).'));
+    console.error(colors.error('Poll interval must be a positive integer (seconds).'));
     process.exit(1);
   }
 
@@ -46,7 +46,7 @@ export async function runGo(opts: GoOpts): Promise<void> {
   const configArgs = opts.config ? ['-c', opts.config] : [];
   const upResult = runPawCommand(['up', ...configArgs]);
   if (upResult.exitCode !== 0) {
-    console.error(pc.red('\npaw up failed. Aborting.'));
+    console.error(colors.error('\npaw up failed. Aborting.'));
     process.exit(upResult.exitCode);
   }
 
@@ -54,7 +54,7 @@ export async function runGo(opts: GoOpts): Promise<void> {
   console.log(pc.bold('\nStep 2/4: paw launch\n'));
   const launchResult = runPawCommand(['launch', ...configArgs]);
   if (launchResult.exitCode !== 0) {
-    console.error(pc.red('\npaw launch failed. Aborting.'));
+    console.error(colors.error('\npaw launch failed. Aborting.'));
     process.exit(launchResult.exitCode);
   }
 
@@ -86,8 +86,8 @@ export async function runGo(opts: GoOpts): Promise<void> {
 
   const mergeResult = runPawCommand(['merge', ...configArgs]);
   if (mergeResult.exitCode !== 0) {
-    console.log(pc.yellow('\nMerge failed. Resolve the issue, then run: paw merge --continue'));
-    console.log(pc.yellow('Worktrees left intact (skipping paw down).'));
+    console.log(colors.warn('\nMerge failed. Resolve the issue, then run: paw merge --continue'));
+    console.log(colors.warn('Worktrees left intact (skipping paw down).'));
     return;
   }
 
@@ -95,11 +95,11 @@ export async function runGo(opts: GoOpts): Promise<void> {
   console.log(pc.bold('\nStep 4/4: paw down\n'));
   const downResult = runPawCommand(['down', ...configArgs]);
   if (downResult.exitCode !== 0) {
-    console.error(pc.red('\npaw down failed.'));
+    console.error(colors.error('\npaw down failed.'));
     process.exit(downResult.exitCode);
   }
 
-  console.log(pc.green(`\nDone. Work merged to ${config.target}.`));
+  console.log(colors.success(`\nDone. Work merged to ${config.target}.`));
 }
 
 export function goCommand(): Command {

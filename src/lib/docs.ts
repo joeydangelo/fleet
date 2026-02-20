@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { parse as parseYaml } from 'yaml';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -57,14 +58,20 @@ export function listDocs(category: string): DocInfo[] {
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
-function parseFrontmatter(content: string): {
+/** Extract title and description from a YAML frontmatter block (--- delimited). */
+export function parseFrontmatter(content: string): {
   title?: string;
   description?: string;
 } {
   const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
   if (!match) return {};
-  const block = match[1]!;
-  const title = block.match(/^title:\s*(.+)$/m)?.[1]?.trim();
-  const description = block.match(/^description:\s*(.+)$/m)?.[1]?.trim();
-  return { title, description };
+  try {
+    const data = parseYaml(match[1]!) as Record<string, unknown>;
+    return {
+      title: typeof data.title === 'string' ? data.title : undefined,
+      description: typeof data.description === 'string' ? data.description : undefined,
+    };
+  } catch {
+    return {};
+  }
 }

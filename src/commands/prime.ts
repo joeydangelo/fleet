@@ -7,7 +7,7 @@ import { detectTaskName } from '../lib/session.js';
 import type { SyncState } from '../lib/sync.js';
 import { readSyncState, claimTask, writeSyncState, readSyncFile } from '../lib/sync.js';
 import { readJournalForTask } from '../lib/journal.js';
-import { handleError, formatFocusAreas } from '../lib/output.js';
+import { handleError, formatFocusAreas, colors } from '../lib/output.js';
 
 export function primeCommand(): Command {
   return new Command('prime')
@@ -20,7 +20,7 @@ export function primeCommand(): Command {
 
         if (!taskName) {
           console.error(
-            pc.red('Error: paw prime is an agent command — you are not inside a worktree.'),
+            colors.error('Error: paw prime is an agent command — you are not inside a worktree.'),
           );
           console.error('');
           console.error('To start agents in their worktrees:');
@@ -60,7 +60,11 @@ function printTeamStatus(taskName: string, state: SyncState): void {
   console.log(pc.bold('Team Status'));
   for (const [name, task] of otherTasks) {
     const statusColor =
-      task.status === 'done' ? pc.green : task.status === 'in_progress' ? pc.yellow : pc.dim;
+      task.status === 'done'
+        ? colors.success
+        : task.status === 'in_progress'
+          ? colors.warn
+          : colors.muted;
     const focus = formatFocusAreas(task.focus);
     const focusSuffix = focus ? `  ${pc.dim(focus)}` : '';
     console.log(`  ${statusColor(task.status.padEnd(12))} ${name}${focusSuffix}`);
@@ -107,7 +111,7 @@ function printFull(
   if (taskContent) {
     console.log(taskContent);
   } else {
-    console.log(pc.yellow('No task file found.\n'));
+    console.log(colors.warn('No task file found.\n'));
   }
 
   if (!state) {
@@ -115,7 +119,7 @@ function printFull(
     return;
   }
 
-  console.log(pc.green(`Claimed task: ${taskName}\n`));
+  console.log(colors.success(`Claimed task: ${taskName}\n`));
 
   const separator = pc.dim('────────────────────────────────────────');
 
@@ -142,7 +146,7 @@ function printFull(
     console.log(separator);
     console.log(pc.bold('Messages for You'));
     for (const entry of directed) {
-      console.log(`  ${pc.cyan(`[${entry.from} → ${taskName}]`)} ${entry.msg}`);
+      console.log(`  ${colors.info(`[${entry.from} → ${taskName}]`)} ${entry.msg}`);
     }
     console.log();
   }
@@ -175,13 +179,13 @@ function printFull(
     );
     if (conflictEntries.length > 0) {
       console.log(separator);
-      console.log(pc.bold(pc.yellow('Active Conflict\n')));
+      console.log(pc.bold(colors.warn('Active Conflict\n')));
       for (const [name, entry] of conflictEntries) {
         const brief = readSyncFile(entry.brief!, repoRoot);
         if (brief) {
           console.log(brief);
         } else {
-          console.log(pc.yellow(`Conflict on ${name} — brief at ${entry.brief}`));
+          console.log(colors.warn(`Conflict on ${name} — brief at ${entry.brief}`));
         }
       }
     }

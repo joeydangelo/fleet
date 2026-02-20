@@ -6,7 +6,7 @@ import { getRepoRoot } from '../lib/git.js';
 import { loadConfig, resolveConfigPath } from '../lib/config.js';
 import { detectTaskName } from '../lib/session.js';
 import { readSyncState, completeTask, writeSyncStateAndFiles } from '../lib/sync.js';
-import { requireSyncState, handleError } from '../lib/output.js';
+import { requireSyncState, handleError, colors } from '../lib/output.js';
 import { validateSummary, generateErrorTemplate } from '../lib/summary.js';
 
 function runPreDoneHook(repoRoot: string): void {
@@ -25,7 +25,7 @@ function runPreDoneHook(repoRoot: string): void {
   try {
     execSync(preDoneHook, { cwd: repoRoot, stdio: 'inherit', shell: 'bash' });
   } catch {
-    console.error(pc.red('Pre-done hook failed. Fix the issue and try again.'));
+    console.error(colors.error('Pre-done hook failed. Fix the issue and try again.'));
     console.error(pc.dim('Use --force to bypass the pre-done hook.'));
     process.exit(1);
   }
@@ -42,7 +42,7 @@ export function doneCommand(): Command {
         const taskName = detectTaskName(repoRoot);
 
         if (!taskName) {
-          console.error(pc.red('Could not detect task name. Are you in a paw worktree?'));
+          console.error(colors.error('Could not detect task name. Are you in a paw worktree?'));
           console.error(
             pc.dim('Expected a single .md file in .paw/tasks/. Run `paw up` to create worktrees.'),
           );
@@ -53,7 +53,7 @@ export function doneCommand(): Command {
         requireSyncState(state);
 
         if (!state.tasks[taskName]) {
-          console.error(pc.red(`Task '${taskName}' not found in sync state.`));
+          console.error(colors.error(`Task '${taskName}' not found in sync state.`));
           process.exit(1);
         }
 
@@ -63,7 +63,7 @@ export function doneCommand(): Command {
         } else if (!process.stdin.isTTY) {
           summary = readFileSync(0, 'utf-8').trim();
         } else {
-          console.error(pc.red('No summary provided. Pass via --summary or heredoc:'));
+          console.error(colors.error('No summary provided. Pass via --summary or heredoc:'));
           console.error('');
           console.error("  paw done << 'EOF'");
           console.error('  ## What I did');
@@ -83,7 +83,7 @@ export function doneCommand(): Command {
         const validation = validateSummary(summary);
         if (!validation.valid && !opts.force) {
           console.error(
-            pc.yellow(`Summary is missing required sections: ${validation.missing.join(', ')}`),
+            colors.warn(`Summary is missing required sections: ${validation.missing.join(', ')}`),
           );
           console.error('');
           console.error(pc.bold('Expected format:'));
@@ -102,7 +102,7 @@ export function doneCommand(): Command {
         const updated = completeTask(state, taskName);
         const summaryPath = `summaries/${taskName}.md`;
         writeSyncStateAndFiles(updated, [{ path: summaryPath, content: summary }], repoRoot);
-        console.log(pc.green(`+ ${taskName} -- marked as done`));
+        console.log(colors.success(`+ ${taskName} -- marked as done`));
         console.log(pc.dim(`  Summary written to ${summaryPath} on sync branch`));
       } catch (err) {
         handleError(err);

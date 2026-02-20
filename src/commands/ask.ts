@@ -1,10 +1,9 @@
 import { Command } from 'commander';
-import pc from 'picocolors';
 import { getRepoRoot } from '../lib/git.js';
 import { getTaskIdentity } from '../lib/session.js';
 import { readSyncState } from '../lib/sync.js';
 import { appendJournalEntry, generateThreadId } from '../lib/journal.js';
-import { requireSyncState, handleError } from '../lib/output.js';
+import { requireSyncState, handleError, colors } from '../lib/output.js';
 
 export function askCommand(): Command {
   return new Command('ask')
@@ -20,14 +19,14 @@ export function askCommand(): Command {
         requireSyncState(state);
 
         if (!state.tasks[task]) {
-          console.error(pc.red(`Task '${task}' not found in session.`));
+          console.error(colors.error(`Task '${task}' not found in session.`));
           process.exit(1);
         }
 
         const thread = generateThreadId();
         appendJournalEntry(taskName, { type: 'ask', to: task, msg: message, thread }, repoRoot);
 
-        console.log(pc.green(`[${taskName} → ${task}] (${thread}) ${message}`));
+        console.log(colors.success(`[${taskName} → ${task}] (${thread}) ${message}`));
       } catch (err) {
         handleError(err);
       }

@@ -1,5 +1,14 @@
 import pc from 'picocolors';
 
+/** Semantic color map for consistent CLI output. */
+export const colors = {
+  success: pc.green,
+  error: pc.red,
+  warn: pc.yellow,
+  info: pc.cyan,
+  muted: pc.gray,
+} as const;
+
 /** Extract a human-readable message from an unknown error. */
 export function toErrorMessage(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
@@ -12,9 +21,9 @@ export function handleError(err: unknown): never {
   const message = toErrorMessage(err);
 
   if (message.includes('not a git repository')) {
-    console.error(pc.red('Not in a git repository. Run paw from inside a git repo.'));
+    console.error(colors.error('Not in a git repository. Run paw from inside a git repo.'));
   } else {
-    console.error(pc.red(message));
+    console.error(colors.error(message));
   }
 
   process.exit(1);
@@ -30,15 +39,15 @@ const ICONS = {
 } as const;
 
 export function success(taskName: string, detail: string): void {
-  console.log(`  ${pc.green(ICONS.SUCCESS)} ${pc.bold(taskName)} -- ${detail}`);
+  console.log(`  ${colors.success(ICONS.SUCCESS)} ${pc.bold(taskName)} -- ${detail}`);
 }
 
 export function error(taskName: string, detail: string): void {
-  console.log(`  ${pc.red(ICONS.ERROR)} ${pc.bold(taskName)} -- ${detail}`);
+  console.log(`  ${colors.error(ICONS.ERROR)} ${pc.bold(taskName)} -- ${detail}`);
 }
 
 export function warn(taskName: string, detail: string): void {
-  console.log(`  ${pc.yellow(ICONS.WARN)} ${pc.bold(taskName)} -- ${detail}`);
+  console.log(`  ${colors.warn(ICONS.WARN)} ${pc.bold(taskName)} -- ${detail}`);
 }
 
 export function pending(taskName: string, detail: string): void {
@@ -50,13 +59,13 @@ export function skip(taskName: string, detail: string): void {
 }
 
 export function unknown(taskName: string, detail: string): void {
-  console.log(`  ${pc.yellow(ICONS.UNKNOWN)} ${pc.bold(taskName)} -- ${detail}`);
+  console.log(`  ${colors.warn(ICONS.UNKNOWN)} ${pc.bold(taskName)} -- ${detail}`);
 }
 
 /** Guard that exits with an error if no sync state is available. */
 export function requireSyncState<T>(state: T | null): asserts state is T {
   if (!state) {
-    console.error(pc.red('No sync state found. Run `paw up` first.'));
+    console.error(colors.error('No sync state found. Run `paw up` first.'));
     process.exit(1);
   }
 }

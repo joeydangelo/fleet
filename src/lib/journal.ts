@@ -64,7 +64,7 @@ export function readJournal(cwd?: string): JournalEntry[] {
     }
   }
 
-  entries.sort((a, b) => a.ts.localeCompare(b.ts));
+  entries.sort((a, b) => a.ts.localeCompare(b.ts) || a.from.localeCompare(b.from));
   return entries;
 }
 

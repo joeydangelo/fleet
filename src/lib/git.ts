@@ -8,7 +8,13 @@ export function git(args: string[], options?: ExecFileSyncOptions): string {
     ...options,
     encoding: 'utf-8',
   });
-  return result.trim();
+  const trimmed = result.trim();
+  if (process.env.SHOW_COMMANDS === '1') {
+    console.error(
+      `[git] git ${args.join(' ')} → ${trimmed.length > 120 ? trimmed.slice(0, 120) + '…' : trimmed}`,
+    );
+  }
+  return trimmed;
 }
 
 export function getRepoRoot(cwd?: string): string {

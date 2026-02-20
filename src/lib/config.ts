@@ -36,6 +36,13 @@ export function loadConfig(configPath: string): PawConfig {
   }
 
   const raw = readFileSync(configPath, 'utf-8');
+
+  if (/^<<<<<<< /m.test(raw) || /^=======/m.test(raw) || /^>>>>>>> /m.test(raw)) {
+    throw new Error(
+      `${configPath} contains unresolved git merge conflict markers. Resolve conflicts before running paw.`,
+    );
+  }
+
   const parsed = parseYaml(raw) as unknown;
 
   const result = PawConfigSchema.safeParse(parsed);

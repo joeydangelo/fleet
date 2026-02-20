@@ -9,7 +9,15 @@ import { removeSyncWorktree, archiveSession } from '../lib/sync.js';
 import { SYNC_BRANCH, KILL_WAIT_MS } from '../lib/constants.js';
 import { readDoc } from '../lib/docs.js';
 import { killTrackedProcesses } from '../lib/launcher.js';
-import { success, error, skip, pending, toErrorMessage, handleError } from '../lib/output.js';
+import {
+  success,
+  error,
+  skip,
+  pending,
+  toErrorMessage,
+  handleError,
+  colors,
+} from '../lib/output.js';
 
 export function downCommand(): Command {
   return new Command('down')
@@ -66,7 +74,7 @@ export function downCommand(): Command {
 
         if (failed > 0) {
           console.log(
-            pc.yellow(
+            colors.warn(
               `\n${failed} worktree(s) could not be removed (files may be in use).` +
                 '\nClose terminals and editors in the worktree directories, then retry `paw down`.' +
                 '\nConfig and sync branch left intact for retry.',

@@ -1,10 +1,9 @@
 import { Command } from 'commander';
-import pc from 'picocolors';
 import { getRepoRoot } from '../lib/git.js';
 import { getTaskIdentity } from '../lib/session.js';
 import { readSyncState } from '../lib/sync.js';
 import { appendJournalEntry } from '../lib/journal.js';
-import { requireSyncState, handleError } from '../lib/output.js';
+import { requireSyncState, handleError, colors } from '../lib/output.js';
 
 export function broadcastCommand(): Command {
   return new Command('broadcast')
@@ -20,7 +19,7 @@ export function broadcastCommand(): Command {
 
         appendJournalEntry(taskName, { type: 'broadcast', msg: message }, repoRoot);
 
-        console.log(pc.green(`[${taskName} → all] ${message}`));
+        console.log(colors.success(`[${taskName} → all] ${message}`));
       } catch (err) {
         handleError(err);
       }

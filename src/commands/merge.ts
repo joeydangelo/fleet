@@ -25,7 +25,7 @@ import {
 } from '../lib/sync.js';
 import type { SyncState } from '../lib/sync.js';
 import { generateConflictBrief } from '../lib/conflict.js';
-import { success, warn, skip, requireSyncState, handleError } from '../lib/output.js';
+import { success, warn, skip, requireSyncState, handleError, colors } from '../lib/output.js';
 
 export function mergeCommand(): Command {
   return new Command('merge')
@@ -42,7 +42,7 @@ export function mergeCommand(): Command {
         const currentBranch = getCurrentBranch(repoRoot);
         if (currentBranch !== config.target) {
           console.error(
-            pc.red(
+            colors.error(
               `Must be on target branch '${config.target}' to merge. Currently on '${currentBranch}'.`,
             ),
           );
@@ -76,7 +76,7 @@ export function mergeCommand(): Command {
         const toMerge = opts.pick ? worktrees.filter((wt) => wt.taskName === opts.pick) : worktrees;
 
         if (toMerge.length === 0) {
-          console.error(pc.red(`Task '${opts.pick}' not found in config.`));
+          console.error(colors.error(`Task '${opts.pick}' not found in config.`));
           process.exit(1);
         }
 
@@ -98,12 +98,14 @@ function handleMergeContinue(
   repoRoot: string,
 ): SyncState {
   if (isMergeInProgress(repoRoot)) {
-    console.error(pc.red('Git merge is still in progress. Resolve conflicts and commit first.'));
+    console.error(
+      colors.error('Git merge is still in progress. Resolve conflicts and commit first.'),
+    );
     process.exit(1);
   }
 
   if (!state.merges) {
-    console.error(pc.red('No merge state found. Run `paw merge` first.'));
+    console.error(colors.error('No merge state found. Run `paw merge` first.'));
     process.exit(1);
   }
 
@@ -116,7 +118,7 @@ function handleMergeContinue(
     // Verify the branch's commits are actually in HEAD (paw-0yqg)
     if (!isAncestor(hookFailedTask.branch, 'HEAD', repoRoot)) {
       console.error(
-        pc.red(
+        colors.error(
           `Branch '${hookFailedTask.branch}' was not merged into the target. ` +
             `Its commits are not in HEAD. Re-run \`paw merge\` to retry.`,
         ),
@@ -139,14 +141,14 @@ function handleMergeContinue(
   const conflictTask = worktrees.find((wt) => state.merges?.[wt.taskName]?.status === 'conflict');
 
   if (!conflictTask) {
-    console.error(pc.red('No conflicting or failed merge found. Run `paw merge` first.'));
+    console.error(colors.error('No conflicting or failed merge found. Run `paw merge` first.'));
     process.exit(1);
   }
 
   // Verify the branch's commits are actually in HEAD (paw-0yqg)
   if (!isAncestor(conflictTask.branch, 'HEAD', repoRoot)) {
     console.error(
-      pc.red(
+      colors.error(
         `Branch '${conflictTask.branch}' was not merged into the target. ` +
           `Its commits are not in HEAD. Re-run \`paw merge\` to retry.`,
       ),
@@ -193,14 +195,14 @@ function runMergeLoop(
     }
     if (mergeEntry?.status === 'conflict') {
       warn(wt.taskName, 'unresolved conflict');
-      console.log(pc.yellow('\nResolve the conflict, commit, then run: paw merge --continue'));
+      console.log(colors.warn('\nResolve the conflict, commit, then run: paw merge --continue'));
       process.exit(1);
     }
     if (mergeEntry?.status === 'hook_failed') {
       warn(wt.taskName, 'post-merge hook failed');
-      console.log(pc.yellow('\nFix the issue, then run: paw merge --continue'));
+      console.log(colors.warn('\nFix the issue, then run: paw merge --continue'));
       console.log(
-        pc.yellow(`To roll back:        git reset --hard refs/paw-backup/${wt.taskName}`),
+        colors.warn(`To roll back:        git reset --hard refs/paw-backup/${wt.taskName}`),
       );
       process.exit(1);
     }
@@ -236,10 +238,10 @@ function runMergeLoop(
           writeSyncState(state, repoRoot);
 
           warn(wt.taskName, 'post-merge hook failed');
-          console.log(pc.yellow('\n  The merge committed but validation failed.'));
-          console.log(pc.yellow('  To continue anyway:  paw merge --continue'));
+          console.log(colors.warn('\n  The merge committed but validation failed.'));
+          console.log(colors.warn('  To continue anyway:  paw merge --continue'));
           console.log(
-            pc.yellow(`  To roll back:        git reset --hard refs/paw-backup/${wt.taskName}`),
+            colors.warn(`  To roll back:        git reset --hard refs/paw-backup/${wt.taskName}`),
           );
           process.exit(1);
         }
@@ -269,7 +271,7 @@ function runMergeLoop(
       warn(wt.taskName, 'conflicts');
       console.log(pc.dim(`    ${result.message.split('\n')[0]}`));
       console.log(pc.dim(`    Brief written to ${briefPath} on sync branch`));
-      console.log(pc.yellow('\nResolve the conflict, commit, then run: paw merge --continue'));
+      console.log(colors.warn('\nResolve the conflict, commit, then run: paw merge --continue'));
       process.exit(1);
     }
   }

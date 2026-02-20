@@ -1,11 +1,10 @@
 import { Command } from 'commander';
-import pc from 'picocolors';
 import { getRepoRoot } from '../lib/git.js';
 import { getTaskIdentity } from '../lib/session.js';
 import { readSyncState } from '../lib/sync.js';
 import { appendJournalEntry, readJournal } from '../lib/journal.js';
 import type { JournalEntry } from '../lib/journal.js';
-import { requireSyncState, handleError } from '../lib/output.js';
+import { requireSyncState, handleError, colors } from '../lib/output.js';
 
 export function replyCommand(): Command {
   return new Command('reply')
@@ -35,10 +34,12 @@ export function replyCommand(): Command {
             );
             if (wrongTask) {
               console.error(
-                pc.red(`Thread '${opts.to}' is directed at '${wrongTask.to}', not '${taskName}'.`),
+                colors.error(
+                  `Thread '${opts.to}' is directed at '${wrongTask.to}', not '${taskName}'.`,
+                ),
               );
             } else {
-              console.error(pc.red(`No ask found with thread ID '${opts.to}'.`));
+              console.error(colors.error(`No ask found with thread ID '${opts.to}'.`));
             }
             process.exit(1);
           }
@@ -47,7 +48,7 @@ export function replyCommand(): Command {
           // Find most recent ask directed at this task
           const asks = all.filter((e) => e.type === 'ask' && e.to === taskName);
           if (asks.length === 0) {
-            console.error(pc.yellow('No messages to reply to.'));
+            console.error(colors.warn('No messages to reply to.'));
             process.exit(1);
           }
           resolvedAsk = asks[asks.length - 1]!;
@@ -66,7 +67,7 @@ export function replyCommand(): Command {
         );
 
         const prefix = thread ? `(${thread}) ` : '';
-        console.log(pc.green(`[${taskName} → ${resolvedAsk.from}] ${prefix}${message}`));
+        console.log(colors.success(`[${taskName} → ${resolvedAsk.from}] ${prefix}${message}`));
       } catch (err) {
         handleError(err);
       }

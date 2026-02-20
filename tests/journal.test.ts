@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os';
 import {
   initSyncState,
   writeSyncState,
+  writeSyncFile,
   initSyncWorktree,
   removeSyncWorktree,
 } from '../src/lib/sync.js';
@@ -99,6 +100,23 @@ describe('appendJournalEntry / readJournal', () => {
     for (let i = 1; i < entries.length; i++) {
       expect(entries[i]!.ts >= entries[i - 1]!.ts).toBe(true);
     }
+  });
+
+  it('breaks ties deterministically by task name when timestamps match', () => {
+    const ts = '2026-01-15T12:00:00.000Z';
+    // Write both entries to the same file with zebra FIRST to defeat stable-sort
+    // file-read ordering. Without a tiebreaker, zebra stays before alpha.
+    const lines = [
+      JSON.stringify({ ts, from: 'zebra', type: 'broadcast', msg: 'Z first?' }),
+      JSON.stringify({ ts, from: 'alpha', type: 'broadcast', msg: 'A first?' }),
+    ].join('\n');
+    writeSyncFile('journal/mixed.jsonl', lines, repoDir);
+
+    const entries = readJournal(repoDir);
+    expect(entries).toHaveLength(2);
+    // With deterministic sort, alpha should come before zebra at same timestamp
+    expect(entries[0]!.from).toBe('alpha');
+    expect(entries[1]!.from).toBe('zebra');
   });
 
   it('returns empty array when no journal entries exist', () => {

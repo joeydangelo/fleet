@@ -1,7 +1,7 @@
 import { Command } from 'commander';
 import pc from 'picocolors';
 import { readDoc, listDocs } from '../lib/docs.js';
-import { handleError } from '../lib/output.js';
+import { handleError, colors } from '../lib/output.js';
 
 /**
  * Factory for list/display commands that serve a single doc category.
@@ -17,13 +17,13 @@ export function createDocCommand(name: string, category: string, description: st
         if (opts.list || !docName) {
           const docs = listDocs(category);
           if (docs.length === 0) {
-            console.log(pc.yellow(`No ${category} found.`));
+            console.log(colors.warn(`No ${category} found.`));
             return;
           }
           console.log(pc.bold(`Available ${category}:\n`));
           const maxName = Math.max(...docs.map((d) => d.name.length));
           for (const doc of docs) {
-            console.log(`  ${pc.cyan(doc.name.padEnd(maxName))}  ${pc.dim(doc.description)}`);
+            console.log(`  ${colors.info(doc.name.padEnd(maxName))}  ${pc.dim(doc.description)}`);
           }
           return;
         }
@@ -31,7 +31,7 @@ export function createDocCommand(name: string, category: string, description: st
         const doc = readDoc(category, docName);
         if (!doc) {
           const label = name.charAt(0).toUpperCase() + name.slice(1);
-          console.error(pc.red(`${label} not found: ${docName}`));
+          console.error(colors.error(`${label} not found: ${docName}`));
           console.error(pc.dim(`Run \`paw ${name} --list\` to see available ${category}.`));
           process.exit(1);
         }

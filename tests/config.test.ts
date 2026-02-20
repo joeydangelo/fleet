@@ -96,6 +96,28 @@ tasks:
     expect(() => loadConfig(configPath)).toThrow(/Invalid \.paw\/paw\.yaml/);
     rmSync(dir, { recursive: true });
   });
+
+  it('throws a clear error when file contains merge conflict markers', () => {
+    const dir = makeTempDir();
+    const configPath = resolve(dir, 'paw.yaml');
+    writeFileSync(
+      configPath,
+      `
+target: feature/x
+tasks:
+<<<<<<< HEAD
+  auth:
+    focus: src/auth/
+=======
+  api:
+    focus: src/api/
+>>>>>>> feature/other
+`,
+    );
+
+    expect(() => loadConfig(configPath)).toThrow(/merge conflict/i);
+    rmSync(dir, { recursive: true });
+  });
 });
 
 describe('agent config', () => {

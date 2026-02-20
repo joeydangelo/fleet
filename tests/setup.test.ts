@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node
 import { resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { installHooks } from '../src/lib/hooks.js';
-import { readDoc } from '../src/lib/docs.js';
+import { readDoc, parseFrontmatter } from '../src/lib/docs.js';
 
 function makeTempDir(): string {
   const dir = resolve(tmpdir(), `paw-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
@@ -202,5 +202,35 @@ describe('SKILL.md bundling (paw-m5d5)', () => {
     const markerIndex = installed.indexOf(marker);
     const contentIndex = installed.indexOf('# paw');
     expect(markerIndex).toBeLessThan(contentIndex);
+  });
+});
+
+describe('parseFrontmatter', () => {
+  it('extracts title and description from YAML frontmatter', () => {
+    const content = '---\ntitle: My Title\ndescription: My description\n---\n# Body';
+    const result = parseFrontmatter(content);
+    expect(result.title).toBe('My Title');
+    expect(result.description).toBe('My description');
+  });
+
+  it('returns empty object when no frontmatter is present', () => {
+    const content = '# No frontmatter here';
+    const result = parseFrontmatter(content);
+    expect(result.title).toBeUndefined();
+    expect(result.description).toBeUndefined();
+  });
+
+  it('handles frontmatter with only title', () => {
+    const content = '---\ntitle: Only Title\n---\n# Body';
+    const result = parseFrontmatter(content);
+    expect(result.title).toBe('Only Title');
+    expect(result.description).toBeUndefined();
+  });
+
+  it('handles values with colons and special characters', () => {
+    const content = '---\ntitle: "Rules: A Guide"\ndescription: Use @clack/prompts for UI\n---\n';
+    const result = parseFrontmatter(content);
+    expect(result.title).toBe('Rules: A Guide');
+    expect(result.description).toBe('Use @clack/prompts for UI');
   });
 });

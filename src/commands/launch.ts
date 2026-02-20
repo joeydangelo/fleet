@@ -12,7 +12,15 @@ import {
   writePidFile,
 } from '../lib/launcher.js';
 import { LAUNCH_STAGGER_MS } from '../lib/constants.js';
-import { success, skip, error, pending, toErrorMessage, handleError } from '../lib/output.js';
+import {
+  success,
+  skip,
+  error,
+  pending,
+  toErrorMessage,
+  handleError,
+  colors,
+} from '../lib/output.js';
 
 interface LaunchOpts {
   config?: string;
@@ -34,7 +42,7 @@ export function launchCommand(): Command {
 
         if (!config.agent) {
           console.error(
-            pc.red(
+            colors.error(
               'No agent configured. Add an agent field to .paw/paw.yaml:\n\n  agent: claude\n',
             ),
           );
@@ -49,7 +57,7 @@ export function launchCommand(): Command {
         const targets = opts.task ? worktrees.filter((wt) => wt.taskName === opts.task) : worktrees;
 
         if (opts.task && targets.length === 0) {
-          console.error(pc.red(`Task not found: ${opts.task}`));
+          console.error(colors.error(`Task not found: ${opts.task}`));
           process.exit(1);
         }
 
