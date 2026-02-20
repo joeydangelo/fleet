@@ -87,6 +87,7 @@ export function buildLaunchCommand(opts: LaunchOptions, platform?: Platform): La
   }
 }
 
+/** Dispatches across 5 known terminals (gnome, konsole, xfce4, xterm, tmux) with per-emulator flag patterns; unknown terminals fall back to `-- bash -c`. */
 function buildLinuxCommand(
   terminal: string,
   worktreePath: string,
