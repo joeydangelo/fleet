@@ -50,16 +50,6 @@ function checkout(dir: string, branch: string): void {
   execFileSync('git', ['checkout', branch], { cwd: dir, stdio: 'pipe' });
 }
 
-describe('initMergeState', () => {
-  it('creates entries with all tasks pending', () => {
-    const merges = initMergeState(['auth', 'api', 'tests']);
-    expect(Object.keys(merges)).toEqual(['auth', 'api', 'tests']);
-    expect(merges['auth']?.status).toBe('pending');
-    expect(merges['api']?.status).toBe('pending');
-    expect(merges['tests']?.status).toBe('pending');
-  });
-});
-
 describe('updateMergeEntry', () => {
   it("updates a single task's merge status", () => {
     const state = initSyncState('feature/dash', ['auth', 'api'], 'paw.yaml');

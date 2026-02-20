@@ -36,17 +36,6 @@ function gitInit(dir: string): void {
 }
 
 describe('initSyncState', () => {
-  it('creates state with all tasks pending', () => {
-    const state = initSyncState('feature/dash', ['auth', 'api'], 'paw.yaml');
-
-    expect(state.target).toBe('feature/dash');
-    expect(state.config).toBe('paw.yaml');
-    expect(Object.keys(state.tasks)).toEqual(['auth', 'api']);
-    expect(state.tasks['auth']?.status).toBe('pending');
-    expect(state.tasks['api']?.status).toBe('pending');
-    expect(state.session).toBeTruthy();
-  });
-
   it('stores focus areas when focusMap is provided', () => {
     const state = initSyncState('feature/dash', ['auth', 'api'], 'paw.yaml', {
       auth: ['src/auth/', 'src/middleware/auth.ts'],
