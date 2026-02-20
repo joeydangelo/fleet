@@ -14,6 +14,7 @@ import { normalizeDeps } from './config.js';
 import { branchExists, createBranch, createWorktree, getFileFromBranch } from './git.js';
 import { REQUIRED_SECTIONS } from './summary.js';
 
+/** Identity triple for a task worktree: task name, its branch, and the filesystem path. */
 export interface WorktreeInfo {
   taskName: string;
   branch: string;
@@ -31,6 +32,7 @@ export function planWorktrees(config: PawConfig, repoRoot: string): WorktreeInfo
   }));
 }
 
+/** Creates the target branch (if needed), per-task branches, and their worktrees. */
 export function createSession(config: PawConfig, repoRoot: string): WorktreeInfo[] {
   if (!branchExists(config.target, repoRoot)) {
     createBranch(config.target, config.base, repoRoot);
@@ -75,11 +77,8 @@ const SUMMARY_TEMPLATE = [
   `other agents depend on this information to resolve merge conflicts.`,
 ].join('\n');
 
-export function generateTaskFile(
-  config: PawConfig,
-  taskName: string,
-  worktreeInfo: WorktreeInfo,
-): string {
+export function generateTaskFile(config: PawConfig, worktreeInfo: WorktreeInfo): string {
+  const { taskName } = worktreeInfo;
   const task = config.tasks[taskName];
   if (!task) throw new Error(`Task not found: ${taskName}`);
 
@@ -109,6 +108,7 @@ export function generateTaskFile(
   return lines.join('\n') + '\n';
 }
 
+/** Adds `.paw/` to .gitignore unless the base branch already has it, avoiding duplicate entries that cause merge conflicts. */
 export function ensureGitignore(worktreePath: string, baseBranch?: string): void {
   const gitignorePath = resolve(worktreePath, '.gitignore');
   const entry = '.paw/';
@@ -146,6 +146,11 @@ export function detectTaskName(cwd: string): string | null {
   return null;
 }
 
+/** Detect task name or fall back to 'orchestrator' for the main repo. */
+export function getTaskIdentity(cwd: string): string {
+  return detectTaskName(cwd) ?? 'orchestrator';
+}
+
 /**
  * Copy files matching glob patterns from repo root into a worktree.
  * Skips files that already exist in the worktree (e.g. tracked files).
@@ -181,7 +186,7 @@ export function writeTaskFiles(
     mkdirSync(taskDir, { recursive: true });
 
     const taskFilePath = resolve(taskDir, `${wt.taskName}.md`);
-    const content = generateTaskFile(config, wt.taskName, wt);
+    const content = generateTaskFile(config, wt);
     writeFileSync(taskFilePath, content, 'utf-8');
 
     ensureGitignore(wt.worktreePath, baseBranch);

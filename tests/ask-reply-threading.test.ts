@@ -67,18 +67,6 @@ describe('ask command threading', () => {
     expect(entries[0]!.type).toBe('ask');
     expect(entries[0]!.to).toBe('api');
   });
-
-  it('ask output format includes (thread) prefix', () => {
-    const thread = makeThreadId();
-    const from = 'orchestrator';
-    const to = 'api';
-    const msg = 'What endpoint?';
-
-    // Verify the expected output format used by ask.ts
-    const output = `[${from} → ${to}] (${thread}) ${msg}`;
-    expect(output).toContain(`(${thread})`);
-    expect(output).toMatch(/\[orchestrator → api\] \([a-z0-9]{4}\) What endpoint\?/);
-  });
 });
 
 describe('reply command threading', () => {

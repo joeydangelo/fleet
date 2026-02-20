@@ -25,7 +25,7 @@ import {
 } from '../lib/sync.js';
 import type { SyncState } from '../lib/sync.js';
 import { generateConflictBrief } from '../lib/conflict.js';
-import { success, warn, skip, handleError } from '../lib/output.js';
+import { success, warn, skip, requireSyncState, handleError } from '../lib/output.js';
 
 export function mergeCommand(): Command {
   return new Command('merge')
@@ -50,10 +50,7 @@ export function mergeCommand(): Command {
         }
 
         let state = readSyncState(repoRoot);
-        if (!state) {
-          console.error(pc.red('No sync state found. Run `paw up` first.'));
-          process.exit(1);
-        }
+        requireSyncState(state);
 
         const allWorktrees = planWorktrees(config, repoRoot);
         const sortedNames = topologicalSort(config.tasks);

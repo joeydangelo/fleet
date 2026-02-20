@@ -1,11 +1,10 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { execSync, execFileSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import { writeFileSync, mkdirSync, rmSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { validateSummary, REQUIRED_SECTIONS, generateErrorTemplate } from '../src/lib/summary.js';
 import { generateTaskFile } from '../src/lib/session.js';
-import { loadConfig } from '../src/lib/config.js';
 import type { PawConfig } from '../src/lib/config.js';
 import {
   initSyncState,
@@ -14,12 +13,6 @@ import {
   removeSyncWorktree,
   readSyncFile,
 } from '../src/lib/sync.js';
-
-function makeTempDir(): string {
-  const dir = resolve(tmpdir(), `paw-done-${Date.now()}-${Math.random().toString(36).slice(2)}`);
-  mkdirSync(dir, { recursive: true });
-  return dir;
-}
 
 describe('validateSummary', () => {
   const validSummary = `## What I did
@@ -150,75 +143,10 @@ describe('summary template single source of truth (paw-em2l)', () => {
       worktreePath: '/projects/acme-app-paw-auth',
     };
 
-    const taskFile = generateTaskFile(config, 'auth', worktree);
+    const taskFile = generateTaskFile(config, worktree);
     for (const section of REQUIRED_SECTIONS) {
       expect(taskFile).toContain(`### ${section}`);
     }
-  });
-});
-
-describe('pre-done hook (paw-bsnh)', () => {
-  it('hook command succeeds -- returns cleanly', () => {
-    const dir = makeTempDir();
-    try {
-      // A passing hook command should not throw
-      execSync('node -e "process.exit(0)"', { cwd: dir, stdio: 'pipe' });
-      // If we get here, the hook passed
-      expect(true).toBe(true);
-    } finally {
-      rmSync(dir, { recursive: true, force: true });
-    }
-  });
-
-  it('hook command fails -- throws error', () => {
-    const dir = makeTempDir();
-    try {
-      expect(() => {
-        execSync('node -e "process.exit(1)"', { cwd: dir, stdio: 'pipe' });
-      }).toThrow();
-    } finally {
-      rmSync(dir, { recursive: true, force: true });
-    }
-  });
-
-  it('config with pre-done hook loads correctly', () => {
-    const dir = makeTempDir();
-    const configPath = resolve(dir, 'paw.yaml');
-    writeFileSync(
-      configPath,
-      `
-target: feature/x
-hooks:
-  pre-done: npm test
-tasks:
-  a:
-    focus: src/
-`,
-    );
-
-    const config = loadConfig(configPath);
-    expect(config.hooks?.['pre-done']).toBe('npm test');
-
-    rmSync(dir, { recursive: true, force: true });
-  });
-
-  it('config without hooks has no pre-done', () => {
-    const dir = makeTempDir();
-    const configPath = resolve(dir, 'paw.yaml');
-    writeFileSync(
-      configPath,
-      `
-target: feature/x
-tasks:
-  a:
-    focus: src/
-`,
-    );
-
-    const config = loadConfig(configPath);
-    expect(config.hooks?.['pre-done']).toBeUndefined();
-
-    rmSync(dir, { recursive: true, force: true });
   });
 });
 

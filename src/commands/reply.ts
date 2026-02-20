@@ -1,14 +1,11 @@
 import { Command } from 'commander';
 import pc from 'picocolors';
 import { getRepoRoot } from '../lib/git.js';
-import { detectTaskName } from '../lib/session.js';
+import { getTaskIdentity } from '../lib/session.js';
 import { readSyncState } from '../lib/sync.js';
 import { appendJournalEntry, readJournal } from '../lib/journal.js';
 import type { JournalEntry } from '../lib/journal.js';
-import { handleError } from '../lib/output.js';
-
-/** Entry with optional thread (schema task adds this to JournalEntry). */
-type ThreadedEntry = JournalEntry & { thread?: string };
+import { requireSyncState, handleError } from '../lib/output.js';
 
 export function replyCommand(): Command {
   return new Command('reply')
@@ -18,16 +15,13 @@ export function replyCommand(): Command {
     .action((message: string, opts: { to?: string }) => {
       try {
         const repoRoot = getRepoRoot();
-        const taskName = detectTaskName(repoRoot) ?? 'orchestrator';
+        const taskName = getTaskIdentity(repoRoot);
 
         const state = readSyncState(repoRoot);
-        if (!state) {
-          console.error(pc.red('No sync state found. Run `paw up` first.'));
-          process.exit(1);
-        }
+        requireSyncState(state);
 
-        const all = readJournal(repoRoot) as ThreadedEntry[];
-        let resolvedAsk: ThreadedEntry;
+        const all = readJournal(repoRoot);
+        let resolvedAsk: JournalEntry;
 
         if (opts.to) {
           // Find ask by thread ID directed at this task
@@ -67,7 +61,7 @@ export function replyCommand(): Command {
             to: resolvedAsk.from,
             msg: message,
             ...(thread ? { thread } : {}),
-          } as ThreadedEntry,
+          },
           repoRoot,
         );
 

@@ -8,19 +8,20 @@ import { readSyncState } from '../lib/sync.js';
 import type { TaskState } from '../lib/sync.js';
 import { readJournal } from '../lib/journal.js';
 import type { JournalEntry } from '../lib/journal.js';
+import { DEFAULT_POLL_INTERVAL } from '../lib/constants.js';
 import { handleError } from '../lib/output.js';
 
 // --- Color palette for task names ---
 
 const COLOR_PALETTE: Formatter[] = [pc.blue, pc.green, pc.yellow, pc.magenta, pc.cyan, pc.red];
 
-export function assignColor(index: number): Formatter {
+function assignColor(index: number): Formatter {
   return COLOR_PALETTE[index % COLOR_PALETTE.length]!;
 }
 
 // --- Diff logic (pure, testable functions) ---
 
-export interface JournalDiff {
+interface JournalDiff {
   newEntries: JournalEntry[];
   lastSeenTs: string | undefined;
 }
@@ -39,13 +40,13 @@ export function diffJournal(entries: JournalEntry[], lastSeenTs: string | undefi
   };
 }
 
-export interface StatusTransition {
+interface StatusTransition {
   task: string;
   from: TaskState['status'] | undefined;
   to: TaskState['status'];
 }
 
-export interface StatusDiff {
+interface StatusDiff {
   transitions: StatusTransition[];
   currentStatuses: Record<string, TaskState['status']>;
 }
@@ -68,13 +69,13 @@ export function diffStatuses(
   return { transitions, currentStatuses };
 }
 
-export interface CommitDelta {
+interface CommitDelta {
   task: string;
   from: number;
   to: number;
 }
 
-export interface CommitCountDiff {
+interface CommitCountDiff {
   deltas: CommitDelta[];
   currentCounts: Record<string, number>;
 }
@@ -96,7 +97,7 @@ export function diffCommitCounts(
   return { deltas, currentCounts };
 }
 
-export function isAllDone(tasks: Record<string, TaskState>): boolean {
+function isAllDone(tasks: Record<string, TaskState>): boolean {
   const entries = Object.values(tasks);
   if (entries.length === 0) return false;
   return entries.every((t) => t.status === 'done');
@@ -164,6 +165,7 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+/** Polls sync state, journal, and commit counts on an interval, printing diffs. Handles SIGINT/SIGTERM for clean shutdown. */
 export async function runWatchLoop(opts: {
   repoRoot: string;
   configPath: string;
@@ -286,7 +288,7 @@ export function watchCommand(): Command {
   return new Command('watch')
     .description('Continuously monitor agent progress')
     .option('-c, --config <path>', 'Path to .paw/paw.yaml')
-    .option('--interval <seconds>', 'Poll interval in seconds', '5')
+    .option('--interval <seconds>', 'Poll interval in seconds', DEFAULT_POLL_INTERVAL)
     .option('--no-exit', 'Keep running after all agents are done')
     .action(async (opts: { config?: string; interval: string; exit: boolean }) => {
       try {

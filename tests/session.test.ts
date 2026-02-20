@@ -60,7 +60,7 @@ describe('generateTaskFile', () => {
       worktreePath: '/projects/acme-app-paw-auth',
     };
 
-    const result = generateTaskFile(baseConfig, 'auth', worktree);
+    const result = generateTaskFile(baseConfig, worktree);
 
     expect(result).toContain('# Task: auth');
     expect(result).toContain('**Branch:** feature/dashboard-auth');
@@ -76,7 +76,7 @@ describe('generateTaskFile', () => {
       worktreePath: '/projects/acme-app-paw-api',
     };
 
-    const result = generateTaskFile(baseConfig, 'api', worktree);
+    const result = generateTaskFile(baseConfig, worktree);
 
     expect(result).toContain('- src/api/');
     expect(result).toContain('- src/routes/');
@@ -95,7 +95,7 @@ describe('generateTaskFile', () => {
       worktreePath: '/projects/acme-app-paw-auth',
     };
 
-    const result = generateTaskFile(config, 'auth', worktree);
+    const result = generateTaskFile(config, worktree);
 
     expect(result).toContain('## Instructions');
     expect(result).toContain('Implement OAuth2 login.');
@@ -108,7 +108,7 @@ describe('generateTaskFile', () => {
       worktreePath: '/projects/acme-app-paw-auth',
     };
 
-    const result = generateTaskFile(baseConfig, 'auth', worktree);
+    const result = generateTaskFile(baseConfig, worktree);
 
     expect(result).not.toContain('## Instructions');
   });
@@ -126,7 +126,7 @@ describe('generateTaskFile', () => {
       worktreePath: '/projects/acme-app-paw-auth',
     };
 
-    const result = generateTaskFile(config, 'auth', worktree);
+    const result = generateTaskFile(config, worktree);
 
     expect(result).toContain('**Issue:** GH#123');
   });
@@ -138,7 +138,7 @@ describe('generateTaskFile', () => {
       worktreePath: '/projects/acme-app-paw-auth',
     };
 
-    const result = generateTaskFile(baseConfig, 'auth', worktree);
+    const result = generateTaskFile(baseConfig, worktree);
 
     expect(result).not.toContain('**Issue:**');
   });
@@ -156,7 +156,7 @@ describe('generateTaskFile', () => {
       worktreePath: '/projects/acme-app-paw-auth',
     };
 
-    const result = generateTaskFile(config, 'auth', worktree);
+    const result = generateTaskFile(config, worktree);
 
     expect(result).toContain('**Spec:** docs/project/specs/active/plan-auth.md');
   });
@@ -168,7 +168,7 @@ describe('generateTaskFile', () => {
       worktreePath: '/projects/acme-app-paw-auth',
     };
 
-    const result = generateTaskFile(baseConfig, 'auth', worktree);
+    const result = generateTaskFile(baseConfig, worktree);
 
     expect(result).not.toContain('**Spec:**');
   });
@@ -187,7 +187,7 @@ describe('generateTaskFile', () => {
       worktreePath: '/projects/acme-app-paw-api',
     };
 
-    const result = generateTaskFile(config, 'api', worktree);
+    const result = generateTaskFile(config, worktree);
 
     expect(result).toContain('**Depends on:** auth');
   });
@@ -207,7 +207,7 @@ describe('generateTaskFile', () => {
       worktreePath: '/projects/acme-app-paw-tests',
     };
 
-    const result = generateTaskFile(config, 'tests', worktree);
+    const result = generateTaskFile(config, worktree);
 
     expect(result).toContain('**Depends on:** auth, api');
   });
@@ -219,7 +219,7 @@ describe('generateTaskFile', () => {
       worktreePath: '/projects/acme-app-paw-auth',
     };
 
-    const result = generateTaskFile(baseConfig, 'auth', worktree);
+    const result = generateTaskFile(baseConfig, worktree);
 
     expect(result).not.toContain('**Depends on:**');
   });
@@ -231,7 +231,7 @@ describe('generateTaskFile', () => {
       worktreePath: '/projects/acme-app-paw-auth',
     };
 
-    const result = generateTaskFile(baseConfig, 'auth', worktree);
+    const result = generateTaskFile(baseConfig, worktree);
 
     expect(result).toContain('## Collaboration Rules');
     expect(result).toContain('paw broadcast');
@@ -246,7 +246,7 @@ describe('generateTaskFile', () => {
       worktreePath: '/projects/acme-app-paw-auth',
     };
 
-    const result = generateTaskFile(baseConfig, 'auth', worktree);
+    const result = generateTaskFile(baseConfig, worktree);
 
     expect(result).toContain("## When You're Done");
     expect(result).toContain('paw done --summary');
@@ -269,7 +269,7 @@ describe('generateTaskFile', () => {
       worktreePath: '/projects/acme-app-paw-auth',
     };
 
-    const result = generateTaskFile(config, 'auth', worktree);
+    const result = generateTaskFile(config, worktree);
 
     const instructionsPos = result.indexOf('## Instructions');
     const collabPos = result.indexOf('## Collaboration Rules');
@@ -286,7 +286,7 @@ describe('generateTaskFile', () => {
       worktreePath: '/projects/acme-app-paw-nope',
     };
 
-    expect(() => generateTaskFile(baseConfig, 'nope', worktree)).toThrow('Task not found: nope');
+    expect(() => generateTaskFile(baseConfig, worktree)).toThrow('Task not found: nope');
   });
 });
 

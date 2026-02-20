@@ -95,6 +95,7 @@ function printBrief(taskName: string, taskContent: string | null, state: SyncSta
   console.log(pc.dim('Full context: paw prime'));
 }
 
+/** Updates the `lastCheck` cursor so the next prime skips already-seen messages. */
 function printFull(
   taskName: string,
   taskContent: string | null,

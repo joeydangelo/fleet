@@ -10,8 +10,8 @@ import {
   copyFileSync,
 } from 'node:fs';
 import { git } from './git.js';
-
-const SYNC_BRANCH = 'paw-sync';
+import { toErrorMessage } from './output.js';
+import { SYNC_BRANCH } from './constants.js';
 const STATE_FILE = 'state.json';
 const MAX_RETRIES = 3;
 
@@ -24,6 +24,7 @@ export interface TaskState {
 
 type MergeStatus = 'pending' | 'merged' | 'skipped' | 'conflict' | 'hook_failed';
 
+/** Per-task merge tracking: whether a task branch was merged, skipped, or hit a conflict. */
 export interface MergeEntry {
   status: MergeStatus;
   /** ISO timestamp when merged clean. */
@@ -32,6 +33,7 @@ export interface MergeEntry {
   brief?: string;
 }
 
+/** Session coordination state on the paw-sync branch. Tracks task statuses, merge progress, and journal cursors. */
 export interface SyncState {
   session: string;
   config: string;
@@ -86,7 +88,13 @@ export function initSyncWorktree(cwd: string): string {
  * worktree lives in the main repo. This uses git-common-dir to find
  * the shared .git path and derives the main worktree from it.
  */
+/** Memoize resolved sync dirs. Safe because paw runs as a short-lived CLI process. */
+const syncDirCache = new Map<string, string>();
+
 export function resolveSyncDir(cwd: string): string {
+  const cached = syncDirCache.get(cwd);
+  if (cached) return cached;
+
   const gitCommonDir = git(['rev-parse', '--git-common-dir'], {
     cwd,
     stdio: 'pipe',
@@ -94,7 +102,9 @@ export function resolveSyncDir(cwd: string): string {
   // git-common-dir is relative to cwd. Resolve it, then go up one level
   // to get the main worktree root (since git-common-dir points to .git/).
   const mainRoot = resolve(cwd, gitCommonDir, '..');
-  return resolve(mainRoot, '.paw', 'sync');
+  const result = resolve(mainRoot, '.paw', 'sync');
+  syncDirCache.set(cwd, result);
+  return result;
 }
 
 /**
@@ -137,9 +147,7 @@ export function commitSyncChanges(syncDir: string, message: string): void {
     } catch (err) {
       if (attempt === MAX_RETRIES) {
         throw new Error(
-          `Failed to commit sync changes after ${MAX_RETRIES} attempts: ${
-            err instanceof Error ? err.message : String(err)
-          }`,
+          `Failed to commit sync changes after ${MAX_RETRIES} attempts: ${toErrorMessage(err)}`,
         );
       }
     }
@@ -156,7 +164,6 @@ export function readSyncState(cwd?: string): SyncState | null {
   }
 }
 
-/** Read a file from the sync worktree. Returns null if not found. */
 export function readSyncFile(path: string, cwd?: string): string | null {
   try {
     const syncDir = resolveSyncDir(cwd ?? process.cwd());
@@ -166,7 +173,6 @@ export function readSyncFile(path: string, cwd?: string): string | null {
   }
 }
 
-/** List files under a directory prefix in the sync worktree. */
 export function listSyncDir(prefix: string, cwd?: string): string[] {
   try {
     const syncDir = resolveSyncDir(cwd ?? process.cwd());
@@ -230,14 +236,6 @@ export function initSyncState(
   };
 }
 
-/** Return the name of the first task with status "pending", or null if none. */
-export function findFirstPendingTask(state: SyncState): string | null {
-  for (const [name, task] of Object.entries(state.tasks)) {
-    if (task.status === 'pending') return name;
-  }
-  return null;
-}
-
 export function claimTask(state: SyncState, taskName: string): SyncState {
   const task = state.tasks[taskName];
   if (!task) throw new Error(`Task not found in sync state: ${taskName}`);
@@ -272,7 +270,6 @@ export function completeTask(state: SyncState, taskName: string): SyncState {
   };
 }
 
-/** Create initial merge state with all tasks pending. */
 export function initMergeState(taskNames: string[]): Record<string, MergeEntry> {
   const merges: Record<string, MergeEntry> = {};
   for (const name of taskNames) {
@@ -281,7 +278,6 @@ export function initMergeState(taskNames: string[]): Record<string, MergeEntry> 
   return merges;
 }
 
-/** Return a new SyncState with one merge entry updated. */
 export function updateMergeEntry(state: SyncState, taskName: string, entry: MergeEntry): SyncState {
   return {
     ...state,

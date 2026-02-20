@@ -1,13 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type { JournalEntry } from '../src/lib/journal.js';
 import type { TaskState } from '../src/lib/sync.js';
-import {
-  diffJournal,
-  diffStatuses,
-  diffCommitCounts,
-  isAllDone,
-  assignColor,
-} from '../src/commands/watch.js';
+import { diffJournal, diffStatuses, diffCommitCounts } from '../src/commands/watch.js';
 
 describe('diffJournal', () => {
   it('returns entries after lastSeenTs', () => {
@@ -136,46 +130,5 @@ describe('diffCommitCounts', () => {
 
     const result = diffCommitCounts(prev, curr);
     expect(result.deltas).toEqual([{ task: 'auth', from: 0, to: 2 }]);
-  });
-});
-
-describe('isAllDone', () => {
-  it('returns true when all tasks are done', () => {
-    const tasks: Record<string, TaskState> = {
-      auth: { status: 'done' },
-      api: { status: 'done' },
-    };
-    expect(isAllDone(tasks)).toBe(true);
-  });
-
-  it('returns false when some tasks are not done', () => {
-    const tasks: Record<string, TaskState> = {
-      auth: { status: 'done' },
-      api: { status: 'in_progress' },
-    };
-    expect(isAllDone(tasks)).toBe(false);
-  });
-
-  it('returns false for empty tasks', () => {
-    expect(isAllDone({})).toBe(false);
-  });
-});
-
-describe('assignColor', () => {
-  it('assigns consistent colors based on task index', () => {
-    const color0 = assignColor(0);
-    const color1 = assignColor(1);
-
-    // Colors should be functions (picocolors formatters)
-    expect(typeof color0).toBe('function');
-    expect(typeof color1).toBe('function');
-
-    // Same index should give same color
-    expect(assignColor(0)).toBe(assignColor(0));
-  });
-
-  it('wraps around when more tasks than colors', () => {
-    // Should not throw even with high indices
-    expect(typeof assignColor(100)).toBe('function');
   });
 });

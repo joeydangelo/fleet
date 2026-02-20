@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { resolve, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { Command } from 'commander';
 import { setupCommand } from './commands/setup.js';
 import { upCommand } from './commands/up.js';
@@ -17,13 +20,17 @@ import { launchCommand } from './commands/launch.js';
 import { watchCommand } from './commands/watch.js';
 import { goCommand } from './commands/go.js';
 
+const pkg = JSON.parse(
+  readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), '..', 'package.json'), 'utf-8'),
+) as { version: string };
+
 export function createCli(): Command {
   const program = new Command();
 
   program
     .name('paw')
     .description('Parallel Agent Worktrees -- orchestrate multi-agent git worktree workflows')
-    .version('0.1.0');
+    .version(pkg.version);
 
   program.addCommand(setupCommand());
   program.addCommand(upCommand());

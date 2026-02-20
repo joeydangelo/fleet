@@ -37,18 +37,20 @@ export function generateConflictBrief(opts: ConflictBriefOpts): string {
     lines.push('');
   }
 
+  // Compute merged tasks once
+  const mergedTasks = state.merges
+    ? Object.entries(state.merges).filter(
+        ([name, entry]) => name !== conflictingTask && entry.status === 'merged',
+      )
+    : [];
+
   // Already merged tasks
-  if (state.merges) {
-    const merged = Object.entries(state.merges).filter(
-      ([name, entry]) => name !== conflictingTask && entry.status === 'merged',
-    );
-    if (merged.length > 0) {
-      lines.push('## Already merged (in target)');
-      for (const [name, entry] of merged) {
-        lines.push(`${name} -- merged clean${entry.merged ? ` at ${entry.merged}` : ''}`);
-      }
-      lines.push('');
+  if (mergedTasks.length > 0) {
+    lines.push('## Already merged (in target)');
+    for (const [name, entry] of mergedTasks) {
+      lines.push(`${name} -- merged clean${entry.merged ? ` at ${entry.merged}` : ''}`);
     }
+    lines.push('');
   }
 
   // Summary for the conflicting task
@@ -62,17 +64,12 @@ export function generateConflictBrief(opts: ConflictBriefOpts): string {
   lines.push('');
 
   // Summaries for already-merged tasks
-  if (state.merges) {
-    const merged = Object.entries(state.merges).filter(
-      ([name, entry]) => name !== conflictingTask && entry.status === 'merged',
-    );
-    for (const [name] of merged) {
-      const summary = readSyncFile(`summaries/${name}.md`, cwd);
-      if (summary) {
-        lines.push(`## Task already in target: ${name}`);
-        lines.push(summary);
-        lines.push('');
-      }
+  for (const [name] of mergedTasks) {
+    const summary = readSyncFile(`summaries/${name}.md`, cwd);
+    if (summary) {
+      lines.push(`## Task already in target: ${name}`);
+      lines.push(summary);
+      lines.push('');
     }
   }
 
@@ -104,8 +101,8 @@ export function generateConflictBrief(opts: ConflictBriefOpts): string {
   if (relevantEntries.length > 0) {
     lines.push('## Relevant journal entries');
     for (const entry of relevantEntries) {
-      const target = entry.to ? ` → ${entry.to}` : ' → all';
-      lines.push(`- [${entry.from}${target}] ${entry.msg}`);
+      const recipient = entry.to ? ` → ${entry.to}` : ' → all';
+      lines.push(`- [${entry.from}${recipient}] ${entry.msg}`);
     }
     lines.push('');
   }

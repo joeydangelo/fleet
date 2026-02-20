@@ -1,7 +1,6 @@
 import { Command } from 'commander';
 import pc from 'picocolors';
 import { getRepoRoot } from '../lib/git.js';
-import { detectTaskName } from '../lib/session.js';
 import { readJournal } from '../lib/journal.js';
 import type { JournalEntry } from '../lib/journal.js';
 import { handleError } from '../lib/output.js';
@@ -13,16 +12,16 @@ function hasThread(e: JournalEntry): e is ThreadedEntry {
   return typeof (e as unknown as { thread?: unknown }).thread === 'string';
 }
 
-export interface OpenThread {
+interface OpenThread {
   ask: ThreadedEntry;
 }
 
-export interface ResolvedThread {
+interface ResolvedThread {
   ask: ThreadedEntry;
   reply: ThreadedEntry;
 }
 
-export interface ThreadResult {
+interface ThreadResult {
   open: OpenThread[];
   resolved: ResolvedThread[];
 }
@@ -65,8 +64,6 @@ export function threadsCommand(): Command {
     .action((opts: { all?: boolean }) => {
       try {
         const repoRoot = getRepoRoot();
-        const _identity = detectTaskName(repoRoot) ?? 'orchestrator';
-
         const entries = readJournal(repoRoot);
         const { open, resolved } = computeThreads(entries);
 

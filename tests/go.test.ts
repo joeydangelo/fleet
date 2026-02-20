@@ -88,27 +88,6 @@ describe('runPawCommand', () => {
   });
 });
 
-describe('go: command sequence', () => {
-  it('calls up, launch, merge, down in order when all succeed', () => {
-    // Track call order
-    const callOrder: string[] = [];
-    mockExecFileSync.mockImplementation((_cmd, args) => {
-      const subcommand = (args as string[])[1];
-      callOrder.push(subcommand!);
-      return Buffer.from('');
-    });
-
-    // We can't easily test the full runGo (it calls process.exit and has async wait),
-    // so we verify the individual runPawCommand calls would happen correctly.
-    runPawCommand(['up']);
-    runPawCommand(['launch']);
-    runPawCommand(['merge']);
-    runPawCommand(['down']);
-
-    expect(callOrder).toEqual(['up', 'launch', 'merge', 'down']);
-  });
-});
-
 describe('go: merge conflict stops without teardown', () => {
   it('does not call paw down when merge returns non-zero', () => {
     const callOrder: string[] = [];

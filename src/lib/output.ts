@@ -1,10 +1,15 @@
 import pc from 'picocolors';
 
+/** Extract a human-readable message from an unknown error. */
+export function toErrorMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}
+
 /**
  * Wrap a command action to catch errors and print friendly messages.
  */
 export function handleError(err: unknown): never {
-  const message = err instanceof Error ? err.message : String(err);
+  const message = toErrorMessage(err);
 
   if (message.includes('not a git repository')) {
     console.error(pc.red('Not in a git repository. Run paw from inside a git repo.'));
@@ -46,6 +51,14 @@ export function skip(taskName: string, detail: string): void {
 
 export function unknown(taskName: string, detail: string): void {
   console.log(`  ${pc.yellow(ICONS.UNKNOWN)} ${pc.bold(taskName)} -- ${detail}`);
+}
+
+/** Guard that exits with an error if no sync state is available. */
+export function requireSyncState<T>(state: T | null): asserts state is T {
+  if (!state) {
+    console.error(pc.red('No sync state found. Run `paw up` first.'));
+    process.exit(1);
+  }
 }
 
 /**

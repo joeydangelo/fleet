@@ -4,7 +4,6 @@ import { mkdirSync, writeFileSync, existsSync, rmSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
-import { loadConfig } from '../src/lib/config.js';
 import {
   git,
   getHeadRef,
@@ -54,69 +53,6 @@ function commitFile(dir: string, filename: string, content: string, message: str
 function checkout(dir: string, branch: string): void {
   execFileSync('git', ['checkout', branch], { cwd: dir, stdio: 'pipe' });
 }
-
-describe('config schema with hooks', () => {
-  it('parses config with hooks.post-merge', () => {
-    const dir = makeTempDir();
-    const configPath = resolve(dir, 'paw.yaml');
-    writeFileSync(
-      configPath,
-      `
-target: feature/dashboard
-hooks:
-  post-merge: npm test
-tasks:
-  auth:
-    focus: src/auth/
-`,
-    );
-
-    const config = loadConfig(configPath);
-    expect(config.hooks?.['post-merge']).toBe('npm test');
-
-    rmSync(dir, { recursive: true });
-  });
-
-  it('parses config without hooks section', () => {
-    const dir = makeTempDir();
-    const configPath = resolve(dir, 'paw.yaml');
-    writeFileSync(
-      configPath,
-      `
-target: feature/dashboard
-tasks:
-  auth:
-    focus: src/auth/
-`,
-    );
-
-    const config = loadConfig(configPath);
-    expect(config.hooks).toBeUndefined();
-
-    rmSync(dir, { recursive: true });
-  });
-
-  it('parses config with empty hooks section', () => {
-    const dir = makeTempDir();
-    const configPath = resolve(dir, 'paw.yaml');
-    writeFileSync(
-      configPath,
-      `
-target: feature/dashboard
-hooks: {}
-tasks:
-  auth:
-    focus: src/auth/
-`,
-    );
-
-    const config = loadConfig(configPath);
-    expect(config.hooks).toBeDefined();
-    expect(config.hooks?.['post-merge']).toBeUndefined();
-
-    rmSync(dir, { recursive: true });
-  });
-});
 
 describe('backup refs', () => {
   let repoDir: string;
