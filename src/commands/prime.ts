@@ -1,17 +1,31 @@
 import { Command } from 'commander';
 import { existsSync, readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { resolve, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import pc from 'picocolors';
 import { getRepoRoot } from '../lib/git.js';
 import { detectTaskName } from '../lib/session.js';
 import type { SyncState } from '../lib/sync.js';
 import { readSyncState, claimTask, writeSyncState, readSyncFile } from '../lib/sync.js';
 import { readJournalForTask } from '../lib/journal.js';
-import { handleError, formatFocusAreas, colors } from '../lib/output.js';
+import { handleError, formatFocusAreas, colors, success } from '../lib/output.js';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
+function getVersion(): string {
+  try {
+    const pkg = JSON.parse(readFileSync(resolve(__dirname, '..', 'package.json'), 'utf-8')) as {
+      version: string;
+    };
+    return pkg.version;
+  } catch {
+    return 'unknown';
+  }
+}
 
 export function primeCommand(): Command {
   return new Command('prime')
-    .description('Orient agent and claim task (run inside a worktree)')
+    .description('Context management — orchestrator dashboard or worktree orientation')
     .option('--brief', 'Condensed output for hooks and constrained contexts')
     .action((opts: { brief?: boolean }) => {
       try {
@@ -19,25 +33,19 @@ export function primeCommand(): Command {
         const taskName = detectTaskName(repoRoot);
 
         if (!taskName) {
-          console.error(
-            colors.error('Error: paw prime is an agent command — you are not inside a worktree.'),
-          );
-          console.error('');
-          console.error('To start agents in their worktrees:');
-          console.error('  paw launch      # opens terminals and starts agents automatically');
-          console.error('');
-          console.error('Or manually:');
-          console.error('  cd .paw/worktrees/<task-name>');
-          console.error('  paw prime');
-          process.exit(1);
+          // Main repo — orchestrator dashboard
+          if (opts.brief) {
+            printOrchestratorBrief(repoRoot);
+          } else {
+            printOrchestratorDashboard(repoRoot);
+          }
           return;
         }
 
-        // Read task file content
+        // Worktree — existing behavior
         const taskFile = resolve(repoRoot, '.paw', 'tasks', `${taskName}.md`);
         const taskContent = existsSync(taskFile) ? readFileSync(taskFile, 'utf-8') : null;
 
-        // Claim on sync branch
         const state = readSyncState(repoRoot);
         const updated = state && state.tasks[taskName] ? claimTask(state, taskName) : null;
         if (updated) writeSyncState(updated, repoRoot);
@@ -51,6 +59,87 @@ export function primeCommand(): Command {
         handleError(err);
       }
     });
+}
+
+/** Orchestrator dashboard — shown when prime runs in the main repo. */
+function printOrchestratorDashboard(repoRoot: string): void {
+  const version = getVersion();
+  console.log(`paw v${version}\n`);
+
+  // Installation status
+  console.log('=== INSTALLATION ===');
+  success('paw installed', `v${version}`);
+
+  const pawDir = resolve(repoRoot, '.paw');
+  const settingsPath = resolve(repoRoot, '.claude', 'settings.json');
+  if (existsSync(pawDir)) {
+    success('Set up in this repo', '');
+  } else {
+    console.log(colors.warn('  paw not set up — run `paw setup`'));
+  }
+  if (existsSync(settingsPath)) {
+    success('Hooks installed', '');
+  }
+
+  // Session status
+  console.log('\n=== SESSION STATUS ===');
+  const yamlPath = resolve(repoRoot, '.paw', 'paw.yaml');
+  const state = readSyncState(repoRoot);
+  if (state) {
+    const tasks = Object.entries(state.tasks);
+    const inProgress = tasks.filter(([, t]) => t.status === 'in_progress').length;
+    const done = tasks.filter(([, t]) => t.status === 'done').length;
+    console.log(
+      `Active session — target: ${state.target}, tasks: ${tasks.length} (${inProgress} in_progress, ${done} done)`,
+    );
+
+    for (const [name, task] of tasks) {
+      const statusColor =
+        task.status === 'done'
+          ? colors.success
+          : task.status === 'in_progress'
+            ? colors.warn
+            : colors.muted;
+      const focus = formatFocusAreas(task.focus);
+      const focusSuffix = focus ? `  ${pc.dim(focus)}` : '';
+      console.log(`  ${statusColor(task.status.padEnd(12))} ${name}${focusSuffix}`);
+    }
+  } else if (existsSync(yamlPath)) {
+    console.log('Session configured (.paw/paw.yaml found) — run `paw up` to start');
+  } else {
+    console.log('No active session (.paw/paw.yaml not found)');
+    console.log(pc.dim('  Run `paw shortcut generate-paw-yaml` to plan a session'));
+  }
+
+  // Workflow rules
+  console.log('\n=== WORKFLOW RULES ===');
+  console.log("You operate paw — the user doesn't.");
+  console.log('Decompose work into tasks, start agents, monitor, merge results.');
+
+  // Quick reference
+  console.log('\n=== QUICK REFERENCE ===');
+  console.log('paw go                           Full session workflow');
+  console.log('paw shortcut generate-paw-yaml   Plan a new session');
+  console.log('paw status                       Check progress');
+  console.log('paw skill                        Show full skill content');
+}
+
+/** Brief orchestrator output — version + session state + workflow reminder. */
+function printOrchestratorBrief(repoRoot: string): void {
+  const version = getVersion();
+  console.log(`paw v${version}`);
+
+  const state = readSyncState(repoRoot);
+  if (state) {
+    const tasks = Object.entries(state.tasks);
+    const inProgress = tasks.filter(([, t]) => t.status === 'in_progress').length;
+    const done = tasks.filter(([, t]) => t.status === 'done').length;
+    console.log(`Session: ${tasks.length} tasks (${inProgress} in_progress, ${done} done)`);
+  } else {
+    console.log('No active session');
+  }
+
+  console.log("You operate paw — the user doesn't. Run `paw prime` for full context.");
 }
 
 function printTeamStatus(taskName: string, state: SyncState): void {

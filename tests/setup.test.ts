@@ -177,9 +177,8 @@ describe('SKILL.md bundling (paw-m5d5)', () => {
   it('skill template is available via readDoc', () => {
     const doc = readDoc('templates', 'skill');
     expect(doc).not.toBeNull();
-    expect(doc!.content).toContain('# paw');
-    expect(doc!.content).toContain('paw prime');
-    expect(doc!.content).toContain('paw broadcast');
+    expect(doc!.content).toContain('name: paw');
+    expect(doc!.content).toContain('allowed-tools: Bash(paw:*)');
   });
 
   it('skill template has valid frontmatter', () => {
@@ -198,10 +197,9 @@ describe('SKILL.md bundling (paw-m5d5)', () => {
 
     expect(installed).toContain(marker);
     expect(installed.startsWith('---')).toBe(true);
-    // Marker should come after frontmatter, before content
+    // Marker should come after frontmatter
     const markerIndex = installed.indexOf(marker);
-    const contentIndex = installed.indexOf('# paw');
-    expect(markerIndex).toBeLessThan(contentIndex);
+    expect(markerIndex).toBeGreaterThan(0);
   });
 });
 

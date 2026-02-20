@@ -20,6 +20,7 @@ import { templateCommand } from './commands/template.js';
 import { launchCommand } from './commands/launch.js';
 import { watchCommand } from './commands/watch.js';
 import { goCommand } from './commands/go.js';
+import { skillCommand } from './commands/skill.js';
 
 const pkg = JSON.parse(
   readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), '..', 'package.json'), 'utf-8'),
@@ -43,6 +44,16 @@ export function createCli(): Command {
       }
     });
 
+  program.addHelpText(
+    'after',
+    `
+IMPORTANT:
+  Agents unfamiliar with paw should run \`paw prime\` for full context.
+
+Getting Started:
+  npm install -g get-paw@latest && paw setup`,
+  );
+
   program.addCommand(setupCommand());
   program.addCommand(upCommand());
   program.addCommand(primeCommand());
@@ -60,5 +71,6 @@ export function createCli(): Command {
   program.addCommand(launchCommand());
   program.addCommand(watchCommand());
   program.addCommand(goCommand());
+  program.addCommand(skillCommand());
   return program;
 }

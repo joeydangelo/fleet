@@ -1,4 +1,6 @@
 import { Command } from 'commander';
+import { cpSync, existsSync } from 'node:fs';
+import { resolve } from 'node:path';
 import pc from 'picocolors';
 import { loadRepoConfig } from '../lib/config.js';
 import {
@@ -30,6 +32,10 @@ export function upCommand(): Command {
           for (const wt of worktrees) {
             pending(wt.taskName, `${wt.branch} -> ${wt.worktreePath}`);
           }
+          const claudeDirExists = existsSync(resolve(repoRoot, '.claude'));
+          if (claudeDirExists) {
+            console.log(pc.dim('\n  .claude/ will be copied into each worktree'));
+          }
           if (config.include?.length) {
             console.log(pc.dim(`\n  include: ${config.include.join(', ')}`));
           }
@@ -42,6 +48,18 @@ export function upCommand(): Command {
 
         const worktrees = createSession(config, repoRoot);
         writeTaskFiles(config, worktrees, config.target);
+
+        // Copy .claude/ from main repo into each worktree so hooks fire for agents
+        const claudeDir = resolve(repoRoot, '.claude');
+        if (existsSync(claudeDir)) {
+          for (const wt of worktrees) {
+            const dest = resolve(wt.worktreePath, '.claude');
+            if (!existsSync(dest)) {
+              cpSync(claudeDir, dest, { recursive: true });
+              success(wt.taskName, '.claude/ → worktree');
+            }
+          }
+        }
 
         if (config.include?.length) {
           for (const wt of worktrees) {

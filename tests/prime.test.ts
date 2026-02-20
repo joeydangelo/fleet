@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { resolve } from 'node:path';
-import { mkdirSync, rmSync } from 'node:fs';
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import {
@@ -84,7 +84,7 @@ describe('prime cursor write', () => {
   });
 });
 
-describe('prime from root (not inside worktree)', () => {
+describe('prime from root — orchestrator dashboard', () => {
   let repoDir: string;
 
   beforeEach(() => {
@@ -96,19 +96,47 @@ describe('prime from root (not inside worktree)', () => {
     rmSync(repoDir, { recursive: true, force: true });
   });
 
-  it('exits 1 with error message when run from repo root', () => {
+  it('exits 0 and outputs dashboard when run from repo root', () => {
     const binPath = resolve(process.cwd(), 'dist', 'bin.mjs');
-    try {
-      execFileSync(process.execPath, [binPath, 'prime'], {
-        cwd: repoDir,
-        stdio: 'pipe',
-      });
-      expect.fail('should have exited with code 1');
-    } catch (err: any) {
-      expect(err.status).toBe(1);
-      const stderr = err.stderr?.toString() ?? '';
-      expect(stderr).toMatch(/not inside a worktree/i);
-      expect(stderr).toMatch(/paw launch/);
-    }
+    const result = execFileSync(process.execPath, [binPath, 'prime'], {
+      cwd: repoDir,
+      stdio: 'pipe',
+    });
+    const stdout = result.toString();
+    expect(stdout).toContain('paw v');
+    expect(stdout).toContain('=== INSTALLATION ===');
+    expect(stdout).toContain('=== QUICK REFERENCE ===');
+  });
+
+  it('shows session status when paw.yaml exists', () => {
+    // Create a .paw directory with paw.yaml to simulate a configured session
+    mkdirSync(resolve(repoDir, '.paw'), { recursive: true });
+    writeFileSync(
+      resolve(repoDir, '.paw', 'paw.yaml'),
+      'target: feature/test\ntasks:\n  auth:\n    focus: src/auth/\n',
+    );
+
+    const binPath = resolve(process.cwd(), 'dist', 'bin.mjs');
+    const result = execFileSync(process.execPath, [binPath, 'prime'], {
+      cwd: repoDir,
+      stdio: 'pipe',
+    });
+    const stdout = result.toString();
+    expect(stdout).toContain('=== SESSION STATUS ===');
+  });
+
+  it('--brief outputs fewer lines than full', () => {
+    const binPath = resolve(process.cwd(), 'dist', 'bin.mjs');
+    const fullResult = execFileSync(process.execPath, [binPath, 'prime'], {
+      cwd: repoDir,
+      stdio: 'pipe',
+    });
+    const briefResult = execFileSync(process.execPath, [binPath, 'prime', '--brief'], {
+      cwd: repoDir,
+      stdio: 'pipe',
+    });
+    const fullLines = fullResult.toString().split('\n').length;
+    const briefLines = briefResult.toString().split('\n').length;
+    expect(briefLines).toBeLessThan(fullLines);
   });
 });
