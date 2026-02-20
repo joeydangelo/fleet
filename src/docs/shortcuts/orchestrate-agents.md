@@ -1,5 +1,5 @@
 ---
-title: Fan Out In
+title: Orchestrate Agents
 description: Full orchestrator workflow — decompose, dispatch agents, monitor, merge, clean up
 category: orchestrator
 ---
