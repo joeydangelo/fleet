@@ -9,6 +9,9 @@ description: Condensed paw skill for compacted contexts
 
 ## Installation
 
+Requires **tmux** (`sudo apt install tmux` on Linux/WSL, `brew install tmux` on macOS).
+On Windows, run paw from inside WSL.
+
 ```bash
 npm install -g get-paw@latest
 paw setup
@@ -28,7 +31,8 @@ Two roles — read the right section of the full skill (`paw skill`):
 
 | Command | Purpose |
 |---|---|
-| `paw go` | Full lifecycle: up → spawn → watch → merge → down |
+| `paw` | Open TUI — attach to tmux session with agent panes |
+| `paw go` | Full lifecycle: up → launch → watch → merge → down |
 | `paw status` | Check progress across all tasks |
 | `paw prime` | Orient yourself (orchestrator dashboard or worktree task) |
 | `paw broadcast "..."` | Announce a change to all agents |

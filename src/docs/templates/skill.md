@@ -28,6 +28,9 @@ name: paw
 
 ## Installation
 
+Requires **tmux** (`sudo apt install tmux` on Linux/WSL, `brew install tmux` on macOS).
+On Windows, run paw from inside WSL.
+
 ```bash
 npm install -g get-paw@latest
 paw setup
@@ -111,7 +114,8 @@ For step-by-step control instead of `paw go`, load
 | `paw go --poll-interval 10` | Adjust watch polling frequency (default 5s) |
 | `paw up` | Create worktrees and branches for all tasks |
 | `paw up --dry-run` | Preview what would be created |
-| `paw launch` | Open terminal + agent in each worktree |
+| `paw launch` | Spawn agents in tmux panes (one per worktree) |
+| `paw` | Open TUI — attach to tmux session with agent panes |
 | `paw launch --task <name>` | Spawn agent in a specific worktree |
 | `paw launch --dry-run` | Preview spawn commands without executing |
 | `paw status` | Check progress across all tasks |
@@ -258,6 +262,7 @@ finished.
 - **Orchestrator** runs in main repo, **Worktree agent** runs in isolated worktree
 - Config: `.paw/paw.yaml` — tasks, target branch, base, dependencies
 - Session state: `paw-sync` branch (managed by paw CLI — never edit directly)
-- Full lifecycle: `paw go` (up → spawn → watch → merge → down)
+- Full lifecycle: `paw go` (up → launch → watch → merge → down)
+- TUI: `paw` (bare command) attaches to tmux session with agent panes
 - Context recovery: `paw prime` (SessionStart hook runs this automatically)
 - Resource discovery: `paw shortcut --list`, `paw guidelines --list`, `paw template --list`
