@@ -1,0 +1,417 @@
+import { describe, it, expect, beforeEach } from 'vitest';
+import {
+  TmuxService,
+  tmuxSessionName,
+  cleanAgentEnv,
+  isInsideTmux,
+  attachToTmuxSession,
+  launchTmux,
+} from '../src/lib/tmux.js';
+import type { TmuxServiceApi } from '../src/lib/tmux.js';
+
+// --- Mock TmuxService for unit tests ---
+
+function createMockExec(responses?: Map<string, string>) {
+  const calls: string[][] = [];
+  const fn = (args: string[], _opts?: { encoding?: string; stdio?: string }) => {
+    calls.push(args);
+    const key = args.join(' ');
+    if (responses?.has(key)) {
+      return responses.get(key)!;
+    }
+    // Default: return empty string for most commands
+    return '';
+  };
+  return { fn, calls };
+}
+
+function createMockTmux(): TmuxServiceApi & {
+  calls: Array<{ method: string; args: unknown[] }>;
+} {
+  const calls: Array<{ method: string; args: unknown[] }> = [];
+  let paneCounter = 0;
+  const sessions = new Set<string>();
+
+  return {
+    calls,
+    sessionExists(name: string) {
+      calls.push({ method: 'sessionExists', args: [name] });
+      return sessions.has(name);
+    },
+    createSession(name: string, cwd: string) {
+      calls.push({ method: 'createSession', args: [name, cwd] });
+      sessions.add(name);
+    },
+    killSession(name: string) {
+      calls.push({ method: 'killSession', args: [name] });
+      sessions.delete(name);
+    },
+    createPane(sessionName: string, cwd: string) {
+      calls.push({ method: 'createPane', args: [sessionName, cwd] });
+      paneCounter++;
+      return `%${paneCounter}`;
+    },
+    killPane(paneId: string) {
+      calls.push({ method: 'killPane', args: [paneId] });
+    },
+    listPanes(sessionName: string) {
+      calls.push({ method: 'listPanes', args: [sessionName] });
+      return [];
+    },
+    paneExists(paneId: string) {
+      calls.push({ method: 'paneExists', args: [paneId] });
+      return true;
+    },
+    sendKeys(paneId: string, keys: string) {
+      calls.push({ method: 'sendKeys', args: [paneId, keys] });
+    },
+    capturePane(paneId: string, lines?: number) {
+      calls.push({ method: 'capturePane', args: [paneId, lines] });
+      return '';
+    },
+    selectLayout(sessionName: string, layout: string) {
+      calls.push({ method: 'selectLayout', args: [sessionName, layout] });
+    },
+    setPaneTitle(paneId: string, title: string) {
+      calls.push({ method: 'setPaneTitle', args: [paneId, title] });
+    },
+    listClients() {
+      calls.push({ method: 'listClients', args: [] });
+      return [];
+    },
+    hasAttachedClient(sessionName: string) {
+      calls.push({ method: 'hasAttachedClient', args: [sessionName] });
+      return false;
+    },
+    switchClient(sessionName: string) {
+      calls.push({ method: 'switchClient', args: [sessionName] });
+    },
+    attachSession(sessionName: string) {
+      calls.push({ method: 'attachSession', args: [sessionName] });
+    },
+  };
+}
+
+describe('tmuxSessionName', () => {
+  it('sanitizes a simple directory name', () => {
+    expect(tmuxSessionName('myapp')).toBe('paw-myapp');
+  });
+
+  it('replaces non-alphanumeric characters with hyphens', () => {
+    expect(tmuxSessionName('my_app.v2')).toBe('paw-my-app-v2');
+  });
+
+  it('collapses consecutive hyphens', () => {
+    expect(tmuxSessionName('my---app')).toBe('paw-my-app');
+  });
+
+  it('strips leading and trailing hyphens from the sanitized part', () => {
+    expect(tmuxSessionName('-myapp-')).toBe('paw-myapp');
+  });
+
+  it('handles directories with spaces', () => {
+    expect(tmuxSessionName('my app')).toBe('paw-my-app');
+  });
+
+  it('handles complex directory names', () => {
+    expect(tmuxSessionName('My Project (v2.1)')).toBe('paw-My-Project-v2-1');
+  });
+});
+
+describe('cleanAgentEnv', () => {
+  it('strips CLAUDECODE and CLAUDE_CODE_ENTRYPOINT', () => {
+    const env = {
+      PATH: '/usr/bin',
+      CLAUDECODE: '1',
+      CLAUDE_CODE_ENTRYPOINT: 'cli',
+      HOME: '/home/user',
+    };
+    const cleaned = cleanAgentEnv(env);
+    expect(cleaned).not.toHaveProperty('CLAUDECODE');
+    expect(cleaned).not.toHaveProperty('CLAUDE_CODE_ENTRYPOINT');
+    expect(cleaned['PATH']).toBe('/usr/bin');
+    expect(cleaned['HOME']).toBe('/home/user');
+  });
+
+  it('returns env unchanged when no agent vars present', () => {
+    const env = { PATH: '/usr/bin', HOME: '/home/user' };
+    const cleaned = cleanAgentEnv(env);
+    expect(cleaned).toEqual(env);
+  });
+
+  it('does not mutate the original env', () => {
+    const env = { PATH: '/usr/bin', CLAUDECODE: '1' };
+    cleanAgentEnv(env);
+    expect(env).toHaveProperty('CLAUDECODE');
+  });
+});
+
+describe('isInsideTmux', () => {
+  const originalTmux = process.env['TMUX'];
+
+  beforeEach(() => {
+    delete process.env['TMUX'];
+  });
+
+  it('returns false when TMUX is not set', () => {
+    expect(isInsideTmux()).toBe(false);
+  });
+
+  it('returns true when TMUX is set', () => {
+    process.env['TMUX'] = '/tmp/tmux-1000/default,12345,0';
+    expect(isInsideTmux()).toBe(true);
+  });
+
+  // Restore original
+  beforeEach(() => {
+    if (originalTmux !== undefined) {
+      process.env['TMUX'] = originalTmux;
+    } else {
+      delete process.env['TMUX'];
+    }
+  });
+});
+
+describe('TmuxService with mock exec', () => {
+  it('sessionExists returns true when has-session succeeds', () => {
+    const { fn } = createMockExec();
+    const svc = new TmuxService(fn);
+    expect(svc.sessionExists('test-session')).toBe(true);
+  });
+
+  it('sessionExists returns false when has-session throws', () => {
+    const fn = () => {
+      throw new Error('no session');
+    };
+    const svc = new TmuxService(fn);
+    expect(svc.sessionExists('test-session')).toBe(false);
+  });
+
+  it('createSession calls new-session with correct args', () => {
+    const { fn, calls } = createMockExec();
+    const svc = new TmuxService(fn);
+    svc.createSession('paw-myapp', '/home/user/myapp');
+    expect(calls[0]).toEqual(['new-session', '-d', '-s', 'paw-myapp', '-c', '/home/user/myapp']);
+  });
+
+  it('killSession calls kill-session', () => {
+    const { fn, calls } = createMockExec();
+    const svc = new TmuxService(fn);
+    svc.killSession('paw-myapp');
+    expect(calls[0]).toEqual(['kill-session', '-t', 'paw-myapp']);
+  });
+
+  it('createPane calls split-window and returns pane ID', () => {
+    const responses = new Map([['split-window -t paw-myapp -c /tmp/wt -P -F #{pane_id}', '%42']]);
+    const { fn } = createMockExec(responses);
+    const svc = new TmuxService(fn);
+    const paneId = svc.createPane('paw-myapp', '/tmp/wt');
+    expect(paneId).toBe('%42');
+  });
+
+  it('killPane calls kill-pane', () => {
+    const { fn, calls } = createMockExec();
+    const svc = new TmuxService(fn);
+    svc.killPane('%42');
+    expect(calls[0]).toEqual(['kill-pane', '-t', '%42']);
+  });
+
+  it('listPanes returns array of pane IDs', () => {
+    const responses = new Map([['list-panes -t paw-myapp -F #{pane_id}', '%1\n%2\n%3']]);
+    const { fn } = createMockExec(responses);
+    const svc = new TmuxService(fn);
+    expect(svc.listPanes('paw-myapp')).toEqual(['%1', '%2', '%3']);
+  });
+
+  it('listPanes returns empty array for empty output', () => {
+    const { fn } = createMockExec();
+    const svc = new TmuxService(fn);
+    expect(svc.listPanes('paw-myapp')).toEqual([]);
+  });
+
+  it('paneExists returns true when display-message succeeds', () => {
+    const { fn } = createMockExec();
+    const svc = new TmuxService(fn);
+    expect(svc.paneExists('%42')).toBe(true);
+  });
+
+  it('paneExists returns false when display-message throws', () => {
+    const fn = () => {
+      throw new Error('no pane');
+    };
+    const svc = new TmuxService(fn);
+    expect(svc.paneExists('%42')).toBe(false);
+  });
+
+  it('sendKeys sends command with Enter', () => {
+    const { fn, calls } = createMockExec();
+    const svc = new TmuxService(fn);
+    svc.sendKeys('%42', 'claude --resume');
+    expect(calls[0]).toEqual(['send-keys', '-t', '%42', 'claude --resume', 'Enter']);
+  });
+
+  it('capturePane captures with line limit', () => {
+    const { fn, calls } = createMockExec();
+    const svc = new TmuxService(fn);
+    svc.capturePane('%42', 50);
+    expect(calls[0]).toEqual(['capture-pane', '-t', '%42', '-p', '-S', '-50']);
+  });
+
+  it('capturePane captures without line limit', () => {
+    const { fn, calls } = createMockExec();
+    const svc = new TmuxService(fn);
+    svc.capturePane('%42');
+    expect(calls[0]).toEqual(['capture-pane', '-t', '%42', '-p']);
+  });
+
+  it('selectLayout applies layout', () => {
+    const { fn, calls } = createMockExec();
+    const svc = new TmuxService(fn);
+    svc.selectLayout('paw-myapp', 'tiled');
+    expect(calls[0]).toEqual(['select-layout', '-t', 'paw-myapp', 'tiled']);
+  });
+
+  it('setPaneTitle sets title via select-pane', () => {
+    const { fn, calls } = createMockExec();
+    const svc = new TmuxService(fn);
+    svc.setPaneTitle('%42', 'paw-auth');
+    expect(calls[0]).toEqual(['select-pane', '-t', '%42', '-T', 'paw-auth']);
+  });
+
+  it('hasAttachedClient returns false when no clients', () => {
+    const { fn } = createMockExec();
+    const svc = new TmuxService(fn);
+    expect(svc.hasAttachedClient('paw-myapp')).toBe(false);
+  });
+
+  it('hasAttachedClient returns true when clients listed', () => {
+    const responses = new Map([['list-clients -t paw-myapp -F #{client_name}', '/dev/pts/0']]);
+    const { fn } = createMockExec(responses);
+    const svc = new TmuxService(fn);
+    expect(svc.hasAttachedClient('paw-myapp')).toBe(true);
+  });
+
+  it('switchClient calls switch-client', () => {
+    const { fn, calls } = createMockExec();
+    const svc = new TmuxService(fn);
+    svc.switchClient('paw-myapp');
+    expect(calls[0]).toEqual(['switch-client', '-t', 'paw-myapp']);
+  });
+});
+
+describe('attachToTmuxSession', () => {
+  it('uses switchClient when inside tmux', () => {
+    const mock = createMockTmux();
+    const originalTmux = process.env['TMUX'];
+    process.env['TMUX'] = '/tmp/tmux-1000/default,12345,0';
+    try {
+      attachToTmuxSession(mock, 'paw-myapp');
+      const switchCall = mock.calls.find((c) => c.method === 'switchClient');
+      expect(switchCall).toBeDefined();
+      expect(switchCall!.args).toEqual(['paw-myapp']);
+    } finally {
+      if (originalTmux !== undefined) {
+        process.env['TMUX'] = originalTmux;
+      } else {
+        delete process.env['TMUX'];
+      }
+    }
+  });
+
+  it('uses attachSession when not inside tmux', () => {
+    const mock = createMockTmux();
+    const originalTmux = process.env['TMUX'];
+    delete process.env['TMUX'];
+    try {
+      attachToTmuxSession(mock, 'paw-myapp');
+      const attachCall = mock.calls.find((c) => c.method === 'attachSession');
+      expect(attachCall).toBeDefined();
+      expect(attachCall!.args).toEqual(['paw-myapp']);
+    } finally {
+      if (originalTmux !== undefined) {
+        process.env['TMUX'] = originalTmux;
+      } else {
+        delete process.env['TMUX'];
+      }
+    }
+  });
+});
+
+describe('launchTmux', () => {
+  it('creates session when it does not exist', () => {
+    const mock = createMockTmux();
+    const worktrees = [{ taskName: 'auth', worktreePath: '/tmp/wt-auth', agentCommand: 'claude' }];
+    launchTmux(mock, 'paw-myapp', '/home/user/myapp', worktrees);
+    const createCall = mock.calls.find((c) => c.method === 'createSession');
+    expect(createCall).toBeDefined();
+    expect(createCall!.args).toEqual(['paw-myapp', '/home/user/myapp']);
+  });
+
+  it('skips session creation when it already exists', () => {
+    const mock = createMockTmux();
+    // Pre-create the session
+    mock.createSession('paw-myapp', '/tmp');
+    mock.calls.length = 0; // Reset calls
+
+    const worktrees = [{ taskName: 'auth', worktreePath: '/tmp/wt-auth', agentCommand: 'claude' }];
+    launchTmux(mock, 'paw-myapp', '/home/user/myapp', worktrees);
+    const createCalls = mock.calls.filter((c) => c.method === 'createSession');
+    expect(createCalls).toHaveLength(0);
+  });
+
+  it('creates one pane per worktree', () => {
+    const mock = createMockTmux();
+    const worktrees = [
+      { taskName: 'auth', worktreePath: '/tmp/wt-auth', agentCommand: 'claude' },
+      { taskName: 'api', worktreePath: '/tmp/wt-api', agentCommand: 'claude' },
+      { taskName: 'tests', worktreePath: '/tmp/wt-tests', agentCommand: 'codex' },
+    ];
+    const panes = launchTmux(mock, 'paw-myapp', '/home/user/myapp', worktrees);
+    const paneCalls = mock.calls.filter((c) => c.method === 'createPane');
+    expect(paneCalls).toHaveLength(3);
+    expect(panes).toHaveLength(3);
+  });
+
+  it('sends agent command to each pane', () => {
+    const mock = createMockTmux();
+    const worktrees = [
+      { taskName: 'auth', worktreePath: '/tmp/wt-auth', agentCommand: 'claude --resume' },
+    ];
+    launchTmux(mock, 'paw-myapp', '/home/user/myapp', worktrees);
+    const sendCall = mock.calls.find((c) => c.method === 'sendKeys');
+    expect(sendCall).toBeDefined();
+    expect(sendCall!.args[1]).toBe('claude --resume');
+  });
+
+  it('sets pane title for each pane', () => {
+    const mock = createMockTmux();
+    const worktrees = [{ taskName: 'auth', worktreePath: '/tmp/wt-auth', agentCommand: 'claude' }];
+    launchTmux(mock, 'paw-myapp', '/home/user/myapp', worktrees);
+    const titleCall = mock.calls.find((c) => c.method === 'setPaneTitle');
+    expect(titleCall).toBeDefined();
+    expect(titleCall!.args[1]).toBe('paw-auth');
+  });
+
+  it('applies tiled layout after creating panes', () => {
+    const mock = createMockTmux();
+    const worktrees = [{ taskName: 'auth', worktreePath: '/tmp/wt-auth', agentCommand: 'claude' }];
+    launchTmux(mock, 'paw-myapp', '/home/user/myapp', worktrees);
+    const layoutCall = mock.calls.find((c) => c.method === 'selectLayout');
+    expect(layoutCall).toBeDefined();
+    expect(layoutCall!.args).toEqual(['paw-myapp', 'tiled']);
+  });
+
+  it('returns PawPane objects with correct structure', () => {
+    const mock = createMockTmux();
+    const worktrees = [{ taskName: 'auth', worktreePath: '/tmp/wt-auth', agentCommand: 'claude' }];
+    const panes = launchTmux(mock, 'paw-myapp', '/home/user/myapp', worktrees);
+    expect(panes[0]).toMatchObject({
+      id: 'paw-1',
+      taskName: 'auth',
+      worktreePath: '/tmp/wt-auth',
+      prompt: 'claude',
+    });
+    // paneId is assigned by the mock
+    expect(panes[0]!.paneId).toMatch(/^%/);
+  });
+});
