@@ -12,6 +12,19 @@ import { handleError, formatFocusAreas, colors, success } from '../lib/output.js
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
+function statusColor(status: string): (text: string) => string {
+  return status === 'done' ? colors.success : status === 'in_progress' ? colors.warn : colors.muted;
+}
+
+function summarizeTasks(state: SyncState): { total: number; inProgress: number; done: number } {
+  const tasks = Object.values(state.tasks);
+  return {
+    total: tasks.length,
+    inProgress: tasks.filter((t) => t.status === 'in_progress').length,
+    done: tasks.filter((t) => t.status === 'done').length,
+  };
+}
+
 function getVersion(): string {
   try {
     const pkg = JSON.parse(readFileSync(resolve(__dirname, '..', 'package.json'), 'utf-8')) as {
@@ -86,23 +99,15 @@ function printOrchestratorDashboard(repoRoot: string): void {
   const yamlPath = resolve(repoRoot, '.paw', 'paw.yaml');
   const state = readSyncState(repoRoot);
   if (state) {
-    const tasks = Object.entries(state.tasks);
-    const inProgress = tasks.filter(([, t]) => t.status === 'in_progress').length;
-    const done = tasks.filter(([, t]) => t.status === 'done').length;
+    const { total, inProgress, done } = summarizeTasks(state);
     console.log(
-      `Active session — target: ${state.target}, tasks: ${tasks.length} (${inProgress} in_progress, ${done} done)`,
+      `Active session — target: ${state.target}, tasks: ${total} (${inProgress} in_progress, ${done} done)`,
     );
 
-    for (const [name, task] of tasks) {
-      const statusColor =
-        task.status === 'done'
-          ? colors.success
-          : task.status === 'in_progress'
-            ? colors.warn
-            : colors.muted;
+    for (const [name, task] of Object.entries(state.tasks)) {
       const focus = formatFocusAreas(task.focus);
       const focusSuffix = focus ? `  ${pc.dim(focus)}` : '';
-      console.log(`  ${statusColor(task.status.padEnd(12))} ${name}${focusSuffix}`);
+      console.log(`  ${statusColor(task.status)(task.status.padEnd(12))} ${name}${focusSuffix}`);
     }
   } else if (existsSync(yamlPath)) {
     console.log('Session configured (.paw/paw.yaml found) — run `paw up` to start');
@@ -131,10 +136,8 @@ function printOrchestratorBrief(repoRoot: string): void {
 
   const state = readSyncState(repoRoot);
   if (state) {
-    const tasks = Object.entries(state.tasks);
-    const inProgress = tasks.filter(([, t]) => t.status === 'in_progress').length;
-    const done = tasks.filter(([, t]) => t.status === 'done').length;
-    console.log(`Session: ${tasks.length} tasks (${inProgress} in_progress, ${done} done)`);
+    const { total, inProgress, done } = summarizeTasks(state);
+    console.log(`Session: ${total} tasks (${inProgress} in_progress, ${done} done)`);
   } else {
     console.log('No active session');
   }
@@ -150,15 +153,9 @@ function printTeamStatus(taskName: string, state: SyncState): void {
 
   console.log(pc.bold('Team Status'));
   for (const [name, task] of otherTasks) {
-    const statusColor =
-      task.status === 'done'
-        ? colors.success
-        : task.status === 'in_progress'
-          ? colors.warn
-          : colors.muted;
     const focus = formatFocusAreas(task.focus);
     const focusSuffix = focus ? `  ${pc.dim(focus)}` : '';
-    console.log(`  ${statusColor(task.status.padEnd(12))} ${name}${focusSuffix}`);
+    console.log(`  ${statusColor(task.status)(task.status.padEnd(12))} ${name}${focusSuffix}`);
   }
   console.log();
 }

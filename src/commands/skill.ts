@@ -1,5 +1,5 @@
 import { Command } from 'commander';
-import { readDoc } from '../lib/docs.js';
+import { readDoc, stripFrontmatter } from '../lib/docs.js';
 import { handleError, colors } from '../lib/output.js';
 
 export function skillCommand(): Command {
@@ -14,9 +14,7 @@ export function skillCommand(): Command {
           console.error(colors.error(`Skill template '${templateName}' not found.`));
           process.exit(1);
         }
-        // Strip YAML frontmatter — output raw markdown body only
-        const body = doc.content.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n/, '');
-        console.log(body);
+        console.log(stripFrontmatter(doc.content));
       } catch (err) {
         handleError(err);
       }
