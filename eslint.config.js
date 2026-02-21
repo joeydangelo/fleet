@@ -11,7 +11,7 @@ import prettier from 'eslint-config-prettier';
 
 const typedRecommended = tseslint.configs.recommendedTypeChecked.map((cfg) => ({
   ...cfg,
-  files: ['**/*.ts'],
+  files: ['**/*.ts', '**/*.tsx'],
   languageOptions: {
     ...(cfg.languageOptions ?? {}),
     parserOptions: {
@@ -44,7 +44,7 @@ export default [
 
   // Paw-specific rules
   {
-    files: ['**/*.ts'],
+    files: ['**/*.ts', '**/*.tsx'],
     rules: {
       // Allow underscore prefix for intentionally unused vars
       '@typescript-eslint/no-unused-vars': [
