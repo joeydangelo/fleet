@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { resolve } from 'node:path';
-import { mkdirSync, existsSync, readFileSync, rmSync } from 'node:fs';
+import { cpSync, mkdirSync, existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { createSession, writeTaskFiles, planWorktrees } from '../src/lib/session.js';
@@ -197,5 +197,29 @@ describe('paw session lifecycle', () => {
       removeWorktree(wt.worktreePath, repoDir);
     }
     worktreePaths = [];
+  });
+
+  it('copies .claude/ into each worktree when present', () => {
+    // Create a .claude directory with a settings file
+    const claudeDir = resolve(repoDir, '.claude');
+    mkdirSync(claudeDir, { recursive: true });
+    writeFileSync(resolve(claudeDir, 'settings.json'), '{"hooks":{}}', 'utf-8');
+
+    const worktrees = createSession(config, repoDir);
+    worktreePaths = worktrees.map((w) => w.worktreePath);
+
+    // Simulate what paw up does: copy .claude/ into each worktree
+    for (const wt of worktrees) {
+      const dest = resolve(wt.worktreePath, '.claude');
+      if (!existsSync(dest)) {
+        cpSync(claudeDir, dest, { recursive: true });
+      }
+    }
+
+    for (const wt of worktrees) {
+      const dest = resolve(wt.worktreePath, '.claude', 'settings.json');
+      expect(existsSync(dest)).toBe(true);
+      expect(readFileSync(dest, 'utf-8')).toBe('{"hooks":{}}');
+    }
   });
 });

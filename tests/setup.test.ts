@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { tmpdir } from 'node:os';
+import { execFileSync } from 'node:child_process';
 import { installHooks } from '../src/lib/hooks.js';
 import { readDoc, parseFrontmatter } from '../src/lib/docs.js';
 import { updatePawSection } from '../src/commands/setup.js';
@@ -292,5 +293,57 @@ describe('parseFrontmatter', () => {
     const result = parseFrontmatter(content);
     expect(result.title).toBe('Rules: A Guide');
     expect(result.description).toBe('Use @clack/prompts for UI');
+  });
+});
+
+describe('paw setup — AGENTS.md + dynamic directories', () => {
+  let repoRoot: string;
+
+  beforeEach(() => {
+    repoRoot = makeTempDir();
+    // paw setup requires a git repo
+    execFileSync('git', ['init', repoRoot], { stdio: 'pipe' });
+    execFileSync('git', ['commit', '--allow-empty', '-m', 'init'], {
+      cwd: repoRoot,
+      stdio: 'pipe',
+    });
+  });
+
+  afterEach(() => {
+    rmSync(repoRoot, { recursive: true, force: true });
+  });
+
+  it('creates AGENTS.md with both BEGIN and END markers', () => {
+    const binPath = resolve(process.cwd(), 'dist', 'bin.mjs');
+    execFileSync(process.execPath, [binPath, 'setup'], {
+      cwd: repoRoot,
+      stdio: 'pipe',
+    });
+
+    const agentsPath = resolve(repoRoot, 'AGENTS.md');
+    expect(existsSync(agentsPath)).toBe(true);
+
+    const content = readFileSync(agentsPath, 'utf-8');
+    expect(content).toContain('<!-- BEGIN PAW INTEGRATION -->');
+    expect(content).toContain('<!-- END PAW INTEGRATION -->');
+  });
+
+  it('installed SKILL.md has shortcut directory with full paw shortcut <name> format', () => {
+    const binPath = resolve(process.cwd(), 'dist', 'bin.mjs');
+    execFileSync(process.execPath, [binPath, 'setup'], {
+      cwd: repoRoot,
+      stdio: 'pipe',
+    });
+
+    const skillPath = resolve(repoRoot, '.claude', 'skills', 'paw', 'SKILL.md');
+    expect(existsSync(skillPath)).toBe(true);
+
+    const content = readFileSync(skillPath, 'utf-8');
+    // Verify shortcut directory exists with full command format
+    expect(content).toContain('<!-- BEGIN SHORTCUT DIRECTORY -->');
+    expect(content).toContain('<!-- END SHORTCUT DIRECTORY -->');
+    expect(content).toMatch(/\| `paw shortcut \S+` \|/);
+    // Verify guidelines directory uses full command format
+    expect(content).toMatch(/\| `paw guidelines \S+` \|/);
   });
 });
