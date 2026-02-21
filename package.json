@@ -41,6 +41,7 @@
     "prepare": "lefthook install"
   },
   "dependencies": {
+    "atomically": "^2.1.1",
     "commander": "^14.0.2",
     "fast-glob": "^3.3.3",
     "ink": "^6.8.0",

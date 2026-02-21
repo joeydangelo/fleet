@@ -9,7 +9,7 @@ import {
   attachToTmuxSession,
 } from '../lib/tmux.js';
 import type { TmuxServiceApi, PawPane } from '../lib/tmux.js';
-import { readPaneConfig } from '../lib/pane-state.js';
+import { restorePanes } from '../lib/pane-state.js';
 import { TuiApp } from '../components/tui-app.js';
 import { handleError, colors } from '../lib/output.js';
 
@@ -57,8 +57,7 @@ export function runTui(): void {
 
     tmux.createSession(sessionName, repoRoot);
 
-    const paneConfig = readPaneConfig(repoRoot);
-    const panes = paneConfig?.panes ?? [];
+    const panes = restorePanes(tmux, sessionName, repoRoot);
 
     if (isInsideTmux()) {
       tmux.switchClient(sessionName);

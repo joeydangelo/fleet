@@ -8,6 +8,8 @@ import { planWorktrees } from '../lib/session.js';
 import { removeSyncWorktree, archiveSession } from '../lib/sync.js';
 import { SYNC_BRANCH } from '../lib/constants.js';
 import { readDoc } from '../lib/docs.js';
+import { createTmuxService } from '../lib/tmux.js';
+import { killPanes } from '../lib/pane-state.js';
 import {
   success,
   error,
@@ -72,6 +74,14 @@ export function downCommand(): Command {
             ),
           );
           process.exit(1);
+        }
+
+        // Kill agent tmux panes
+        try {
+          const tmux = createTmuxService();
+          killPanes(tmux, repoRoot);
+        } catch {
+          // tmux may not be available (e.g. running outside WSL)
         }
 
         // Remove backup refs

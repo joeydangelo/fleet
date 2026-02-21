@@ -2,7 +2,13 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdirSync, rmSync, readFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { tmpdir } from 'node:os';
-import { readPaneConfig, writePaneConfig, savePanes, restorePanes } from '../src/lib/pane-state.js';
+import {
+  readPaneConfig,
+  writePaneConfig,
+  savePanes,
+  restorePanes,
+  killPanes,
+} from '../src/lib/pane-state.js';
 import type { PawPane, PawPaneConfig, TmuxServiceApi } from '../src/lib/tmux.js';
 
 function makeTempDir(): string {
@@ -14,7 +20,10 @@ function makeTempDir(): string {
   return dir;
 }
 
-function createMockTmux(existingPanes: string[] = []): TmuxServiceApi & {
+function createMockTmux(
+  existingPanes: string[] = [],
+  titleMap: Map<string, string> = new Map(),
+): TmuxServiceApi & {
   calls: Array<{ method: string; args: unknown[] }>;
 } {
   const calls: Array<{ method: string; args: unknown[] }> = [];
@@ -43,6 +52,10 @@ function createMockTmux(existingPanes: string[] = []): TmuxServiceApi & {
     listPanes(sessionName: string) {
       calls.push({ method: 'listPanes', args: [sessionName] });
       return existingPanes;
+    },
+    listPanesWithTitles(sessionName: string) {
+      calls.push({ method: 'listPanesWithTitles', args: [sessionName] });
+      return titleMap;
     },
     paneExists(paneId: string) {
       calls.push({ method: 'paneExists', args: [paneId] });
@@ -227,6 +240,21 @@ describe('pane-state: restorePanes', () => {
     expect(createCall).toBeDefined();
   });
 
+  it('rebinds pane by title when pane ID is gone but title exists', () => {
+    const pane = makePane({ paneId: '%99', taskName: 'auth', worktreePath: tempDir });
+    savePanes(tempDir, 'paw-myapp', [pane]);
+
+    const titles = new Map([['paw-auth', '%50']]);
+    const mock = createMockTmux([], titles);
+    const result = restorePanes(mock, 'paw-myapp', tempDir);
+
+    expect(result).toHaveLength(1);
+    expect(result[0]!.paneId).toBe('%50');
+
+    const createCalls = mock.calls.filter((c) => c.method === 'createPane');
+    expect(createCalls).toHaveLength(0);
+  });
+
   it('skips recreating panes when worktree is gone', () => {
     const pane = makePane({ paneId: '%99', worktreePath: '/nonexistent/path' });
     savePanes(tempDir, 'paw-myapp', [pane]);
@@ -235,5 +263,58 @@ describe('pane-state: restorePanes', () => {
     const result = restorePanes(mock, 'paw-myapp', tempDir);
 
     expect(result).toHaveLength(0);
+  });
+});
+
+describe('pane-state: killPanes', () => {
+  let tempDir: string;
+
+  beforeEach(() => {
+    tempDir = makeTempDir();
+  });
+
+  afterEach(() => {
+    rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  it('kills all persisted panes and removes panes.json', () => {
+    const panes = [
+      makePane({ paneId: '%1', taskName: 'auth' }),
+      makePane({ paneId: '%2', taskName: 'api', id: 'paw-2' }),
+      makePane({ paneId: '%3', taskName: 'tests', id: 'paw-3' }),
+    ];
+    savePanes(tempDir, 'paw-myapp', panes);
+
+    const mock = createMockTmux(['%1', '%2', '%3']);
+    killPanes(mock, tempDir);
+
+    const killCalls = mock.calls.filter((c) => c.method === 'killPane');
+    expect(killCalls).toHaveLength(3);
+    expect(killCalls.map((c) => c.args[0])).toEqual(['%1', '%2', '%3']);
+
+    expect(readPaneConfig(tempDir)).toBeNull();
+  });
+
+  it('skips panes that no longer exist in tmux', () => {
+    const panes = [
+      makePane({ paneId: '%1', taskName: 'auth' }),
+      makePane({ paneId: '%2', taskName: 'api', id: 'paw-2' }),
+    ];
+    savePanes(tempDir, 'paw-myapp', panes);
+
+    const mock = createMockTmux(['%1']); // only %1 exists
+    killPanes(mock, tempDir);
+
+    const killCalls = mock.calls.filter((c) => c.method === 'killPane');
+    expect(killCalls).toHaveLength(1);
+    expect(killCalls[0]!.args[0]).toBe('%1');
+  });
+
+  it('does nothing when no panes.json exists', () => {
+    const mock = createMockTmux();
+    killPanes(mock, tempDir);
+
+    const killCalls = mock.calls.filter((c) => c.method === 'killPane');
+    expect(killCalls).toHaveLength(0);
   });
 });

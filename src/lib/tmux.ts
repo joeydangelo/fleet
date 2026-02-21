@@ -45,6 +45,7 @@ export interface TmuxServiceApi {
   createPane(sessionName: string, cwd: string): string;
   killPane(paneId: string): void;
   listPanes(sessionName: string): string[];
+  listPanesWithTitles(sessionName: string): Map<string, string>;
   paneExists(paneId: string): boolean;
   sendKeys(paneId: string, keys: string): void;
   capturePane(paneId: string, lines?: number): string;
@@ -109,6 +110,22 @@ export class TmuxService implements TmuxServiceApi {
   listPanes(sessionName: string): string[] {
     const output = this.exec(['list-panes', '-t', sessionName, '-F', '#{pane_id}']);
     return output.split('\n').filter(Boolean);
+  }
+
+  /** List panes with their titles. Returns a map of title -> pane ID. */
+  listPanesWithTitles(sessionName: string): Map<string, string> {
+    const output = this.exec(['list-panes', '-t', sessionName, '-F', '#{pane_id} #{pane_title}']);
+    const map = new Map<string, string>();
+    for (const line of output.split('\n').filter(Boolean)) {
+      const spaceIdx = line.indexOf(' ');
+      if (spaceIdx === -1) continue;
+      const paneId = line.slice(0, spaceIdx);
+      const title = line.slice(spaceIdx + 1);
+      if (paneId && title) {
+        map.set(title, paneId);
+      }
+    }
+    return map;
   }
 
   paneExists(paneId: string): boolean {

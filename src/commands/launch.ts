@@ -6,6 +6,7 @@ import { loadRepoConfig } from '../lib/config.js';
 import { planWorktrees } from '../lib/session.js';
 import { readSyncState } from '../lib/sync.js';
 import { createTmuxService, tmuxSessionName, launchTmux } from '../lib/tmux.js';
+import { savePanes } from '../lib/pane-state.js';
 import { success, skip, error, pending, handleError, colors } from '../lib/output.js';
 
 interface LaunchOpts {
@@ -90,6 +91,7 @@ export function launchCommand(): Command {
 
         const tmux = createTmuxService();
         const panes = launchTmux(tmux, sessionName, repoRoot, launchList);
+        savePanes(repoRoot, sessionName, panes);
 
         for (const pane of panes) {
           success(pane.taskName, pane.worktreePath);

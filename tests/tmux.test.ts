@@ -58,6 +58,10 @@ function createMockTmux(): TmuxServiceApi & {
       calls.push({ method: 'listPanes', args: [sessionName] });
       return [];
     },
+    listPanesWithTitles(sessionName: string) {
+      calls.push({ method: 'listPanesWithTitles', args: [sessionName] });
+      return new Map<string, string>();
+    },
     paneExists(paneId: string) {
       calls.push({ method: 'paneExists', args: [paneId] });
       return true;
@@ -296,6 +300,26 @@ describe('TmuxService with mock exec', () => {
     const svc = new TmuxService(fn);
     svc.switchClient('paw-myapp');
     expect(calls[0]).toEqual(['switch-client', '-t', 'paw-myapp']);
+  });
+
+  it('listPanesWithTitles returns title-to-paneId map', () => {
+    const responses = new Map([
+      ['list-panes -t paw-myapp -F #{pane_id} #{pane_title}', '%1 paw-auth\n%2 paw-api\n%3 bash'],
+    ]);
+    const { fn } = createMockExec(responses);
+    const svc = new TmuxService(fn);
+    const map = svc.listPanesWithTitles('paw-myapp');
+    expect(map.get('paw-auth')).toBe('%1');
+    expect(map.get('paw-api')).toBe('%2');
+    expect(map.get('bash')).toBe('%3');
+    expect(map.size).toBe(3);
+  });
+
+  it('listPanesWithTitles returns empty map for empty output', () => {
+    const { fn } = createMockExec();
+    const svc = new TmuxService(fn);
+    const map = svc.listPanesWithTitles('paw-myapp');
+    expect(map.size).toBe(0);
   });
 });
 
