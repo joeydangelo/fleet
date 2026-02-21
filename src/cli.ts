@@ -3,29 +3,40 @@ import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Command } from 'commander';
 import { setVerbosity } from './lib/context.js';
-import { setupCommand } from './commands/setup.js';
-import { upCommand } from './commands/up.js';
-import { primeCommand } from './commands/prime.js';
-import { statusCommand } from './commands/status.js';
-import { doneCommand } from './commands/done.js';
-import { mergeCommand } from './commands/merge.js';
-import { downCommand } from './commands/down.js';
-import { broadcastCommand } from './commands/broadcast.js';
-import { askCommand } from './commands/ask.js';
-import { replyCommand } from './commands/reply.js';
-import { threadsCommand } from './commands/threads.js';
-import { shortcutCommand } from './commands/shortcut.js';
-import { guidelinesCommand } from './commands/guidelines.js';
-import { templateCommand } from './commands/template.js';
-import { launchCommand } from './commands/launch.js';
-import { watchCommand } from './commands/watch.js';
-import { goCommand } from './commands/go.js';
-import { skillCommand } from './commands/skill.js';
-import { runTui } from './commands/tui.js';
 
 const pkg = JSON.parse(
   readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), '..', 'package.json'), 'utf-8'),
 ) as { version: string };
+
+/**
+ * Register a lazily-loaded subcommand. The command module is only imported
+ * when the command is actually invoked, keeping startup fast.
+ *
+ * Approach: register a thin placeholder that accepts all args/options.
+ * When invoked, load the real command module and re-parse argv through it.
+ */
+function lazy(
+  program: Command,
+  name: string,
+  description: string,
+  loader: () => Promise<Command>,
+): void {
+  const placeholder = new Command(name)
+    .description(description)
+    .allowUnknownOption(true)
+    .allowExcessArguments(true)
+    .helpOption(false);
+
+  placeholder.action(async () => {
+    const realCommand = await loader();
+
+    // Re-parse: real command sees [node, cmd, ...rest] — everything after `paw <cmd>`
+    const argv = ['node', name, ...process.argv.slice(3)];
+    await realCommand.parseAsync(argv);
+  });
+
+  program.addCommand(placeholder);
+}
 
 export function createCli(): Command {
   const program = new Command();
@@ -55,27 +66,83 @@ Getting Started:
   npm install -g get-paw@latest && paw setup`,
   );
 
-  program.addCommand(setupCommand());
-  program.addCommand(upCommand());
-  program.addCommand(primeCommand());
-  program.addCommand(statusCommand());
-  program.addCommand(doneCommand());
-  program.addCommand(mergeCommand());
-  program.addCommand(downCommand());
-  program.addCommand(broadcastCommand());
-  program.addCommand(askCommand());
-  program.addCommand(replyCommand());
-  program.addCommand(threadsCommand());
-  program.addCommand(shortcutCommand());
-  program.addCommand(guidelinesCommand());
-  program.addCommand(templateCommand());
-  program.addCommand(launchCommand());
-  program.addCommand(watchCommand());
-  program.addCommand(goCommand());
-  program.addCommand(skillCommand());
+  // All commands are lazily loaded — modules are only imported when invoked.
+  lazy(program, 'setup', 'Initialize paw in a repo', async () => {
+    const m = await import('./commands/setup.js');
+    return m.setupCommand();
+  });
+  lazy(program, 'up', 'Create worktrees and branches for all tasks', async () => {
+    const m = await import('./commands/up.js');
+    return m.upCommand();
+  });
+  lazy(program, 'prime', 'Context management — orchestrator dashboard or worktree orientation', async () => {
+    const m = await import('./commands/prime.js');
+    return m.primeCommand();
+  });
+  lazy(program, 'status', 'Check progress of all task worktrees', async () => {
+    const m = await import('./commands/status.js');
+    return m.statusCommand();
+  });
+  lazy(program, 'done', 'Mark current task as done', async () => {
+    const m = await import('./commands/done.js');
+    return m.doneCommand();
+  });
+  lazy(program, 'merge', 'Merge done task branches into the target branch', async () => {
+    const m = await import('./commands/merge.js');
+    return m.mergeCommand();
+  });
+  lazy(program, 'down', 'Remove all task worktrees and clean up', async () => {
+    const m = await import('./commands/down.js');
+    return m.downCommand();
+  });
+  lazy(program, 'broadcast', 'Broadcast a message to all agents', async () => {
+    const m = await import('./commands/broadcast.js');
+    return m.broadcastCommand();
+  });
+  lazy(program, 'ask', 'Send a directed message to a specific agent', async () => {
+    const m = await import('./commands/ask.js');
+    return m.askCommand();
+  });
+  lazy(program, 'reply', 'Reply to the most recent directed message', async () => {
+    const m = await import('./commands/reply.js');
+    return m.replyCommand();
+  });
+  lazy(program, 'threads', 'Show open and resolved ask/reply threads', async () => {
+    const m = await import('./commands/threads.js');
+    return m.threadsCommand();
+  });
+  lazy(program, 'shortcut', 'Display a shortcut workflow', async () => {
+    const m = await import('./commands/shortcut.js');
+    return m.shortcutCommand();
+  });
+  lazy(program, 'guidelines', 'Display a coding guideline', async () => {
+    const m = await import('./commands/guidelines.js');
+    return m.guidelinesCommand();
+  });
+  lazy(program, 'template', 'Display a document template', async () => {
+    const m = await import('./commands/template.js');
+    return m.templateCommand();
+  });
+  lazy(program, 'launch', 'Spawn agents in tmux panes for each task worktree', async () => {
+    const m = await import('./commands/launch.js');
+    return m.launchCommand();
+  });
+  lazy(program, 'watch', 'Continuously monitor agent progress', async () => {
+    const m = await import('./commands/watch.js');
+    return m.watchCommand();
+  });
+  lazy(program, 'go', 'Run the full workflow: up → launch → watch → merge → down', async () => {
+    const m = await import('./commands/go.js');
+    return m.goCommand();
+  });
+  lazy(program, 'skill', 'Output paw skill content to stdout', async () => {
+    const m = await import('./commands/skill.js');
+    return m.skillCommand();
+  });
 
   // Default action: `paw` (bare command) opens the TUI
-  program.action(() => {
+  program.action(async () => {
+    const { runTui } = await import('./commands/tui.js');
     runTui();
   });
 
