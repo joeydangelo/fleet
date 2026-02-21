@@ -69,7 +69,7 @@ function execTmux(
 }
 
 /**
- * TmuxService — all tmux CLI operations go through this class.
+ * TmuxService: all tmux CLI operations go through this class.
  * No platform detection, no WSL bridge. Assumes tmux is available.
  */
 export class TmuxService implements TmuxServiceApi {
@@ -247,7 +247,6 @@ export function launchTmux(
     paneIndex++;
   }
 
-  // Tile the layout after all panes are created
   tmux.selectLayout(sessionName, 'tiled');
 
   return panes;

@@ -43,9 +43,6 @@ export function downCommand(): Command {
           return;
         }
 
-        // tmux manages agent process lifecycle — no PID killing needed.
-        // paw down only cleans up worktrees and session data.
-
         let removed = 0;
         let failed = 0;
 

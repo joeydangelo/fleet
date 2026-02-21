@@ -17,7 +17,7 @@ function panesPath(repoRoot: string): string {
 }
 
 /**
- * Atomic file write — write to temp file, then rename. Prevents
+ * Atomic file write: write to temp file, then rename. Prevents
  * corruption if the process crashes mid-write.
  */
 function atomicWriteSync(filePath: string, content: string): void {
@@ -84,17 +84,14 @@ export function restorePanes(
 
   for (const pane of config.panes) {
     if (existingPanes.includes(pane.paneId)) {
-      // Pane still exists in tmux
       restored.push(pane);
       continue;
     }
 
-    // Recreate missing pane
     if (existsSync(pane.worktreePath)) {
       const newPaneId = tmux.createPane(sessionName, pane.worktreePath);
       tmux.setPaneTitle(newPaneId, `paw-${pane.taskName}`);
 
-      // Echo restore info and original prompt
       tmux.sendKeys(newPaneId, `echo "Restored pane: ${pane.taskName} (${pane.agent})"`);
       tmux.sendKeys(newPaneId, `echo "Original prompt: ${pane.prompt}"`);
 

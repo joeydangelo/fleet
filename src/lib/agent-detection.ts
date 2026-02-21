@@ -52,11 +52,9 @@ function whichCommand(name: string): string | null {
  * install directories.
  */
 export function findAgent(name: AgentName): string | null {
-  // Try PATH first
   const inPath = whichCommand(name);
   if (inPath) return inPath;
 
-  // Check common install paths
   const paths = AGENT_PATHS[name];
   for (const p of paths) {
     if (existsSync(p)) return p;

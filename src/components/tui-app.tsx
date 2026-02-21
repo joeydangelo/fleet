@@ -10,7 +10,7 @@ interface TuiAppProps {
 }
 
 /**
- * Minimal Ink TUI for paw — shows pane list with status indicators.
+ * Minimal Ink TUI for paw. Shows pane list with status indicators.
  * Runs as a sidebar pane inside the tmux session.
  */
 export function TuiApp({ sessionName, tmux, panes: initialPanes, onQuit }: TuiAppProps) {
@@ -18,7 +18,6 @@ export function TuiApp({ sessionName, tmux, panes: initialPanes, onQuit }: TuiAp
   const [panes, setPanes] = useState(initialPanes);
   const [selectedIndex, setSelectedIndex] = useState(0);
 
-  // Refresh pane list periodically
   useEffect(() => {
     const interval = setInterval(() => {
       try {
@@ -53,7 +52,6 @@ export function TuiApp({ sessionName, tmux, panes: initialPanes, onQuit }: TuiAp
       setSelectedIndex((i) => Math.min(panes.length - 1, i + 1));
     }
 
-    // Jump to pane on Enter
     if (key.return && panes[selectedIndex]) {
       const pane = panes[selectedIndex];
       try {

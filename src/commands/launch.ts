@@ -51,7 +51,6 @@ export function launchCommand(): Command {
         console.log(`  agent: ${config.agent}`);
         console.log(`  session: ${sessionName}\n`);
 
-        // Build launch list, filtering done tasks and missing worktrees
         const launchList: Array<{ taskName: string; worktreePath: string; agentCommand: string }> =
           [];
 
@@ -89,7 +88,6 @@ export function launchCommand(): Command {
           return;
         }
 
-        // Launch all tasks as tmux panes
         const tmux = createTmuxService();
         const panes = launchTmux(tmux, sessionName, repoRoot, launchList);
 

@@ -50,25 +50,20 @@ export function runTui(): void {
     const tmux = createTmuxService();
 
     if (tmux.sessionExists(sessionName)) {
-      // Session exists — just reattach
       attachToTmuxSession(tmux, sessionName);
       console.log(colors.info(`\n  Run \`paw\` to resume. Session: ${sessionName}\n`));
       return;
     }
 
-    // Create new session
     tmux.createSession(sessionName, repoRoot);
 
-    // Load any persisted panes
     const paneConfig = readPaneConfig(repoRoot);
     const panes = paneConfig?.panes ?? [];
 
-    // If we're already inside tmux, switch to the new session
     if (isInsideTmux()) {
       tmux.switchClient(sessionName);
     }
 
-    // Run the TUI sidebar in the current pane
     runTuiSidebar(tmux, sessionName, panes);
   } catch (err) {
     handleError(err);

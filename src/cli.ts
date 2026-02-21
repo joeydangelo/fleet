@@ -30,7 +30,7 @@ function lazy(
   placeholder.action(async () => {
     const realCommand = await loader();
 
-    // Re-parse: real command sees [node, cmd, ...rest] — everything after `paw <cmd>`
+    // Re-parse: real command sees [node, cmd, ...rest]
     const argv = ['node', name, ...process.argv.slice(3)];
     await realCommand.parseAsync(argv);
   });
@@ -66,7 +66,7 @@ Getting Started:
   npm install -g get-paw@latest && paw setup`,
   );
 
-  // All commands are lazily loaded — modules are only imported when invoked.
+  // All commands are lazily loaded via dynamic import().
   lazy(program, 'setup', 'Initialize paw in a repo', async () => {
     const m = await import('./commands/setup.js');
     return m.setupCommand();
