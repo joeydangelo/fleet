@@ -1,42 +1,26 @@
 import { Command } from 'commander';
 import { existsSync } from 'node:fs';
+import { basename } from 'node:path';
 import pc from 'picocolors';
 import { loadRepoConfig } from '../lib/config.js';
 import { planWorktrees } from '../lib/session.js';
 import { readSyncState } from '../lib/sync.js';
-import {
-  buildLaunchCommand,
-  spawnTerminal,
-  detectPlatform,
-  readPidFile,
-  writePidFile,
-} from '../lib/launcher.js';
-import { LAUNCH_STAGGER_MS } from '../lib/constants.js';
-import {
-  success,
-  skip,
-  error,
-  pending,
-  toErrorMessage,
-  handleError,
-  colors,
-} from '../lib/output.js';
+import { createTmuxService, tmuxSessionName, launchTmux } from '../lib/tmux.js';
+import { success, skip, error, pending, handleError, colors } from '../lib/output.js';
 
 interface LaunchOpts {
   config?: string;
   dryRun?: boolean;
   task?: string;
-  terminal?: string;
 }
 
 export function launchCommand(): Command {
   return new Command('launch')
-    .description('Open a terminal with the agent command for each task worktree')
+    .description('Spawn agents in tmux panes for each task worktree')
     .option('-c, --config <path>', 'Path to .paw/paw.yaml')
     .option('--dry-run', 'Show what would be spawned without launching')
     .option('-t, --task <name>', 'Launch agent in a specific worktree only')
-    .option('--terminal <emulator>', 'Override terminal emulator (Linux)')
-    .action(async (opts: LaunchOpts) => {
+    .action((opts: LaunchOpts) => {
       try {
         const { repoRoot, config } = loadRepoConfig(opts.config);
 
@@ -51,7 +35,7 @@ export function launchCommand(): Command {
 
         const worktrees = planWorktrees(config, repoRoot);
         const syncState = readSyncState(repoRoot);
-        const platform = detectPlatform();
+        const sessionName = tmuxSessionName(basename(repoRoot));
 
         // Filter to a specific task if --task is provided
         const targets = opts.task ? worktrees.filter((wt) => wt.taskName === opts.task) : worktrees;
@@ -65,69 +49,55 @@ export function launchCommand(): Command {
           pc.bold(`paw launch: ${targets.length} task(s)${opts.dryRun ? ' (dry run)' : ''}`),
         );
         console.log(`  agent: ${config.agent}`);
-        console.log(`  platform: ${platform}\n`);
+        console.log(`  session: ${sessionName}\n`);
 
-        let launched = 0;
-        // Read existing PIDs so re-launches append rather than overwrite
-        const trackedPids = readPidFile(repoRoot);
-
-        const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+        // Build launch list, filtering done tasks and missing worktrees
+        const launchList: Array<{ taskName: string; worktreePath: string; agentCommand: string }> =
+          [];
 
         for (const wt of targets) {
           const taskState = syncState?.tasks[wt.taskName];
 
-          // Skip done tasks
           if (taskState?.status === 'done') {
             skip(wt.taskName, 'done');
             continue;
           }
 
-          // Skip worktrees that don't exist
           if (!existsSync(wt.worktreePath)) {
             error(wt.taskName, 'worktree not found -- run paw up first');
             continue;
           }
 
-          const launchOpts = {
-            worktreePath: wt.worktreePath,
-            agentCommand: config.agent,
-            terminal: opts.terminal,
-          };
-
           if (opts.dryRun) {
-            const result = buildLaunchCommand(launchOpts, platform);
-            pending(wt.taskName, `${result.command} ${result.args.join(' ')}`);
+            pending(wt.taskName, `tmux split-window -c ${wt.worktreePath} → ${config.agent}`);
           } else {
-            // Stagger launches so concurrent Claude instances don't race on
-            // ~/.claude.json initialization and corrupt the file.
-            if (launched > 0) await sleep(LAUNCH_STAGGER_MS);
-            try {
-              const pid = spawnTerminal(launchOpts, platform);
-              if (pid !== undefined) {
-                trackedPids[wt.taskName] = pid;
-              }
-              success(wt.taskName, wt.worktreePath);
-              launched++;
-            } catch (err) {
-              const msg = toErrorMessage(err);
-              error(wt.taskName, `failed to launch: ${msg}`);
-            }
+            launchList.push({
+              taskName: wt.taskName,
+              worktreePath: wt.worktreePath,
+              agentCommand: config.agent,
+            });
           }
         }
 
-        // Persist tracked PIDs so `paw down` can kill them later
-        if (!opts.dryRun && Object.keys(trackedPids).length > 0) {
-          writePidFile(repoRoot, trackedPids);
-        }
-
         if (opts.dryRun) {
-          console.log(pc.dim('\nDry run -- no terminals opened.'));
+          console.log(pc.dim('\nDry run -- no panes opened.'));
           return;
         }
 
-        if (launched > 0) {
-          console.log(pc.dim(`\nLaunched ${launched} agent(s).`));
+        if (launchList.length === 0) {
+          console.log(pc.dim('No tasks to launch.'));
+          return;
         }
+
+        // Launch all tasks as tmux panes
+        const tmux = createTmuxService();
+        const panes = launchTmux(tmux, sessionName, repoRoot, launchList);
+
+        for (const pane of panes) {
+          success(pane.taskName, pane.worktreePath);
+        }
+
+        console.log(pc.dim(`\nLaunched ${panes.length} agent(s) in tmux session: ${sessionName}`));
       } catch (err) {
         handleError(err);
       }

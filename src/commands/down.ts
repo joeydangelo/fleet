@@ -6,9 +6,8 @@ import { removeWorktree, branchExists, deleteBranch, cleanupBackupRefs } from '.
 import { loadRepoConfig } from '../lib/config.js';
 import { planWorktrees } from '../lib/session.js';
 import { removeSyncWorktree, archiveSession } from '../lib/sync.js';
-import { SYNC_BRANCH, KILL_WAIT_MS } from '../lib/constants.js';
+import { SYNC_BRANCH } from '../lib/constants.js';
 import { readDoc } from '../lib/docs.js';
-import { killTrackedProcesses } from '../lib/launcher.js';
 import {
   success,
   error,
@@ -25,7 +24,7 @@ export function downCommand(): Command {
     .option('-c, --config <path>', 'Path to .paw/paw.yaml')
     .option('--dry-run', 'Show what would be removed without making changes')
     .option('--no-archive', 'Skip archiving session data to .paw/sessions/')
-    .action(async (opts: { config?: string; dryRun?: boolean; archive: boolean }) => {
+    .action((opts: { config?: string; dryRun?: boolean; archive: boolean }) => {
       try {
         const { repoRoot, config } = loadRepoConfig(opts.config);
         const worktrees = planWorktrees(config, repoRoot);
@@ -44,13 +43,8 @@ export function downCommand(): Command {
           return;
         }
 
-        // Kill tracked terminal processes before removing worktrees.
-        // Sleep briefly after kill to let the OS release file handles.
-        const killed = killTrackedProcesses(repoRoot);
-        if (killed > 0) {
-          success('terminals', `killed ${killed} tracked process(es)`);
-          await new Promise((r) => setTimeout(r, KILL_WAIT_MS));
-        }
+        // tmux manages agent process lifecycle — no PID killing needed.
+        // paw down only cleans up worktrees and session data.
 
         let removed = 0;
         let failed = 0;

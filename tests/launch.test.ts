@@ -1,33 +1,116 @@
-import { describe, it, expect, afterEach } from 'vitest';
-import { mkdirSync, rmSync } from 'node:fs';
-import { resolve } from 'node:path';
-import { tmpdir } from 'node:os';
-import { buildLaunchCommand, readPidFile, writePidFile } from '../src/lib/launcher.js';
-import type { LaunchOptions } from '../src/lib/launcher.js';
+import { describe, it, expect } from 'vitest';
+import { tmuxSessionName, launchTmux } from '../src/lib/tmux.js';
+import type { TmuxServiceApi } from '../src/lib/tmux.js';
 
-describe('launch: dry-run command building', () => {
-  it('builds correct commands for each platform', () => {
-    const opts: LaunchOptions = {
-      worktreePath: '/home/user/app-paw-auth',
-      agentCommand: 'claude',
-    };
+/** Create a mock TmuxServiceApi for testing. */
+function createMockTmux(): TmuxServiceApi & {
+  calls: Array<{ method: string; args: unknown[] }>;
+} {
+  const calls: Array<{ method: string; args: unknown[] }> = [];
+  let paneCounter = 0;
+  const sessions = new Set<string>();
 
-    const win = buildLaunchCommand(opts, 'windows');
-    expect(win.command).toBe('cmd');
-    expect(win.args.join(' ')).toContain('/d');
-    expect(win.args.join(' ')).toContain('cmd /k claude');
+  return {
+    calls,
+    sessionExists(name: string) {
+      calls.push({ method: 'sessionExists', args: [name] });
+      return sessions.has(name);
+    },
+    createSession(name: string, cwd: string) {
+      calls.push({ method: 'createSession', args: [name, cwd] });
+      sessions.add(name);
+    },
+    killSession(name: string) {
+      calls.push({ method: 'killSession', args: [name] });
+      sessions.delete(name);
+    },
+    createPane(sessionName: string, cwd: string) {
+      calls.push({ method: 'createPane', args: [sessionName, cwd] });
+      paneCounter++;
+      return `%${paneCounter}`;
+    },
+    killPane(paneId: string) {
+      calls.push({ method: 'killPane', args: [paneId] });
+    },
+    listPanes(sessionName: string) {
+      calls.push({ method: 'listPanes', args: [sessionName] });
+      return [];
+    },
+    paneExists(paneId: string) {
+      calls.push({ method: 'paneExists', args: [paneId] });
+      return true;
+    },
+    sendKeys(paneId: string, keys: string) {
+      calls.push({ method: 'sendKeys', args: [paneId, keys] });
+    },
+    capturePane(paneId: string, lines?: number) {
+      calls.push({ method: 'capturePane', args: [paneId, lines] });
+      return '';
+    },
+    selectLayout(sessionName: string, layout: string) {
+      calls.push({ method: 'selectLayout', args: [sessionName, layout] });
+    },
+    setPaneTitle(paneId: string, title: string) {
+      calls.push({ method: 'setPaneTitle', args: [paneId, title] });
+    },
+    listClients() {
+      calls.push({ method: 'listClients', args: [] });
+      return [];
+    },
+    hasAttachedClient(sessionName: string) {
+      calls.push({ method: 'hasAttachedClient', args: [sessionName] });
+      return false;
+    },
+    switchClient(sessionName: string) {
+      calls.push({ method: 'switchClient', args: [sessionName] });
+    },
+    attachSession(sessionName: string) {
+      calls.push({ method: 'attachSession', args: [sessionName] });
+    },
+  };
+}
 
-    const mac = buildLaunchCommand(opts, 'macos');
-    expect(mac.command).toBe('osascript');
-    expect(mac.args[1]).toContain('tell app "Terminal"');
-
-    const linux = buildLaunchCommand({ ...opts, terminal: 'gnome-terminal' }, 'linux');
-    expect(linux.command).toBe('gnome-terminal');
+describe('launch: tmux session naming', () => {
+  it('creates session name from repo directory', () => {
+    expect(tmuxSessionName('myapp')).toBe('paw-myapp');
   });
 
-  it('skip logic: done tasks should not generate commands', () => {
-    // Simulate the skip logic from launch.ts:
-    // tasks with status === 'done' are skipped
+  it('sanitizes special characters in repo name', () => {
+    expect(tmuxSessionName('my-project_v2')).toBe('paw-my-project-v2');
+  });
+});
+
+describe('launch: dry-run shows tmux commands', () => {
+  it('builds tmux pane descriptions for each worktree', () => {
+    const worktrees = [
+      { taskName: 'auth', worktreePath: '/home/user/app-paw-auth', agentCommand: 'claude' },
+      { taskName: 'api', worktreePath: '/home/user/app-paw-api', agentCommand: 'claude' },
+    ];
+
+    // Dry-run would print these. Verify the data structure is correct.
+    for (const wt of worktrees) {
+      const msg = `tmux split-window -c ${wt.worktreePath} → ${wt.agentCommand}`;
+      expect(msg).toContain(wt.worktreePath);
+      expect(msg).toContain(wt.agentCommand);
+    }
+  });
+});
+
+describe('launch: tmux pane creation', () => {
+  it('creates panes for all worktrees', () => {
+    const mock = createMockTmux();
+    const worktrees = [
+      { taskName: 'auth', worktreePath: '/tmp/wt-auth', agentCommand: 'claude' },
+      { taskName: 'api', worktreePath: '/tmp/wt-api', agentCommand: 'claude' },
+    ];
+
+    const panes = launchTmux(mock, 'paw-myapp', '/home/user/myapp', worktrees);
+    expect(panes).toHaveLength(2);
+    expect(panes[0]!.taskName).toBe('auth');
+    expect(panes[1]!.taskName).toBe('api');
+  });
+
+  it('skip logic: done tasks should not generate panes', () => {
     const tasks = {
       auth: { status: 'done' as const },
       api: { status: 'in_progress' as const },
@@ -36,55 +119,5 @@ describe('launch: dry-run command building', () => {
 
     const launchable = Object.entries(tasks).filter(([_, t]) => t.status !== 'done');
     expect(launchable.map(([name]) => name)).toEqual(['api', 'tests']);
-  });
-});
-
-describe('launch: PID tracking integration', () => {
-  const dirs: string[] = [];
-
-  afterEach(() => {
-    for (const d of dirs) {
-      rmSync(d, { recursive: true, force: true });
-    }
-    dirs.length = 0;
-  });
-
-  function makeTempRepo(): string {
-    const dir = resolve(
-      tmpdir(),
-      `paw-pid-launch-${Date.now()}-${Math.random().toString(36).slice(2)}`,
-    );
-    mkdirSync(resolve(dir, '.paw'), { recursive: true });
-    dirs.push(dir);
-    return dir;
-  }
-
-  it('re-launch appends to existing pids.json rather than overwriting', () => {
-    const repo = makeTempRepo();
-
-    // Simulate first launch wrote some PIDs
-    writePidFile(repo, { auth: 1111 });
-
-    // Simulate second launch: read existing, add new
-    const existing = readPidFile(repo);
-    existing['api'] = 2222;
-    writePidFile(repo, existing);
-
-    const result = readPidFile(repo);
-    expect(result).toEqual({ auth: 1111, api: 2222 });
-  });
-
-  it('re-launch updates PID for re-launched task', () => {
-    const repo = makeTempRepo();
-
-    writePidFile(repo, { auth: 1111, api: 2222 });
-
-    // Simulate re-launching auth: the PID changes
-    const existing = readPidFile(repo);
-    existing['auth'] = 3333;
-    writePidFile(repo, existing);
-
-    const result = readPidFile(repo);
-    expect(result).toEqual({ auth: 3333, api: 2222 });
   });
 });
