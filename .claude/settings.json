@@ -16,6 +16,15 @@
         "hooks": [
           {
             "type": "command",
+            "command": "bash .claude/scripts/tbd-session.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
             "command": "bash .claude/scripts/confirm-gh-cli.sh",
             "timeout": 120
           }
@@ -26,16 +35,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/scripts/paw-session.sh"
-          }
-        ]
-      },
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash .claude/scripts/tbd-session.sh"
+            "command": "bash .claude/scripts/paw-session.sh prime"
           }
         ]
       }
@@ -46,7 +46,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/scripts/paw-session.sh --brief"
+            "command": "bash .claude/scripts/tbd-session.sh --brief"
           }
         ]
       },
@@ -55,7 +55,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/scripts/tbd-session.sh --brief"
+            "command": "bash .claude/scripts/paw-session.sh skill --brief"
           }
         ]
       }

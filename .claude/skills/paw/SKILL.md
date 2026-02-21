@@ -1,33 +1,36 @@
 ---
 description: |-
-  paw — Parallel Agent Worktrees. Orchestrates multiple AI agents across git worktrees with coordination via broadcasts, summaries, and conflict briefs.
-  Use for: running multiple agents in parallel across git worktrees, splitting work into tasks, launching and monitoring agents, merging agent work with conflict context, inter-agent messaging (broadcasts, Q&A threads, directed messages), task dependencies and merge ordering, copying env files into worktrees, pre/post hooks, session archives, creating PRs from merged work, TDD and testing guidelines, commit conventions, and task decomposition guidance.
-  Invoke when user mentions: paw, parallel agents, worktrees, multi-agent, parallel tasks, orchestrate agents, spawn agents, launch agents, run agents in parallel, split work across agents, break this into tasks, build with multiple agents, check agent progress, agent crashed, relaunch agent, merge agent work, resolve conflicts, conflict brief, create PR from agents, paw go, paw yaml, task decomposition, agent messaging, broadcasts, ask an agent, agent threads, watch agents, agent status, monitor agents, copy env files, task dependencies, merge order, hooks, session archives, done summary, start session, end session, precommit, build task, decompose open issues, split beads, fetch GitHub issues, setup github, TDD workflow, testing guidelines, commit conventions, or any multi-agent workflow.
+  paw — Parallel Agent Worktrees. Orchestrates multiple AI agents across git worktrees with coordination, conflict resolution, and automated session lifecycle.
+  Use for: running agents in parallel, decomposing work into tasks, launching and monitoring agents, merging work with conflict briefs, inter-agent messaging, task dependencies and merge ordering, and creating PRs from merged work.
+  Invoke when user mentions: paw, parallel agents, worktrees, multi-agent, parallel tasks, orchestrate agents, spawn agents, launch agents, split work across agents, break this into tasks, check agent progress, merge agent work, resolve conflicts, paw go, paw yaml, task decomposition, broadcasts, watch agents, start session, end session.
+allowed-tools: Bash(paw:*)
 globs: ".paw/**"
 name: paw
 ---
 
 # paw
 
-**`paw` orchestrates parallel AI coding agents across git worktrees — split work, merge results.**
+**paw orchestrates parallel AI coding agents across git worktrees — split work, spawn agents, merge results with full context.**
 
-1. **Session Lifecycle**: Decompose work into tasks, spin up isolated worktrees,
-   orient agents, merge results with full context about what each agent intended.
+1. **Orchestrate Agents**: Decompose work into tasks, create isolated worktrees,
+   spawn agents with task files, monitor progress, merge completed branches,
+   and clean up — the full orchestrator lifecycle.
 2. **Agent Coordination**: Broadcasts, directed messages, Q&A threads, and done
    summaries keep agents aligned without blocking each other.
-3. **Conflict Resolution**: Context-rich conflict briefs with both agents' done
-   summaries and journal entries — not just raw diff markers.
-4. **Automated Workflow**: `paw go` handles the full loop (up → launch → watch →
+3. **Conflict Resolution**: When merges conflict, paw generates context-rich
+   briefs built from both agents' summaries and journal entries so the resolver
+   has full intent — not just raw diff markers.
+4. **Automated Workflow**: `paw go` handles the full loop (up → spawn → watch →
    merge → down), or run each step manually for fine-grained control.
 5. **Shortcuts & Guidelines**: Reusable agent instructions for orchestrator and
-   worktree workflows, plus reference knowledge for TDD, testing, commits, and
-   task decomposition.
+   worktree workflows, plus reference knowledge loaded on demand via
+   `paw guidelines <name>` and `paw shortcut <name>`.
 
 ## Installation
 
 ```bash
 npm install -g get-paw@latest
-paw setup                        # Set up or upgrade paw
+paw setup
 ```
 
 ## Routine Commands
@@ -48,131 +51,93 @@ that into paw actions. DO NOT tell users to run paw commands — that's your job
 
 There are two roles. You are one of them:
 
-- **Orchestrator** — runs in the main repo. Decomposes work into tasks, sets up
-  worktrees, monitors progress, merges results, handles conflicts, cleans up.
-- **Worktree agent** — runs inside an isolated worktree. Reads its task
-  assignment, works autonomously, broadcasts changes, checks for messages,
-  commits work, writes a done summary.
+- **Orchestrator** — runs in the main repo. Decomposes work, sets up worktrees,
+  monitors agents, merges results, handles conflicts, cleans up.
+- **Worktree agent** — runs inside an isolated worktree. Reads its task, works
+  autonomously, broadcasts changes, commits work, writes a done summary.
 
 Read the section for your role.
 
-## User Request → Agent Action
+## How to Use paw to Help Users
 
-| User Says | You (the Agent) Run |
+**Action commands** do things: `paw go`, `paw merge`, `paw broadcast`, `paw down`.
+**Informational commands** load workflow guidance you follow: `paw shortcut <name>`,
+`paw guidelines <name>`, `paw template <name>`.
+
+| User Intent | What You Do |
 |---|---|
-| **Starting a Session** | |
-| "Plan the tasks" / "Write the yaml" | `paw shortcut generate-paw-yaml` → `paw go` |
-| "Work on GitHub issues" / "Fetch GitHub issues" | `paw shortcut from-github-issue` → `paw go` |
-| "Work on open issues" / "Generate tasks from open issues" | `paw shortcut from-issues` → `paw go` |
-| "Split this into tasks" / "Decompose the work" | `paw shortcut generate-paw-yaml` |
-| "Spawn agents" / "Orchestrate agents" / "Run agents" | `paw shortcut orchestrate-agents` |
-| "Launch a single agent" / "Restart agent X" | `paw launch --task <name>` |
-| **Worktree Agent** | |
-| "Start session" / "Work on this task" | `paw shortcut session-start` |
-| "Implement task" / "Build task" | `paw shortcut build-task` |
-| "Review and commit" / "Commit this" | `paw shortcut precommit-process` |
-| "Finish this task and hand off" | `paw shortcut session-end` |
-| **Monitoring & Communication** | |
-| "Check task progress" | `paw status` |
-| "Message the agents" / "Broadcast this update" | `paw broadcast "..."` |
-| "Ask <task> about this" / "Send <task> a question" | `paw ask <task> "..."` |
-| "Reply to that message" / "Reply in thread <id>" | `paw reply "..."` or `paw reply --to <thread> "..."` |
-| "Show open questions" / "Check message threads" | `paw threads` |
-| **Guidelines & Templates** | |
-| "Use TDD" / "Follow TDD" | `paw guidelines general-tdd-guidelines` |
-| "Write tests" / "Following testing rules" | `paw guidelines general-testing-rules` |
-| "Use TypeScript testing best practices" / "Follow TS testing guidelines" | `paw guidelines typescript-testing-guidelines` |
-| "How to split tasks" / "Task decomposition" | `paw guidelines paw-task-decomposition` |
-| "Commit conventions" | `paw guidelines commit-conventions` |
-| "paw.yaml format" | `paw template paw-yaml` |
-| "Done summary format" | `paw template task-summary` |
-| **Conflicts & Merging** | |
-| "Resolve merge conflict" / "Fix conflict" | `paw shortcut resolve-merge-conflict` |
-| "Merge the work" / "Merge tasks" | `paw merge` |
-| **Post-Session** | |
-| "Create or update the PR" / "Open a PR" | `paw shortcut to-pr` |
-| "Clean up the session" / "Tear down worktrees" | `paw down` |
-| **Setup & Troubleshooting** | |
-| "Set up GitHub CLI" / "gh is broken" | `paw shortcut setup-github-cli` |
-| "Set up paw" / "Upgrade paw" | `npm install -g get-paw@latest && paw setup` |
+| Wants work parallelized | Load `paw shortcut generate-paw-yaml`, follow it to write `.paw/paw.yaml`, then `paw go` |
+| Wants GitHub issues worked on | Load `paw shortcut from-github-issue`, follow it, then `paw go` |
+| Wants open tracker issues done | Load `paw shortcut from-issues`, follow it, then `paw go` |
+| Wants to see progress | `paw status` |
+| Merge conflict happened | Load `paw shortcut resolve-merge-conflict` and follow it |
+| Work is done, wants a PR | Load `paw shortcut to-pr` and follow it |
+| Wants session cleaned up | `paw down` |
+| Needs GitHub CLI set up | Load `paw shortcut setup-github-cli` and follow it |
+| Needs paw installed/upgraded | `npm install -g get-paw@latest && paw setup` |
+
+Worktree agents use a different set — see the Worktree Agent section below.
+
 ---
 
 ## Orchestrator
 
-You run in the main repo. Your job: decompose work into tasks, set up worktrees,
-monitor agents, merge results, handle conflicts, and clean up.
+You run in the main repo. Your job: decompose work, spawn agents, monitor
+progress, merge results, handle conflicts, and clean up.
 
 ### Orchestrator workflow
 
-1. **Decompose work.** Run `paw shortcut generate-paw-yaml` to write
-   `.paw/paw.yaml`. Review and approve the yaml before continuing.
+1. **Decompose work.** Load `paw shortcut generate-paw-yaml` and follow it to
+   write `.paw/paw.yaml`. Review and approve the yaml before continuing.
 2. **Run the session.**
    ```bash
-   paw go    # up → launch → watch → merge → down
+   paw go    # up → spawn → watch → merge → down
    ```
-3. **Handle conflicts.** If `paw go` exits on a conflict, run
+3. **Handle conflicts.** If `paw go` exits on a conflict, load
    `paw shortcut resolve-merge-conflict` — it reads the brief, resolves
    files, and continues merging.
 4. **Ask what's next.** When `paw go` completes, the merged work is on the
    target branch. Check `git remote -v` and `git branch`, then ask the
    user — PR, local merge, or iterate.
 
-For step-by-step control instead of `paw go`, see the "Manual step-by-step"
-section in `paw shortcut orchestrate-agents`.
+For step-by-step control instead of `paw go`, load
+`paw shortcut orchestrate-agents`.
 
-### Orchestrator commands
-
-#### Session lifecycle
+### Orchestrator action commands
 
 | Command | Purpose |
 |---|---|
-| `paw go` | Full workflow: up → launch → watch → merge → down |
+| `paw go` | Full lifecycle: up → spawn → watch → merge → down |
 | `paw go --poll-interval 10` | Adjust watch polling frequency (default 5s) |
-| `paw up` | Create worktrees for all tasks |
+| `paw up` | Create worktrees and branches for all tasks |
 | `paw up --dry-run` | Preview what would be created |
 | `paw launch` | Open terminal + agent in each worktree |
-| `paw launch --dry-run` | Preview launch commands without spawning |
-| `paw launch --task <name>` | Launch agent in a specific worktree |
-| `paw down` | Archive session, remove worktrees, reset config |
-| `paw down --dry-run` | Preview what would be removed |
-| `paw down --no-archive` | Skip archiving session data |
-
-#### Monitoring
-
-| Command | Purpose |
-|---|---|
+| `paw launch --task <name>` | Spawn agent in a specific worktree |
+| `paw launch --dry-run` | Preview spawn commands without executing |
 | `paw status` | Check progress across all tasks |
 | `paw watch` | Continuous terminal monitor (auto-exits when done) |
-| `paw watch --interval 10` | Adjust polling frequency (default 5s) |
 | `paw watch --no-exit` | Keep running after all tasks are done |
-
-#### Merging
-
-| Command | Purpose |
-|---|---|
-| `paw merge` | Merge completed task branches |
-| `paw merge --continue` | Resume after conflict or hook failure |
+| `paw merge` | Merge completed task branches (respects `depends_on` order) |
+| `paw merge --continue` | Resume after conflict resolution |
 | `paw merge --pick <task>` | Merge a specific task only |
-
-#### Communication
-
-| Command | Purpose |
-|---|---|
 | `paw ask <task> "..."` | Send a directed message to an agent |
 | `paw threads` | See open Q&A threads |
-| `paw threads --all` | See all threads including resolved |
+| `paw down` | Archive session, remove worktrees, reset config |
+| `paw down --dry-run` | Preview what would be removed |
 
-### Orchestrator shortcuts
+### Orchestrator informational commands
 
-| Shortcut | Purpose |
+These load workflow guidance — read the output and follow the instructions.
+
+| Command | Purpose |
 |---|---|
-| `generate-paw-yaml` | Analyze a codebase and create .paw/paw.yaml |
-| `from-issues` | Generate paw.yaml from CLI issue tracker |
-| `from-github-issue` | Generate paw.yaml from GitHub issue(s) |
-| `to-pr` | Create PR from merged agent work |
-| `setup-github-cli` | Ensure gh CLI is installed and authenticated |
-| `orchestrate-agents` | Full orchestrator lifecycle: monitor, conflicts, post-session |
-| `resolve-merge-conflict` | Read conflict brief, resolve files, `paw merge --continue` |
+| `paw shortcut generate-paw-yaml` | How to analyze a codebase and create .paw/paw.yaml |
+| `paw shortcut from-issues` | How to generate paw.yaml from CLI issue tracker |
+| `paw shortcut from-github-issue` | How to generate paw.yaml from GitHub issue(s) |
+| `paw shortcut orchestrate-agents` | Full orchestrator lifecycle: monitor, conflicts, post-session |
+| `paw shortcut resolve-merge-conflict` | How to read conflict brief, resolve files, `paw merge --continue` |
+| `paw shortcut to-pr` | How to create PR from merged agent work |
+| `paw shortcut setup-github-cli` | How to ensure gh CLI is installed and authenticated |
 
 ---
 
@@ -184,90 +149,54 @@ finished.
 
 ### Agent workflow
 
-1. **`paw prime`** — orient yourself. Gives you everything in one shot:
-   - Your task assignment (focus areas, instructions)
-   - Team status (who's working, who's done)
-   - Recent broadcasts from other agents
-   - Messages directed at you
-   - Done summaries from finished agents
-2. **Broadcast your intent** before starting work.
+1. **`paw prime`** — orient yourself. Shows your task assignment (focus areas,
+   instructions), team status, recent broadcasts, messages directed at you,
+   and done summaries from finished agents.
+2. **Broadcast your intent** before starting work: `paw broadcast "..."`.
 3. **Work on your task**, staying within your focus areas.
 4. **`paw broadcast "..."`** when you change interfaces other agents depend on.
-5. **`paw threads`** periodically to check for open threads.
-6. **`paw shortcut precommit-process`** when committing.
-7. **`paw shortcut session-end`** when finished.
+5. **`paw threads`** periodically to check for questions directed at you.
+6. **When committing**, load `paw shortcut precommit-process` and follow it.
+7. **When finished**, load `paw shortcut session-end` and follow it.
 
-### Agent commands
-
-#### Orientation
+### Agent action commands
 
 | Command | Purpose |
 |---|---|
 | `paw prime` | Orient and claim your task |
 | `paw prime --brief` | Condensed output (focus + team status only) |
-
-#### Communication
-
-| Command | Purpose |
-|---|---|
 | `paw broadcast "..."` | Announce a change to all agents |
-| `paw ask <task> "..."` | Send a directed message to an agent |
+| `paw ask <task> "..."` | Send a directed message to another agent |
 | `paw reply "..."` | Reply to the most recent message |
 | `paw reply --to <thread> "..."` | Reply to a specific thread |
 | `paw threads` | See open Q&A threads |
-
-#### Completion
-
-| Command | Purpose |
-|---|---|
+| `paw status` | Check progress across all tasks |
 | `paw done << 'EOF'` | Mark task done with summary (heredoc) |
 | `paw done --force << 'EOF'` | Bypass validation and pre-done hook |
 
-#### Status
+### Agent informational commands
 
 | Command | Purpose |
 |---|---|
-| `paw status` | Check progress across all tasks |
-
-### Agent shortcuts
-
-| Shortcut | Purpose |
-|---|---|
-| `session-start` | First actions in a worktree |
-| `session-end` | Wrap up: broadcast final state, write done summary |
-| `build-task` | TDD workflow from task assignment to done |
-| `precommit-process` | Check messages, review, validate, broadcast, commit |
-
-### Key principles
-
-- **Broadcast interface changes.** If you change a type, export, or API that
-  another task might depend on, broadcast it. This is the most important
-  coordination action.
-- **Stay in your focus area.** Your task file lists which files you own. Editing
-  files outside your focus area causes merge conflicts.
-- **Read before you plan.** `paw prime` shows what other agents have done and
-  said. Adapt your approach to the current state, not your initial assumptions.
-- **Write a good summary.** Your done summary is what the merge process and
-  resolver agents use to understand your work. Use `paw template task-summary`
-  for the structure.
+| `paw shortcut session-start` | First actions in a worktree |
+| `paw shortcut build-task` | TDD workflow from task assignment to done |
+| `paw shortcut precommit-process` | Check messages, review, validate, broadcast, commit |
+| `paw shortcut session-end` | Wrap up: broadcast final state, write done summary |
 
 ### CRITICAL: What agents must NEVER do
 
 - **NEVER manually edit `state.json` or any file on the sync branch.** The paw
-  CLI manages all sync state. If you write to state.json directly, you will
-  corrupt the coordination state and break `paw watch`, `paw go`, and `paw merge`.
+  CLI manages all sync state. Writing to state.json directly corrupts
+  coordination and breaks `paw watch`, `paw go`, and `paw merge`.
 - **NEVER `git checkout paw-sync`** or switch to the sync branch. It is managed
   by a dedicated worktree. Checking it out will fail or corrupt state.
-- **NEVER merge branches.** Merging is the orchestrator's job (`paw merge`).
+- **NEVER merge branches.** Merging is the orchestrator's job via `paw merge`.
   You work on your task branch only.
 - **NEVER run `git push`.** The orchestrator pushes the merged target branch
   after `paw merge`. Pushing from a worktree bypasses conflict resolution.
 - **NEVER create pull requests.** The orchestrator handles PRs after merge.
 - **NEVER run `paw up`, `paw down`, `paw merge`, or `paw go`.** These are
   orchestrator commands. Running them from a worktree will break the session.
-
-Use the CLI for everything: `paw done`, `paw broadcast`, `paw threads`.
-The CLI handles sync state correctly. You don't need to touch it.
 
 ---
 
@@ -277,130 +206,58 @@ The CLI handles sync state correctly. You don't need to touch it.
 
 | Command | Purpose |
 |---|---|
-| `paw shortcut <name>` | Run a shortcut |
 | `paw shortcut --list` | List available shortcuts |
-| `paw guidelines <name>` | Load reference knowledge |
 | `paw guidelines --list` | List available guidelines |
-| `paw template <name>` | Output a document structure |
+| `paw template --list` | List available templates |
+| `paw skill` | Output full skill content to stdout |
+| `paw skill --brief` | Output condensed skill content (~400 tokens) |
 
-### Guidelines
+### Available shortcuts
 
-Run `paw guidelines <name>` for reference knowledge:
-
-| Guideline | Purpose |
+<!-- BEGIN SHORTCUT DIRECTORY -->
+| Command | Purpose |
 |---|---|
-| `commit-conventions` | Conventional Commits format for multi-agent work |
-| `general-tdd-guidelines` | Red, Green, Refactor in small slices |
-| `general-testing-rules` | Minimal tests, maximum coverage |
-| `paw-task-decomposition` | How to split work into good parallel tasks |
-| `typescript-testing-guidelines` | Test behavior and data flow, not mock existence |
+| `paw shortcut build-task` | Take a task from assignment to done with TDD, testing, and atomic commits |
+| `paw shortcut from-github-issue` | Fetch GitHub issues, decompose them into tasks, and generate paw.yaml |
+| `paw shortcut from-issues` | Detect the repo's issue tracker, read open issues, and generate paw.yaml |
+| `paw shortcut generate-paw-yaml` | Analyze a codebase and generate .paw/paw.yaml with well-decomposed parallel tasks |
+| `paw shortcut orchestrate-agents` | Full orchestrator workflow — decompose, dispatch agents, monitor, merge, clean up |
+| `paw shortcut precommit-process` | Check messages, review, validate, broadcast, and commit — the checklist before every commit |
+| `paw shortcut resolve-merge-conflict` | Read a conflict brief, resolve the merge conflict, and continue merging |
+| `paw shortcut session-end` | Agent's final actions — broadcast final state, write done summary |
+| `paw shortcut session-start` | Agent's first actions in a paw worktree — orient, plan, broadcast intent |
+| `paw shortcut setup-github-cli` | Ensure GitHub CLI (gh) is installed and authenticated |
+| `paw shortcut to-pr` | Combine agent done summaries into a PR with issue references |
+<!-- END SHORTCUT DIRECTORY -->
 
-### Templates
+### Available guidelines
 
-Run `paw template <name>` for document structures:
-
-| Template | Purpose |
+<!-- BEGIN GUIDELINES DIRECTORY -->
+| Command | Purpose |
 |---|---|
-| `paw-yaml` | Annotated .paw/paw.yaml config structure |
-| `task-summary` | Done summary structure (what/interfaces/watch-out) |
+| `paw guidelines commit-conventions` | Conventional Commits format with extensions for multi-agent workflows |
+| `paw guidelines general-tdd-guidelines` | Test-Driven Development methodology — Red, Green, Refactor in small slices |
+| `paw guidelines general-testing-rules` | Rules for writing minimal, effective tests with maximum coverage |
+| `paw guidelines paw-task-decomposition` | How to split work into independent parallel tasks that minimize conflicts |
+| `paw guidelines typescript-testing-guidelines` | Integration testing patterns for TypeScript — test behavior and data flow, not mock existence |
+<!-- END GUIDELINES DIRECTORY -->
 
-### Agent command
+### Available templates
 
-Set the `agent` field to the CLI command that runs in each worktree:
+<!-- BEGIN TEMPLATE DIRECTORY -->
+| Command | Purpose |
+|---|---|
+| `paw template paw-yaml` | Annotated config structure for .paw/paw.yaml |
+| `paw template task-summary` | Structure for paw done summaries — what you did, interface changes, warnings |
+<!-- END TEMPLATE DIRECTORY -->
 
-```yaml
-agent: claude --dangerously-skip-permissions
-# or: codex --full-auto
-# or: gemini
-```
+---
 
-Required for `paw launch` and `paw go`. Any CLI agent works — the command
-runs in a new terminal window in each worktree's directory.
+## Quick Reference
 
-### Issue and spec
-
-Link tasks to their source issue or planning spec:
-
-```yaml
-tasks:
-  auth:
-    focus: src/auth/
-    issue: GH#123
-    spec: docs/specs/auth-plan.md
-```
-
-Both fields are optional. The `from-github-issue` and `from-issues` shortcuts
-set `issue` automatically.
-
-### Include (gitignored file copying)
-
-Copy gitignored files from the main repo into each worktree during `paw up`.
-Files that already exist in the worktree are skipped.
-
-```yaml
-include:
-  - .env
-  - .env.local
-  - "config/local.json"
-  - "**/.secret*"
-```
-
-Patterns use glob syntax (powered by fast-glob). `paw up --dry-run` previews
-which files would be copied.
-
-### Hooks
-
-Configure hooks in .paw/paw.yaml:
-
-```yaml
-hooks:
-  post-up: npm install
-  pre-done: npm test
-  post-merge: npm test
-```
-
-Hooks run via bash, so you can write multi-line scripts inline using YAML's
-block scalar syntax (`|`), or call an external script.
-
-**`post-up`** runs in each worktree after creation and file copying during
-`paw up`. Useful for installing dependencies, running codegen, or any
-per-worktree setup that needs to happen before the agent starts working.
-
-**`pre-done`** runs before `paw done` marks a task complete. If it fails, done
-is blocked. Use `--force` to bypass.
-
-**`post-merge`** runs after each clean merge. If it fails, paw stops and shows
-rollback guidance. Use `paw merge --continue` after fixing, or roll back with
-`git reset --hard refs/paw-backup/{task}`.
-
-### Dependencies
-
-Control merge order with `depends_on` on tasks:
-
-```yaml
-tasks:
-  auth:
-    focus: src/auth/
-  api:
-    focus: src/api/
-    depends_on: auth        # merged after auth
-  tests:
-    focus: tests/
-    depends_on:             # merged after both
-      - auth
-      - api
-```
-
-`paw merge` processes tasks in topological order — dependencies merge first
-so shared interfaces exist on the target branch before dependent code arrives.
-Tasks without dependencies merge in YAML definition order. Cycles and invalid
-references are caught at config load time.
-
-### Quick reference
-
-- **Roles**: orchestrator (main repo) or worktree agent (isolated worktree)
-- **Config**: `.paw/paw.yaml` — target branch, agent, tasks, hooks, includes
-- **Session archives**: `.paw/sessions/<date>/summaries/`
-- **Conflict briefs**: `.paw-sync/conflicts/<task>-into-target.md`
-- **Task files**: `.paw/tasks/<task-name>.md`
-- **Backup refs**: `refs/paw-backup/{task}` (for merge rollback)
+- **Orchestrator** runs in main repo, **Worktree agent** runs in isolated worktree
+- Config: `.paw/paw.yaml` — tasks, target branch, base, dependencies
+- Session state: `paw-sync` branch (managed by paw CLI — never edit directly)
+- Full lifecycle: `paw go` (up → spawn → watch → merge → down)
+- Context recovery: `paw prime` (SessionStart hook runs this automatically)
+- Resource discovery: `paw shortcut --list`, `paw guidelines --list`, `paw template --list`

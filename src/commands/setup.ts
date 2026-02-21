@@ -41,6 +41,13 @@ export function updatePawSection(content: string, pawSection: string): string {
   // Migration: old format (single DO NOT EDIT marker, no end marker)
   const oldIdx = content.indexOf(OLD_PAW_MARKER);
   if (oldIdx !== -1) {
+    // Preserve content belonging to other integrations (e.g. tbd)
+    const afterOld = content.slice(oldIdx);
+    const nextIntegration = afterOld.search(/<!-- BEGIN (?!PAW )\w+ INTEGRATION -->/);
+    if (nextIntegration !== -1) {
+      const boundary = oldIdx + nextIntegration;
+      return content.slice(0, oldIdx) + pawSection + '\n\n' + content.slice(boundary);
+    }
     return content.slice(0, oldIdx) + pawSection;
   }
 

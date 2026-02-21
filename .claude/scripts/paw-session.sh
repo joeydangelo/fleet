@@ -1,7 +1,7 @@
 #!/bin/bash
-# Ensure paw CLI is installed and run paw prime for Claude Code sessions
+# Ensure paw CLI is installed and run a paw command for Claude Code hooks
 # Installed by: paw setup
-# This script runs on SessionStart and PreCompact
+# Usage: bash paw-session.sh <command> [args...]
 
 # Get npm global bin directory (if npm is available)
 NPM_GLOBAL_BIN=""
@@ -55,4 +55,4 @@ ensure_paw() {
 # Main
 ensure_paw || exit 1
 
-paw prime "$@"
+paw "$@"
