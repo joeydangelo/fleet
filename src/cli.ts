@@ -21,6 +21,7 @@ import { launchCommand } from './commands/launch.js';
 import { watchCommand } from './commands/watch.js';
 import { goCommand } from './commands/go.js';
 import { skillCommand } from './commands/skill.js';
+import { runTui } from './commands/tui.js';
 
 const pkg = JSON.parse(
   readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), '..', 'package.json'), 'utf-8'),
@@ -72,5 +73,11 @@ Getting Started:
   program.addCommand(watchCommand());
   program.addCommand(goCommand());
   program.addCommand(skillCommand());
+
+  // Default action: `paw` (bare command) opens the TUI
+  program.action(() => {
+    runTui();
+  });
+
   return program;
 }
