@@ -6,9 +6,9 @@ import { success } from './output.js';
 
 /** Wrapper script that resolves PATH and ensures paw is installed before running paw prime. */
 export const PAW_SESSION_SCRIPT = `#!/bin/bash
-# Ensure paw CLI is installed and run paw prime for Claude Code sessions
+# Ensure paw CLI is installed and run a paw command for Claude Code hooks
 # Installed by: paw setup
-# This script runs on SessionStart and PreCompact
+# Usage: bash paw-session.sh <command> [args...]
 
 # Get npm global bin directory (if npm is available)
 NPM_GLOBAL_BIN=""
@@ -62,7 +62,7 @@ ensure_paw() {
 # Main
 ensure_paw || exit 1
 
-paw prime "$@"
+paw "$@"
 `;
 
 /** PostToolUse hook that reminds agents to run paw done before ending their session. */
@@ -247,7 +247,7 @@ export function installHooks(repoRoot: string): void {
         hooks: [
           {
             type: 'command',
-            command: `bash ${SCRIPT_RELATIVE}`,
+            command: `bash ${SCRIPT_RELATIVE} prime`,
           },
         ],
       },
@@ -258,7 +258,7 @@ export function installHooks(repoRoot: string): void {
         hooks: [
           {
             type: 'command',
-            command: `bash ${SCRIPT_RELATIVE} --brief`,
+            command: `bash ${SCRIPT_RELATIVE} skill --brief`,
           },
         ],
       },
