@@ -33,7 +33,7 @@ On Windows, run paw from inside WSL.
 
 ```bash
 npm install -g get-paw@latest
-paw setup
+paw init
 ```
 
 ## Routine Commands
@@ -41,7 +41,7 @@ paw setup
 ```bash
 paw --help                       # Command reference
 paw status                       # Check progress across all tasks
-paw setup                        # Refresh setup (run after upgrades)
+paw init                        # Refresh setup (run after upgrades)
 ```
 
 ## CRITICAL: You Operate paw — The User Doesn't
@@ -77,7 +77,8 @@ Read the section for your role.
 | Work is done, wants a PR | Load `paw shortcut to-pr` and follow it |
 | Wants session cleaned up | `paw down` |
 | Needs GitHub CLI set up | Load `paw shortcut setup-github-cli` and follow it |
-| Needs paw installed/upgraded | `npm install -g get-paw@latest && paw setup` |
+| Needs paw installed/upgraded | `npm install -g get-paw@latest && paw init` |
+| New to paw / getting started | Load `paw shortcut getting-started` and follow it |
 
 Worktree agents use a different set — see the Worktree Agent section below.
 
@@ -228,6 +229,8 @@ finished.
 | `paw shortcut resolve-merge-conflict` | Read conflict brief, resolve files, `paw merge --continue` |
 | `paw shortcut to-pr` | Create PR from merged agent work |
 | `paw shortcut setup-github-cli` | Ensure GitHub CLI (gh) is installed and authenticated |
+| `paw shortcut getting-started` | Install paw and run your first parallel agent session |
+| `paw shortcut setup-tmux` | Ensure tmux is installed for paw's terminal management |
 | `paw shortcut session-start` | Agent's first actions in a worktree |
 | `paw shortcut build-task` | TDD workflow from task assignment to done |
 | `paw shortcut precommit-process` | Check messages, review, validate, broadcast, commit |

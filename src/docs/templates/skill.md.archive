@@ -27,7 +27,7 @@ name: paw
 
 ```bash
 npm install -g get-paw@latest
-paw setup                        # Set up or upgrade paw
+paw init                        # Set up or upgrade paw
 ```
 
 ## Routine Commands
@@ -35,7 +35,7 @@ paw setup                        # Set up or upgrade paw
 ```bash
 paw --help                       # Command reference
 paw status                       # Check progress across all tasks
-paw setup                        # Refresh setup (run after upgrades)
+paw init                        # Refresh setup (run after upgrades)
 ```
 
 ## CRITICAL: You Operate paw — The User Doesn't
@@ -94,7 +94,7 @@ Read the section for your role.
 | "Clean up the session" / "Tear down worktrees" | `paw down` |
 | **Setup & Troubleshooting** | |
 | "Set up GitHub CLI" / "gh is broken" | `paw shortcut setup-github-cli` |
-| "Set up paw" / "Upgrade paw" | `npm install -g get-paw@latest && paw setup` |
+| "Set up paw" / "Upgrade paw" | `npm install -g get-paw@latest && paw init` |
 ---
 
 ## Orchestrator

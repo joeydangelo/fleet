@@ -14,7 +14,7 @@ On Windows, run paw from inside WSL.
 
 ```bash
 npm install -g get-paw@latest
-paw setup
+paw init
 ```
 
 ## CRITICAL: You Operate paw — The User Doesn't
