@@ -88,6 +88,9 @@ function createMockTmux(
     attachSession(sessionName: string) {
       calls.push({ method: 'attachSession', args: [sessionName] });
     },
+    selectPane(paneId: string) {
+      calls.push({ method: 'selectPane', args: [paneId] });
+    },
   };
 }
 

@@ -52,6 +52,7 @@ export interface TmuxServiceApi {
   sendKeys(paneId: string, keys: string): void;
   capturePane(paneId: string, lines?: number): string;
   selectLayout(sessionName: string, layout: string): void;
+  selectPane(paneId: string): void;
   setPaneTitle(paneId: string, title: string): void;
   listClients(): string[];
   hasAttachedClient(sessionName: string): boolean;
@@ -153,6 +154,10 @@ export class TmuxService implements TmuxServiceApi {
 
   selectLayout(sessionName: string, layout: string): void {
     this.exec(['select-layout', '-t', sessionName, layout]);
+  }
+
+  selectPane(paneId: string): void {
+    this.exec(['select-pane', '-t', paneId]);
   }
 
   setPaneTitle(paneId: string, title: string): void {
@@ -354,6 +359,14 @@ export function attachToTmuxSession(tmux: TmuxServiceApi, sessionName: string): 
   }
 }
 
+const KNOWN_AGENTS: readonly AgentName[] = ['claude', 'codex', 'opencode', 'gemini'];
+
+/** Parse the agent name from a command string (first word). Defaults to 'claude'. */
+function parseAgentName(command: string): AgentName {
+  const base = command.trim().split(/\s+/)[0] ?? '';
+  return (KNOWN_AGENTS as readonly string[]).includes(base) ? (base as AgentName) : 'claude';
+}
+
 /**
  * Launch agents in tmux panes for the given worktrees.
  * Creates the tmux session if it doesn't exist, then creates a pane
@@ -380,7 +393,7 @@ export function launchTmux(
       taskName: wt.taskName,
       prompt: wt.agentCommand,
       worktreePath: wt.worktreePath,
-      agent: 'claude' as AgentName,
+      agent: parseAgentName(wt.agentCommand),
       branchName: '',
     };
 

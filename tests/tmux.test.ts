@@ -34,6 +34,9 @@ function createMockTmux(): TmuxServiceApi & {
 
   return {
     calls,
+    selectPane(paneId: string) {
+      calls.push({ method: 'selectPane', args: [paneId] });
+    },
     sessionExists(name: string) {
       calls.push({ method: 'sessionExists', args: [name] });
       return sessions.has(name);
@@ -437,5 +440,38 @@ describe('launchTmux', () => {
     });
     // paneId is assigned by the mock
     expect(panes[0]!.paneId).toMatch(/^%/);
+  });
+
+  it('sets agent field from agentCommand base name', () => {
+    const mock = createMockTmux();
+    const worktrees = [
+      { taskName: 'auth', worktreePath: '/tmp/wt-auth', agentCommand: 'codex' },
+      { taskName: 'api', worktreePath: '/tmp/wt-api', agentCommand: 'opencode' },
+      { taskName: 'tests', worktreePath: '/tmp/wt-tests', agentCommand: 'gemini' },
+    ];
+    const panes = launchTmux(mock, 'paw-myapp', '/home/user/myapp', worktrees);
+    expect(panes[0]!.agent).toBe('codex');
+    expect(panes[1]!.agent).toBe('opencode');
+    expect(panes[2]!.agent).toBe('gemini');
+  });
+
+  it('defaults agent to claude when command is unknown or has flags', () => {
+    const mock = createMockTmux();
+    const worktrees = [
+      { taskName: 'auth', worktreePath: '/tmp/wt-auth', agentCommand: 'claude --some-flag' },
+      { taskName: 'api', worktreePath: '/tmp/wt-api', agentCommand: 'my-custom-agent' },
+    ];
+    const panes = launchTmux(mock, 'paw-myapp', '/home/user/myapp', worktrees);
+    expect(panes[0]!.agent).toBe('claude');
+    expect(panes[1]!.agent).toBe('claude');
+  });
+});
+
+describe('TmuxService selectPane', () => {
+  it('calls select-pane -t with the pane ID', () => {
+    const { fn, calls } = createMockExec();
+    const svc = new TmuxService(fn);
+    svc.selectPane('%42');
+    expect(calls[0]).toEqual(['select-pane', '-t', '%42']);
   });
 });

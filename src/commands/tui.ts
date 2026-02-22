@@ -18,7 +18,12 @@ import { handleError, colors } from '../lib/output.js';
  * Run the TUI sidebar inside a tmux pane. The TUI is an Ink app that
  * shows pane status and navigation. It runs in pane 0 of the tmux session.
  */
-function runTuiSidebar(tmux: TmuxServiceApi, sessionName: string, panes: PawPane[]): void {
+function runTuiSidebar(
+  tmux: TmuxServiceApi,
+  sessionName: string,
+  repoRoot: string,
+  panes: PawPane[],
+): void {
   const onQuit = () => {
     // Clear screen and print reattach hint
     process.stdout.write('\x1b[2J\x1b[H');
@@ -29,6 +34,7 @@ function runTuiSidebar(tmux: TmuxServiceApi, sessionName: string, panes: PawPane
   render(
     React.createElement(TuiApp, {
       sessionName,
+      repoRoot,
       tmux,
       panes,
       onQuit,
@@ -65,7 +71,7 @@ export function runTui(): void {
       tmux.switchClient(sessionName);
     }
 
-    runTuiSidebar(tmux, sessionName, panes);
+    runTuiSidebar(tmux, sessionName, repoRoot, panes);
   } catch (err) {
     handleError(err);
   }
