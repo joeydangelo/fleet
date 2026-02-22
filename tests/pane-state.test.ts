@@ -41,8 +41,8 @@ function createMockTmux(
     killSession(name: string) {
       calls.push({ method: 'killSession', args: [name] });
     },
-    createPane(sessionName: string, cwd: string) {
-      calls.push({ method: 'createPane', args: [sessionName, cwd] });
+    createPane(sessionName: string, cwd: string, opts?: { horizontal?: boolean }) {
+      calls.push({ method: 'createPane', args: [sessionName, cwd, opts] });
       paneCounter++;
       return `%${paneCounter}`;
     },
@@ -95,6 +95,10 @@ function createMockTmux(
       calls.push({ method: 'getCurrentPaneId', args: [] });
       return '%0';
     },
+    getCurrentSessionName() {
+      calls.push({ method: 'getCurrentSessionName', args: [] });
+      return 'paw-myapp';
+    },
     resizePane(paneId: string, width: number) {
       calls.push({ method: 'resizePane', args: [paneId, width] });
     },
@@ -136,6 +140,7 @@ describe('pane-state: readPaneConfig / writePaneConfig', () => {
     const config: PawPaneConfig = {
       sessionName: 'paw-myapp',
       projectRoot: '/home/user/myapp',
+      orchestratorPaneId: '%1',
       panes: [makePane()],
       lastUpdated: '2026-02-21T00:00:00.000Z',
     };
@@ -150,6 +155,7 @@ describe('pane-state: readPaneConfig / writePaneConfig', () => {
     const config: PawPaneConfig = {
       sessionName: 'paw-myapp',
       projectRoot: '/home/user/myapp',
+      orchestratorPaneId: '',
       panes: [],
       lastUpdated: '2026-02-21T00:00:00.000Z',
     };
@@ -158,7 +164,6 @@ describe('pane-state: readPaneConfig / writePaneConfig', () => {
     const filePath = resolve(tempDir, '.paw', 'panes.json');
     expect(existsSync(filePath)).toBe(true);
 
-    // Content should be valid JSON
     const content = readFileSync(filePath, 'utf-8');
     expect(() => JSON.parse(content) as unknown).not.toThrow();
   });
@@ -167,6 +172,7 @@ describe('pane-state: readPaneConfig / writePaneConfig', () => {
     const config1: PawPaneConfig = {
       sessionName: 'paw-myapp',
       projectRoot: '/home/user/myapp',
+      orchestratorPaneId: '%1',
       panes: [makePane({ id: 'paw-1' })],
       lastUpdated: '2026-02-21T00:00:00.000Z',
     };
@@ -174,6 +180,7 @@ describe('pane-state: readPaneConfig / writePaneConfig', () => {
     const config2: PawPaneConfig = {
       sessionName: 'paw-myapp',
       projectRoot: '/home/user/myapp',
+      orchestratorPaneId: '%1',
       panes: [makePane({ id: 'paw-1' }), makePane({ id: 'paw-2', taskName: 'api' })],
       lastUpdated: '2026-02-21T01:00:00.000Z',
     };
@@ -197,14 +204,22 @@ describe('pane-state: savePanes', () => {
     rmSync(tempDir, { recursive: true, force: true });
   });
 
-  it('saves panes with session info', () => {
+  it('saves panes and orchestratorPaneId with session info', () => {
     const panes = [makePane()];
-    savePanes(tempDir, 'paw-myapp', panes);
+    savePanes(tempDir, 'paw-myapp', panes, '%1');
 
     const config = readPaneConfig(tempDir);
     expect(config?.sessionName).toBe('paw-myapp');
+    expect(config?.orchestratorPaneId).toBe('%1');
     expect(config?.panes).toEqual(panes);
     expect(config?.lastUpdated).toBeDefined();
+  });
+
+  it('saves empty orchestratorPaneId when not yet created', () => {
+    savePanes(tempDir, 'paw-myapp', [], '');
+
+    const config = readPaneConfig(tempDir);
+    expect(config?.orchestratorPaneId).toBe('');
   });
 });
 
@@ -219,63 +234,103 @@ describe('pane-state: restorePanes', () => {
     rmSync(tempDir, { recursive: true, force: true });
   });
 
-  it('returns empty array when no config exists', () => {
+  it('returns empty result when no config exists', () => {
     const mock = createMockTmux();
     const result = restorePanes(mock, 'paw-myapp', tempDir);
-    expect(result).toEqual([]);
+    expect(result.panes).toEqual([]);
+    expect(result.orchestratorPaneId).toBe('');
   });
 
-  it('keeps panes that still exist in tmux', () => {
+  it('keeps task panes that still exist in tmux', () => {
     const pane = makePane({ paneId: '%5' });
-    savePanes(tempDir, 'paw-myapp', [pane]);
+    savePanes(tempDir, 'paw-myapp', [pane], '%1');
 
-    const mock = createMockTmux(['%5']);
+    const mock = createMockTmux(['%1', '%5']);
     const result = restorePanes(mock, 'paw-myapp', tempDir);
 
-    expect(result).toHaveLength(1);
-    expect(result[0]!.paneId).toBe('%5');
+    expect(result.panes).toHaveLength(1);
+    expect(result.panes[0]!.paneId).toBe('%5');
+    expect(result.orchestratorPaneId).toBe('%1');
   });
 
-  it('recreates missing panes when worktree exists', () => {
-    // Use tempDir itself as a worktree path (it exists)
+  it('recreates missing task panes when worktree exists', () => {
     const pane = makePane({ paneId: '%99', worktreePath: tempDir });
-    savePanes(tempDir, 'paw-myapp', [pane]);
+    savePanes(tempDir, 'paw-myapp', [pane], '');
 
-    const mock = createMockTmux([]); // No existing panes
+    const mock = createMockTmux([]);
     const result = restorePanes(mock, 'paw-myapp', tempDir);
 
-    expect(result).toHaveLength(1);
-    // New pane ID from mock (starts at %101)
-    expect(result[0]!.paneId).toBe('%101');
+    expect(result.panes).toHaveLength(1);
+    expect(result.panes[0]!.paneId).toBe('%101');
 
-    // Should have called createPane
     const createCall = mock.calls.find((c) => c.method === 'createPane');
     expect(createCall).toBeDefined();
   });
 
-  it('rebinds pane by title when pane ID is gone but title exists', () => {
+  it('rebinds task pane by title when pane ID is gone but title exists', () => {
     const pane = makePane({ paneId: '%99', taskName: 'auth', worktreePath: tempDir });
-    savePanes(tempDir, 'paw-myapp', [pane]);
+    savePanes(tempDir, 'paw-myapp', [pane], '');
 
     const titles = new Map([['paw-auth', '%50']]);
     const mock = createMockTmux([], titles);
     const result = restorePanes(mock, 'paw-myapp', tempDir);
 
-    expect(result).toHaveLength(1);
-    expect(result[0]!.paneId).toBe('%50');
+    expect(result.panes).toHaveLength(1);
+    expect(result.panes[0]!.paneId).toBe('%50');
 
     const createCalls = mock.calls.filter((c) => c.method === 'createPane');
     expect(createCalls).toHaveLength(0);
   });
 
-  it('skips recreating panes when worktree is gone', () => {
+  it('skips recreating task panes when worktree is gone', () => {
     const pane = makePane({ paneId: '%99', worktreePath: '/nonexistent/path' });
-    savePanes(tempDir, 'paw-myapp', [pane]);
+    savePanes(tempDir, 'paw-myapp', [pane], '');
 
     const mock = createMockTmux([]);
     const result = restorePanes(mock, 'paw-myapp', tempDir);
 
-    expect(result).toHaveLength(0);
+    expect(result.panes).toHaveLength(0);
+  });
+
+  it('recreates orchestrator pane when tracked pane is gone', () => {
+    savePanes(tempDir, 'paw-myapp', [], '%55');
+
+    const mock = createMockTmux([]); // %55 not in session
+    const result = restorePanes(mock, 'paw-myapp', tempDir);
+
+    expect(result.orchestratorPaneId).toBe('%101');
+
+    const createCall = mock.calls.find((c) => c.method === 'createPane');
+    expect(createCall).toBeDefined();
+
+    const titleCall = mock.calls.find(
+      (c) => c.method === 'setPaneTitle' && c.args[1] === 'paw-orchestrator',
+    );
+    expect(titleCall).toBeDefined();
+  });
+
+  it('keeps orchestrator pane when it still exists', () => {
+    savePanes(tempDir, 'paw-myapp', [], '%55');
+
+    const mock = createMockTmux(['%55']);
+    const result = restorePanes(mock, 'paw-myapp', tempDir);
+
+    expect(result.orchestratorPaneId).toBe('%55');
+
+    const createCalls = mock.calls.filter((c) => c.method === 'createPane');
+    expect(createCalls).toHaveLength(0);
+  });
+
+  it('returns empty orchestratorPaneId when none was tracked', () => {
+    savePanes(tempDir, 'paw-myapp', [], '');
+
+    const mock = createMockTmux([]);
+    const result = restorePanes(mock, 'paw-myapp', tempDir);
+
+    expect(result.orchestratorPaneId).toBe('');
+
+    const createCalls = mock.calls.filter((c) => c.method === 'createPane');
+    expect(createCalls).toHaveLength(0);
   });
 });
 
@@ -290,20 +345,21 @@ describe('pane-state: killPanes', () => {
     rmSync(tempDir, { recursive: true, force: true });
   });
 
-  it('kills all persisted panes and removes panes.json', () => {
+  it('kills all task panes, orchestrator pane, and removes panes.json', () => {
     const panes = [
       makePane({ paneId: '%1', taskName: 'auth' }),
       makePane({ paneId: '%2', taskName: 'api', id: 'paw-2' }),
       makePane({ paneId: '%3', taskName: 'tests', id: 'paw-3' }),
     ];
-    savePanes(tempDir, 'paw-myapp', panes);
+    savePanes(tempDir, 'paw-myapp', panes, '%0');
 
-    const mock = createMockTmux(['%1', '%2', '%3']);
+    const mock = createMockTmux(['%0', '%1', '%2', '%3']);
     killPanes(mock, tempDir);
 
     const killCalls = mock.calls.filter((c) => c.method === 'killPane');
     expect(killCalls).toHaveLength(3);
-    expect(killCalls.map((c) => c.args[0])).toEqual(['%1', '%2', '%3']);
+    expect(killCalls.map((c) => c.args[0])).not.toContain('%0'); // orchestrator preserved
+    expect(killCalls.map((c) => c.args[0])).toContain('%1');
 
     expect(readPaneConfig(tempDir)).toBeNull();
   });
@@ -313,9 +369,9 @@ describe('pane-state: killPanes', () => {
       makePane({ paneId: '%1', taskName: 'auth' }),
       makePane({ paneId: '%2', taskName: 'api', id: 'paw-2' }),
     ];
-    savePanes(tempDir, 'paw-myapp', panes);
+    savePanes(tempDir, 'paw-myapp', panes, '%0');
 
-    const mock = createMockTmux(['%1']); // only %1 exists
+    const mock = createMockTmux(['%1']); // %0 and %2 gone
     killPanes(mock, tempDir);
 
     const killCalls = mock.calls.filter((c) => c.method === 'killPane');
