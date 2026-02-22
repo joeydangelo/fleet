@@ -134,7 +134,7 @@ export function TuiApp({
   tmux,
   panes: initialPanes,
   controlPaneId,
-  orchestratorPaneId,
+  orchestratorPaneId: initialOrchestratorPaneId,
   onQuit,
 }: TuiAppProps) {
   const { exit } = useApp();
@@ -144,10 +144,13 @@ export function TuiApp({
   const [panes, setPanes] = useState(initialPanes);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [syncState, setSyncState] = useState<SyncState | null>(() => readSyncState(repoRoot));
+  // orchestratorPaneId is polled from panes.json so it updates even if the
+  // prop was empty at start time (e.g. paw launch ran after TUI started).
+  const [orchestratorPaneId, setOrchestratorPaneId] = useState(initialOrchestratorPaneId);
   const [orchestratorCommand, setOrchestratorCommand] = useState(() => {
-    if (!orchestratorPaneId) return '';
+    if (!initialOrchestratorPaneId) return '';
     try {
-      return tmux.getPaneCurrentCommand(orchestratorPaneId);
+      return tmux.getPaneCurrentCommand(initialOrchestratorPaneId);
     } catch {
       return '';
     }
@@ -163,8 +166,11 @@ export function TuiApp({
             ? (config.panes.map((p) => ({ ...p, _alive: livePaneIds.has(p.paneId) })) as PawPane[])
             : [],
         );
-        if (orchestratorPaneId && livePaneIds.has(orchestratorPaneId)) {
-          setOrchestratorCommand(tmux.getPaneCurrentCommand(orchestratorPaneId));
+        // Pick up orchestratorPaneId from panes.json in case it was empty at start.
+        const oid = config?.orchestratorPaneId ?? '';
+        if (oid) setOrchestratorPaneId(oid);
+        if (oid && livePaneIds.has(oid)) {
+          setOrchestratorCommand(tmux.getPaneCurrentCommand(oid));
         }
       } catch {
         // Session may not exist yet
@@ -173,7 +179,7 @@ export function TuiApp({
     }, 3000);
 
     return () => clearInterval(interval);
-  }, [sessionName, repoRoot, tmux, orchestratorPaneId]);
+  }, [sessionName, repoRoot, tmux]);
 
   // Re-enforce sidebar width after terminal resize — tmux redistributes pane
   // widths proportionally on resize, which drifts the sidebar without this.

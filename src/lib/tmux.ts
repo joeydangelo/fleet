@@ -59,6 +59,8 @@ export interface TmuxServiceApi {
   selectLayout(sessionName: string, layout: string): void;
   selectPane(paneId: string): void;
   setPaneTitle(paneId: string, title: string): void;
+  /** Sets a permanent paw role label via a custom tmux user option (@paw_role). */
+  setPaneRole(paneId: string, role: string): void;
   getCurrentPaneId(): string;
   getCurrentSessionName(): string;
   getPaneCurrentCommand(paneId: string): string;
@@ -203,14 +205,33 @@ export class TmuxService implements TmuxServiceApi {
    * Pins the sidebar at a fixed width using tmux's main-vertical layout.
    * Sets main-pane-width then applies main-vertical, which places the invoking
    * pane full-height on the left with all other panes stacked on the right.
+   * Also sets pane-border-format to read from @paw_role so paw-managed pane
+   * labels are permanent and cannot be stomped by app escape sequences.
    */
   pinSidebarLayout(sessionName: string, width: number): void {
     this.exec(['set-window-option', '-t', sessionName, 'main-pane-width', String(width)]);
     this.exec(['select-layout', '-t', sessionName, 'main-vertical']);
+    this.exec(['set-window-option', '-t', sessionName, 'pane-border-status', 'top']);
+    this.exec([
+      'set-window-option',
+      '-t',
+      sessionName,
+      'pane-border-format',
+      ' #{?#{@paw_role},#{@paw_role},#{pane_current_command}} ',
+    ]);
   }
 
   setPaneTitle(paneId: string, title: string): void {
     this.exec(['select-pane', '-t', paneId, '-T', title]);
+  }
+
+  /**
+   * Sets a permanent paw role label on a pane via a custom tmux user option (@paw_role).
+   * Unlike pane titles set via select-pane -T, custom user options cannot be
+   * overwritten by application escape sequences (e.g. Claude Code's title updates).
+   */
+  setPaneRole(paneId: string, role: string): void {
+    this.exec(['set-option', '-p', '-t', paneId, '@paw_role', role]);
   }
 
   listClients(): string[] {
@@ -447,6 +468,7 @@ export function launchTmux(
     };
 
     tmux.setPaneTitle(paneId, `paw-${wt.taskName}`);
+    tmux.setPaneRole(paneId, `paw-${wt.taskName}`);
     tmux.sendKeys(paneId, wt.agentCommand);
 
     panes.push(pane);

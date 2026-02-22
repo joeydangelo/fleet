@@ -113,6 +113,7 @@ export function restorePanes(
       if (existsSync(pane.worktreePath)) {
         const newPaneId = tmux.createPane(sessionName, pane.worktreePath);
         tmux.setPaneTitle(newPaneId, expectedTitle);
+        tmux.setPaneRole(newPaneId, expectedTitle);
         tmux.sendKeys(newPaneId, `echo "Restored pane: ${pane.taskName} (${pane.agent})"`);
         tmux.sendKeys(newPaneId, `echo "Original prompt: ${pane.prompt}"`);
         restored.push({ ...pane, paneId: newPaneId });
@@ -126,6 +127,7 @@ export function restorePanes(
   if (orchestratorPaneId && !tmux.paneExists(orchestratorPaneId)) {
     orchestratorPaneId = tmux.createPane(sessionName, config.projectRoot, { horizontal: true });
     tmux.setPaneTitle(orchestratorPaneId, 'paw-orchestrator');
+    tmux.setPaneRole(orchestratorPaneId, 'paw-orchestrator');
   }
 
   if (restored.length > 0 || orchestratorPaneId !== config.orchestratorPaneId) {

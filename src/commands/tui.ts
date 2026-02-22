@@ -87,6 +87,7 @@ export function runTui(): void {
         const controlPaneId = tmux.listPanes(sessionName)[0] ?? '';
         const orchestratorPaneId = tmux.createPane(sessionName, repoRoot, { horizontal: true });
         tmux.setPaneTitle(orchestratorPaneId, 'paw-orchestrator');
+        tmux.setPaneRole(orchestratorPaneId, 'paw-orchestrator');
         savePanes(repoRoot, sessionName, panes, orchestratorPaneId);
         // Lock sidebar width from the external process before attaching so the
         // user sees the correct layout immediately on attach.
@@ -97,6 +98,7 @@ export function runTui(): void {
         // Existing session without an orchestrator pane (pre-feature sessions).
         const orchestratorPaneId = tmux.createPane(sessionName, repoRoot, { horizontal: true });
         tmux.setPaneTitle(orchestratorPaneId, 'paw-orchestrator');
+        tmux.setPaneRole(orchestratorPaneId, 'paw-orchestrator');
         savePanes(repoRoot, sessionName, panes, orchestratorPaneId);
       }
       tmux.attachSession(sessionName);

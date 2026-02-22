@@ -82,6 +82,9 @@ function createMockTmux(): TmuxServiceApi & {
     setPaneTitle(paneId: string, title: string) {
       calls.push({ method: 'setPaneTitle', args: [paneId, title] });
     },
+    setPaneRole(paneId: string, role: string) {
+      calls.push({ method: 'setPaneRole', args: [paneId, role] });
+    },
     listClients() {
       calls.push({ method: 'listClients', args: [] });
       return [];
