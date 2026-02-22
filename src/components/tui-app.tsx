@@ -4,7 +4,13 @@ import type { TmuxServiceApi, PawPane } from '../lib/tmux.js';
 import { readPaneConfig } from '../lib/pane-state.js';
 import { readSyncState } from '../lib/sync.js';
 import type { SyncState } from '../lib/sync.js';
-import { agentBadge, taskDisplayStatus, statusIcon, SIDEBAR_WIDTH } from '../lib/tui-helpers.js';
+import {
+  agentBadge,
+  commandBadge,
+  taskDisplayStatus,
+  statusIcon,
+  SIDEBAR_WIDTH,
+} from '../lib/tui-helpers.js';
 import type { TuiStatus } from '../lib/tui-helpers.js';
 
 const LINE_WIDTH = SIDEBAR_WIDTH - 2; // border chars consume 2 columns
@@ -60,6 +66,52 @@ function PaneCard({ pane, status, selected, isFirst, isLast, isNextSelected }: P
   );
 }
 
+interface OrchestratorCardProps {
+  command: string;
+  selected: boolean;
+  isLast: boolean;
+  isNextSelected: boolean;
+}
+
+/** Renders the orchestrator shell pane as the first card in the TUI list. */
+function OrchestratorCard({ command, selected, isLast, isNextSelected }: OrchestratorCardProps) {
+  const badge = commandBadge(command);
+  const borderColor = selected ? 'cyan' : 'gray';
+  const bottomBorderColor = selected || isNextSelected ? 'cyan' : 'gray';
+
+  return (
+    <Box flexDirection="column" width={SIDEBAR_WIDTH}>
+      <Box>
+        <Text color={borderColor}>╭</Text>
+        <Text color={borderColor}>{'─'.repeat(LINE_WIDTH)}</Text>
+        <Text color={borderColor}>╮</Text>
+      </Box>
+      <Box width={SIDEBAR_WIDTH}>
+        <Text color={borderColor}>{'│ '}</Text>
+        <Box width={CONTENT_WIDTH} justifyContent="space-between">
+          <Box>
+            <Text color="green">{'$ '}</Text>
+            <Text bold={selected} color={selected ? 'cyan' : 'white'}>
+              orchestrator
+            </Text>
+          </Box>
+          <Text color="gray">{badge}</Text>
+        </Box>
+        <Text color={borderColor}>{' │'}</Text>
+      </Box>
+      <Box>
+        <Text color={bottomBorderColor}>{isLast ? '╰' : '├'}</Text>
+        <Text color={bottomBorderColor}>{'─'.repeat(LINE_WIDTH)}</Text>
+        <Text color={bottomBorderColor}>{isLast ? '╯' : '┤'}</Text>
+      </Box>
+    </Box>
+  );
+}
+
+type DisplayItem =
+  | { kind: 'orchestrator'; paneId: string; command: string }
+  | { kind: 'task'; pane: PawPane; status: TuiStatus };
+
 interface TuiAppProps {
   sessionName: string;
   repoRoot: string;
@@ -67,12 +119,14 @@ interface TuiAppProps {
   panes: PawPane[];
   /** tmux pane ID of the sidebar pane, used to re-enforce width on terminal resize. */
   controlPaneId: string;
+  /** tmux pane ID of the orchestrator shell. Empty string if not yet created. */
+  orchestratorPaneId: string;
   onQuit: () => void;
 }
 
 /**
- * Ink TUI for paw. Renders a fixed-width left panel showing task panes with
- * sync state status and agent badges. Renders in the pane that invoked `paw`.
+ * Ink TUI for paw. Renders a fixed-width left panel showing the orchestrator
+ * shell and all task panes with sync state status and agent badges.
  */
 export function TuiApp({
   sessionName,
@@ -80,6 +134,7 @@ export function TuiApp({
   tmux,
   panes: initialPanes,
   controlPaneId,
+  orchestratorPaneId,
   onQuit,
 }: TuiAppProps) {
   const { exit } = useApp();
@@ -89,6 +144,14 @@ export function TuiApp({
   const [panes, setPanes] = useState(initialPanes);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [syncState, setSyncState] = useState<SyncState | null>(() => readSyncState(repoRoot));
+  const [orchestratorCommand, setOrchestratorCommand] = useState(() => {
+    if (!orchestratorPaneId) return '';
+    try {
+      return tmux.getPaneCurrentCommand(orchestratorPaneId);
+    } catch {
+      return '';
+    }
+  });
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -100,6 +163,9 @@ export function TuiApp({
             ? (config.panes.map((p) => ({ ...p, _alive: livePaneIds.has(p.paneId) })) as PawPane[])
             : [],
         );
+        if (orchestratorPaneId && livePaneIds.has(orchestratorPaneId)) {
+          setOrchestratorCommand(tmux.getPaneCurrentCommand(orchestratorPaneId));
+        }
       } catch {
         // Session may not exist yet
       }
@@ -107,7 +173,7 @@ export function TuiApp({
     }, 3000);
 
     return () => clearInterval(interval);
-  }, [sessionName, repoRoot, tmux]);
+  }, [sessionName, repoRoot, tmux, orchestratorPaneId]);
 
   // Re-enforce sidebar width after terminal resize — tmux redistributes pane
   // widths proportionally on resize, which drifts the sidebar without this.
@@ -135,6 +201,23 @@ export function TuiApp({
     };
   }, [controlPaneId, tmux]);
 
+  // Build unified display list: orchestrator first, then task panes.
+  const allItems: DisplayItem[] = [];
+  if (orchestratorPaneId) {
+    allItems.push({
+      kind: 'orchestrator',
+      paneId: orchestratorPaneId,
+      command: orchestratorCommand,
+    });
+  }
+  for (const pane of panes) {
+    const taskState = syncState?.tasks[pane.taskName];
+    const mergeEntry = syncState?.merges?.[pane.taskName];
+    allItems.push({ kind: 'task', pane, status: taskDisplayStatus(taskState, mergeEntry) });
+  }
+
+  const totalItems = allItems.length;
+
   useInput((input, key) => {
     if (input === 'q') {
       onQuit();
@@ -145,13 +228,16 @@ export function TuiApp({
       setSelectedIndex((i) => Math.max(0, i - 1));
     }
     if (key.downArrow || input === 'j') {
-      setSelectedIndex((i) => Math.min(panes.length - 1, i + 1));
+      setSelectedIndex((i) => Math.min(Math.max(0, totalItems - 1), i + 1));
     }
-    if (key.return && panes[selectedIndex]) {
-      try {
-        tmux.selectPane(panes[selectedIndex].paneId);
-      } catch {
-        // Pane may no longer exist
+    if (key.return) {
+      const item = allItems[selectedIndex];
+      if (item) {
+        try {
+          tmux.selectPane(item.kind === 'orchestrator' ? item.paneId : item.pane.paneId);
+        } catch {
+          // Pane may no longer exist
+        }
       }
     }
   });
@@ -167,22 +253,27 @@ export function TuiApp({
           <Text dimColor>{' — ' + sessionName}</Text>
         </Box>
 
-        {panes.map((pane, i) => {
-          const taskState = syncState?.tasks[pane.taskName];
-          const mergeEntry = syncState?.merges?.[pane.taskName];
-          const status = taskDisplayStatus(taskState, mergeEntry);
-          return (
-            <PaneCard
-              key={pane.id}
-              pane={pane}
-              status={status}
+        {allItems.map((item, i) =>
+          item.kind === 'orchestrator' ? (
+            <OrchestratorCard
+              key="orchestrator"
+              command={item.command}
               selected={i === selectedIndex}
-              isFirst={i === 0}
-              isLast={i === panes.length - 1}
+              isLast={i === allItems.length - 1}
               isNextSelected={i === selectedIndex - 1}
             />
-          );
-        })}
+          ) : (
+            <PaneCard
+              key={item.pane.id}
+              pane={item.pane}
+              status={item.status}
+              selected={i === selectedIndex}
+              isFirst={i === 0}
+              isLast={i === allItems.length - 1}
+              isNextSelected={i === selectedIndex - 1}
+            />
+          ),
+        )}
       </Box>
 
       <Box marginTop={1}>

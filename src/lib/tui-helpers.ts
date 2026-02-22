@@ -15,6 +15,7 @@ const AGENT_BADGES: Record<AgentName, string> = {
 };
 
 const KNOWN_AGENTS = new Set<string>(['claude', 'codex', 'opencode', 'gemini']);
+const KNOWN_SHELLS = new Set(['bash', 'zsh', 'fish', 'sh', 'ksh', 'tcsh', 'csh']);
 
 /** Returns the short display badge for an agent name. */
 export function agentBadge(agent: string): string {
@@ -22,6 +23,18 @@ export function agentBadge(agent: string): string {
     return AGENT_BADGES[agent as AgentName];
   }
   return '[??]';
+}
+
+/**
+ * Returns a display badge for a pane's currently running command.
+ * Handles shells (bash, zsh, fish, …), known agents (claude → [cc]), and unknowns.
+ */
+export function commandBadge(command: string): string {
+  const cmd = (command || '').toLowerCase().split('/').pop() ?? '';
+  if (KNOWN_SHELLS.has(cmd)) return `[${cmd}]`;
+  if (KNOWN_AGENTS.has(cmd)) return AGENT_BADGES[cmd as AgentName];
+  if (cmd) return `[${cmd.substring(0, 4)}]`;
+  return '[sh]';
 }
 
 /**

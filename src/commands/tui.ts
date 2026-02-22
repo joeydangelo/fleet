@@ -16,6 +16,7 @@ function runTuiSidebar(
   repoRoot: string,
   panes: PawPane[],
   controlPaneId: string,
+  orchestratorPaneId: string,
 ): void {
   tmux.resizePane(controlPaneId, SIDEBAR_WIDTH);
   tmux.pinSidebarLayout(sessionName, SIDEBAR_WIDTH);
@@ -34,6 +35,7 @@ function runTuiSidebar(
       tmux,
       panes,
       controlPaneId,
+      orchestratorPaneId,
       onQuit,
     }),
   );
@@ -71,7 +73,7 @@ export function runTui(): void {
       if (currentSession === sessionName) {
         // Already in the paw session — render TUI in the current pane.
         const controlPaneId = tmux.getCurrentPaneId();
-        runTuiSidebar(tmux, sessionName, repoRoot, panes, controlPaneId);
+        runTuiSidebar(tmux, sessionName, repoRoot, panes, controlPaneId, existingOrchestratorId);
       } else {
         // Different session — switch over; TUI was bootstrapped by `paw launch`.
         tmux.switchClient(sessionName);

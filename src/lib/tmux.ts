@@ -61,6 +61,7 @@ export interface TmuxServiceApi {
   setPaneTitle(paneId: string, title: string): void;
   getCurrentPaneId(): string;
   getCurrentSessionName(): string;
+  getPaneCurrentCommand(paneId: string): string;
   resizePane(paneId: string, width: number): void;
   pinSidebarLayout(sessionName: string, width: number): void;
   listClients(): string[];
@@ -182,6 +183,15 @@ export class TmuxService implements TmuxServiceApi {
   /** Returns the tmux session name of the session running this process. */
   getCurrentSessionName(): string {
     return this.exec(['display-message', '-p', '#{session_name}']);
+  }
+
+  /** Returns the name of the command currently running in a pane (e.g. bash, zsh, claude). */
+  getPaneCurrentCommand(paneId: string): string {
+    try {
+      return this.exec(['display-message', '-t', paneId, '-p', '#{pane_current_command}']);
+    } catch {
+      return '';
+    }
   }
 
   /** Resizes a pane to the given column width. */

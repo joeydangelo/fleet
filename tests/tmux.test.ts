@@ -98,6 +98,10 @@ function createMockTmux(): TmuxServiceApi & {
       calls.push({ method: 'getCurrentSessionName', args: [] });
       return 'paw-myapp';
     },
+    getPaneCurrentCommand(paneId: string) {
+      calls.push({ method: 'getPaneCurrentCommand', args: [paneId] });
+      return 'bash';
+    },
     resizePane(paneId: string, width: number) {
       calls.push({ method: 'resizePane', args: [paneId, width] });
     },
@@ -518,6 +522,24 @@ describe('TmuxService getCurrentSessionName', () => {
     const name = svc.getCurrentSessionName();
     expect(name).toBe('paw-myapp');
     expect(calls[0]).toEqual(['display-message', '-p', '#{session_name}']);
+  });
+});
+
+describe('TmuxService getPaneCurrentCommand', () => {
+  it('returns the running command name for a pane', () => {
+    const responses = new Map([['display-message -t %5 -p #{pane_current_command}', 'bash']]);
+    const { fn, calls } = createMockExec(responses);
+    const svc = new TmuxService(fn);
+    const cmd = svc.getPaneCurrentCommand('%5');
+    expect(cmd).toBe('bash');
+    expect(calls[0]).toEqual(['display-message', '-t', '%5', '-p', '#{pane_current_command}']);
+  });
+
+  it('returns empty string when pane does not exist', () => {
+    const { fn } = createMockExec(); // no matching response → throws
+    const svc = new TmuxService(fn);
+    const cmd = svc.getPaneCurrentCommand('%999');
+    expect(cmd).toBe('');
   });
 });
 

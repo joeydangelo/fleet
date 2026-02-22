@@ -99,6 +99,10 @@ function createMockTmux(
       calls.push({ method: 'getCurrentSessionName', args: [] });
       return 'paw-myapp';
     },
+    getPaneCurrentCommand(paneId: string) {
+      calls.push({ method: 'getPaneCurrentCommand', args: [paneId] });
+      return 'bash';
+    },
     resizePane(paneId: string, width: number) {
       calls.push({ method: 'resizePane', args: [paneId, width] });
     },
