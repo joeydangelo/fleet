@@ -1,4 +1,6 @@
 import { execFileSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
+import { basename } from 'node:path';
 
 /** Agent environment variables that prevent child agents from starting. */
 const AGENT_ENV_VARS = ['CLAUDECODE', 'CLAUDE_CODE_ENTRYPOINT'] as const;
@@ -208,6 +210,131 @@ export function cleanAgentEnv(
     delete cleaned[key];
   }
   return cleaned;
+}
+
+/**
+ * Check that tmux is available. Call this at the top of commands that need
+ * tmux (paw, paw launch, paw go). On Windows, detects WSL and tmux inside
+ * it to show the right guidance. Prints install instructions and exits
+ * if tmux is not found.
+ */
+export function requireTmux(): void {
+  try {
+    execFileSync('tmux', ['-V'], { stdio: 'pipe' });
+    return;
+  } catch {
+    // tmux not in PATH — show platform-specific guidance
+  }
+
+  if (process.platform === 'win32') {
+    printWindowsTmuxError();
+  } else {
+    printUnixTmuxError();
+  }
+  process.exit(1);
+}
+
+function tryExec(cmd: string, args: string[], timeoutMs = 5000): string | null {
+  try {
+    return execFileSync(cmd, args, { stdio: 'pipe', encoding: 'utf-8', timeout: timeoutMs }).trim();
+  } catch {
+    return null;
+  }
+}
+
+function printWindowsTmuxError(): void {
+  // Check if tmux exists inside WSL
+  const wslTmux = tryExec('wsl', ['-e', 'tmux', '-V']);
+
+  if (wslTmux) {
+    // Best case: tmux is in WSL, user just needs to switch shells
+    const wslPath = tryExec('wsl', ['-e', 'wslpath', process.cwd()]);
+    const cdPath = wslPath ?? '/mnt/c/.../' + basename(process.cwd());
+    const msg = [
+      `paw requires tmux — run paw from inside WSL.\n`,
+      `  ${wslTmux} found in WSL.\n`,
+      '  Open a WSL terminal, then:',
+      `    cd '${cdPath}'`,
+      '    paw',
+    ];
+    console.error(msg.join('\n'));
+    return;
+  }
+
+  // Check if WSL exists at all
+  const wslCheck = tryExec('wsl', ['--status']);
+
+  if (wslCheck !== null) {
+    // WSL exists but no tmux
+    const msg = [
+      'paw requires tmux.\n',
+      '  WSL detected but tmux is not installed. Inside a WSL terminal:',
+      '    sudo apt install tmux\n',
+      '  Then run paw from WSL.',
+      '',
+      '  More info: https://tmux.info/docs/installation',
+      '             paw shortcut setup-tmux',
+    ];
+    console.error(msg.join('\n'));
+  } else {
+    // No WSL
+    const msg = [
+      'paw requires tmux.\n',
+      '  On Windows, paw runs inside WSL. Install WSL2 first:\n',
+      '    wsl --install          (PowerShell as Admin)\n',
+      '  Then inside WSL:',
+      '    sudo apt install tmux\n',
+      '  More info: https://tmux.info/docs/installation',
+      '             paw shortcut setup-tmux',
+    ];
+    console.error(msg.join('\n'));
+  }
+}
+
+function detectLinuxDistro(): 'debian' | 'fedora' | 'arch' | 'unknown' {
+  try {
+    const release = readFileSync('/etc/os-release', 'utf-8');
+    const idLine = release.match(/^ID(?:_LIKE)?=(.+)$/m);
+    const id = idLine?.[1]?.replace(/"/g, '').toLowerCase() ?? '';
+    if (id.includes('debian') || id.includes('ubuntu')) return 'debian';
+    if (id.includes('fedora') || id.includes('rhel') || id.includes('centos')) return 'fedora';
+    if (id.includes('arch')) return 'arch';
+  } catch {
+    // /etc/os-release not available
+  }
+  return 'unknown';
+}
+
+function printUnixTmuxError(): void {
+  const lines = ['paw requires tmux.\n'];
+
+  if (process.platform === 'darwin') {
+    lines.push('  Install with Homebrew:');
+    lines.push('    brew install tmux');
+  } else {
+    const distro = detectLinuxDistro();
+    switch (distro) {
+      case 'debian':
+        lines.push('    sudo apt install tmux');
+        break;
+      case 'fedora':
+        lines.push('    sudo dnf install tmux');
+        break;
+      case 'arch':
+        lines.push('    sudo pacman -S tmux');
+        break;
+      default:
+        lines.push('  Ubuntu/Deb:  sudo apt install tmux');
+        lines.push('  Fedora/RHEL: sudo dnf install tmux');
+        lines.push('  Arch:        sudo pacman -S tmux');
+        break;
+    }
+  }
+
+  lines.push('');
+  lines.push('  More info: https://tmux.info/docs/installation');
+  lines.push('             paw shortcut setup-tmux');
+  console.error(lines.join('\n'));
 }
 
 /** Check if running inside a tmux session. */

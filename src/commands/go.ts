@@ -6,6 +6,7 @@ import { loadConfig, resolveConfigPath } from '../lib/config.js';
 import { DEFAULT_POLL_INTERVAL } from '../lib/constants.js';
 import { isVerbose } from '../lib/context.js';
 import { handleError, colors } from '../lib/output.js';
+import { requireTmux } from '../lib/tmux.js';
 import { runWatchLoop } from './watch.js';
 
 function formatElapsed(ms: number): string {
@@ -36,6 +37,7 @@ export interface GoOpts {
 }
 
 export async function runGo(opts: GoOpts): Promise<void> {
+  requireTmux();
   const repoRoot = getRepoRoot();
   const configPath = opts.config ?? resolveConfigPath(repoRoot);
   const pollInterval = parseInt(opts.pollInterval, 10);

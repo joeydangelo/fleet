@@ -5,7 +5,7 @@ import pc from 'picocolors';
 import { loadRepoConfig } from '../lib/config.js';
 import { planWorktrees } from '../lib/session.js';
 import { readSyncState } from '../lib/sync.js';
-import { createTmuxService, tmuxSessionName, launchTmux } from '../lib/tmux.js';
+import { createTmuxService, tmuxSessionName, launchTmux, requireTmux } from '../lib/tmux.js';
 import { savePanes } from '../lib/pane-state.js';
 import { success, skip, error, pending, handleError, colors } from '../lib/output.js';
 
@@ -23,6 +23,7 @@ export function launchCommand(): Command {
     .option('-t, --task <name>', 'Launch agent in a specific worktree only')
     .action((opts: LaunchOpts) => {
       try {
+        if (!opts.dryRun) requireTmux();
         const { repoRoot, config } = loadRepoConfig(opts.config);
 
         if (!config.agent) {

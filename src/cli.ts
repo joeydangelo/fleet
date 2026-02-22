@@ -63,22 +63,27 @@ IMPORTANT:
   Agents unfamiliar with paw should run \`paw prime\` for full context.
 
 Getting Started:
-  npm install -g get-paw@latest && paw setup`,
+  npm install -g get-paw@latest && paw init`,
   );
 
   // All commands are lazily loaded via dynamic import().
-  lazy(program, 'setup', 'Initialize paw in a repo', async () => {
-    const m = await import('./commands/setup.js');
-    return m.setupCommand();
+  lazy(program, 'init', 'Initialize paw in a repo', async () => {
+    const m = await import('./commands/init.js');
+    return m.initCommand();
   });
   lazy(program, 'up', 'Create worktrees and branches for all tasks', async () => {
     const m = await import('./commands/up.js');
     return m.upCommand();
   });
-  lazy(program, 'prime', 'Context management — orchestrator dashboard or worktree orientation', async () => {
-    const m = await import('./commands/prime.js');
-    return m.primeCommand();
-  });
+  lazy(
+    program,
+    'prime',
+    'Context management — orchestrator dashboard or worktree orientation',
+    async () => {
+      const m = await import('./commands/prime.js');
+      return m.primeCommand();
+    },
+  );
   lazy(program, 'status', 'Check progress of all task worktrees', async () => {
     const m = await import('./commands/status.js');
     return m.statusCommand();

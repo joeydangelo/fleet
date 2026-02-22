@@ -88,7 +88,7 @@ function printOrchestratorDashboard(repoRoot: string): void {
   if (existsSync(pawDir)) {
     success('Set up in this repo', '');
   } else {
-    console.log(colors.warn('  paw not set up — run `paw setup`'));
+    console.log(colors.warn('  paw not set up — run `paw init`'));
   }
   if (existsSync(settingsPath)) {
     success('Hooks installed', '');

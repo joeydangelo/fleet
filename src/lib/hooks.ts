@@ -7,7 +7,7 @@ import { success } from './output.js';
 /** Wrapper script that resolves PATH and ensures paw is installed before running paw prime. */
 export const PAW_SESSION_SCRIPT = `#!/bin/bash
 # Ensure paw CLI is installed and run a paw command for Claude Code hooks
-# Installed by: paw setup
+# Installed by: paw init
 # Usage: bash paw-session.sh <command> [args...]
 
 # Get npm global bin directory (if npm is available)
@@ -68,7 +68,7 @@ paw "$@"
 /** PostToolUse hook that reminds agents to run paw done before ending their session. */
 export const PAW_DONE_REMINDER_SCRIPT = `#!/bin/bash
 # Remind agents to run paw done before ending session
-# Installed by: paw setup
+# Installed by: paw init
 # Fires on PostToolUse:Bash for git commit/push commands
 
 input=$(cat)
@@ -118,7 +118,7 @@ exit 0
 /** SessionStart hook that confirms gh CLI is installed and checks authentication. */
 export const CONFIRM_GH_CLI_SCRIPT = `#!/bin/bash
 # Confirm GitHub CLI (gh) is available for paw bridge shortcuts
-# Installed by: paw setup
+# Installed by: paw init
 # This script runs on SessionStart
 
 # Add common binary locations to PATH

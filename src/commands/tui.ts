@@ -7,6 +7,7 @@ import {
   tmuxSessionName,
   isInsideTmux,
   attachToTmuxSession,
+  requireTmux,
 } from '../lib/tmux.js';
 import type { TmuxServiceApi, PawPane } from '../lib/tmux.js';
 import { restorePanes } from '../lib/pane-state.js';
@@ -45,6 +46,7 @@ function runTuiSidebar(tmux: TmuxServiceApi, sessionName: string, panes: PawPane
  */
 export function runTui(): void {
   try {
+    requireTmux();
     const repoRoot = getRepoRoot();
     const sessionName = tmuxSessionName(basename(repoRoot));
     const tmux = createTmuxService();
