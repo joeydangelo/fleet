@@ -90,6 +90,16 @@ function createMockTmux(): TmuxServiceApi & {
       calls.push({ method: 'hasAttachedClient', args: [sessionName] });
       return false;
     },
+    getCurrentPaneId() {
+      calls.push({ method: 'getCurrentPaneId', args: [] });
+      return '%0';
+    },
+    resizePane(paneId: string, width: number) {
+      calls.push({ method: 'resizePane', args: [paneId, width] });
+    },
+    pinSidebarLayout(sessionName: string, width: number) {
+      calls.push({ method: 'pinSidebarLayout', args: [sessionName, width] });
+    },
     switchClient(sessionName: string) {
       calls.push({ method: 'switchClient', args: [sessionName] });
     },
@@ -473,5 +483,35 @@ describe('TmuxService selectPane', () => {
     const svc = new TmuxService(fn);
     svc.selectPane('%42');
     expect(calls[0]).toEqual(['select-pane', '-t', '%42']);
+  });
+});
+
+describe('TmuxService getCurrentPaneId', () => {
+  it('returns the current pane id from tmux', () => {
+    const responses = new Map([['display-message -p #{pane_id}', '%5']]);
+    const { fn, calls } = createMockExec(responses);
+    const svc = new TmuxService(fn);
+    const id = svc.getCurrentPaneId();
+    expect(id).toBe('%5');
+    expect(calls[0]).toEqual(['display-message', '-p', '#{pane_id}']);
+  });
+});
+
+describe('TmuxService resizePane', () => {
+  it('calls resize-pane -x with pane id and width', () => {
+    const { fn, calls } = createMockExec();
+    const svc = new TmuxService(fn);
+    svc.resizePane('%3', 40);
+    expect(calls[0]).toEqual(['resize-pane', '-t', '%3', '-x', '40']);
+  });
+});
+
+describe('TmuxService pinSidebarLayout', () => {
+  it('sets main-pane-width then selects main-vertical layout', () => {
+    const { fn, calls } = createMockExec();
+    const svc = new TmuxService(fn);
+    svc.pinSidebarLayout('paw-test', 40);
+    expect(calls[0]).toEqual(['set-window-option', '-t', 'paw-test', 'main-pane-width', '40']);
+    expect(calls[1]).toEqual(['select-layout', '-t', 'paw-test', 'main-vertical']);
   });
 });

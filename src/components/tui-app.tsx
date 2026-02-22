@@ -3,12 +3,11 @@ import { Box, Text, useApp, useInput, useStdout } from 'ink';
 import type { TmuxServiceApi, PawPane } from '../lib/tmux.js';
 import { readSyncState } from '../lib/sync.js';
 import type { SyncState } from '../lib/sync.js';
-import { agentBadge, taskDisplayStatus, statusIcon } from '../lib/tui-helpers.js';
+import { agentBadge, taskDisplayStatus, statusIcon, SIDEBAR_WIDTH } from '../lib/tui-helpers.js';
 import type { TuiStatus } from '../lib/tui-helpers.js';
 
-const CARD_WIDTH = 40;
-const LINE_WIDTH = 38; // CARD_WIDTH - 2 for border chars
-const CONTENT_WIDTH = 36; // LINE_WIDTH - 2 for inner padding
+const LINE_WIDTH = SIDEBAR_WIDTH - 2; // border chars consume 2 columns
+const CONTENT_WIDTH = LINE_WIDTH - 2; // inner padding consumes 2 columns
 
 interface PaneCardProps {
   pane: PawPane;
@@ -30,7 +29,7 @@ function PaneCard({ pane, status, selected, isFirst, isLast, isNextSelected }: P
   const bottomBorderColor = selected || isNextSelected ? 'cyan' : 'gray';
 
   return (
-    <Box flexDirection="column" width={CARD_WIDTH}>
+    <Box flexDirection="column" width={SIDEBAR_WIDTH}>
       {isFirst && (
         <Box>
           <Text color={borderColor}>╭</Text>
@@ -38,7 +37,7 @@ function PaneCard({ pane, status, selected, isFirst, isLast, isNextSelected }: P
           <Text color={borderColor}>╮</Text>
         </Box>
       )}
-      <Box width={CARD_WIDTH}>
+      <Box width={SIDEBAR_WIDTH}>
         <Text color={borderColor}>{'│ '}</Text>
         <Box width={CONTENT_WIDTH} justifyContent="space-between">
           <Box>
@@ -65,6 +64,8 @@ interface TuiAppProps {
   repoRoot: string;
   tmux: TmuxServiceApi;
   panes: PawPane[];
+  /** tmux pane ID of the sidebar pane, used to re-enforce width on terminal resize. */
+  controlPaneId: string;
   onQuit: () => void;
 }
 
@@ -72,7 +73,14 @@ interface TuiAppProps {
  * Ink TUI for paw. Renders a fixed-width left panel showing task panes with
  * sync state status and agent badges. Renders in the pane that invoked `paw`.
  */
-export function TuiApp({ sessionName, repoRoot, tmux, panes: initialPanes, onQuit }: TuiAppProps) {
+export function TuiApp({
+  sessionName,
+  repoRoot,
+  tmux,
+  panes: initialPanes,
+  controlPaneId,
+  onQuit,
+}: TuiAppProps) {
   const { exit } = useApp();
   const { stdout } = useStdout();
   const terminalHeight = stdout?.rows ?? 24;
@@ -97,6 +105,32 @@ export function TuiApp({ sessionName, repoRoot, tmux, panes: initialPanes, onQui
 
     return () => clearInterval(interval);
   }, [sessionName, repoRoot, tmux]);
+
+  // Re-enforce sidebar width after terminal resize — tmux redistributes pane
+  // widths proportionally on resize, which drifts the sidebar without this.
+  useEffect(() => {
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const enforce = () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        try {
+          tmux.resizePane(controlPaneId, SIDEBAR_WIDTH);
+        } catch {
+          // Best-effort — ignore if pane no longer exists
+        }
+      }, 500);
+    };
+
+    process.stdout.on('resize', enforce);
+    process.on('SIGWINCH', enforce);
+
+    return () => {
+      process.stdout.off('resize', enforce);
+      process.off('SIGWINCH', enforce);
+      if (debounceTimer) clearTimeout(debounceTimer);
+    };
+  }, [controlPaneId, tmux]);
 
   useInput((input, key) => {
     if (input === 'q') {

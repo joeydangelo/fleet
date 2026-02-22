@@ -7,6 +7,7 @@ import type { TmuxServiceApi, PawPane } from '../lib/tmux.js';
 import { restorePanes } from '../lib/pane-state.js';
 import { TuiApp } from '../components/tui-app.js';
 import { handleError, colors } from '../lib/output.js';
+import { SIDEBAR_WIDTH } from '../lib/tui-helpers.js';
 
 /** Render the TUI sidebar in the current pane via Ink. */
 function runTuiSidebar(
@@ -14,7 +15,11 @@ function runTuiSidebar(
   sessionName: string,
   repoRoot: string,
   panes: PawPane[],
+  controlPaneId: string,
 ): void {
+  tmux.resizePane(controlPaneId, SIDEBAR_WIDTH);
+  tmux.pinSidebarLayout(sessionName, SIDEBAR_WIDTH);
+
   const onQuit = () => {
     // Clear screen and print reattach hint
     process.stdout.write('\x1b[2J\x1b[H');
@@ -28,6 +33,7 @@ function runTuiSidebar(
       repoRoot,
       tmux,
       panes,
+      controlPaneId,
       onQuit,
     }),
   );
@@ -55,12 +61,13 @@ export function runTui(): void {
     const panes = restorePanes(tmux, sessionName, repoRoot);
 
     if (isInsideTmux()) {
+      const controlPaneId = tmux.getCurrentPaneId();
       try {
         tmux.switchClient(sessionName);
       } catch {
         // Already in this session — switchClient is a no-op in that case
       }
-      runTuiSidebar(tmux, sessionName, repoRoot, panes);
+      runTuiSidebar(tmux, sessionName, repoRoot, panes, controlPaneId);
     } else {
       if (isNewSession) {
         // Bootstrap: send 'paw' into the session so TUI renders immediately on attach

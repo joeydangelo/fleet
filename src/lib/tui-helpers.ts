@@ -1,6 +1,9 @@
 import type { AgentName } from './tmux.js';
 import type { TaskState, MergeEntry } from './sync.js';
 
+/** Fixed column width of the TUI left sidebar. */
+export const SIDEBAR_WIDTH = 40;
+
 /** Task status as shown in the TUI left panel. */
 export type TuiStatus = 'pending' | 'in_progress' | 'done' | 'conflict';
 

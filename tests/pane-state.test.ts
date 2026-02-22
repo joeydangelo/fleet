@@ -91,6 +91,16 @@ function createMockTmux(
     selectPane(paneId: string) {
       calls.push({ method: 'selectPane', args: [paneId] });
     },
+    getCurrentPaneId() {
+      calls.push({ method: 'getCurrentPaneId', args: [] });
+      return '%0';
+    },
+    resizePane(paneId: string, width: number) {
+      calls.push({ method: 'resizePane', args: [paneId, width] });
+    },
+    pinSidebarLayout(sessionName: string, width: number) {
+      calls.push({ method: 'pinSidebarLayout', args: [sessionName, width] });
+    },
   };
 }
 

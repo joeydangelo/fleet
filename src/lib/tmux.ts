@@ -54,6 +54,9 @@ export interface TmuxServiceApi {
   selectLayout(sessionName: string, layout: string): void;
   selectPane(paneId: string): void;
   setPaneTitle(paneId: string, title: string): void;
+  getCurrentPaneId(): string;
+  resizePane(paneId: string, width: number): void;
+  pinSidebarLayout(sessionName: string, width: number): void;
   listClients(): string[];
   hasAttachedClient(sessionName: string): boolean;
   switchClient(sessionName: string): void;
@@ -158,6 +161,26 @@ export class TmuxService implements TmuxServiceApi {
 
   selectPane(paneId: string): void {
     this.exec(['select-pane', '-t', paneId]);
+  }
+
+  /** Returns the tmux pane ID of the pane running this process. */
+  getCurrentPaneId(): string {
+    return this.exec(['display-message', '-p', '#{pane_id}']);
+  }
+
+  /** Resizes a pane to the given column width. */
+  resizePane(paneId: string, width: number): void {
+    this.exec(['resize-pane', '-t', paneId, '-x', String(width)]);
+  }
+
+  /**
+   * Pins the sidebar at a fixed width using tmux's main-vertical layout.
+   * Sets main-pane-width then applies main-vertical, which places the invoking
+   * pane full-height on the left with all other panes stacked on the right.
+   */
+  pinSidebarLayout(sessionName: string, width: number): void {
+    this.exec(['set-window-option', '-t', sessionName, 'main-pane-width', String(width)]);
+    this.exec(['select-layout', '-t', sessionName, 'main-vertical']);
   }
 
   setPaneTitle(paneId: string, title: string): void {
