@@ -19,6 +19,10 @@ interface PaneCardProps {
   isNextSelected: boolean;
 }
 
+/**
+ * Renders a single task pane as a bordered card in the TUI list.
+ * Shares top/bottom borders with adjacent cards; cyan border when selected.
+ */
 function PaneCard({ pane, status, selected, isFirst, isLast, isNextSelected }: PaneCardProps) {
   const { icon, color } = statusIcon(status);
   const badge = agentBadge(pane.agent);
@@ -66,7 +70,7 @@ interface TuiAppProps {
 
 /**
  * Ink TUI for paw. Renders a fixed-width left panel showing task panes with
- * sync state status and agent badges. Runs in pane 0 of the tmux session.
+ * sync state status and agent badges. Renders in the pane that invoked `paw`.
  */
 export function TuiApp({ sessionName, repoRoot, tmux, panes: initialPanes, onQuit }: TuiAppProps) {
   const { exit } = useApp();
