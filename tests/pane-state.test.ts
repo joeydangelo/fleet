@@ -241,6 +241,19 @@ describe('pane-state: restorePanes', () => {
     expect(result.orchestratorPaneId).toBe('');
   });
 
+  it('adopts surviving orchestrator by title when panes.json is absent', () => {
+    const titleMap = new Map([['paw-orchestrator', '%3']]);
+    const mock = createMockTmux(['%3'], titleMap);
+    const result = restorePanes(mock, 'paw-myapp', tempDir);
+
+    expect(result.orchestratorPaneId).toBe('%3');
+    expect(result.panes).toHaveLength(0);
+
+    // Should have written panes.json so next run finds it by ID
+    const config = readPaneConfig(tempDir);
+    expect(config?.orchestratorPaneId).toBe('%3');
+  });
+
   it('keeps task panes that still exist in tmux', () => {
     const pane = makePane({ paneId: '%5' });
     savePanes(tempDir, 'paw-myapp', [pane], '%1');
@@ -345,7 +358,7 @@ describe('pane-state: killPanes', () => {
     rmSync(tempDir, { recursive: true, force: true });
   });
 
-  it('kills all task panes, orchestrator pane, and removes panes.json', () => {
+  it('kills all task panes and clears panes array; preserves orchestratorPaneId', () => {
     const panes = [
       makePane({ paneId: '%1', taskName: 'auth' }),
       makePane({ paneId: '%2', taskName: 'api', id: 'paw-2' }),
@@ -361,7 +374,11 @@ describe('pane-state: killPanes', () => {
     expect(killCalls.map((c) => c.args[0])).not.toContain('%0'); // orchestrator preserved
     expect(killCalls.map((c) => c.args[0])).toContain('%1');
 
-    expect(readPaneConfig(tempDir)).toBeNull();
+    // panes.json survives with empty task list so next `paw` run finds the orchestrator
+    const config = readPaneConfig(tempDir);
+    expect(config).not.toBeNull();
+    expect(config!.panes).toHaveLength(0);
+    expect(config!.orchestratorPaneId).toBe('%0');
   });
 
   it('skips panes that no longer exist in tmux', () => {

@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, mkdirSync, unlinkSync } from 'node:fs';
+import { existsSync, readFileSync, mkdirSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { writeFileSync } from 'atomically';
 import type { PawPaneConfig, PawPane, TmuxServiceApi } from './tmux.js';
@@ -46,27 +46,23 @@ export function savePanes(
 }
 
 /**
- * Kill all persisted agent panes and the orchestrator pane, then remove panes.json.
- * Skips panes that no longer exist in the tmux session.
+ * Kill all persisted task panes, then clear the panes array in panes.json.
+ * Preserves orchestratorPaneId so the next `paw` run finds the surviving
+ * orchestrator without creating a duplicate. Skips panes that no longer exist.
  */
 export function killPanes(tmux: TmuxServiceApi, repoRoot: string): void {
   const config = readPaneConfig(repoRoot);
   if (!config) return;
 
-  const toKill = config.panes.map((p) => p.paneId);
-
-  for (const paneId of toKill) {
-    if (tmux.paneExists(paneId)) {
-      tmux.killPane(paneId);
+  for (const pane of config.panes) {
+    if (tmux.paneExists(pane.paneId)) {
+      tmux.killPane(pane.paneId);
     }
   }
 
-  const p = panesPath(repoRoot);
-  try {
-    unlinkSync(p);
-  } catch {
-    // already removed
-  }
+  // Clear task panes but keep orchestratorPaneId so the session can be
+  // re-entered cleanly without spawning duplicate orchestrator panes.
+  writePaneConfig(repoRoot, { ...config, panes: [], lastUpdated: new Date().toISOString() });
 }
 
 /**
@@ -83,7 +79,17 @@ export function restorePanes(
   repoRoot: string,
 ): { panes: PawPane[]; orchestratorPaneId: string } {
   const config = readPaneConfig(repoRoot);
-  if (!config) return { panes: [], orchestratorPaneId: '' };
+  if (!config) {
+    // No panes.json — check for a surviving orchestrator pane by title.
+    // This handles cases where panes.json was manually deleted or lost (e.g.
+    // WSL restart) while the tmux session was still running.
+    const titleMap = tmux.listPanesWithTitles(sessionName);
+    const orchestratorPaneId = titleMap.get('paw-orchestrator') ?? '';
+    if (orchestratorPaneId) {
+      savePanes(repoRoot, sessionName, [], orchestratorPaneId);
+    }
+    return { panes: [], orchestratorPaneId };
+  }
 
   const existingPanes = tmux.listPanes(sessionName);
   const restored: PawPane[] = [];
