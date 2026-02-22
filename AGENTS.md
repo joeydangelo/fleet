@@ -232,6 +232,7 @@ finished.
 | `paw shortcut resolve-merge-conflict` | Read conflict brief, resolve files, `paw merge --continue` |
 | `paw shortcut to-pr` | Create PR from merged agent work |
 | `paw shortcut setup-github-cli` | Ensure GitHub CLI (gh) is installed and authenticated |
+| `paw shortcut setup-tmux` | Ensure tmux is installed for paw's terminal management |
 | `paw shortcut session-start` | Agent's first actions in a worktree |
 | `paw shortcut build-task` | TDD workflow from task assignment to done |
 | `paw shortcut precommit-process` | Check messages, review, validate, broadcast, commit |

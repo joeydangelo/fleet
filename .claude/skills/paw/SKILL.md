@@ -231,6 +231,7 @@ finished.
 | `paw shortcut session-end` | Agent's final actions — broadcast final state, write done summary |
 | `paw shortcut session-start` | Agent's first actions in a paw worktree — orient, plan, broadcast intent |
 | `paw shortcut setup-github-cli` | Ensure GitHub CLI (gh) is installed and authenticated |
+| `paw shortcut setup-tmux` | Ensure tmux is installed for paw's terminal management |
 | `paw shortcut to-pr` | Combine agent done summaries into a PR with issue references |
 <!-- END SHORTCUT DIRECTORY -->
 
