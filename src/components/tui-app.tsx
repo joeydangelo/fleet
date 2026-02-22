@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Text, useApp, useInput, useStdout } from 'ink';
 import type { TmuxServiceApi, PawPane } from '../lib/tmux.js';
+import { readPaneConfig } from '../lib/pane-state.js';
 import { readSyncState } from '../lib/sync.js';
 import type { SyncState } from '../lib/sync.js';
 import { agentBadge, taskDisplayStatus, statusIcon, SIDEBAR_WIDTH } from '../lib/tui-helpers.js';
@@ -93,9 +94,11 @@ export function TuiApp({
     const interval = setInterval(() => {
       try {
         const livePaneIds = new Set(tmux.listPanes(sessionName));
+        const config = readPaneConfig(repoRoot);
         setPanes(
-          (current) =>
-            current.map((p) => ({ ...p, _alive: livePaneIds.has(p.paneId) })) as PawPane[],
+          config
+            ? (config.panes.map((p) => ({ ...p, _alive: livePaneIds.has(p.paneId) })) as PawPane[])
+            : [],
         );
       } catch {
         // Session may not exist yet
@@ -164,26 +167,22 @@ export function TuiApp({
           <Text dimColor>{' — ' + sessionName}</Text>
         </Box>
 
-        {panes.length === 0 ? (
-          <Text dimColor>No panes. Run `paw launch` to spawn agents.</Text>
-        ) : (
-          panes.map((pane, i) => {
-            const taskState = syncState?.tasks[pane.taskName];
-            const mergeEntry = syncState?.merges?.[pane.taskName];
-            const status = taskDisplayStatus(taskState, mergeEntry);
-            return (
-              <PaneCard
-                key={pane.id}
-                pane={pane}
-                status={status}
-                selected={i === selectedIndex}
-                isFirst={i === 0}
-                isLast={i === panes.length - 1}
-                isNextSelected={i === selectedIndex - 1}
-              />
-            );
-          })
-        )}
+        {panes.map((pane, i) => {
+          const taskState = syncState?.tasks[pane.taskName];
+          const mergeEntry = syncState?.merges?.[pane.taskName];
+          const status = taskDisplayStatus(taskState, mergeEntry);
+          return (
+            <PaneCard
+              key={pane.id}
+              pane={pane}
+              status={status}
+              selected={i === selectedIndex}
+              isFirst={i === 0}
+              isLast={i === panes.length - 1}
+              isNextSelected={i === selectedIndex - 1}
+            />
+          );
+        })}
       </Box>
 
       <Box marginTop={1}>
