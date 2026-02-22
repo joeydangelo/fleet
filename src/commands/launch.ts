@@ -6,7 +6,8 @@ import { loadRepoConfig } from '../lib/config.js';
 import { planWorktrees } from '../lib/session.js';
 import { readSyncState } from '../lib/sync.js';
 import { createTmuxService, tmuxSessionName, launchTmux, requireTmux } from '../lib/tmux.js';
-import { savePanes } from '../lib/pane-state.js';
+import { savePanes, readPaneConfig } from '../lib/pane-state.js';
+import { SIDEBAR_WIDTH } from '../lib/tui-helpers.js';
 import { success, skip, error, pending, handleError, colors } from '../lib/output.js';
 
 interface LaunchOpts {
@@ -92,7 +93,10 @@ export function launchCommand(): Command {
 
         const tmux = createTmuxService();
         const panes = launchTmux(tmux, sessionName, repoRoot, launchList);
-        savePanes(repoRoot, sessionName, panes);
+        const existing = readPaneConfig(repoRoot);
+        savePanes(repoRoot, sessionName, panes, existing?.orchestratorPaneId ?? '');
+        // Re-enforce sidebar layout after adding agent panes.
+        tmux.pinSidebarLayout(sessionName, SIDEBAR_WIDTH);
 
         for (const pane of panes) {
           success(pane.taskName, pane.worktreePath);
