@@ -31,7 +31,12 @@ export interface PawPaneConfig {
   sessionName: string;
   /** Repo root path. */
   projectRoot: string;
-  /** Active panes. */
+  /**
+   * Pane ID of the orchestrator shell (pane 1). Empty string if not yet created.
+   * The orchestrator is where the user types their AI agent command (claude, codex, etc.).
+   */
+  orchestratorPaneId: string;
+  /** Active agent panes (panes 2+). */
   panes: PawPane[];
   /** ISO timestamp of last update. */
   lastUpdated: string;
@@ -44,7 +49,7 @@ export interface TmuxServiceApi {
   sessionExists(name: string): boolean;
   createSession(name: string, cwd: string): void;
   killSession(name: string): void;
-  createPane(sessionName: string, cwd: string): string;
+  createPane(sessionName: string, cwd: string, opts?: { horizontal?: boolean }): string;
   killPane(paneId: string): void;
   listPanes(sessionName: string): string[];
   listPanesWithTitles(sessionName: string): Map<string, string>;
@@ -55,6 +60,7 @@ export interface TmuxServiceApi {
   selectPane(paneId: string): void;
   setPaneTitle(paneId: string, title: string): void;
   getCurrentPaneId(): string;
+  getCurrentSessionName(): string;
   resizePane(paneId: string, width: number): void;
   pinSidebarLayout(sessionName: string, width: number): void;
   listClients(): string[];
@@ -103,9 +109,14 @@ export class TmuxService implements TmuxServiceApi {
     this.exec(['kill-session', '-t', name]);
   }
 
-  /** Split a new pane in the session. Returns the new pane ID (%nn). */
-  createPane(sessionName: string, cwd: string): string {
-    return this.exec(['split-window', '-t', sessionName, '-c', cwd, '-P', '-F', '#{pane_id}']);
+  /**
+   * Split a new pane in the session. Returns the new pane ID (%nn).
+   * Pass `horizontal: true` for a left/right split (sidebar stays left).
+   */
+  createPane(sessionName: string, cwd: string, opts?: { horizontal?: boolean }): string {
+    const args = ['split-window', '-t', sessionName, '-c', cwd, '-P', '-F', '#{pane_id}'];
+    if (opts?.horizontal) args.push('-h');
+    return this.exec(args);
   }
 
   killPane(paneId: string): void {
@@ -166,6 +177,11 @@ export class TmuxService implements TmuxServiceApi {
   /** Returns the tmux pane ID of the pane running this process. */
   getCurrentPaneId(): string {
     return this.exec(['display-message', '-p', '#{pane_id}']);
+  }
+
+  /** Returns the tmux session name of the session running this process. */
+  getCurrentSessionName(): string {
+    return this.exec(['display-message', '-p', '#{session_name}']);
   }
 
   /** Resizes a pane to the given column width. */
@@ -426,8 +442,6 @@ export function launchTmux(
     panes.push(pane);
     paneIndex++;
   }
-
-  tmux.selectLayout(sessionName, 'tiled');
 
   return panes;
 }

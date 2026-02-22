@@ -49,8 +49,8 @@ function createMockTmux(): TmuxServiceApi & {
       calls.push({ method: 'killSession', args: [name] });
       sessions.delete(name);
     },
-    createPane(sessionName: string, cwd: string) {
-      calls.push({ method: 'createPane', args: [sessionName, cwd] });
+    createPane(sessionName: string, cwd: string, opts?: { horizontal?: boolean }) {
+      calls.push({ method: 'createPane', args: [sessionName, cwd, opts] });
       paneCounter++;
       return `%${paneCounter}`;
     },
@@ -93,6 +93,10 @@ function createMockTmux(): TmuxServiceApi & {
     getCurrentPaneId() {
       calls.push({ method: 'getCurrentPaneId', args: [] });
       return '%0';
+    },
+    getCurrentSessionName() {
+      calls.push({ method: 'getCurrentSessionName', args: [] });
+      return 'paw-myapp';
     },
     resizePane(paneId: string, width: number) {
       calls.push({ method: 'resizePane', args: [paneId, width] });
@@ -224,6 +228,16 @@ describe('TmuxService with mock exec', () => {
     const svc = new TmuxService(fn);
     const paneId = svc.createPane('paw-myapp', '/tmp/wt');
     expect(paneId).toBe('%42');
+  });
+
+  it('createPane with horizontal:true appends -h flag', () => {
+    const responses = new Map([
+      ['split-window -t paw-myapp -c /tmp/wt -P -F #{pane_id} -h', '%43'],
+    ]);
+    const { fn } = createMockExec(responses);
+    const svc = new TmuxService(fn);
+    const paneId = svc.createPane('paw-myapp', '/tmp/wt', { horizontal: true });
+    expect(paneId).toBe('%43');
   });
 
   it('killPane calls kill-pane', () => {
@@ -429,13 +443,12 @@ describe('launchTmux', () => {
     expect(titleCall!.args[1]).toBe('paw-auth');
   });
 
-  it('applies tiled layout after creating panes', () => {
+  it('does not apply any layout (caller is responsible for sidebar layout)', () => {
     const mock = createMockTmux();
     const worktrees = [{ taskName: 'auth', worktreePath: '/tmp/wt-auth', agentCommand: 'claude' }];
     launchTmux(mock, 'paw-myapp', '/home/user/myapp', worktrees);
-    const layoutCall = mock.calls.find((c) => c.method === 'selectLayout');
-    expect(layoutCall).toBeDefined();
-    expect(layoutCall!.args).toEqual(['paw-myapp', 'tiled']);
+    const layoutCalls = mock.calls.filter((c) => c.method === 'selectLayout');
+    expect(layoutCalls).toHaveLength(0);
   });
 
   it('returns PawPane objects with correct structure', () => {
@@ -494,6 +507,17 @@ describe('TmuxService getCurrentPaneId', () => {
     const id = svc.getCurrentPaneId();
     expect(id).toBe('%5');
     expect(calls[0]).toEqual(['display-message', '-p', '#{pane_id}']);
+  });
+});
+
+describe('TmuxService getCurrentSessionName', () => {
+  it('returns the current session name from tmux', () => {
+    const responses = new Map([['display-message -p #{session_name}', 'paw-myapp']]);
+    const { fn, calls } = createMockExec(responses);
+    const svc = new TmuxService(fn);
+    const name = svc.getCurrentSessionName();
+    expect(name).toBe('paw-myapp');
+    expect(calls[0]).toEqual(['display-message', '-p', '#{session_name}']);
   });
 });
 
