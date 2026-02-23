@@ -137,7 +137,7 @@ export class TmuxService implements TmuxServiceApi {
 
   /** List all pane IDs (%nn) in a session. */
   listPanes(sessionName: string): string[] {
-    const output = this.exec(['list-panes', '-t', sessionName, '-F', '#{pane_id}']);
+    const output = this.exec(['list-panes', '-s', '-t', sessionName, '-F', '#{pane_id}']);
     return output.split('\n').filter(Boolean);
   }
 
@@ -145,6 +145,7 @@ export class TmuxService implements TmuxServiceApi {
   listPanesDetailed(sessionName: string): TmuxPaneInfo[] {
     const output = this.exec([
       'list-panes',
+      '-s',
       '-t',
       sessionName,
       '-F',
@@ -161,7 +162,14 @@ export class TmuxService implements TmuxServiceApi {
 
   /** List panes with their titles. Returns a map of title -> pane ID. */
   listPanesWithTitles(sessionName: string): Map<string, string> {
-    const output = this.exec(['list-panes', '-t', sessionName, '-F', '#{pane_id} #{pane_title}']);
+    const output = this.exec([
+      'list-panes',
+      '-s',
+      '-t',
+      sessionName,
+      '-F',
+      '#{pane_id} #{pane_title}',
+    ]);
     const map = new Map<string, string>();
     for (const line of output.split('\n').filter(Boolean)) {
       const spaceIdx = line.indexOf(' ');

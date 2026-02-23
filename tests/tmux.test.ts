@@ -259,7 +259,7 @@ describe('TmuxService with mock exec', () => {
   });
 
   it('listPanes returns array of pane IDs', () => {
-    const responses = new Map([['list-panes -t paw-myapp -F #{pane_id}', '%1\n%2\n%3']]);
+    const responses = new Map([['list-panes -s -t paw-myapp -F #{pane_id}', '%1\n%2\n%3']]);
     const { fn } = createMockExec(responses);
     const svc = new TmuxService(fn);
     expect(svc.listPanes('paw-myapp')).toEqual(['%1', '%2', '%3']);
@@ -342,7 +342,10 @@ describe('TmuxService with mock exec', () => {
 
   it('listPanesWithTitles returns title-to-paneId map', () => {
     const responses = new Map([
-      ['list-panes -t paw-myapp -F #{pane_id} #{pane_title}', '%1 paw-auth\n%2 paw-api\n%3 bash'],
+      [
+        'list-panes -s -t paw-myapp -F #{pane_id} #{pane_title}',
+        '%1 paw-auth\n%2 paw-api\n%3 bash',
+      ],
     ]);
     const { fn } = createMockExec(responses);
     const svc = new TmuxService(fn);
@@ -363,7 +366,7 @@ describe('TmuxService with mock exec', () => {
   it('listPanesDetailed returns pane ID, title, and current command for each pane', () => {
     const responses = new Map([
       [
-        'list-panes -t paw-myapp -F #{pane_id}\t#{pane_title}\t#{pane_current_command}',
+        'list-panes -s -t paw-myapp -F #{pane_id}\t#{pane_title}\t#{pane_current_command}',
         '%0\tpaw-orchestrator\tclaude\n%1\tpaw-auth\tclaude\n%2\tbash\tbash',
       ],
     ]);
