@@ -34,7 +34,6 @@ Two roles — read the right section of the full skill (`paw skill`):
 | `paw` | Open TUI — attach to tmux session with agent panes |
 | `paw go` | Full lifecycle: up → launch → watch → merge → down |
 | `paw status` | Check progress across all tasks |
-| `paw prime` | Orient yourself (orchestrator dashboard or worktree task) |
 | `paw broadcast "..."` | Announce a change to all agents |
 | `paw merge` | Merge completed task branches |
 | `paw merge --continue` | Resume after conflict resolution |
@@ -48,4 +47,3 @@ Two roles — read the right section of the full skill (`paw skill`):
 - Agents must NEVER edit `state.json`, checkout `paw-sync`, merge branches,
   run `git push`, or run orchestrator commands from a worktree.
 - Run `paw skill` for full workflow details and command reference.
-- Run `paw prime` to recover full context after compaction.

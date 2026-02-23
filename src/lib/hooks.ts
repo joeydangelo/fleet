@@ -4,11 +4,11 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { success } from './output.js';
 
-/** Wrapper script that resolves PATH and ensures paw is installed before running paw prime. */
+/** Wrapper script that resolves PATH and ensures paw is installed before running paw commands. */
 export const PAW_SESSION_SCRIPT = `#!/bin/bash
-# Ensure paw CLI is installed and run a paw command for Claude Code hooks
+# Ensure paw CLI is installed and run paw commands for Claude Code sessions
 # Installed by: paw init
-# Usage: bash paw-session.sh <command> [args...]
+# This script runs on SessionStart and PreCompact
 
 # Get npm global bin directory (if npm is available)
 NPM_GLOBAL_BIN=""
@@ -40,8 +40,11 @@ ensure_paw() {
         }
     elif command -v pnpm &> /dev/null; then
         pnpm add -g get-paw
+    elif command -v yarn &> /dev/null; then
+        yarn global add get-paw
     else
-        echo "[paw] ERROR: No package manager found (npm or pnpm required)" >&2
+        echo "[paw] ERROR: No package manager found (npm, pnpm, or yarn required)" >&2
+        echo "[paw] Please install Node.js and npm, then run: npm install -g get-paw" >&2
         return 1
     fi
 
@@ -62,6 +65,7 @@ ensure_paw() {
 # Main
 ensure_paw || exit 1
 
+# Run paw with any passed arguments (e.g., prime, skill --brief for PreCompact)
 paw "$@"
 `;
 
@@ -115,11 +119,11 @@ fi
 exit 0
 `;
 
-/** SessionStart hook that confirms gh CLI is installed and checks authentication. */
+/** SessionStart hook that ensures gh CLI is installed and checks authentication. */
 export const CONFIRM_GH_CLI_SCRIPT = `#!/bin/bash
-# Confirm GitHub CLI (gh) is available for paw bridge shortcuts
+# Automated GitHub CLI (gh) setup for Claude Code sessions
 # Installed by: paw init
-# This script runs on SessionStart
+# This script runs on SessionStart to ensure gh is available for paw workflows
 
 # Add common binary locations to PATH
 export PATH="$HOME/.local/bin:$HOME/bin:/usr/local/bin:$PATH"
@@ -259,6 +263,10 @@ export function installHooks(repoRoot: string): void {
           {
             type: 'command',
             command: `bash ${SCRIPT_RELATIVE} skill --brief`,
+          },
+          {
+            type: 'command',
+            command: `bash ${SCRIPT_RELATIVE} prime --brief`,
           },
         ],
       },
