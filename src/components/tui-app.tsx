@@ -85,7 +85,7 @@ function PaneCard({ item, selected, isFirst, isLast, isNextSelected }: PaneCardP
 
 /**
  * Derives a human-readable label for a non-task pane from its tmux title.
- * Strips the "paw-" prefix if present (e.g. "paw-orchestrator" -> "orchestrator").
+ * Strips the "paw-" prefix if present; falls back to "pane %nn" for shell defaults.
  */
 function labelFromTitle(title: string, paneId: string): string {
   if (!title || title === 'bash' || title === 'zsh') return `pane ${paneId}`;
@@ -94,8 +94,8 @@ function labelFromTitle(title: string, paneId: string): string {
 
 /**
  * Builds a unified display list from live tmux panes, enriched with
- * panes.json task metadata and sync state. Task panes appear first
- * (in panes.json order), followed by non-task panes sorted by pane ID.
+ * panes.json task metadata and sync state. Orchestrator pane appears first,
+ * then task panes (in panes.json order), then ad-hoc panes.
  * The TUI's own pane (controlPaneId) is excluded.
  */
 export function buildDisplayItems(
@@ -103,23 +103,37 @@ export function buildDisplayItems(
   taskPanes: PawPane[],
   syncState: SyncState | null,
   controlPaneId: string,
+  orchestratorPaneId: string,
 ): DisplayItem[] {
-  const taskByPaneId = new Map<string, PawPane>();
-  for (const p of taskPanes) taskByPaneId.set(p.paneId, p);
-
-  const items: DisplayItem[] = [];
+  const orchestratorItems: DisplayItem[] = [];
+  const taskItems: DisplayItem[] = [];
+  const adHocItems: DisplayItem[] = [];
   const seen = new Set<string>();
 
-  // Task panes first, in panes.json order (preserves YAML task ordering).
+  // Orchestrator pane first (known from panes.json).
+  if (orchestratorPaneId && orchestratorPaneId !== controlPaneId) {
+    const tmuxInfo = tmuxPanes.find((t) => t.paneId === orchestratorPaneId);
+    if (tmuxInfo) {
+      seen.add(orchestratorPaneId);
+      orchestratorItems.push({
+        paneId: orchestratorPaneId,
+        label: 'orchestrator',
+        badge: commandBadge(tmuxInfo.command),
+        status: null,
+      });
+    }
+  }
+
+  // Task panes in panes.json order (preserves YAML task ordering).
   for (const pane of taskPanes) {
     const tmuxInfo = tmuxPanes.find((t) => t.paneId === pane.paneId);
     if (!tmuxInfo) continue; // pane no longer alive in tmux
-    if (pane.paneId === controlPaneId) continue;
+    if (pane.paneId === controlPaneId || seen.has(pane.paneId)) continue;
     seen.add(pane.paneId);
 
     const taskState = syncState?.tasks[pane.taskName];
     const mergeEntry = syncState?.merges?.[pane.taskName];
-    items.push({
+    taskItems.push({
       paneId: pane.paneId,
       label: pane.taskName,
       badge: commandBadge(tmuxInfo.command),
@@ -127,10 +141,10 @@ export function buildDisplayItems(
     });
   }
 
-  // Non-task panes: everything in tmux not matched above and not the TUI pane.
+  // Ad-hoc panes: everything else not matched above and not the TUI pane.
   for (const tp of tmuxPanes) {
     if (seen.has(tp.paneId) || tp.paneId === controlPaneId) continue;
-    items.push({
+    adHocItems.push({
       paneId: tp.paneId,
       label: labelFromTitle(tp.title, tp.paneId),
       badge: commandBadge(tp.command),
@@ -138,7 +152,7 @@ export function buildDisplayItems(
     });
   }
 
-  return items;
+  return [...orchestratorItems, ...taskItems, ...adHocItems];
 }
 
 interface TuiAppProps {
@@ -169,8 +183,15 @@ export function TuiApp({
 
   const [items, setItems] = useState<DisplayItem[]>(() => {
     const tmuxPanes = tmux.listPanesDetailed(sessionName);
+    const config = readPaneConfig(repoRoot);
     const syncState = readSyncState(repoRoot);
-    return buildDisplayItems(tmuxPanes, initialPanes, syncState, controlPaneId);
+    return buildDisplayItems(
+      tmuxPanes,
+      initialPanes,
+      syncState,
+      controlPaneId,
+      config?.orchestratorPaneId ?? '',
+    );
   });
   const [selectedIndex, setSelectedIndex] = useState(0);
 
@@ -180,7 +201,15 @@ export function TuiApp({
         const tmuxPanes = tmux.listPanesDetailed(sessionName);
         const config = readPaneConfig(repoRoot);
         const syncState = readSyncState(repoRoot);
-        setItems(buildDisplayItems(tmuxPanes, config?.panes ?? [], syncState, controlPaneId));
+        setItems(
+          buildDisplayItems(
+            tmuxPanes,
+            config?.panes ?? [],
+            syncState,
+            controlPaneId,
+            config?.orchestratorPaneId ?? '',
+          ),
+        );
       } catch {
         // Session may not exist yet
       }

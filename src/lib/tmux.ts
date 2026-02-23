@@ -11,7 +11,7 @@ export type AgentName = 'claude' | 'codex' | 'opencode' | 'gemini';
 export interface TmuxPaneInfo {
   /** tmux pane ID (%nn). */
   paneId: string;
-  /** Pane title (set via select-pane -T or @paw_role). */
+  /** Pane title (pane_title). May be stomped by apps like Claude Code. */
   title: string;
   /** Foreground command currently running in the pane (e.g. bash, claude). */
   command: string;
@@ -212,7 +212,7 @@ export class TmuxService implements TmuxServiceApi {
     this.exec(['select-pane', '-t', paneId]);
   }
 
-  /** Returns the tmux pane ID of the pane running this process. */
+  /** Returns the tmux pane ID of the currently active (selected) pane. */
   getCurrentPaneId(): string {
     return this.exec(['display-message', '-p', '#{pane_id}']);
   }

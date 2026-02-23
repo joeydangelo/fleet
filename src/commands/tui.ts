@@ -70,7 +70,10 @@ export function runTui(): void {
       const currentSession = tmux.getCurrentSessionName();
       if (currentSession === sessionName) {
         // Already in the paw session — render TUI in the current pane.
-        const controlPaneId = tmux.getCurrentPaneId();
+        // Use $TMUX_PANE (set per-pane by tmux) rather than display-message -p
+        // which returns the *active* pane — after layout operations that may be
+        // the orchestrator, not the TUI.
+        const controlPaneId = process.env['TMUX_PANE'] ?? tmux.getCurrentPaneId();
         runTuiSidebar(tmux, sessionName, repoRoot, panes, controlPaneId);
       } else {
         // Different session — switch over; TUI was bootstrapped by `paw launch`.
