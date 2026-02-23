@@ -133,7 +133,14 @@ function printOrchestratorDashboard(repoRoot: string): void {
       console.log(`  ${statusColor(task.status)(task.status.padEnd(12))} ${name}${focusSuffix}`);
     }
   } else if (existsSync(yamlPath)) {
-    console.log('Session configured (.paw/paw.yaml found) — run `paw up` to start');
+    const yamlContent = readFileSync(yamlPath, 'utf-8');
+    if (yamlContent.includes('target: feature/my-feature')) {
+      // Template default — not a real config
+      console.log('No active session');
+      console.log(pc.dim('  Run `paw shortcut generate-paw-yaml` to plan a session'));
+    } else {
+      console.log('Session configured (.paw/paw.yaml found) — run `paw up` to start');
+    }
   } else {
     console.log('No active session (.paw/paw.yaml not found)');
     console.log(pc.dim('  Run `paw shortcut generate-paw-yaml` to plan a session'));
