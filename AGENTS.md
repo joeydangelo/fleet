@@ -1,6 +1,7 @@
-IMPORTANT: You MUST read these two docs before starting work:
+IMPORTANT: You MUST read these three docs before starting work:
 - `docs/what-is-paw.md` — product context (what paw is, commands, lifecycle)
 - `docs/development.md` — repo conventions (layout, build, where things go)
+- `docs/testing.md` — how to build, deploy to WSL, and run live tests
 
 When your changes affect commands, config paths, directory structure, or
 workflow behavior, update both docs. Remove stale references — don't just
