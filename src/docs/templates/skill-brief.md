@@ -3,46 +3,44 @@ title: paw (brief)
 description: Condensed paw skill for compacted contexts
 ---
 
-# paw
+**paw orchestrates parallel AI coding agents across git worktrees — split work, spawn agents, merge results.**
 
-**paw orchestrates parallel AI coding agents across git worktrees — split work, spawn agents, merge results with full context.**
+You operate paw. Users describe what they want; you run paw commands.
+Run `paw prime` to restore full session context.
+Run `paw skill` for the complete command reference.
 
-## Installation
+## Your Role
 
-Requires **tmux** (`sudo apt install tmux` on Linux/WSL, `brew install tmux` on macOS).
-On Windows, run paw from inside WSL.
+- **Orchestrator** (main repo): decompose work, spawn agents, monitor, merge, clean up.
+- **Worktree agent** (isolated worktree): complete your task, broadcast changes, write done summary.
+
+## Orchestrator Commands
 
 ```bash
-npm install -g get-paw@latest
-paw init
+paw go                     # Full lifecycle: up → launch → watch → merge → down
+paw status                 # Check progress across all tasks
+paw merge                  # Merge completed branches (--continue after conflict)
+paw down                   # Archive session, remove worktrees
 ```
 
-## CRITICAL: You Operate paw — The User Doesn't
+## Agent Commands
 
-**You are the paw operator.** Users describe what they want built; you translate
-that into paw actions. DO NOT tell users to run paw commands — that's your job.
+```bash
+paw broadcast "..."        # Announce a change to all agents
+paw threads                # Check for messages directed at you
+paw done << 'EOF'          # Mark task done with summary
+```
 
-Two roles — read the right section of the full skill (`paw skill`):
+## Quick Actions
 
-- **Orchestrator** — main repo. Decomposes work, spawns agents, merges results.
-- **Worktree agent** — isolated worktree. Completes task, broadcasts changes.
-
-## Essential Commands
-
-| Command | Purpose |
+| Situation | Action |
 |---|---|
-| `paw` | Open TUI — attach to tmux session with agent panes |
-| `paw go` | Full lifecycle: up → launch → watch → merge → down |
-| `paw status` | Check progress across all tasks |
-| `paw broadcast "..."` | Announce a change to all agents |
-| `paw merge` | Merge completed task branches |
-| `paw merge --continue` | Resume after conflict resolution |
-| `paw done << 'EOF'` | Mark task done with summary |
-| `paw down` | Archive session, remove worktrees |
-| `paw shortcut generate-paw-yaml` | Plan a new session |
-| `paw shortcut resolve-merge-conflict` | Handle merge conflicts |
+| Need to plan parallel work | `paw shortcut generate-paw-yaml` then `paw go` |
+| Merge conflict occurred | `paw shortcut resolve-merge-conflict` |
+| Work done, want a PR | `paw shortcut to-pr` |
+| Ready to commit | `paw shortcut precommit-process` |
 
-## Key Rules
+## Rules
 
-- Agents must NEVER edit `state.json` or any file on the sync branch.
-- Run `paw skill` for full workflow details and command reference.
+- NEVER edit `state.json` or any file on the sync branch.
+- You operate paw — do NOT tell users to run paw commands.
