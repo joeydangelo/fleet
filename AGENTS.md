@@ -178,7 +178,7 @@ finished.
 | `paw threads` | See open Q&A threads |
 | `paw status` | Check progress across all tasks |
 | `paw done << 'EOF'` | Mark task done with summary (heredoc) |
-| `paw done --force << 'EOF'` | Bypass validation and pre-done hook |
+| `paw done --force << 'EOF'` | Bypass summary section validation |
 
 ### Agent informational commands
 
