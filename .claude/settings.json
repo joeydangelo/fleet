@@ -35,7 +35,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/scripts/paw-session.sh prime"
+            "command": "bash .claude/scripts/paw-session.sh"
           }
         ]
       }
@@ -55,11 +55,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/scripts/paw-session.sh skill --brief"
-          },
-          {
-            "type": "command",
-            "command": "bash .claude/scripts/paw-session.sh prime --brief"
+            "command": "bash .claude/scripts/paw-session.sh --brief"
           }
         ]
       }

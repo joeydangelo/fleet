@@ -58,5 +58,5 @@ ensure_paw() {
 # Main
 ensure_paw || exit 1
 
-# Run paw with any passed arguments (e.g., prime, skill --brief for PreCompact)
-paw "$@"
+# Run paw prime with any passed arguments (e.g., --brief for PreCompact)
+paw prime "$@"
