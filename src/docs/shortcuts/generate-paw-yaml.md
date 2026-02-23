@@ -91,8 +91,6 @@ From the request, codebase, and `paw guidelines paw-task-decomposition`:
      dependency installation, codegen, or any setup needed before agents start.
      Git worktrees don't inherit `node_modules`, virtual environments, or build
      artifacts — this hook makes worktrees ready to work.
-   - `pre-done`: runs before `paw done` marks a task complete. Quality gate that
-     prevents agents from declaring done when tests fail.
    - `post-merge`: runs after each clean merge in `paw merge`. Catches integration
      failures when two task branches combine.
 
@@ -125,7 +123,6 @@ From the request, codebase, and `paw guidelines paw-task-decomposition`:
    # Hooks run via bash. Use | for multi-line inline scripts.
    hooks:
      post-up: pnpm install                                     # or: uv sync, cargo build
-     pre-done: pnpm test                                       # or: uv run pytest, go test ./...
      post-merge: pnpm test                                     # or: uv run pytest, cargo test
 
    tasks:

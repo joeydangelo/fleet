@@ -1,41 +1,17 @@
 import { Command } from 'commander';
-import { execSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import pc from 'picocolors';
 import { getRepoRoot } from '../lib/git.js';
-import { loadConfig, resolveConfigPath } from '../lib/config.js';
 import { detectTaskName } from '../lib/session.js';
 import { readSyncState, completeTask, writeSyncStateAndFiles } from '../lib/sync.js';
 import { requireSyncState, handleError, colors } from '../lib/output.js';
 import { validateSummary, generateErrorTemplate } from '../lib/summary.js';
 
-function runPreDoneHook(repoRoot: string): void {
-  let config;
-  try {
-    const configPath = resolveConfigPath(repoRoot);
-    config = loadConfig(configPath);
-  } catch {
-    return; // No config found -- skip hook (worktree may not have paw.yaml)
-  }
-
-  const preDoneHook = config.hooks?.['pre-done'];
-  if (!preDoneHook) return;
-
-  console.log(pc.dim(`Running pre-done hook: ${preDoneHook}`));
-  try {
-    execSync(preDoneHook, { cwd: repoRoot, stdio: 'inherit', shell: 'bash' });
-  } catch {
-    console.error(colors.error('Pre-done hook failed. Fix the issue and try again.'));
-    console.error(pc.dim('Use --force to bypass the pre-done hook.'));
-    process.exit(1);
-  }
-}
-
 export function doneCommand(): Command {
   return new Command('done')
     .description('Mark current task as done')
     .option('--summary <text>', 'Completion summary (what you did, interface changes, warnings)')
-    .option('--force', 'Bypass summary validation')
+    .option('--force', 'Bypass summary section validation')
     .action((opts: { summary?: string; force?: boolean }) => {
       try {
         const repoRoot = getRepoRoot();
@@ -93,10 +69,6 @@ export function doneCommand(): Command {
             pc.dim('Run `paw template task-summary` for full details, or use --force to bypass.'),
           );
           process.exit(1);
-        }
-
-        if (!opts.force) {
-          runPreDoneHook(repoRoot);
         }
 
         const updated = completeTask(state, taskName);

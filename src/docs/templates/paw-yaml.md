@@ -32,11 +32,9 @@ agent: claude
 # or call an external script.
 #
 # post-up: runs in each worktree after creation. Install deps, run codegen, etc.
-# pre-done: runs before `paw done`. Quality gate — blocks done if it fails.
 # post-merge: runs after each clean merge. Catches integration failures.
 # hooks:
 #   post-up: pnpm install
-#   pre-done: pnpm test
 #   post-merge: pnpm test
 
 tasks:
