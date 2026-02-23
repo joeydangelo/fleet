@@ -42,17 +42,17 @@ describe('installHooks', () => {
     expect(sessionStart[1]).toHaveProperty('matcher', '');
     expect(sessionStart[1].hooks[0]).toEqual({
       type: 'command',
-      command: 'bash .claude/scripts/paw-session.sh prime',
+      command: 'bash .claude/scripts/paw-session.sh',
     });
 
-    // PreCompact should call paw skill --brief (not paw prime --brief)
+    // PreCompact should call paw-session.sh --brief (prime embeds skill content)
     const preCompact = settings.hooks.PreCompact;
     expect(preCompact).toHaveLength(1);
     expect(preCompact[0]).toHaveProperty('matcher', '');
     expect(preCompact[0]).toHaveProperty('hooks');
     expect(preCompact[0].hooks[0]).toEqual({
       type: 'command',
-      command: 'bash .claude/scripts/paw-session.sh skill --brief',
+      command: 'bash .claude/scripts/paw-session.sh --brief',
     });
   });
 
@@ -76,7 +76,7 @@ describe('installHooks', () => {
 
     const content = readFileSync(scriptPath, 'utf-8');
     expect(content).toContain('#!/bin/bash');
-    expect(content).toContain('paw "$@"');
+    expect(content).toContain('paw prime "$@"');
     expect(content).toContain('npm');
   });
 

@@ -28,8 +28,8 @@ describe('paw skill', () => {
       stdio: 'pipe',
     });
     const stdout = result.toString();
-    expect(stdout).toContain('# paw');
-    expect(stdout).toContain('Essential Commands');
+    expect(stdout).toContain('paw orchestrates parallel AI coding agents');
+    expect(stdout).toContain('Orchestrator Commands');
   });
 
   it('--brief output is shorter than full output', () => {

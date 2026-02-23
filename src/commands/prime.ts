@@ -8,6 +8,7 @@ import { detectTaskName } from '../lib/session.js';
 import type { SyncState } from '../lib/sync.js';
 import { readSyncState, claimTask, writeSyncState, readSyncFile } from '../lib/sync.js';
 import { readJournalForTask } from '../lib/journal.js';
+import { readDoc, stripFrontmatter } from '../lib/docs.js';
 import { handleError, formatFocusAreas, colors, success } from '../lib/output.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -34,6 +35,20 @@ function getVersion(): string {
   } catch {
     return 'unknown';
   }
+}
+
+/** Load the full SKILL.md content, stripped of frontmatter. */
+function loadSkillContent(): string | null {
+  const doc = readDoc('templates', 'skill');
+  if (!doc) return null;
+  return stripFrontmatter(doc.content);
+}
+
+/** Load the skill-brief.md content, stripped of frontmatter. */
+function loadSkillBriefContent(): string | null {
+  const doc = readDoc('templates', 'skill-brief');
+  if (!doc) return null;
+  return stripFrontmatter(doc.content);
 }
 
 export function primeCommand(): Command {
@@ -116,20 +131,15 @@ function printOrchestratorDashboard(repoRoot: string): void {
     console.log(pc.dim('  Run `paw shortcut generate-paw-yaml` to plan a session'));
   }
 
-  // Workflow rules
-  console.log('\n=== WORKFLOW RULES ===');
-  console.log("You operate paw — the user doesn't.");
-  console.log('Decompose work into tasks, start agents, monitor, merge results.');
-
-  // Quick reference
-  console.log('\n=== QUICK REFERENCE ===');
-  console.log('paw go                           Full session workflow');
-  console.log('paw shortcut generate-paw-yaml   Plan a new session');
-  console.log('paw status                       Check progress');
-  console.log('paw skill                        Show full skill content');
+  // Full skill content
+  const skillContent = loadSkillContent();
+  if (skillContent) {
+    console.log('');
+    console.log(skillContent);
+  }
 }
 
-/** Brief orchestrator output — version + session state + workflow reminder. */
+/** Brief orchestrator output — dynamic status + skill-brief content. */
 function printOrchestratorBrief(repoRoot: string): void {
   const version = getVersion();
   console.log(`paw v${version}`);
@@ -142,7 +152,12 @@ function printOrchestratorBrief(repoRoot: string): void {
     console.log('No active session');
   }
 
-  console.log("You operate paw — the user doesn't. Run `paw prime` for full context.");
+  // Skill brief content
+  const briefContent = loadSkillBriefContent();
+  if (briefContent) {
+    console.log('');
+    console.log(briefContent);
+  }
 }
 
 function printTeamStatus(taskName: string, state: SyncState): void {
@@ -185,6 +200,13 @@ function printBrief(taskName: string, taskContent: string | null, state: SyncSta
 
   console.log(pc.dim('Commands: paw threads | paw broadcast | paw done'));
   console.log(pc.dim('Full context: paw prime'));
+
+  // Skill brief content
+  const briefContent = loadSkillBriefContent();
+  if (briefContent) {
+    console.log('');
+    console.log(briefContent);
+  }
 }
 
 /** Updates the `lastCheck` cursor so the next prime skips already-seen messages. */
@@ -285,4 +307,11 @@ function printFull(
   console.log(pc.dim('2. Run `paw broadcast "..."` when you change shared interfaces'));
   console.log(pc.dim('3. Run `paw threads` to see open Q&A threads'));
   console.log(pc.dim('4. Run `paw shortcut session-end` when finished'));
+
+  // Full skill content
+  const skillContent = loadSkillContent();
+  if (skillContent) {
+    console.log('');
+    console.log(skillContent);
+  }
 }

@@ -65,8 +65,8 @@ ensure_paw() {
 # Main
 ensure_paw || exit 1
 
-# Run paw with any passed arguments (e.g., prime, skill --brief for PreCompact)
-paw "$@"
+# Run paw prime with any passed arguments (e.g., --brief for PreCompact)
+paw prime "$@"
 `;
 
 /** PreToolUse hook that blocks dangerous git commands in paw worktrees before execution. */
@@ -290,7 +290,7 @@ export function installHooks(repoRoot: string): void {
         hooks: [
           {
             type: 'command',
-            command: `bash ${SCRIPT_RELATIVE} prime`,
+            command: `bash ${SCRIPT_RELATIVE}`,
           },
         ],
       },
@@ -301,11 +301,7 @@ export function installHooks(repoRoot: string): void {
         hooks: [
           {
             type: 'command',
-            command: `bash ${SCRIPT_RELATIVE} skill --brief`,
-          },
-          {
-            type: 'command',
-            command: `bash ${SCRIPT_RELATIVE} prime --brief`,
+            command: `bash ${SCRIPT_RELATIVE} --brief`,
           },
         ],
       },
