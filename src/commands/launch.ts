@@ -92,17 +92,21 @@ export function launchCommand(): Command {
         }
 
         const tmux = createTmuxService();
-        const panes = launchTmux(tmux, sessionName, repoRoot, launchList);
         const existing = readPaneConfig(repoRoot);
-        savePanes(repoRoot, sessionName, panes, existing?.orchestratorPaneId ?? '');
+        const newPanes = launchTmux(tmux, sessionName, repoRoot, launchList, existing?.panes ?? []);
+        // Merge: keep existing live panes, append newly created ones.
+        const allPanes = [...(existing?.panes ?? []), ...newPanes];
+        savePanes(repoRoot, sessionName, allPanes, existing?.orchestratorPaneId ?? '');
         // Re-enforce sidebar layout after adding agent panes.
         tmux.pinSidebarLayout(sessionName, SIDEBAR_WIDTH);
 
-        for (const pane of panes) {
+        for (const pane of newPanes) {
           success(pane.taskName, pane.worktreePath);
         }
 
-        console.log(pc.dim(`\nLaunched ${panes.length} agent(s) in tmux session: ${sessionName}`));
+        console.log(
+          pc.dim(`\nLaunched ${newPanes.length} agent(s) in tmux session: ${sessionName}`),
+        );
       } catch (err) {
         handleError(err);
       }

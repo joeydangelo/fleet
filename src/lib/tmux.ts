@@ -476,21 +476,35 @@ function parseAgentName(command: string): AgentName {
  * Launch agents in tmux panes for the given worktrees.
  * Creates the tmux session if it doesn't exist, then creates a pane
  * per worktree and sends the agent command.
+ *
+ * When `existingPanes` is provided, tasks that already have a live pane
+ * (verified via `paneExists`) are skipped — only missing tasks get new panes.
  */
 export function launchTmux(
   tmux: TmuxServiceApi,
   sessionName: string,
   repoRoot: string,
   worktrees: Array<{ taskName: string; worktreePath: string; agentCommand: string }>,
+  existingPanes: PawPane[] = [],
 ): PawPane[] {
   if (!tmux.sessionExists(sessionName)) {
     tmux.createSession(sessionName, repoRoot);
+  }
+
+  // Index existing panes by taskName for fast lookup.
+  const liveByTask = new Map<string, PawPane>();
+  for (const ep of existingPanes) {
+    if (tmux.paneExists(ep.paneId)) {
+      liveByTask.set(ep.taskName, ep);
+    }
   }
 
   const panes: PawPane[] = [];
   let paneIndex = 1;
 
   for (const wt of worktrees) {
+    if (liveByTask.has(wt.taskName)) continue;
+
     const paneId = tmux.createPane(sessionName, wt.worktreePath);
     const pane: PawPane = {
       id: `paw-${paneIndex}`,

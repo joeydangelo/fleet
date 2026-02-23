@@ -7,7 +7,7 @@ import {
   attachToTmuxSession,
   launchTmux,
 } from '../src/lib/tmux.js';
-import type { TmuxServiceApi } from '../src/lib/tmux.js';
+import type { TmuxServiceApi, PawPane } from '../src/lib/tmux.js';
 
 // --- Mock TmuxService for unit tests ---
 
@@ -523,6 +523,73 @@ describe('launchTmux', () => {
     const panes = launchTmux(mock, 'paw-myapp', '/home/user/myapp', worktrees);
     expect(panes[0]!.agent).toBe('claude');
     expect(panes[1]!.agent).toBe('claude');
+  });
+
+  it('skips tasks that already have a live pane (by paneId)', () => {
+    const mock = createMockTmux();
+    mock.createSession('paw-myapp', '/tmp');
+    mock.calls.length = 0;
+
+    const existingPanes: PawPane[] = [
+      {
+        id: 'paw-1',
+        paneId: '%10',
+        taskName: 'auth',
+        worktreePath: '/tmp/wt-auth',
+        agent: 'claude',
+        branchName: 'feature-auth',
+      },
+    ];
+    const worktrees = [
+      { taskName: 'auth', worktreePath: '/tmp/wt-auth', agentCommand: 'claude' },
+      { taskName: 'api', worktreePath: '/tmp/wt-api', agentCommand: 'claude' },
+    ];
+    const panes = launchTmux(mock, 'paw-myapp', '/home/user/myapp', worktrees, existingPanes);
+
+    // Only api should be created; auth already has a live pane
+    const createCalls = mock.calls.filter((c) => c.method === 'createPane');
+    expect(createCalls).toHaveLength(1);
+    expect(panes).toHaveLength(1);
+    expect(panes[0]!.taskName).toBe('api');
+  });
+
+  it('relaunches task when its saved pane no longer exists in tmux', () => {
+    const mock = createMockTmux();
+    mock.createSession('paw-myapp', '/tmp');
+    // Override paneExists to return false for %10
+    mock.paneExists = (paneId: string) => {
+      mock.calls.push({ method: 'paneExists', args: [paneId] });
+      return paneId !== '%10';
+    };
+    mock.calls.length = 0;
+
+    const existingPanes: PawPane[] = [
+      {
+        id: 'paw-1',
+        paneId: '%10',
+        taskName: 'auth',
+        worktreePath: '/tmp/wt-auth',
+        agent: 'claude',
+        branchName: 'feature-auth',
+      },
+    ];
+    const worktrees = [{ taskName: 'auth', worktreePath: '/tmp/wt-auth', agentCommand: 'claude' }];
+    const panes = launchTmux(mock, 'paw-myapp', '/home/user/myapp', worktrees, existingPanes);
+
+    // auth pane is dead — should be recreated
+    const createCalls = mock.calls.filter((c) => c.method === 'createPane');
+    expect(createCalls).toHaveLength(1);
+    expect(panes).toHaveLength(1);
+    expect(panes[0]!.taskName).toBe('auth');
+  });
+
+  it('works without existing panes (backward compatible)', () => {
+    const mock = createMockTmux();
+    const worktrees = [{ taskName: 'auth', worktreePath: '/tmp/wt-auth', agentCommand: 'claude' }];
+    // No existingPanes argument — should behave as before
+    const panes = launchTmux(mock, 'paw-myapp', '/home/user/myapp', worktrees);
+    expect(panes).toHaveLength(1);
+    expect(panes[0]!.taskName).toBe('auth');
   });
 });
 
