@@ -56,8 +56,8 @@ function installAgentsSection(repoRoot: string, skillContent: string): void {
 /** Generate a resource directory table from doc frontmatter. */
 function generateDirectoryTable(category: string, command: string): string {
   const docs = listDocs(category);
-  // Exclude skill templates from the templates directory
-  const filtered = docs.filter((d) => !d.name.startsWith('skill'));
+  // Exclude internal templates (skill files and role-specific briefs used by prime)
+  const filtered = docs.filter((d) => !d.name.startsWith('skill') && !d.name.endsWith('-brief'));
   const rows = filtered.map(
     (d) => `| \`paw ${command} ${d.name}\` | ${d.description || d.title} |`,
   );

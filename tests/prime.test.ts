@@ -105,7 +105,7 @@ describe('prime from root — orchestrator dashboard', () => {
     const stdout = result.toString();
     expect(stdout).toContain('paw v');
     expect(stdout).toContain('=== INSTALLATION ===');
-    expect(stdout).toContain('=== QUICK REFERENCE ===');
+    expect(stdout).toContain('## Quick Reference');
   });
 
   it('shows session status when paw.yaml exists', () => {

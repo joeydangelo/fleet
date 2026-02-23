@@ -8,8 +8,9 @@ clean commits.
 
 ## Steps
 
-1. **Start.** Run `paw shortcut session-start` to orient yourself, load
-   context, and broadcast your intent.
+1. **Broadcast your intent.** Before writing code, announce your plan so other
+   agents can adapt: `paw broadcast "Starting auth task. Will define AuthConfig
+   type at src/auth/types.ts"`.
 
 2. **Plan the work.** Break your task into small, testable increments. Bugs first,
    then features.
@@ -29,8 +30,9 @@ clean commits.
    `paw guidelines commit-conventions` for message format. Each commit should be a
    single logical unit with passing tests.
 
-5. **Finish.** When all increments are done and tests pass, run
-   `paw shortcut session-end` to broadcast final state and write your done summary.
+5. **Finish.** When all increments are done and tests pass, broadcast your final
+   state and run `paw done` with a structured summary (see
+   `paw template task-summary`).
 
 ## Principles
 

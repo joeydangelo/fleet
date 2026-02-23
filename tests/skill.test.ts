@@ -22,23 +22,4 @@ describe('paw skill', () => {
     expect(stdout).not.toContain('allowed-tools:');
     expect(stdout).not.toContain('globs:');
   });
-
-  it('--brief outputs content from skill-brief.md', () => {
-    const result = execFileSync(process.execPath, [binPath, 'skill', '--brief'], {
-      stdio: 'pipe',
-    });
-    const stdout = result.toString();
-    expect(stdout).toContain('paw orchestrates parallel AI coding agents');
-    expect(stdout).toContain('Orchestrator Commands');
-  });
-
-  it('--brief output is shorter than full output', () => {
-    const full = execFileSync(process.execPath, [binPath, 'skill'], {
-      stdio: 'pipe',
-    }).toString();
-    const brief = execFileSync(process.execPath, [binPath, 'skill', '--brief'], {
-      stdio: 'pipe',
-    }).toString();
-    expect(brief.length).toBeLessThan(full.length);
-  });
 });

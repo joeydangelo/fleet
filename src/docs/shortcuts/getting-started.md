@@ -95,7 +95,7 @@ your-project/
 - **`.paw/`** — working state directory, automatically added to `.gitignore`.
   Contains task config and bundled docs (shortcuts, guidelines, templates).
 - **`.claude/settings.json`** — hooks for SessionStart (`paw prime`),
-  PreCompact (`paw skill --brief`), and PostToolUse (done reminders).
+  PreCompact (`paw prime --brief`), and PostToolUse (done reminders).
 
 ## Next Steps
 

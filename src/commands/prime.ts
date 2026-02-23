@@ -7,7 +7,8 @@ import { getRepoRoot } from '../lib/git.js';
 import { detectTaskName } from '../lib/session.js';
 import type { SyncState } from '../lib/sync.js';
 import { readSyncState, claimTask, writeSyncState, readSyncFile } from '../lib/sync.js';
-import { readJournalForTask } from '../lib/journal.js';
+import { readJournal, readJournalForTask } from '../lib/journal.js';
+import { computeThreads } from './threads.js';
 import { readDoc, stripFrontmatter } from '../lib/docs.js';
 import { handleError, formatFocusAreas, colors, success } from '../lib/output.js';
 
@@ -44,9 +45,16 @@ function loadSkillContent(): string | null {
   return stripFrontmatter(doc.content);
 }
 
-/** Load the skill-brief.md content, stripped of frontmatter. */
-function loadSkillBriefContent(): string | null {
-  const doc = readDoc('templates', 'skill-brief');
+/** Load the orchestrator-brief.md content, stripped of frontmatter. */
+function loadOrchestratorBriefContent(): string | null {
+  const doc = readDoc('templates', 'orchestrator-brief');
+  if (!doc) return null;
+  return stripFrontmatter(doc.content);
+}
+
+/** Load the agent-brief.md content, stripped of frontmatter. */
+function loadAgentBriefContent(): string | null {
+  const doc = readDoc('templates', 'agent-brief');
   if (!doc) return null;
   return stripFrontmatter(doc.content);
 }
@@ -79,7 +87,7 @@ export function primeCommand(): Command {
         if (updated) writeSyncState(updated, repoRoot);
 
         if (opts.brief) {
-          printBrief(taskName, taskContent, updated);
+          printBrief(taskName, taskContent, updated, repoRoot);
         } else {
           printFull(taskName, taskContent, updated, repoRoot);
         }
@@ -139,7 +147,7 @@ function printOrchestratorDashboard(repoRoot: string): void {
   }
 }
 
-/** Brief orchestrator output — dynamic status + skill-brief content. */
+/** Brief orchestrator output — dynamic status + orchestrator-brief content. */
 function printOrchestratorBrief(repoRoot: string): void {
   const version = getVersion();
   console.log(`paw v${version}`);
@@ -152,8 +160,8 @@ function printOrchestratorBrief(repoRoot: string): void {
     console.log('No active session');
   }
 
-  // Skill brief content
-  const briefContent = loadSkillBriefContent();
+  // Orchestrator brief content
+  const briefContent = loadOrchestratorBriefContent();
   if (briefContent) {
     console.log('');
     console.log(briefContent);
@@ -175,7 +183,12 @@ function printTeamStatus(taskName: string, state: SyncState): void {
   console.log();
 }
 
-function printBrief(taskName: string, taskContent: string | null, state: SyncState | null): void {
+function printBrief(
+  taskName: string,
+  taskContent: string | null,
+  state: SyncState | null,
+  repoRoot: string,
+): void {
   console.log(pc.bold(`paw prime: ${taskName} (brief)\n`));
 
   if (taskContent) {
@@ -198,11 +211,20 @@ function printBrief(taskName: string, taskContent: string | null, state: SyncSta
     console.log(pc.dim('No sync state found. Run `paw up` first.\n'));
   }
 
-  console.log(pc.dim('Commands: paw threads | paw broadcast | paw done'));
-  console.log(pc.dim('Full context: paw prime'));
+  // Show unanswered threads directed at this agent (actionable on compaction recovery)
+  const allEntries = readJournal(repoRoot);
+  const { open } = computeThreads(allEntries);
+  const unanswered = open.filter((t) => t.ask.to === taskName);
+  if (unanswered.length > 0) {
+    console.log(pc.bold('Unanswered Messages'));
+    for (const { ask } of unanswered) {
+      console.log(`  ${colors.info(`[${ask.from} → ${taskName}]`)} ${ask.msg}`);
+    }
+    console.log();
+  }
 
-  // Skill brief content
-  const briefContent = loadSkillBriefContent();
+  // Agent brief content
+  const briefContent = loadAgentBriefContent();
   if (briefContent) {
     console.log('');
     console.log(briefContent);
@@ -306,7 +328,7 @@ function printFull(
   console.log(pc.dim('1. Follow `paw shortcut precommit-process` when committing'));
   console.log(pc.dim('2. Run `paw broadcast "..."` when you change shared interfaces'));
   console.log(pc.dim('3. Run `paw threads` to see open Q&A threads'));
-  console.log(pc.dim('4. Run `paw shortcut session-end` when finished'));
+  console.log(pc.dim('4. Run `paw done` with a structured summary when finished'));
 
   // Full skill content
   const skillContent = loadSkillContent();

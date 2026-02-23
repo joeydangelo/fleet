@@ -2,7 +2,7 @@
 description: |-
   paw — Parallel Agent Worktrees. Orchestrates multiple AI agents across git worktrees with coordination, conflict resolution, and automated session lifecycle.
   Use for: running agents in parallel, decomposing work into tasks, launching and monitoring agents, merging work with conflict briefs, inter-agent messaging, task dependencies and merge ordering, and creating PRs from merged work.
-  Invoke when user mentions: paw, parallel agents, worktrees, multi-agent, parallel tasks, orchestrate agents, spawn agents, launch agents, split work across agents, break this into tasks, check agent progress, merge agent work, resolve conflicts, paw go, paw yaml, task decomposition, broadcasts, watch agents, start session, end session.
+  Invoke when user mentions: paw, parallel agents, worktrees, multi-agent, parallel tasks, orchestrate agents, spawn agents, launch agents, split work across agents, break this into tasks, check agent progress, merge agent work, resolve conflicts, paw go, paw yaml, task decomposition, broadcasts, watch agents.
 allowed-tools: Bash(paw:*)
 globs: ".paw/**"
 name: paw
@@ -160,7 +160,7 @@ finished.
 3. **`paw broadcast "..."`** when you change interfaces other agents depend on.
 4. **`paw threads`** periodically to check for questions directed at you.
 5. **When committing**, load `paw shortcut precommit-process` and follow it.
-6. **When finished**, load `paw shortcut session-end` and follow it.
+6. **When finished**, run `paw done` with a structured summary (see `paw template task-summary`).
 
 ### Agent action commands
 
@@ -179,10 +179,8 @@ finished.
 
 | Command | Purpose |
 |---|---|
-| `paw shortcut session-start` | First actions in a worktree |
 | `paw shortcut build-task` | TDD workflow from task assignment to done |
 | `paw shortcut precommit-process` | Check messages, review, validate, broadcast, commit |
-| `paw shortcut session-end` | Wrap up: broadcast final state, write done summary |
 
 ### CRITICAL: What agents must NEVER do
 
@@ -202,7 +200,6 @@ finished.
 | `paw guidelines --list` | List available guidelines |
 | `paw template --list` | List available templates |
 | `paw skill` | Output full skill content to stdout |
-| `paw skill --brief` | Output condensed skill content (~400 tokens) |
 
 ### Available shortcuts
 
@@ -218,10 +215,8 @@ finished.
 | `paw shortcut setup-github-cli` | Ensure GitHub CLI (gh) is installed and authenticated |
 | `paw shortcut getting-started` | Install paw and run your first parallel agent session |
 | `paw shortcut setup-tmux` | Ensure tmux is installed for paw's terminal management |
-| `paw shortcut session-start` | Agent's first actions in a worktree |
 | `paw shortcut build-task` | TDD workflow from task assignment to done |
 | `paw shortcut precommit-process` | Check messages, review, validate, broadcast, commit |
-| `paw shortcut session-end` | Wrap up: broadcast final state, write done summary |
 <!-- END SHORTCUT DIRECTORY -->
 
 ### Available guidelines
