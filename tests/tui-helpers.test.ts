@@ -1,21 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { agentBadge, taskDisplayStatus, statusIcon } from '../src/lib/tui-helpers.js';
+import { taskDisplayStatus, statusIcon } from '../src/lib/tui-helpers.js';
 import { buildDisplayItems } from '../src/components/tui-app.js';
 import type { TaskState, MergeEntry, SyncState } from '../src/lib/sync.js';
 import type { PawPane, TmuxPaneInfo } from '../src/lib/tmux.js';
-
-describe('agentBadge', () => {
-  it('maps known agents to short codes', () => {
-    expect(agentBadge('claude')).toBe('[cc]');
-    expect(agentBadge('codex')).toBe('[cx]');
-    expect(agentBadge('opencode')).toBe('[oc]');
-    expect(agentBadge('gemini')).toBe('[gm]');
-  });
-
-  it('returns [??] for unknown agent', () => {
-    expect(agentBadge('unknown')).toBe('[??]');
-  });
-});
 
 describe('taskDisplayStatus', () => {
   it('returns pending when no task state exists', () => {
