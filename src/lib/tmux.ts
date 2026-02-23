@@ -15,8 +15,6 @@ export interface PawPane {
   paneId: string;
   /** Task name from paw.yaml. */
   taskName: string;
-  /** Original prompt / task description. */
-  prompt: string;
   /** Full path to the git worktree. */
   worktreePath: string;
   /** Agent type running in this pane. */
@@ -461,7 +459,6 @@ export function launchTmux(
       id: `paw-${paneIndex}`,
       paneId,
       taskName: wt.taskName,
-      prompt: wt.agentCommand,
       worktreePath: wt.worktreePath,
       agent: parseAgentName(wt.agentCommand),
       branchName: '',

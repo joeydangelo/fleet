@@ -120,7 +120,6 @@ function makePane(overrides: Partial<PawPane> = {}): PawPane {
     id: 'paw-1',
     paneId: '%1',
     taskName: 'auth',
-    prompt: 'claude',
     worktreePath: '/tmp/wt-auth',
     agent: 'claude',
     branchName: 'feature-auth',

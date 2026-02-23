@@ -115,7 +115,6 @@ export function restorePanes(
         tmux.setPaneTitle(newPaneId, expectedTitle);
         tmux.setPaneRole(newPaneId, expectedTitle);
         tmux.sendKeys(newPaneId, `echo "Restored pane: ${pane.taskName} (${pane.agent})"`);
-        tmux.sendKeys(newPaneId, `echo "Original prompt: ${pane.prompt}"`);
         restored.push({ ...pane, paneId: newPaneId });
       }
     }

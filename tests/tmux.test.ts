@@ -466,7 +466,6 @@ describe('launchTmux', () => {
       id: 'paw-1',
       taskName: 'auth',
       worktreePath: '/tmp/wt-auth',
-      prompt: 'claude',
     });
     // paneId is assigned by the mock
     expect(panes[0]!.paneId).toMatch(/^%/);
