@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { agentBadge, taskDisplayStatus, statusIcon } from '../src/lib/tui-helpers.js';
-import type { TaskState, MergeEntry } from '../src/lib/sync.js';
+import { buildDisplayItems } from '../src/components/tui-app.js';
+import type { TaskState, MergeEntry, SyncState } from '../src/lib/sync.js';
+import type { PawPane, TmuxPaneInfo } from '../src/lib/tmux.js';
 
 describe('agentBadge', () => {
   it('maps known agents to short codes', () => {
@@ -70,5 +72,131 @@ describe('statusIcon', () => {
   it('returns dim circle for pending', () => {
     const { icon } = statusIcon('pending');
     expect(icon).toBe('◌');
+  });
+});
+
+// --- buildDisplayItems ---
+
+function makePane(taskName: string, paneId: string): PawPane {
+  return {
+    id: `paw-1`,
+    paneId,
+    taskName,
+    worktreePath: `/tmp/wt-${taskName}`,
+    agent: 'claude',
+    branchName: `feature-${taskName}`,
+  };
+}
+
+function makeTmuxPane(paneId: string, title: string, command: string): TmuxPaneInfo {
+  return { paneId, title, command };
+}
+
+describe('buildDisplayItems', () => {
+  it('shows task panes with sync state status', () => {
+    const tmuxPanes = [makeTmuxPane('%1', 'paw-auth', 'claude')];
+    const taskPanes = [makePane('auth', '%1')];
+    const syncState: SyncState = {
+      session: 'paw-test',
+      config: 'paw.yaml',
+      target: 'main',
+      tasks: { auth: { status: 'in_progress' } },
+    };
+
+    const items = buildDisplayItems(tmuxPanes, taskPanes, syncState, '%0');
+    expect(items).toEqual([{ paneId: '%1', label: 'auth', badge: '[cc]', status: 'in_progress' }]);
+  });
+
+  it('shows non-task panes with null status and $ icon', () => {
+    const tmuxPanes = [makeTmuxPane('%2', 'paw-orchestrator', 'claude')];
+    const items = buildDisplayItems(tmuxPanes, [], null, '%0');
+    expect(items).toEqual([{ paneId: '%2', label: 'orchestrator', badge: '[cc]', status: null }]);
+  });
+
+  it('excludes the TUI control pane from the display list', () => {
+    const tmuxPanes = [
+      makeTmuxPane('%0', 'bash', 'bash'),
+      makeTmuxPane('%1', 'paw-orchestrator', 'claude'),
+    ];
+    const items = buildDisplayItems(tmuxPanes, [], null, '%0');
+    expect(items).toHaveLength(1);
+    expect(items[0]!.paneId).toBe('%1');
+  });
+
+  it('shows task panes before non-task panes', () => {
+    const tmuxPanes = [
+      makeTmuxPane('%0', 'bash', 'bash'), // TUI — excluded
+      makeTmuxPane('%1', 'paw-orchestrator', 'bash'), // non-task
+      makeTmuxPane('%2', 'paw-auth', 'claude'), // task
+    ];
+    const taskPanes = [makePane('auth', '%2')];
+    const items = buildDisplayItems(tmuxPanes, taskPanes, null, '%0');
+    expect(items[0]!.label).toBe('auth');
+    expect(items[1]!.label).toBe('orchestrator');
+  });
+
+  it('handles multiple orchestrator panes', () => {
+    const tmuxPanes = [
+      makeTmuxPane('%0', 'bash', 'bash'),
+      makeTmuxPane('%1', 'paw-orchestrator', 'claude'),
+      makeTmuxPane('%3', 'paw-orchestrator', 'bash'),
+    ];
+    const items = buildDisplayItems(tmuxPanes, [], null, '%0');
+    expect(items).toHaveLength(2);
+    expect(items[0]!.paneId).toBe('%1');
+    expect(items[1]!.paneId).toBe('%3');
+  });
+
+  it('drops task panes that are no longer alive in tmux', () => {
+    const tmuxPanes = [makeTmuxPane('%1', 'paw-auth', 'claude')];
+    const taskPanes = [makePane('auth', '%1'), makePane('api', '%99')];
+    const items = buildDisplayItems(tmuxPanes, taskPanes, null, '%0');
+    expect(items).toHaveLength(1);
+    expect(items[0]!.label).toBe('auth');
+  });
+
+  it('uses pane ID as fallback label for untitled panes', () => {
+    const tmuxPanes = [makeTmuxPane('%5', 'bash', 'bash')];
+    const items = buildDisplayItems(tmuxPanes, [], null, '%0');
+    expect(items[0]!.label).toBe('pane %5');
+  });
+
+  it('updates badge when command changes (e.g. bash -> claude)', () => {
+    const tmuxPanes = [makeTmuxPane('%2', 'paw-auth', 'bash')];
+    const taskPanes = [makePane('auth', '%2')];
+    const items = buildDisplayItems(tmuxPanes, taskPanes, null, '%0');
+    expect(items[0]!.badge).toBe('[bash]');
+
+    // Simulate next poll: command changed to claude
+    const tmuxPanes2 = [makeTmuxPane('%2', 'paw-auth', 'claude')];
+    const items2 = buildDisplayItems(tmuxPanes2, taskPanes, null, '%0');
+    expect(items2[0]!.badge).toBe('[cc]');
+  });
+
+  it('shows conflict status when merge entry has conflict', () => {
+    const tmuxPanes = [makeTmuxPane('%1', 'paw-api', 'claude')];
+    const taskPanes = [makePane('api', '%1')];
+    const syncState: SyncState = {
+      session: 'paw-test',
+      config: 'paw.yaml',
+      target: 'main',
+      tasks: { api: { status: 'done' } },
+      merges: { api: { status: 'conflict' } },
+    };
+    const items = buildDisplayItems(tmuxPanes, taskPanes, syncState, '%0');
+    expect(items[0]!.status).toBe('conflict');
+  });
+
+  it('shows ad-hoc panes opened by the user', () => {
+    const tmuxPanes = [
+      makeTmuxPane('%0', 'bash', 'bash'),
+      makeTmuxPane('%1', 'paw-orchestrator', 'claude'),
+      makeTmuxPane('%4', 'my-scratch', 'node'),
+    ];
+    const items = buildDisplayItems(tmuxPanes, [], null, '%0');
+    expect(items).toHaveLength(2);
+    expect(items[1]!.label).toBe('my-scratch');
+    expect(items[1]!.badge).toBe('[node]');
+    expect(items[1]!.status).toBeNull();
   });
 });
