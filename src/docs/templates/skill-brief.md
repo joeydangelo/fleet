@@ -44,6 +44,5 @@ Two roles — read the right section of the full skill (`paw skill`):
 
 ## Key Rules
 
-- Agents must NEVER edit `state.json`, checkout `paw-sync`, merge branches,
-  run `git push`, or run orchestrator commands from a worktree.
+- Agents must NEVER edit `state.json` or any file on the sync branch.
 - Run `paw skill` for full workflow details and command reference.
