@@ -1,7 +1,7 @@
 #!/bin/bash
-# Ensure paw CLI is installed and run a paw command for Claude Code hooks
-# Installed by: paw setup
-# Usage: bash paw-session.sh <command> [args...]
+# Ensure paw CLI is installed and run paw commands for Claude Code sessions
+# Installed by: paw init
+# This script runs on SessionStart and PreCompact
 
 # Get npm global bin directory (if npm is available)
 NPM_GLOBAL_BIN=""
@@ -33,8 +33,11 @@ ensure_paw() {
         }
     elif command -v pnpm &> /dev/null; then
         pnpm add -g get-paw
+    elif command -v yarn &> /dev/null; then
+        yarn global add get-paw
     else
-        echo "[paw] ERROR: No package manager found (npm or pnpm required)" >&2
+        echo "[paw] ERROR: No package manager found (npm, pnpm, or yarn required)" >&2
+        echo "[paw] Please install Node.js and npm, then run: npm install -g get-paw" >&2
         return 1
     fi
 
@@ -55,4 +58,5 @@ ensure_paw() {
 # Main
 ensure_paw || exit 1
 
+# Run paw with any passed arguments (e.g., prime, skill --brief for PreCompact)
 paw "$@"

@@ -1,7 +1,7 @@
 #!/bin/bash
-# Confirm GitHub CLI (gh) is available for paw bridge shortcuts
-# Installed by: paw setup
-# This script runs on SessionStart
+# Automated GitHub CLI (gh) setup for Claude Code sessions
+# Installed by: paw init
+# This script runs on SessionStart to ensure gh is available for paw workflows
 
 # Add common binary locations to PATH
 export PATH="$HOME/.local/bin:$HOME/bin:/usr/local/bin:$PATH"

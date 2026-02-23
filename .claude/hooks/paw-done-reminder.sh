@@ -1,6 +1,6 @@
 #!/bin/bash
 # Remind agents to run paw done before ending session
-# Installed by: paw setup
+# Installed by: paw init
 # Fires on PostToolUse:Bash for git commit/push commands
 
 input=$(cat)

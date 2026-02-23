@@ -56,6 +56,10 @@
           {
             "type": "command",
             "command": "bash .claude/scripts/paw-session.sh skill --brief"
+          },
+          {
+            "type": "command",
+            "command": "bash .claude/scripts/paw-session.sh prime --brief"
           }
         ]
       }

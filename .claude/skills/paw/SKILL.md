@@ -33,7 +33,7 @@ On Windows, run paw from inside WSL.
 
 ```bash
 npm install -g get-paw@latest
-paw setup
+paw init
 ```
 
 ## Routine Commands
@@ -41,7 +41,8 @@ paw setup
 ```bash
 paw --help                       # Command reference
 paw status                       # Check progress across all tasks
-paw setup                        # Refresh setup (run after upgrades)
+paw prime                        # Restore full context on paw after compaction
+paw init                        # Refresh setup (run after upgrades)
 ```
 
 ## CRITICAL: You Operate paw — The User Doesn't
@@ -77,7 +78,8 @@ Read the section for your role.
 | Work is done, wants a PR | Load `paw shortcut to-pr` and follow it |
 | Wants session cleaned up | `paw down` |
 | Needs GitHub CLI set up | Load `paw shortcut setup-github-cli` and follow it |
-| Needs paw installed/upgraded | `npm install -g get-paw@latest && paw setup` |
+| Needs paw installed/upgraded | `npm install -g get-paw@latest && paw init` |
+| New to paw / getting started | Load `paw shortcut getting-started` and follow it |
 
 Worktree agents use a different set — see the Worktree Agent section below.
 
@@ -153,22 +155,17 @@ finished.
 
 ### Agent workflow
 
-1. **`paw prime`** — orient yourself. Shows your task assignment (focus areas,
-   instructions), team status, recent broadcasts, messages directed at you,
-   and done summaries from finished agents.
-2. **Broadcast your intent** before starting work: `paw broadcast "..."`.
-3. **Work on your task**, staying within your focus areas.
-4. **`paw broadcast "..."`** when you change interfaces other agents depend on.
-5. **`paw threads`** periodically to check for questions directed at you.
-6. **When committing**, load `paw shortcut precommit-process` and follow it.
-7. **When finished**, load `paw shortcut session-end` and follow it.
+1. **Broadcast your intent** before starting work: `paw broadcast "..."`.
+2. **Work on your task**, staying within your focus areas.
+3. **`paw broadcast "..."`** when you change interfaces other agents depend on.
+4. **`paw threads`** periodically to check for questions directed at you.
+5. **When committing**, load `paw shortcut precommit-process` and follow it.
+6. **When finished**, load `paw shortcut session-end` and follow it.
 
 ### Agent action commands
 
 | Command | Purpose |
 |---|---|
-| `paw prime` | Orient and claim your task |
-| `paw prime --brief` | Condensed output (focus + team status only) |
 | `paw broadcast "..."` | Announce a change to all agents |
 | `paw ask <task> "..."` | Send a directed message to another agent |
 | `paw reply "..."` | Reply to the most recent message |
@@ -225,6 +222,7 @@ finished.
 | `paw shortcut from-github-issue` | Fetch GitHub issues, decompose them into tasks, and generate paw.yaml |
 | `paw shortcut from-issues` | Detect the repo's issue tracker, read open issues, and generate paw.yaml |
 | `paw shortcut generate-paw-yaml` | Analyze a codebase and generate .paw/paw.yaml with well-decomposed parallel tasks |
+| `paw shortcut getting-started` | Install paw and run your first parallel agent session |
 | `paw shortcut orchestrate-agents` | Full orchestrator workflow — decompose, dispatch agents, monitor, merge, clean up |
 | `paw shortcut precommit-process` | Check messages, review, validate, broadcast, and commit — the checklist before every commit |
 | `paw shortcut resolve-merge-conflict` | Read a conflict brief, resolve the merge conflict, and continue merging |
@@ -265,5 +263,4 @@ finished.
 - Session state: `paw-sync` branch (managed by paw CLI — never edit directly)
 - Full lifecycle: `paw go` (up → launch → watch → merge → down)
 - TUI: `paw` (bare command) attaches to tmux session with agent panes
-- Context recovery: `paw prime` (SessionStart hook runs this automatically)
 - Resource discovery: `paw shortcut --list`, `paw guidelines --list`, `paw template --list`
