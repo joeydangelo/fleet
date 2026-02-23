@@ -53,6 +53,10 @@ function createMockTmux(
       calls.push({ method: 'listPanes', args: [sessionName] });
       return existingPanes;
     },
+    listPanesDetailed(sessionName: string) {
+      calls.push({ method: 'listPanesDetailed', args: [sessionName] });
+      return [];
+    },
     listPanesWithTitles(sessionName: string) {
       calls.push({ method: 'listPanesWithTitles', args: [sessionName] });
       return titleMap;

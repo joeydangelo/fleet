@@ -61,6 +61,10 @@ function createMockTmux(): TmuxServiceApi & {
       calls.push({ method: 'listPanes', args: [sessionName] });
       return [];
     },
+    listPanesDetailed(sessionName: string) {
+      calls.push({ method: 'listPanesDetailed', args: [sessionName] });
+      return [];
+    },
     listPanesWithTitles(sessionName: string) {
       calls.push({ method: 'listPanesWithTitles', args: [sessionName] });
       return new Map<string, string>();
@@ -354,6 +358,29 @@ describe('TmuxService with mock exec', () => {
     const svc = new TmuxService(fn);
     const map = svc.listPanesWithTitles('paw-myapp');
     expect(map.size).toBe(0);
+  });
+
+  it('listPanesDetailed returns pane ID, title, and current command for each pane', () => {
+    const responses = new Map([
+      [
+        'list-panes -t paw-myapp -F #{pane_id}\t#{pane_title}\t#{pane_current_command}',
+        '%0\tpaw-orchestrator\tclaude\n%1\tpaw-auth\tclaude\n%2\tbash\tbash',
+      ],
+    ]);
+    const { fn } = createMockExec(responses);
+    const svc = new TmuxService(fn);
+    const panes = svc.listPanesDetailed('paw-myapp');
+    expect(panes).toEqual([
+      { paneId: '%0', title: 'paw-orchestrator', command: 'claude' },
+      { paneId: '%1', title: 'paw-auth', command: 'claude' },
+      { paneId: '%2', title: 'bash', command: 'bash' },
+    ]);
+  });
+
+  it('listPanesDetailed returns empty array for empty output', () => {
+    const { fn } = createMockExec();
+    const svc = new TmuxService(fn);
+    expect(svc.listPanesDetailed('paw-myapp')).toEqual([]);
   });
 });
 

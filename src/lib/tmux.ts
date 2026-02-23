@@ -7,6 +7,16 @@ const AGENT_ENV_VARS = ['CLAUDECODE', 'CLAUDE_CODE_ENTRYPOINT'] as const;
 
 export type AgentName = 'claude' | 'codex' | 'opencode' | 'gemini';
 
+/** Lightweight snapshot of a tmux pane returned by listPanesDetailed. */
+export interface TmuxPaneInfo {
+  /** tmux pane ID (%nn). */
+  paneId: string;
+  /** Pane title (set via select-pane -T or @paw_role). */
+  title: string;
+  /** Foreground command currently running in the pane (e.g. bash, claude). */
+  command: string;
+}
+
 /** Per-pane metadata persisted to .paw/panes.json. */
 export interface PawPane {
   /** Unique pane identifier (paw-1, paw-2, ...). */
@@ -50,6 +60,7 @@ export interface TmuxServiceApi {
   createPane(sessionName: string, cwd: string, opts?: { horizontal?: boolean }): string;
   killPane(paneId: string): void;
   listPanes(sessionName: string): string[];
+  listPanesDetailed(sessionName: string): TmuxPaneInfo[];
   listPanesWithTitles(sessionName: string): Map<string, string>;
   paneExists(paneId: string): boolean;
   sendKeys(paneId: string, keys: string): void;
@@ -128,6 +139,24 @@ export class TmuxService implements TmuxServiceApi {
   listPanes(sessionName: string): string[] {
     const output = this.exec(['list-panes', '-t', sessionName, '-F', '#{pane_id}']);
     return output.split('\n').filter(Boolean);
+  }
+
+  /** List all panes in a session with their ID, title, and current command. */
+  listPanesDetailed(sessionName: string): TmuxPaneInfo[] {
+    const output = this.exec([
+      'list-panes',
+      '-t',
+      sessionName,
+      '-F',
+      '#{pane_id}\t#{pane_title}\t#{pane_current_command}',
+    ]);
+    return output
+      .split('\n')
+      .filter(Boolean)
+      .map((line) => {
+        const [paneId = '', title = '', command = ''] = line.split('\t');
+        return { paneId, title, command };
+      });
   }
 
   /** List panes with their titles. Returns a map of title -> pane ID. */
