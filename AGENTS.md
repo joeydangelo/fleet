@@ -194,15 +194,6 @@ finished.
 - **NEVER manually edit `state.json` or any file on the sync branch.** The paw
   CLI manages all sync state. Writing to state.json directly corrupts
   coordination and breaks `paw watch`, `paw go`, and `paw merge`.
-- **NEVER `git checkout paw-sync`** or switch to the sync branch. It is managed
-  by a dedicated worktree. Checking it out will fail or corrupt state.
-- **NEVER merge branches.** Merging is the orchestrator's job via `paw merge`.
-  You work on your task branch only.
-- **NEVER run `git push`.** The orchestrator pushes the merged target branch
-  after `paw merge`. Pushing from a worktree bypasses conflict resolution.
-- **NEVER create pull requests.** The orchestrator handles PRs after merge.
-- **NEVER run `paw up`, `paw down`, `paw merge`, or `paw go`.** These are
-  orchestrator commands. Running them from a worktree will break the session.
 
 ---
 

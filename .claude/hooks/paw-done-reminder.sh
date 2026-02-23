@@ -1,21 +1,9 @@
 #!/bin/bash
-# Remind agents to run paw done before ending session
+# Remind agents to run paw done after committing
 # Installed by: paw init
-# Fires on PostToolUse:Bash for git commit/push commands
+# Fires on PostToolUse:Bash for git commit commands
 
 input=$(cat)
-
-# Block git push from paw worktrees — paw handles merging locally
-if [[ "$input" == *"git push"* ]]; then
-  if ls .paw/tasks/*.md 1>/dev/null 2>&1; then
-    echo ""
-    echo "PAW WARNING: Do NOT push from a paw worktree."
-    echo "  The orchestrator pushes the merged target branch after conflict resolution."
-    echo "  Commit your work, then run 'paw done'."
-    echo ""
-    exit 2
-  fi
-fi
 
 # Remind about paw done on git commit
 if [[ "$input" == *"git commit"* ]]; then
