@@ -1,6 +1,7 @@
 /** Claude Code hook installation for paw agent sessions. */
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync } from 'node:fs';
+import { writeFileSync } from 'atomically';
 import { resolve } from 'node:path';
 import { success } from './output.js';
 

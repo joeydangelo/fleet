@@ -1,5 +1,6 @@
 import { Command } from 'commander';
-import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
+import { writeFileSync } from 'atomically';
 import { resolve } from 'node:path';
 import pc from 'picocolors';
 import { getRepoRoot } from '../lib/git.js';
@@ -171,7 +172,7 @@ export function initCommand(): Command {
           if (yamlMatch) {
             const configDir = resolve(repoRoot, '.paw');
             mkdirSync(configDir, { recursive: true });
-            writeFileSync(resolve(configDir, 'paw.yaml'), yamlMatch[1]!);
+            writeFileSync(resolve(configDir, 'paw.yaml'), yamlMatch[1]);
             success('config', resolve(configDir, 'paw.yaml'));
           }
         }

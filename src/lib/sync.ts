@@ -3,12 +3,12 @@ import {
   existsSync,
   rmSync,
   readFileSync,
-  writeFileSync,
   mkdirSync,
   readdirSync,
   cpSync,
   copyFileSync,
 } from 'node:fs';
+import { writeFileSync } from 'atomically';
 import { git } from './git.js';
 import { toErrorMessage } from './output.js';
 import { SYNC_BRANCH } from './constants.js';

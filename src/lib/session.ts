@@ -1,12 +1,6 @@
 import { resolve, dirname, basename } from 'node:path';
-import {
-  mkdirSync,
-  writeFileSync,
-  readFileSync,
-  existsSync,
-  readdirSync,
-  copyFileSync,
-} from 'node:fs';
+import { mkdirSync, readFileSync, existsSync, readdirSync, copyFileSync } from 'node:fs';
+import { writeFileSync } from 'atomically';
 import { execSync } from 'node:child_process';
 import fg from 'fast-glob';
 import type { PawConfig } from './config.js';

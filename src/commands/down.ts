@@ -1,6 +1,7 @@
 import { Command } from 'commander';
 import pc from 'picocolors';
-import { existsSync, writeFileSync, mkdirSync } from 'node:fs';
+import { existsSync, mkdirSync } from 'node:fs';
+import { writeFileSync } from 'atomically';
 import { resolve } from 'node:path';
 import { removeWorktree, branchExists, deleteBranch, cleanupBackupRefs } from '../lib/git.js';
 import { loadRepoConfig } from '../lib/config.js';
@@ -108,7 +109,7 @@ export function downCommand(): Command {
             if (yamlMatch) {
               const configDir = resolve(repoRoot, '.paw');
               mkdirSync(configDir, { recursive: true });
-              writeFileSync(resolve(configDir, 'paw.yaml'), yamlMatch[1]!);
+              writeFileSync(resolve(configDir, 'paw.yaml'), yamlMatch[1]);
               success('config', 'reset .paw/paw.yaml to template');
             }
           }
