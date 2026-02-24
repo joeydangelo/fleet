@@ -1,12 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import {
-  TmuxService,
-  tmuxSessionName,
-  cleanAgentEnv,
-  isInsideTmux,
-  attachToTmuxSession,
-  launchTmux,
-} from '../src/lib/tmux.js';
+import { TmuxService, tmuxSessionName, isInsideTmux, launchTmux } from '../src/lib/tmux.js';
 import type { TmuxServiceApi, PawPane } from '../src/lib/tmux.js';
 
 // --- Mock TmuxService for unit tests ---
@@ -147,34 +140,6 @@ describe('tmuxSessionName', () => {
 
   it('handles complex directory names', () => {
     expect(tmuxSessionName('My Project (v2.1)')).toBe('paw-My-Project-v2-1');
-  });
-});
-
-describe('cleanAgentEnv', () => {
-  it('strips CLAUDECODE and CLAUDE_CODE_ENTRYPOINT', () => {
-    const env = {
-      PATH: '/usr/bin',
-      CLAUDECODE: '1',
-      CLAUDE_CODE_ENTRYPOINT: 'cli',
-      HOME: '/home/user',
-    };
-    const cleaned = cleanAgentEnv(env);
-    expect(cleaned).not.toHaveProperty('CLAUDECODE');
-    expect(cleaned).not.toHaveProperty('CLAUDE_CODE_ENTRYPOINT');
-    expect(cleaned['PATH']).toBe('/usr/bin');
-    expect(cleaned['HOME']).toBe('/home/user');
-  });
-
-  it('returns env unchanged when no agent vars present', () => {
-    const env = { PATH: '/usr/bin', HOME: '/home/user' };
-    const cleaned = cleanAgentEnv(env);
-    expect(cleaned).toEqual(env);
-  });
-
-  it('does not mutate the original env', () => {
-    const env = { PATH: '/usr/bin', CLAUDECODE: '1' };
-    cleanAgentEnv(env);
-    expect(env).toHaveProperty('CLAUDECODE');
   });
 });
 
@@ -384,44 +349,6 @@ describe('TmuxService with mock exec', () => {
     const { fn } = createMockExec();
     const svc = new TmuxService(fn);
     expect(svc.listPanesDetailed('paw-myapp')).toEqual([]);
-  });
-});
-
-describe('attachToTmuxSession', () => {
-  it('uses switchClient when inside tmux', () => {
-    const mock = createMockTmux();
-    const originalTmux = process.env['TMUX'];
-    process.env['TMUX'] = '/tmp/tmux-1000/default,12345,0';
-    try {
-      attachToTmuxSession(mock, 'paw-myapp');
-      const switchCall = mock.calls.find((c) => c.method === 'switchClient');
-      expect(switchCall).toBeDefined();
-      expect(switchCall!.args).toEqual(['paw-myapp']);
-    } finally {
-      if (originalTmux !== undefined) {
-        process.env['TMUX'] = originalTmux;
-      } else {
-        delete process.env['TMUX'];
-      }
-    }
-  });
-
-  it('uses attachSession when not inside tmux', () => {
-    const mock = createMockTmux();
-    const originalTmux = process.env['TMUX'];
-    delete process.env['TMUX'];
-    try {
-      attachToTmuxSession(mock, 'paw-myapp');
-      const attachCall = mock.calls.find((c) => c.method === 'attachSession');
-      expect(attachCall).toBeDefined();
-      expect(attachCall!.args).toEqual(['paw-myapp']);
-    } finally {
-      if (originalTmux !== undefined) {
-        process.env['TMUX'] = originalTmux;
-      } else {
-        delete process.env['TMUX'];
-      }
-    }
   });
 });
 

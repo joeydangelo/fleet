@@ -1,3 +1,7 @@
+/**
+ * NOTE: Pre-built infrastructure for planned multi-agent detection.
+ * Exports are not yet consumed by src/ — only tests import them.
+ */
 import { execFileSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { homedir } from 'node:os';

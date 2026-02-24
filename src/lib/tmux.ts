@@ -2,9 +2,6 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { basename } from 'node:path';
 
-/** Agent environment variables that prevent child agents from starting. */
-const AGENT_ENV_VARS = ['CLAUDECODE', 'CLAUDE_CODE_ENTRYPOINT'] as const;
-
 export type AgentName = 'claude' | 'codex' | 'opencode' | 'gemini';
 
 export const AGENT_NAMES: readonly AgentName[] = ['claude', 'codex', 'opencode', 'gemini'] as const;
@@ -310,21 +307,6 @@ export function tmuxSessionName(dirname: string): string {
 }
 
 /**
- * Build a clean environment for spawned agents by stripping env vars
- * that prevent agent CLIs from starting (e.g., Claude Code sets CLAUDECODE
- * and CLAUDE_CODE_ENTRYPOINT).
- */
-export function cleanAgentEnv(
-  env: Record<string, string | undefined> = process.env,
-): Record<string, string | undefined> {
-  const cleaned = { ...env };
-  for (const key of AGENT_ENV_VARS) {
-    delete cleaned[key];
-  }
-  return cleaned;
-}
-
-/**
  * Check that tmux is available. Call this at the top of commands that need
  * tmux (paw, paw launch, paw go). On Windows, detects WSL and tmux inside
  * it to show the right guidance. Prints install instructions and exits
@@ -451,18 +433,6 @@ function printUnixTmuxError(): void {
 
 export function isInsideTmux(): boolean {
   return !!process.env['TMUX'];
-}
-
-/**
- * Attach to a tmux session. Uses switch-client when already inside tmux,
- * otherwise attach-session (blocks until detach).
- */
-export function attachToTmuxSession(tmux: TmuxServiceApi, sessionName: string): void {
-  if (isInsideTmux()) {
-    tmux.switchClient(sessionName);
-  } else {
-    tmux.attachSession(sessionName);
-  }
 }
 
 /** Parse the agent name from a command string (first word). Defaults to 'claude'. */
