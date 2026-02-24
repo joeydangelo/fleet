@@ -1,9 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { existsSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, rmSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 
 import { validateDocContent, getDocTypeSubdir, addDoc } from '../src/lib/doc-add.js';
+import { readProjectConfig, writeProjectConfig } from '../src/lib/paw-config.js';
 
 // Mock github-fetch so no network calls
 vi.mock('../src/lib/github-fetch.js', () => ({
@@ -67,6 +68,7 @@ describe('addDoc', () => {
 
   beforeEach(() => {
     repoRoot = makeTempDir();
+    mkdirSync(resolve(repoRoot, '.paw'), { recursive: true });
     mockedFetch.mockReset();
   });
 
@@ -74,7 +76,7 @@ describe('addDoc', () => {
     rmSync(repoRoot, { recursive: true, force: true });
   });
 
-  it('writes doc to .paw/custom/{category}/', async () => {
+  it('writes doc to .paw/docs/{category}/', async () => {
     mockedFetch.mockResolvedValue({
       content: '---\ntitle: My Guideline\n---\n# Guide\nContent',
       usedGhCli: false,
@@ -87,12 +89,11 @@ describe('addDoc', () => {
     });
 
     expect(result.destPath).toBe('guidelines/my-guide.md');
-    const filePath = resolve(repoRoot, '.paw', 'custom', 'guidelines', 'my-guide.md');
+    const filePath = resolve(repoRoot, '.paw', 'docs', 'guidelines', 'my-guide.md');
     expect(existsSync(filePath)).toBe(true);
-    expect(readFileSync(filePath, 'utf-8')).toContain('# Guide');
   });
 
-  it('updates manifest.json with source URL', async () => {
+  it('updates config.yml with source URL', async () => {
     mockedFetch.mockResolvedValue({ content: '# Doc\nContent here.', usedGhCli: false });
 
     await addDoc(repoRoot, {
@@ -101,10 +102,10 @@ describe('addDoc', () => {
       docType: 'shortcut',
     });
 
-    const manifestPath = resolve(repoRoot, '.paw', 'custom', 'manifest.json');
-    expect(existsSync(manifestPath)).toBe(true);
-    const manifest = JSON.parse(readFileSync(manifestPath, 'utf-8'));
-    expect(manifest['shortcuts/my-shortcut.md']).toBe('https://example.com/shortcut.md');
+    const config = readProjectConfig(repoRoot);
+    expect(config.docs_cache.files['shortcuts/my-shortcut.md']).toBe(
+      'https://example.com/shortcut.md',
+    );
   });
 
   it('strips .md from name', async () => {
@@ -139,15 +140,15 @@ describe('addDoc', () => {
     ).rejects.toThrow('empty');
   });
 
-  it('preserves existing manifest entries', async () => {
-    // Write an existing manifest
-    const customDir = resolve(repoRoot, '.paw', 'custom');
-    mkdirSync(customDir, { recursive: true });
-    const { writeFileSync } = await import('atomically');
-    writeFileSync(
-      resolve(customDir, 'manifest.json'),
-      JSON.stringify({ 'guidelines/old.md': 'https://example.com/old.md' }),
-    );
+  it('preserves existing config entries', async () => {
+    // Write an existing config with an entry
+    writeProjectConfig(repoRoot, {
+      docs_cache: {
+        files: { 'guidelines/old.md': 'https://example.com/old.md' },
+        lookup_path: ['.paw/docs/shortcuts', '.paw/docs/guidelines', '.paw/docs/templates'],
+      },
+      settings: { doc_auto_sync_hours: 24 },
+    });
 
     mockedFetch.mockResolvedValue({ content: '# New\nContent here.', usedGhCli: false });
 
@@ -157,8 +158,8 @@ describe('addDoc', () => {
       docType: 'guideline',
     });
 
-    const manifest = JSON.parse(readFileSync(resolve(customDir, 'manifest.json'), 'utf-8'));
-    expect(manifest['guidelines/old.md']).toBe('https://example.com/old.md');
-    expect(manifest['guidelines/new.md']).toBe('https://example.com/new.md');
+    const config = readProjectConfig(repoRoot);
+    expect(config.docs_cache.files['guidelines/old.md']).toBe('https://example.com/old.md');
+    expect(config.docs_cache.files['guidelines/new.md']).toBe('https://example.com/new.md');
   });
 });

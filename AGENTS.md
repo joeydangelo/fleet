@@ -13,8 +13,6 @@ for tone and structure.
 Run `paw init` to update. -->
 
 
-# paw
-
 **paw orchestrates parallel AI coding agents across git worktrees — split work, spawn agents, merge results with full context.**
 
 1. **Orchestrate Agents**: Decompose work into tasks, create isolated worktrees,

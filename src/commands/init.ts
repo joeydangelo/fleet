@@ -1,10 +1,12 @@
 import { Command } from 'commander';
-import { cpSync, existsSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { writeFileSync } from 'atomically';
 import { resolve } from 'node:path';
 import pc from 'picocolors';
 import { getRepoRoot } from '../lib/git.js';
-import { getDocsBasePath, listDocs, readDoc, stripFrontmatter } from '../lib/docs.js';
+import { listDocs, readDoc, stripFrontmatter } from '../lib/docs.js';
+import { syncDocs } from '../lib/doc-sync.js';
+import { ensurePawGitignore, removePawFromRootGitignore } from '../lib/gitignore.js';
 import { installHooks } from '../lib/hooks.js';
 import { success, skip, handleError } from '../lib/output.js';
 
@@ -108,6 +110,22 @@ export function initCommand(): Command {
 
       console.log(pc.bold('paw init\n'));
 
+      // Sync bundled docs to .paw/docs/ (must run before SKILL.md generation)
+      try {
+        const syncResult = syncDocs(repoRoot);
+        if (syncResult.added.length > 0 || syncResult.updated.length > 0) {
+          const parts: string[] = [];
+          if (syncResult.added.length > 0) parts.push(`${syncResult.added.length} new`);
+          if (syncResult.updated.length > 0) parts.push(`${syncResult.updated.length} updated`);
+          if (syncResult.removed.length > 0) parts.push(`${syncResult.removed.length} removed`);
+          success('docs', `synced (${parts.join(', ')})`);
+        } else {
+          success('docs', 'up to date');
+        }
+      } catch {
+        skip('docs', 'bundled docs not found (run pnpm build)');
+      }
+
       // Write skill file from bundled template
       const skillDir = resolve(repoRoot, '.claude', 'skills', 'paw');
       const skillPath = resolve(skillDir, 'SKILL.md');
@@ -130,38 +148,14 @@ export function initCommand(): Command {
         installAgentsSection(repoRoot, skillDoc.content);
       }
 
-      // Ensure .paw/ is in .gitignore
-      const gitignorePath = resolve(repoRoot, '.gitignore');
-      let gitignore = '';
-      if (existsSync(gitignorePath)) {
-        gitignore = readFileSync(gitignorePath, 'utf-8');
+      // Migrate from root .gitignore (.paw/ entry) to .paw/.gitignore
+      if (removePawFromRootGitignore(repoRoot)) {
+        success('gitignore', 'migrated — removed .paw/ from root .gitignore');
       }
-
-      const gitignoreEntries = ['.paw/'];
-      const missing = gitignoreEntries.filter((entry) => !gitignore.includes(entry));
-
-      if (missing.length === 0) {
-        skip('gitignore', 'paw entries already present');
+      if (ensurePawGitignore(repoRoot)) {
+        success('gitignore', 'created .paw/.gitignore');
       } else {
-        const separator = gitignore.length > 0 && !gitignore.endsWith('\n') ? '\n' : '';
-        const comment = gitignore.includes('# paw working state') ? '' : '\n# paw working state\n';
-        const block = missing.join('\n');
-        writeFileSync(gitignorePath, gitignore + separator + comment + block + '\n', 'utf-8');
-        success('gitignore', `added ${missing.join(', ')}`);
-      }
-
-      // Copy bundled docs to .paw/docs/ (clean first to remove stale files)
-      try {
-        const docsBase = getDocsBasePath();
-        const destDocs = resolve(repoRoot, '.paw', 'docs');
-        if (existsSync(destDocs)) {
-          rmSync(destDocs, { recursive: true });
-        }
-        cpSync(docsBase, destDocs, { recursive: true });
-        success('docs', destDocs);
-      } catch {
-        // Docs may not be available in dev without a build
-        skip('docs', 'bundled docs not found (run pnpm build)');
+        skip('gitignore', '.paw/.gitignore up to date');
       }
 
       // Write .paw/paw.yaml from bundled template (always refresh on setup)

@@ -1,34 +1,12 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
-import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { join, basename } from 'node:path';
 import { parse as parseYaml } from 'yaml';
 import { getRepoRoot } from './git.js';
+import { readProjectConfig } from './paw-config.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-/**
- * Resolve the docs base directory. Checks bundled (dist/docs/) first,
- * falls back to dev (src/docs/) for local development.
- */
-export function getDocsBasePath(): string {
-  const candidates = [
-    join(__dirname, 'docs'), // Bundled: dist/docs/
-    join(__dirname, '..', 'src', 'docs'), // Dev from dist: ../src/docs/
-    join(__dirname, '..', 'docs'), // Dev from src/lib: ../docs/ = src/docs/
-  ];
-  for (const p of candidates) {
-    if (existsSync(p)) return p;
-  }
-  throw new Error('paw docs not found');
-}
-
-/** Resolve .paw/custom/ path for user-added docs. Returns null if unavailable. */
-function getCustomDocsPath(): string | null {
+function getRepoRootSafe(): string | null {
   try {
-    const root = process.env.PAW_REPO_ROOT || getRepoRoot();
-    const customPath = join(root, '.paw', 'custom');
-    return existsSync(customPath) ? customPath : null;
+    return process.env.PAW_REPO_ROOT || getRepoRoot();
   } catch {
     return null;
   }
@@ -41,24 +19,56 @@ interface DocInfo {
 }
 
 /**
- * Read a doc file by category and name. Checks custom docs first, then bundled.
+ * Get lookup paths for a category, filtered from config.docs_cache.lookup_path.
+ * Paths ending with `/{category}` match. Falls back to `.paw/docs/{category}/`.
+ */
+function getLookupPaths(repoRoot: string, category: string): string[] {
+  let lookupPath: string[];
+  try {
+    const config = readProjectConfig(repoRoot);
+    lookupPath = config.docs_cache.lookup_path;
+  } catch {
+    lookupPath = [];
+  }
+
+  if (lookupPath.length === 0) {
+    return [join(repoRoot, '.paw', 'docs', category)];
+  }
+
+  // Filter paths matching this category (ending in /{category})
+  const matching = lookupPath
+    .filter((p) => basename(p) === category)
+    .map((p) => {
+      // Resolve relative paths against repoRoot
+      if (!p.startsWith('/') && !p.match(/^[a-zA-Z]:/)) {
+        return join(repoRoot, p);
+      }
+      return p;
+    });
+
+  if (matching.length === 0) {
+    return [join(repoRoot, '.paw', 'docs', category)];
+  }
+
+  return matching;
+}
+
+/**
+ * Read a doc file by category and name.
+ * Searches lookup paths in order; first match wins.
  */
 export function readDoc(category: string, name: string): { content: string; path: string } | null {
   const filename = name.endsWith('.md') ? name : `${name}.md`;
+  const repoRoot = getRepoRootSafe();
+  if (!repoRoot) return null;
 
-  // Custom docs shadow bundled docs
-  const customPath = getCustomDocsPath();
-  if (customPath) {
-    const filepath = join(customPath, category, filename);
+  for (const dir of getLookupPaths(repoRoot, category)) {
+    const filepath = join(dir, filename);
     if (existsSync(filepath)) {
       return { content: readFileSync(filepath, 'utf-8'), path: filepath };
     }
   }
-
-  const base = getDocsBasePath();
-  const filepath = join(base, category, filename);
-  if (!existsSync(filepath)) return null;
-  return { content: readFileSync(filepath, 'utf-8'), path: filepath };
+  return null;
 }
 
 /** Read .md files from a directory into DocInfo entries. */
@@ -75,26 +85,22 @@ function readDocsFromDir(dir: string): DocInfo[] {
 }
 
 /**
- * List all docs in a category. Custom docs appear first and shadow bundled docs of the same name.
+ * List all docs in a category across lookup paths.
+ * Deduplicates by name — first occurrence wins (shadowing).
  */
 export function listDocs(category: string): DocInfo[] {
+  const repoRoot = getRepoRootSafe();
+  if (!repoRoot) return [];
+
   const seen = new Set<string>();
   const results: DocInfo[] = [];
 
-  // Custom docs first (shadow bundled)
-  const customPath = getCustomDocsPath();
-  if (customPath) {
-    for (const doc of readDocsFromDir(join(customPath, category))) {
-      seen.add(doc.name);
-      results.push(doc);
-    }
-  }
-
-  // Bundled docs (skip if shadowed)
-  const base = getDocsBasePath();
-  for (const doc of readDocsFromDir(join(base, category))) {
-    if (!seen.has(doc.name)) {
-      results.push(doc);
+  for (const dir of getLookupPaths(repoRoot, category)) {
+    for (const doc of readDocsFromDir(dir)) {
+      if (!seen.has(doc.name)) {
+        seen.add(doc.name);
+        results.push(doc);
+      }
     }
   }
 

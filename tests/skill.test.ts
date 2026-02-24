@@ -5,12 +5,12 @@ import { execFileSync } from 'node:child_process';
 const binPath = resolve(process.cwd(), 'dist', 'bin.mjs');
 
 describe('paw skill', () => {
-  it('outputs skill body containing # paw', () => {
+  it('outputs skill body containing paw description', () => {
     const result = execFileSync(process.execPath, [binPath, 'skill'], {
       stdio: 'pipe',
     });
     const stdout = result.toString();
-    expect(stdout).toContain('# paw');
+    expect(stdout).toContain('paw orchestrates parallel AI coding agents');
   });
 
   it('does not include YAML frontmatter in output', () => {

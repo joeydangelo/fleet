@@ -1,0 +1,110 @@
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { mkdirSync, readFileSync, rmSync } from 'node:fs';
+import { writeFileSync } from 'atomically';
+import { resolve } from 'node:path';
+import { tmpdir } from 'node:os';
+
+import { ensurePawGitignore, removePawFromRootGitignore } from '../src/lib/gitignore.js';
+
+function makeTempDir(): string {
+  const dir = resolve(tmpdir(), `paw-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+  mkdirSync(dir, { recursive: true });
+  return dir;
+}
+
+describe('ensurePawGitignore', () => {
+  let repoRoot: string;
+
+  beforeEach(() => {
+    repoRoot = makeTempDir();
+    mkdirSync(resolve(repoRoot, '.paw'), { recursive: true });
+  });
+
+  afterEach(() => {
+    rmSync(repoRoot, { recursive: true, force: true });
+  });
+
+  it('creates .paw/.gitignore with expected entries', () => {
+    const created = ensurePawGitignore(repoRoot);
+    expect(created).toBe(true);
+
+    const content = readFileSync(resolve(repoRoot, '.paw', '.gitignore'), 'utf-8');
+    expect(content).toContain('docs/');
+    expect(content).toContain('state.yml');
+    expect(content).toContain('tasks/');
+    expect(content).toContain('sync/');
+    expect(content).toContain('sessions/');
+    expect(content).toContain('panes.json');
+    expect(content).toContain('paw.yaml');
+    expect(content).toContain('*.tmp');
+  });
+
+  it('does not include config.yml or hooks/', () => {
+    ensurePawGitignore(repoRoot);
+    const content = readFileSync(resolve(repoRoot, '.paw', '.gitignore'), 'utf-8');
+    expect(content).not.toContain('config.yml');
+    expect(content).not.toContain('hooks/');
+  });
+
+  it('is idempotent — returns false on second call', () => {
+    ensurePawGitignore(repoRoot);
+    const result = ensurePawGitignore(repoRoot);
+    expect(result).toBe(false);
+  });
+
+  it('updates if content differs', () => {
+    writeFileSync(resolve(repoRoot, '.paw', '.gitignore'), 'old-content\n', 'utf-8');
+    const updated = ensurePawGitignore(repoRoot);
+    expect(updated).toBe(true);
+    const content = readFileSync(resolve(repoRoot, '.paw', '.gitignore'), 'utf-8');
+    expect(content).toContain('docs/');
+  });
+});
+
+describe('removePawFromRootGitignore', () => {
+  let repoRoot: string;
+
+  beforeEach(() => {
+    repoRoot = makeTempDir();
+  });
+
+  afterEach(() => {
+    rmSync(repoRoot, { recursive: true, force: true });
+  });
+
+  it('removes .paw/ line and its comment from root .gitignore', () => {
+    writeFileSync(
+      resolve(repoRoot, '.gitignore'),
+      'node_modules/\ndist/\n\n# paw working state\n.paw/\n',
+      'utf-8',
+    );
+    const removed = removePawFromRootGitignore(repoRoot);
+    expect(removed).toBe(true);
+
+    const content = readFileSync(resolve(repoRoot, '.gitignore'), 'utf-8');
+    expect(content).not.toContain('.paw/');
+    expect(content).not.toContain('# paw working state');
+    expect(content).toContain('node_modules/');
+    expect(content).toContain('dist/');
+  });
+
+  it('returns false when .gitignore does not exist', () => {
+    const removed = removePawFromRootGitignore(repoRoot);
+    expect(removed).toBe(false);
+  });
+
+  it('returns false when .paw/ is not present', () => {
+    writeFileSync(resolve(repoRoot, '.gitignore'), 'node_modules/\n', 'utf-8');
+    const removed = removePawFromRootGitignore(repoRoot);
+    expect(removed).toBe(false);
+  });
+
+  it('removes .paw/ even without the comment', () => {
+    writeFileSync(resolve(repoRoot, '.gitignore'), 'node_modules/\n.paw/\n', 'utf-8');
+    const removed = removePawFromRootGitignore(repoRoot);
+    expect(removed).toBe(true);
+
+    const content = readFileSync(resolve(repoRoot, '.gitignore'), 'utf-8');
+    expect(content).not.toContain('.paw/');
+  });
+});

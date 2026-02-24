@@ -1,8 +1,9 @@
-import { existsSync, mkdirSync, readFileSync } from 'node:fs';
+import { mkdirSync } from 'node:fs';
 import { writeFileSync } from 'atomically';
 import { resolve, dirname } from 'node:path';
 
 import { fetchWithGhFallback } from './github-fetch.js';
+import { readProjectConfig, writeProjectConfig } from './paw-config.js';
 
 export type DocType = 'shortcut' | 'guideline' | 'template';
 
@@ -39,7 +40,7 @@ export function getDocTypeSubdir(docType: DocType): string {
   }
 }
 
-/** Fetch a doc from a URL and save it to .paw/custom/{category}/. */
+/** Fetch a doc from a URL and save it to .paw/docs/{category}/. */
 export async function addDoc(
   repoRoot: string,
   options: { url: string; name: string; docType: DocType },
@@ -55,22 +56,14 @@ export async function addDoc(
 
   validateDocContent(content, cleanName);
 
-  const fullPath = resolve(repoRoot, '.paw', 'custom', destPath);
+  const fullPath = resolve(repoRoot, '.paw', 'docs', destPath);
   mkdirSync(dirname(fullPath), { recursive: true });
   writeFileSync(fullPath, content, 'utf-8');
 
-  // Update manifest
-  const manifestPath = resolve(repoRoot, '.paw', 'custom', 'manifest.json');
-  let manifest: Record<string, string> = {};
-  if (existsSync(manifestPath)) {
-    try {
-      manifest = JSON.parse(readFileSync(manifestPath, 'utf-8')) as Record<string, string>;
-    } catch {
-      // Corrupted manifest — start fresh
-    }
-  }
-  manifest[destPath] = url;
-  writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + '\n', 'utf-8');
+  // Update config.yml
+  const config = readProjectConfig(repoRoot);
+  config.docs_cache.files[destPath] = url;
+  writeProjectConfig(repoRoot, config);
 
   return { destPath, rawUrl: url, usedGhCli };
 }

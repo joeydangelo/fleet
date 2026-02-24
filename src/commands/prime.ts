@@ -10,6 +10,7 @@ import { readSyncState, claimTask, writeSyncState, readSyncFile } from '../lib/s
 import { readJournal, readJournalForTask } from '../lib/journal.js';
 import { computeThreads } from './threads.js';
 import { readDoc, stripFrontmatter } from '../lib/docs.js';
+import { ensureDocsFresh } from '../lib/doc-sync.js';
 import { handleError, formatFocusAreas, colors, success } from '../lib/output.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -60,9 +61,10 @@ export function primeCommand(): Command {
   return new Command('prime')
     .description('Context management — orchestrator dashboard or worktree orientation')
     .option('--brief', 'Condensed output for hooks and constrained contexts')
-    .action((opts: { brief?: boolean }) => {
+    .action(async (opts: { brief?: boolean }) => {
       try {
         const repoRoot = getRepoRoot();
+        await ensureDocsFresh(repoRoot).catch(() => {});
         const taskName = detectTaskName(repoRoot);
 
         if (!taskName) {

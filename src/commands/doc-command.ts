@@ -1,6 +1,7 @@
 import { Command } from 'commander';
 import pc from 'picocolors';
 import { readDoc, listDocs } from '../lib/docs.js';
+import { ensureDocsFresh } from '../lib/doc-sync.js';
 import { handleError, colors, success } from '../lib/output.js';
 import type { DocType } from '../lib/doc-add.js';
 
@@ -37,6 +38,14 @@ export function createDocCommand(name: string, category: string, description: st
         opts: { list?: boolean; add?: string; name?: string },
       ) => {
         try {
+          // Auto-refresh stale docs before any read/list operation
+          try {
+            const { getRepoRoot } = await import('../lib/git.js');
+            await ensureDocsFresh(getRepoRoot()).catch(() => {});
+          } catch {
+            // Not in a repo or docs not set up yet — skip
+          }
+
           if (opts.add) {
             const { addDoc } = await import('../lib/doc-add.js');
             const { getRepoRoot } = await import('../lib/git.js');
@@ -57,7 +66,7 @@ export function createDocCommand(name: string, category: string, description: st
               console.log(pc.dim('  (fetched via gh CLI due to direct access restriction)'));
             }
 
-            success(name, `.paw/custom/${result.destPath}`);
+            success(name, `.paw/docs/${result.destPath}`);
             console.log(pc.dim(`Run \`paw ${name} --list\` to verify.`));
             return;
           }
