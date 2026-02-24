@@ -446,7 +446,7 @@ export function TuiApp({
             item={item}
             selected={i === selectedIndex}
             isFirst={i === 0 && !item.projectHeader}
-            isLast={i === items.length - 1}
+            isLast={i === items.length - 1 || !!items[i + 1]?.projectHeader}
             isNextSelected={i === selectedIndex - 1}
           />
         ))}
