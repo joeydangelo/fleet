@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Text, useApp, useInput, useStdout } from 'ink';
-import { basename } from 'node:path';
+import { basename, dirname } from 'node:path';
 import type { TmuxServiceApi, PawPane, TmuxPaneInfo, AgentName } from '../lib/tmux.js';
 import { readPaneConfig } from '../lib/pane-state.js';
 import { readSyncState } from '../lib/sync.js';
@@ -405,7 +405,7 @@ export function TuiApp({
       <Box flexDirection="column" height={terminalHeight}>
         <Box flexDirection="column" height={contentHeight} overflow="hidden">
           <ProjectPicker
-            defaultPath=""
+            defaultPath={dirname(repoRoot) + '/'}
             onSelect={handleProjectSelect}
             onCancel={handlePickerCancel}
           />
