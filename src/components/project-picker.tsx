@@ -19,7 +19,7 @@ export function ProjectPicker({ defaultPath, onSelect, onCancel }: ProjectPicker
   const prevInputRef = useRef(inputValue);
 
   const { parentDir, prefix } = parsePathInput(inputValue);
-  const entries = scanDirectories(parentDir, prefix);
+  const entries = scanDirectories(parentDir, prefix).filter((e) => e.isGitRepo);
 
   // Reset selection when input changes
   if (prevInputRef.current !== inputValue) {
@@ -54,13 +54,7 @@ export function ProjectPicker({ defaultPath, onSelect, onCancel }: ProjectPicker
     if (key.return) {
       const target = selectedIndex >= 0 ? entries[selectedIndex] : null;
       if (target) {
-        if (target.isGitRepo) {
-          onSelect(target.fullPath);
-        } else {
-          // Navigate into non-git directory
-          setInputValue(target.fullPath + '/');
-          setSelectedIndex(-1);
-        }
+        onSelect(target.fullPath);
       }
       return;
     }
