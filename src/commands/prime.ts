@@ -38,21 +38,18 @@ function getVersion(): string {
   }
 }
 
-/** Load the full SKILL.md content, stripped of frontmatter. */
 function loadSkillContent(): string | null {
   const doc = readDoc('templates', 'skill');
   if (!doc) return null;
   return stripFrontmatter(doc.content);
 }
 
-/** Load the orchestrator-brief.md content, stripped of frontmatter. */
 function loadOrchestratorBriefContent(): string | null {
   const doc = readDoc('templates', 'orchestrator-brief');
   if (!doc) return null;
   return stripFrontmatter(doc.content);
 }
 
-/** Load the agent-brief.md content, stripped of frontmatter. */
 function loadAgentBriefContent(): string | null {
   const doc = readDoc('templates', 'agent-brief');
   if (!doc) return null;

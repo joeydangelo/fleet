@@ -447,7 +447,6 @@ function printUnixTmuxError(): void {
   console.error(lines.join('\n'));
 }
 
-/** Check if running inside a tmux session. */
 export function isInsideTmux(): boolean {
   return !!process.env['TMUX'];
 }
@@ -526,7 +525,6 @@ export function launchTmux(
   return panes;
 }
 
-/** Create a default TmuxService instance. */
 export function createTmuxService(): TmuxService {
   return new TmuxService();
 }

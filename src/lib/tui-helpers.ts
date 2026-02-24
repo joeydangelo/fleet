@@ -41,7 +41,6 @@ export function taskDisplayStatus(
   return task?.status ?? 'pending';
 }
 
-/** Returns the status icon and color for TUI rendering. */
 export function statusIcon(status: TuiStatus): { icon: string; color: string } {
   switch (status) {
     case 'in_progress':

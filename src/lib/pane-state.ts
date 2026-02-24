@@ -28,7 +28,6 @@ export function writePaneConfig(repoRoot: string, config: PawPaneConfig): void {
   writeFileSync(p, JSON.stringify(config, null, 2) + '\n');
 }
 
-/** Save panes and orchestrator pane ID after creation or update. */
 export function savePanes(
   repoRoot: string,
   sessionName: string,

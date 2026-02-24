@@ -167,7 +167,6 @@ export function topologicalSort(
   return result;
 }
 
-/** Load repo root and config in one call. */
 export function loadRepoConfig(configOpt?: string): {
   repoRoot: string;
   configPath: string;

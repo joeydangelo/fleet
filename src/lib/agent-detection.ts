@@ -35,10 +35,6 @@ const AGENT_PATHS: Record<AgentName, string[]> = {
   ],
 };
 
-/**
- * Check if a command exists in PATH using `which`.
- * Returns the resolved path or null.
- */
 function whichCommand(name: string): string | null {
   try {
     return execFileSync('which', [name], { encoding: 'utf-8', stdio: 'pipe' }).trim() || null;
@@ -62,7 +58,6 @@ export function findAgent(name: AgentName): string | null {
   return null;
 }
 
-/** All supported agent names. */
 export const SUPPORTED_AGENTS: readonly AgentName[] = [
   'claude',
   'codex',
@@ -70,10 +65,6 @@ export const SUPPORTED_AGENTS: readonly AgentName[] = [
   'gemini',
 ] as const;
 
-/**
- * Detect all installed agents by checking PATH and common install dirs.
- * Returns array of available agent names.
- */
 export function getAvailableAgents(): AgentName[] {
   const available: AgentName[] = [];
   for (const name of SUPPORTED_AGENTS) {
