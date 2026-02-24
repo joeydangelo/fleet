@@ -4,7 +4,7 @@ import React from 'react';
 import { getRepoRoot } from '../lib/git.js';
 import { createTmuxService, tmuxSessionName, isInsideTmux, requireTmux } from '../lib/tmux.js';
 import type { TmuxServiceApi, PawPane } from '../lib/tmux.js';
-import { restorePanes, savePanes } from '../lib/pane-state.js';
+import { restorePanes, savePanes, labelOrchestrator } from '../lib/pane-state.js';
 import { TuiApp } from '../components/tui-app.js';
 import { handleError, colors } from '../lib/output.js';
 import { SIDEBAR_WIDTH } from '../lib/tui-helpers.js';
@@ -87,8 +87,7 @@ export function runTui(): void {
         // keeping the TUI sidebar on the LEFT (same approach as dmux).
         const controlPaneId = tmux.listPanes(sessionName)[0] ?? '';
         const orchestratorPaneId = tmux.createPane(sessionName, repoRoot, { horizontal: true });
-        tmux.setPaneTitle(orchestratorPaneId, 'paw-orchestrator');
-        tmux.setPaneRole(orchestratorPaneId, 'paw-orchestrator');
+        labelOrchestrator(tmux, orchestratorPaneId);
         savePanes(repoRoot, sessionName, panes, orchestratorPaneId);
         // Lock sidebar width from the external process before attaching so the
         // user sees the correct layout immediately on attach.
@@ -98,8 +97,7 @@ export function runTui(): void {
       } else if (!existingOrchestratorId) {
         // Existing session without an orchestrator pane (pre-feature sessions).
         const orchestratorPaneId = tmux.createPane(sessionName, repoRoot, { horizontal: true });
-        tmux.setPaneTitle(orchestratorPaneId, 'paw-orchestrator');
-        tmux.setPaneRole(orchestratorPaneId, 'paw-orchestrator');
+        labelOrchestrator(tmux, orchestratorPaneId);
         savePanes(repoRoot, sessionName, panes, orchestratorPaneId);
       }
       tmux.attachSession(sessionName);

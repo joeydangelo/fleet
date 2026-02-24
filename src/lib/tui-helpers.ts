@@ -1,3 +1,4 @@
+import { AGENT_NAMES } from './tmux.js';
 import type { AgentName } from './tmux.js';
 import type { TaskState, MergeEntry } from './sync.js';
 
@@ -14,7 +15,7 @@ const AGENT_BADGES: Record<AgentName, string> = {
   gemini: '[gm]',
 };
 
-const KNOWN_AGENTS = new Set<string>(['claude', 'codex', 'opencode', 'gemini']);
+const KNOWN_AGENTS = new Set<string>(AGENT_NAMES);
 const KNOWN_SHELLS = new Set(['bash', 'zsh', 'fish', 'sh', 'ksh', 'tcsh', 'csh']);
 
 /**

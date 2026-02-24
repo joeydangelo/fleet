@@ -7,6 +7,8 @@ const AGENT_ENV_VARS = ['CLAUDECODE', 'CLAUDE_CODE_ENTRYPOINT'] as const;
 
 export type AgentName = 'claude' | 'codex' | 'opencode' | 'gemini';
 
+export const AGENT_NAMES: readonly AgentName[] = ['claude', 'codex', 'opencode', 'gemini'] as const;
+
 /** Lightweight snapshot of a tmux pane returned by listPanesDetailed. */
 export interface TmuxPaneInfo {
   /** tmux pane ID (%nn). */
@@ -463,12 +465,10 @@ export function attachToTmuxSession(tmux: TmuxServiceApi, sessionName: string): 
   }
 }
 
-const KNOWN_AGENTS: readonly AgentName[] = ['claude', 'codex', 'opencode', 'gemini'];
-
 /** Parse the agent name from a command string (first word). Defaults to 'claude'. */
 function parseAgentName(command: string): AgentName {
   const base = command.trim().split(/\s+/)[0] ?? '';
-  return (KNOWN_AGENTS as readonly string[]).includes(base) ? (base as AgentName) : 'claude';
+  return (AGENT_NAMES as readonly string[]).includes(base) ? (base as AgentName) : 'claude';
 }
 
 /**

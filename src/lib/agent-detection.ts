@@ -2,6 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
+import { AGENT_NAMES } from './tmux.js';
 import type { AgentName } from './tmux.js';
 
 /** Per-agent search paths (after PATH lookup fails). */
@@ -58,16 +59,11 @@ export function findAgent(name: AgentName): string | null {
   return null;
 }
 
-export const SUPPORTED_AGENTS: readonly AgentName[] = [
-  'claude',
-  'codex',
-  'opencode',
-  'gemini',
-] as const;
+export { AGENT_NAMES as SUPPORTED_AGENTS } from './tmux.js';
 
 export function getAvailableAgents(): AgentName[] {
   const available: AgentName[] = [];
-  for (const name of SUPPORTED_AGENTS) {
+  for (const name of AGENT_NAMES) {
     if (findAgent(name)) {
       available.push(name);
     }

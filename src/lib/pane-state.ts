@@ -2,8 +2,14 @@ import { existsSync, readFileSync, mkdirSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { writeFileSync } from 'atomically';
 import type { PawPaneConfig, PawPane, TmuxServiceApi } from './tmux.js';
+import { ORCHESTRATOR_ROLE } from './constants.js';
 
 const PANES_FILE = 'panes.json';
+
+export function labelOrchestrator(tmux: TmuxServiceApi, paneId: string): void {
+  tmux.setPaneTitle(paneId, ORCHESTRATOR_ROLE);
+  tmux.setPaneRole(paneId, ORCHESTRATOR_ROLE);
+}
 
 function panesPath(repoRoot: string): string {
   return resolve(repoRoot, '.paw', PANES_FILE);
@@ -80,7 +86,7 @@ export function restorePanes(
     // This handles cases where panes.json was manually deleted or lost (e.g.
     // WSL restart) while the tmux session was still running.
     const titleMap = tmux.listPanesWithTitles(sessionName);
-    const orchestratorPaneId = titleMap.get('paw-orchestrator') ?? '';
+    const orchestratorPaneId = titleMap.get(ORCHESTRATOR_ROLE) ?? '';
     if (orchestratorPaneId) {
       savePanes(repoRoot, sessionName, [], orchestratorPaneId);
     }
@@ -121,8 +127,7 @@ export function restorePanes(
   let orchestratorPaneId = config.orchestratorPaneId;
   if (orchestratorPaneId && !tmux.paneExists(orchestratorPaneId)) {
     orchestratorPaneId = tmux.createPane(sessionName, config.projectRoot, { horizontal: true });
-    tmux.setPaneTitle(orchestratorPaneId, 'paw-orchestrator');
-    tmux.setPaneRole(orchestratorPaneId, 'paw-orchestrator');
+    labelOrchestrator(tmux, orchestratorPaneId);
   }
 
   if (restored.length > 0 || orchestratorPaneId !== config.orchestratorPaneId) {
