@@ -81,6 +81,9 @@ function createMockTmux(
     setPaneRole(paneId: string, role: string) {
       calls.push({ method: 'setPaneRole', args: [paneId, role] });
     },
+    setPaneProject(paneId: string, projectRoot: string) {
+      calls.push({ method: 'setPaneProject', args: [paneId, projectRoot] });
+    },
     listClients() {
       calls.push({ method: 'listClients', args: [] });
       return [];

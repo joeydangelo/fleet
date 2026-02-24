@@ -1,13 +1,65 @@
-import { basename } from 'node:path';
+import { basename, resolve } from 'node:path';
+import { existsSync, mkdirSync } from 'node:fs';
 import { render } from 'ink';
 import React from 'react';
 import { getRepoRoot } from '../lib/git.js';
 import { createTmuxService, tmuxSessionName, isInsideTmux, requireTmux } from '../lib/tmux.js';
-import type { TmuxServiceApi, PawPane } from '../lib/tmux.js';
-import { restorePanes, savePanes, labelOrchestrator } from '../lib/pane-state.js';
+import type { TmuxServiceApi, PawPane, AgentName } from '../lib/tmux.js';
+import { restorePanes, savePanes, labelOrchestrator, writePaneConfig } from '../lib/pane-state.js';
+import type { PawPaneConfig } from '../lib/tmux.js';
 import { TuiApp } from '../components/tui-app.js';
 import { handleError, colors } from '../lib/output.js';
 import { SIDEBAR_WIDTH } from '../lib/tui-helpers.js';
+
+/**
+ * Add a new project to the current workspace. Creates an orchestrator pane
+ * in the current tmux session for the selected project.
+ */
+function createAddProject(
+  tmux: TmuxServiceApi,
+  sessionName: string,
+): (projectRoot: string, agent: AgentName) => void {
+  return (projectRoot: string, agent: AgentName) => {
+    // Check for duplicate: scan panes for @paw_project matching this root.
+    const panes = tmux.listPanesDetailed(sessionName);
+    const existing = panes.find((p) => p.project === projectRoot);
+    if (existing) {
+      tmux.selectPane(existing.paneId);
+      return;
+    }
+
+    // Auto-init: ensure .paw/ exists in the target project.
+    const pawDir = resolve(projectRoot, '.paw');
+    if (!existsSync(pawDir)) {
+      mkdirSync(pawDir, { recursive: true });
+    }
+
+    // Create orchestrator pane in current session, cd'd to the project root.
+    const paneId = tmux.createPane(sessionName, projectRoot);
+    labelOrchestrator(tmux, paneId);
+    tmux.setPaneProject(paneId, projectRoot);
+
+    // Write the new project's own panes.json.
+    const config: PawPaneConfig = {
+      sessionName,
+      projectRoot,
+      orchestratorPaneId: paneId,
+      panes: [],
+      lastUpdated: new Date().toISOString(),
+    };
+    writePaneConfig(projectRoot, config);
+
+    // Send agent command to the new pane.
+    tmux.sendKeys(paneId, agent);
+
+    // Re-pin sidebar layout so the new pane stacks correctly.
+    try {
+      tmux.pinSidebarLayout(sessionName, SIDEBAR_WIDTH);
+    } catch {
+      // Best-effort
+    }
+  };
+}
 
 /** Render the TUI sidebar in the current pane via Ink. */
 function runTuiSidebar(
@@ -19,6 +71,13 @@ function runTuiSidebar(
 ): void {
   tmux.resizePane(controlPaneId, SIDEBAR_WIDTH);
   tmux.pinSidebarLayout(sessionName, SIDEBAR_WIDTH);
+
+  // Set @paw_project on the control pane for grouping.
+  try {
+    tmux.setPaneProject(controlPaneId, repoRoot);
+  } catch {
+    // Best-effort
+  }
 
   const onQuit = () => {
     // Clear screen and print reattach hint
@@ -35,6 +94,7 @@ function runTuiSidebar(
       panes,
       controlPaneId,
       onQuit,
+      addProject: createAddProject(tmux, sessionName),
     }),
   );
 }
@@ -88,6 +148,7 @@ export function runTui(): void {
         const controlPaneId = tmux.listPanes(sessionName)[0] ?? '';
         const orchestratorPaneId = tmux.createPane(sessionName, repoRoot, { horizontal: true });
         labelOrchestrator(tmux, orchestratorPaneId);
+        tmux.setPaneProject(orchestratorPaneId, repoRoot);
         savePanes(repoRoot, sessionName, panes, orchestratorPaneId);
         // Lock sidebar width from the external process before attaching so the
         // user sees the correct layout immediately on attach.
@@ -98,6 +159,7 @@ export function runTui(): void {
         // Existing session without an orchestrator pane (pre-feature sessions).
         const orchestratorPaneId = tmux.createPane(sessionName, repoRoot, { horizontal: true });
         labelOrchestrator(tmux, orchestratorPaneId);
+        tmux.setPaneProject(orchestratorPaneId, repoRoot);
         savePanes(repoRoot, sessionName, panes, orchestratorPaneId);
       }
       tmux.attachSession(sessionName);

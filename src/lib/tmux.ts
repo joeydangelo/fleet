@@ -14,6 +14,10 @@ export interface TmuxPaneInfo {
   title: string;
   /** Foreground command currently running in the pane (e.g. bash, claude). */
   command: string;
+  /** Live working directory from #{pane_current_path}. */
+  cwd: string;
+  /** Project root from @paw_project custom option. Empty string if not set. */
+  project: string;
 }
 
 /** Per-pane metadata persisted to .paw/panes.json. */
@@ -69,6 +73,8 @@ export interface TmuxServiceApi {
   setPaneTitle(paneId: string, title: string): void;
   /** Sets a permanent paw role label via a custom tmux user option (@paw_role). */
   setPaneRole(paneId: string, role: string): void;
+  /** Sets the project root on a pane via @paw_project custom user option. */
+  setPaneProject(paneId: string, projectRoot: string): void;
   getCurrentPaneId(): string;
   getCurrentSessionName(): string;
   getPaneCurrentCommand(paneId: string): string;
@@ -140,7 +146,7 @@ export class TmuxService implements TmuxServiceApi {
     return output.split('\n').filter(Boolean);
   }
 
-  /** List all panes in a session with their ID, title, and current command. */
+  /** List all panes in a session with their ID, title, command, cwd, and project. */
   listPanesDetailed(sessionName: string): TmuxPaneInfo[] {
     const output = this.exec([
       'list-panes',
@@ -148,14 +154,14 @@ export class TmuxService implements TmuxServiceApi {
       '-t',
       sessionName,
       '-F',
-      '#{pane_id}\t#{pane_title}\t#{pane_current_command}',
+      '#{pane_id}\t#{pane_title}\t#{pane_current_command}\t#{pane_current_path}\t#{@paw_project}',
     ]);
     return output
       .split('\n')
       .filter(Boolean)
       .map((line) => {
-        const [paneId = '', title = '', command = ''] = line.split('\t');
-        return { paneId, title, command };
+        const [paneId = '', title = '', command = '', cwd = '', project = ''] = line.split('\t');
+        return { paneId, title, command, cwd, project };
       });
   }
 
@@ -266,6 +272,10 @@ export class TmuxService implements TmuxServiceApi {
    */
   setPaneRole(paneId: string, role: string): void {
     this.exec(['set-option', '-p', '-t', paneId, '@paw_role', role]);
+  }
+
+  setPaneProject(paneId: string, projectRoot: string): void {
+    this.exec(['set-option', '-p', '-t', paneId, '@paw_project', projectRoot]);
   }
 
   listClients(): string[] {
@@ -486,6 +496,7 @@ export function launchTmux(
 
     tmux.setPaneTitle(paneId, `paw-${wt.taskName}`);
     tmux.setPaneRole(paneId, `paw-${wt.taskName}`);
+    tmux.setPaneProject(paneId, repoRoot);
     tmux.sendKeys(paneId, wt.agentCommand);
 
     panes.push(pane);

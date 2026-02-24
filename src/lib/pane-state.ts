@@ -128,6 +128,7 @@ export function restorePanes(
   if (orchestratorPaneId && !tmux.paneExists(orchestratorPaneId)) {
     orchestratorPaneId = tmux.createPane(sessionName, config.projectRoot, { horizontal: true });
     labelOrchestrator(tmux, orchestratorPaneId);
+    tmux.setPaneProject(orchestratorPaneId, config.projectRoot);
   }
 
   if (restored.length > 0 || orchestratorPaneId !== config.orchestratorPaneId) {

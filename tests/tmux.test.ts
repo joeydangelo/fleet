@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { TmuxService, tmuxSessionName, isInsideTmux, launchTmux } from '../src/lib/tmux.js';
-import type { TmuxServiceApi, PawPane } from '../src/lib/tmux.js';
+import type { TmuxServiceApi, TmuxPaneInfo, PawPane } from '../src/lib/tmux.js';
 
 // --- Mock TmuxService for unit tests ---
 
@@ -56,7 +56,7 @@ function createMockTmux(): TmuxServiceApi & {
     },
     listPanesDetailed(sessionName: string) {
       calls.push({ method: 'listPanesDetailed', args: [sessionName] });
-      return [];
+      return [] as TmuxPaneInfo[];
     },
     listPanesWithTitles(sessionName: string) {
       calls.push({ method: 'listPanesWithTitles', args: [sessionName] });
@@ -81,6 +81,9 @@ function createMockTmux(): TmuxServiceApi & {
     },
     setPaneRole(paneId: string, role: string) {
       calls.push({ method: 'setPaneRole', args: [paneId, role] });
+    },
+    setPaneProject(paneId: string, projectRoot: string) {
+      calls.push({ method: 'setPaneProject', args: [paneId, projectRoot] });
     },
     listClients() {
       calls.push({ method: 'listClients', args: [] });
@@ -328,20 +331,32 @@ describe('TmuxService with mock exec', () => {
     expect(map.size).toBe(0);
   });
 
-  it('listPanesDetailed returns pane ID, title, and current command for each pane', () => {
+  it('listPanesDetailed returns pane ID, title, command, cwd, and project for each pane', () => {
     const responses = new Map([
       [
-        'list-panes -s -t paw-myapp -F #{pane_id}\t#{pane_title}\t#{pane_current_command}',
-        '%0\tpaw-orchestrator\tclaude\n%1\tpaw-auth\tclaude\n%2\tbash\tbash',
+        'list-panes -s -t paw-myapp -F #{pane_id}\t#{pane_title}\t#{pane_current_command}\t#{pane_current_path}\t#{@paw_project}',
+        '%0\tpaw-orchestrator\tclaude\t/home/user/myapp\t/home/user/myapp\n%1\tpaw-auth\tclaude\t/home/user/myapp/.paw/worktrees/auth\t/home/user/myapp\n%2\tbash\tbash\t/tmp\t',
       ],
     ]);
     const { fn } = createMockExec(responses);
     const svc = new TmuxService(fn);
     const panes = svc.listPanesDetailed('paw-myapp');
     expect(panes).toEqual([
-      { paneId: '%0', title: 'paw-orchestrator', command: 'claude' },
-      { paneId: '%1', title: 'paw-auth', command: 'claude' },
-      { paneId: '%2', title: 'bash', command: 'bash' },
+      {
+        paneId: '%0',
+        title: 'paw-orchestrator',
+        command: 'claude',
+        cwd: '/home/user/myapp',
+        project: '/home/user/myapp',
+      },
+      {
+        paneId: '%1',
+        title: 'paw-auth',
+        command: 'claude',
+        cwd: '/home/user/myapp/.paw/worktrees/auth',
+        project: '/home/user/myapp',
+      },
+      { paneId: '%2', title: 'bash', command: 'bash', cwd: '/tmp', project: '' },
     ]);
   });
 
@@ -405,6 +420,19 @@ describe('launchTmux', () => {
     const titleCall = mock.calls.find((c) => c.method === 'setPaneTitle');
     expect(titleCall).toBeDefined();
     expect(titleCall!.args[1]).toBe('paw-auth');
+  });
+
+  it('sets @paw_project on each task pane', () => {
+    const mock = createMockTmux();
+    const worktrees = [
+      { taskName: 'auth', worktreePath: '/tmp/wt-auth', agentCommand: 'claude' },
+      { taskName: 'api', worktreePath: '/tmp/wt-api', agentCommand: 'claude' },
+    ];
+    launchTmux(mock, 'paw-myapp', '/home/user/myapp', worktrees);
+    const projectCalls = mock.calls.filter((c) => c.method === 'setPaneProject');
+    expect(projectCalls).toHaveLength(2);
+    expect(projectCalls[0]!.args[1]).toBe('/home/user/myapp');
+    expect(projectCalls[1]!.args[1]).toBe('/home/user/myapp');
   });
 
   it('does not apply any layout (caller is responsible for sidebar layout)', () => {
@@ -517,6 +545,15 @@ describe('launchTmux', () => {
     const panes = launchTmux(mock, 'paw-myapp', '/home/user/myapp', worktrees);
     expect(panes).toHaveLength(1);
     expect(panes[0]!.taskName).toBe('auth');
+  });
+});
+
+describe('TmuxService setPaneProject', () => {
+  it('calls set-option with @paw_project', () => {
+    const { fn, calls } = createMockExec();
+    const svc = new TmuxService(fn);
+    svc.setPaneProject('%5', '/home/user/myapp');
+    expect(calls[0]).toEqual(['set-option', '-p', '-t', '%5', '@paw_project', '/home/user/myapp']);
   });
 });
 

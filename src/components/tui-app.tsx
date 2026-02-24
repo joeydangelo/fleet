@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Text, useApp, useInput, useStdout } from 'ink';
-import type { TmuxServiceApi, PawPane, TmuxPaneInfo } from '../lib/tmux.js';
+import { basename } from 'node:path';
+import type { TmuxServiceApi, PawPane, TmuxPaneInfo, AgentName } from '../lib/tmux.js';
 import { readPaneConfig } from '../lib/pane-state.js';
 import { readSyncState } from '../lib/sync.js';
 import type { SyncState } from '../lib/sync.js';
 import { commandBadge, taskDisplayStatus, statusIcon, SIDEBAR_WIDTH } from '../lib/tui-helpers.js';
 import type { TuiStatus } from '../lib/tui-helpers.js';
+import { resolveGitRoot } from '../lib/dir-scanner.js';
+import { ProjectPicker, AgentPicker } from './project-picker.js';
 
 const LINE_WIDTH = SIDEBAR_WIDTH - 2; // border chars consume 2 columns
 const CONTENT_WIDTH = LINE_WIDTH - 2; // inner padding consumes 2 columns
@@ -23,7 +26,11 @@ export interface DisplayItem {
   badge: string;
   /** Status icon prefix and color. Null for non-task panes. */
   status: TuiStatus | null;
+  /** If set, render a project separator header before this item. */
+  projectHeader?: string;
 }
+
+type OverlayState = 'none' | 'project' | 'agent';
 
 interface PaneCardProps {
   item: DisplayItem;
@@ -54,13 +61,31 @@ function PaneCard({ item, selected, isFirst, isLast, isNextSelected }: PaneCardP
 
   return (
     <Box flexDirection="column" width={SIDEBAR_WIDTH}>
-      {isFirst && (
+      {item.projectHeader && (
+        <Box marginTop={isFirst ? 0 : 1}>
+          <Text dimColor>
+            {'── ' +
+              item.projectHeader +
+              ' ' +
+              '─'.repeat(Math.max(0, LINE_WIDTH - item.projectHeader.length - 4))}
+          </Text>
+        </Box>
+      )}
+      {isFirst && !item.projectHeader && (
         <Box>
           <Text color={borderColor}>╭</Text>
           <Text color={borderColor}>{'─'.repeat(LINE_WIDTH)}</Text>
           <Text color={borderColor}>╮</Text>
         </Box>
       )}
+      {item.projectHeader && (
+        <Box>
+          <Text color={borderColor}>╭</Text>
+          <Text color={borderColor}>{'─'.repeat(LINE_WIDTH)}</Text>
+          <Text color={borderColor}>╮</Text>
+        </Box>
+      )}
+      {isFirst && !item.projectHeader ? null : null}
       <Box width={SIDEBAR_WIDTH}>
         <Text color={borderColor}>{'│ '}</Text>
         <Box width={CONTENT_WIDTH} justifyContent="space-between">
@@ -93,10 +118,21 @@ function labelFromTitle(title: string, paneId: string): string {
 }
 
 /**
+ * Resolve a pane's project root using the hybrid model:
+ * 1. @paw_project metadata (stable, for managed panes)
+ * 2. Live cwd resolved to a git root (dynamic, for ad-hoc panes)
+ * 3. null if cwd isn't inside any git repo
+ */
+function resolveProjectForPane(pane: TmuxPaneInfo): string | null {
+  if (pane.project) return pane.project;
+  if (pane.cwd) return resolveGitRoot(pane.cwd);
+  return null;
+}
+
+/**
  * Builds a unified display list from live tmux panes, enriched with
- * panes.json task metadata and sync state. Orchestrator pane appears first,
- * then task panes (in panes.json order), then ad-hoc panes.
- * The TUI's own pane (controlPaneId) is excluded.
+ * panes.json task metadata and sync state. Panes are grouped by project
+ * when 2+ projects exist.
  */
 export function buildDisplayItems(
   tmuxPanes: TmuxPaneInfo[],
@@ -104,55 +140,104 @@ export function buildDisplayItems(
   syncState: SyncState | null,
   controlPaneId: string,
   orchestratorPaneId: string,
+  primaryProject?: string,
 ): DisplayItem[] {
-  const orchestratorItems: DisplayItem[] = [];
-  const taskItems: DisplayItem[] = [];
-  const adHocItems: DisplayItem[] = [];
   const seen = new Set<string>();
+  const items: DisplayItem[] = [];
 
-  // Orchestrator pane first (known from panes.json).
+  // Build a flat list of items with their resolved project root.
+  type TaggedItem = DisplayItem & { projectRoot: string | null };
+  const tagged: TaggedItem[] = [];
+
+  // Orchestrator pane first.
   if (orchestratorPaneId && orchestratorPaneId !== controlPaneId) {
     const tmuxInfo = tmuxPanes.find((t) => t.paneId === orchestratorPaneId);
     if (tmuxInfo) {
       seen.add(orchestratorPaneId);
-      orchestratorItems.push({
+      tagged.push({
         paneId: orchestratorPaneId,
         label: 'orchestrator',
         badge: commandBadge(tmuxInfo.command),
         status: null,
+        projectRoot: resolveProjectForPane(tmuxInfo) ?? primaryProject ?? null,
       });
     }
   }
 
-  // Task panes in panes.json order (preserves YAML task ordering).
+  // Task panes in panes.json order.
   for (const pane of taskPanes) {
     const tmuxInfo = tmuxPanes.find((t) => t.paneId === pane.paneId);
-    if (!tmuxInfo) continue; // pane no longer alive in tmux
+    if (!tmuxInfo) continue;
     if (pane.paneId === controlPaneId || seen.has(pane.paneId)) continue;
     seen.add(pane.paneId);
 
     const taskState = syncState?.tasks[pane.taskName];
     const mergeEntry = syncState?.merges?.[pane.taskName];
-    taskItems.push({
+    tagged.push({
       paneId: pane.paneId,
       label: pane.taskName,
       badge: commandBadge(tmuxInfo.command),
       status: taskDisplayStatus(taskState, mergeEntry),
+      projectRoot: resolveProjectForPane(tmuxInfo) ?? primaryProject ?? null,
     });
   }
 
-  // Ad-hoc panes: everything else not matched above and not the TUI pane.
+  // Ad-hoc panes.
   for (const tp of tmuxPanes) {
     if (seen.has(tp.paneId) || tp.paneId === controlPaneId) continue;
-    adHocItems.push({
+    tagged.push({
       paneId: tp.paneId,
       label: labelFromTitle(tp.title, tp.paneId),
       badge: commandBadge(tp.command),
       status: null,
+      projectRoot: resolveProjectForPane(tp),
     });
   }
 
-  return [...orchestratorItems, ...taskItems, ...adHocItems];
+  // Collect unique projects in encounter order.
+  const projectOrder: string[] = [];
+  const projectSet = new Set<string>();
+  for (const t of tagged) {
+    const key = t.projectRoot ?? '';
+    if (key && !projectSet.has(key)) {
+      projectOrder.push(key);
+      projectSet.add(key);
+    }
+  }
+
+  const multipleProjects = projectOrder.length >= 2;
+
+  // Group by project in encounter order; ungrouped (null projectRoot) at the end.
+  for (const project of projectOrder) {
+    const projectItems = tagged.filter((t) => t.projectRoot === project);
+    let isFirstInGroup = true;
+    for (const t of projectItems) {
+      const item: DisplayItem = {
+        paneId: t.paneId,
+        label: t.label,
+        badge: t.badge,
+        status: t.status,
+      };
+      if (multipleProjects && isFirstInGroup) {
+        item.projectHeader = basename(project);
+        isFirstInGroup = false;
+      }
+      items.push(item);
+    }
+  }
+
+  // Ungrouped panes (no project root).
+  const ungrouped = tagged.filter((t) => t.projectRoot === null);
+  for (const t of ungrouped) {
+    items.push({
+      paneId: t.paneId,
+      label: t.label,
+      badge: t.badge,
+      status: t.status,
+    });
+  }
+
+  return items;
 }
 
 interface TuiAppProps {
@@ -163,6 +248,8 @@ interface TuiAppProps {
   /** tmux pane ID of the sidebar pane, used to re-enforce width on terminal resize. */
   controlPaneId: string;
   onQuit: () => void;
+  /** Callback to add a new project to the workspace. */
+  addProject?: (projectRoot: string, agent: AgentName) => void;
 }
 
 /**
@@ -176,6 +263,7 @@ export function TuiApp({
   panes: initialPanes,
   controlPaneId,
   onQuit,
+  addProject,
 }: TuiAppProps) {
   const { exit } = useApp();
   const { stdout } = useStdout();
@@ -191,9 +279,12 @@ export function TuiApp({
       syncState,
       controlPaneId,
       config?.orchestratorPaneId ?? '',
+      repoRoot,
     );
   });
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [overlay, setOverlay] = useState<OverlayState>('none');
+  const [pendingProject, setPendingProject] = useState<string | null>(null);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -208,6 +299,7 @@ export function TuiApp({
             syncState,
             controlPaneId,
             config?.orchestratorPaneId ?? '',
+            repoRoot,
           ),
         );
       } catch {
@@ -218,8 +310,7 @@ export function TuiApp({
     return () => clearInterval(interval);
   }, [sessionName, repoRoot, tmux, controlPaneId]);
 
-  // Re-enforce sidebar width after terminal resize — tmux redistributes pane
-  // widths proportionally on resize, which drifts the sidebar without this.
+  // Re-enforce sidebar width after terminal resize.
   useEffect(() => {
     let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -247,9 +338,16 @@ export function TuiApp({
   const totalItems = items.length;
 
   useInput((input, key) => {
+    // Overlays handle their own input
+    if (overlay !== 'none') return;
+
     if (input === 'q') {
       onQuit();
       exit();
+      return;
+    }
+    if (input === 'p' && addProject) {
+      setOverlay('project');
       return;
     }
     if (key.upArrow || input === 'k') {
@@ -270,8 +368,62 @@ export function TuiApp({
     }
   });
 
+  const handleProjectSelect = (projectRoot: string) => {
+    setPendingProject(projectRoot);
+    setOverlay('agent');
+  };
+
+  const handleAgentSelect = (agent: AgentName) => {
+    if (pendingProject && addProject) {
+      addProject(pendingProject, agent);
+    }
+    setPendingProject(null);
+    setOverlay('none');
+  };
+
+  const handlePickerCancel = () => {
+    if (overlay === 'agent') {
+      // Go back to project picker
+      setOverlay('project');
+      return;
+    }
+    setPendingProject(null);
+    setOverlay('none');
+  };
+
   // Reserve 3 lines for footer (marginTop + hint line)
   const contentHeight = Math.max(terminalHeight - 3, 5);
+
+  // Render overlay popups
+  if (overlay === 'project') {
+    return (
+      <Box flexDirection="column" height={terminalHeight}>
+        <Box flexDirection="column" height={contentHeight} overflow="hidden">
+          <ProjectPicker
+            defaultPath=""
+            onSelect={handleProjectSelect}
+            onCancel={handlePickerCancel}
+          />
+        </Box>
+        <Box marginTop={1}>
+          <Text dimColor>ESC cancel</Text>
+        </Box>
+      </Box>
+    );
+  }
+
+  if (overlay === 'agent') {
+    return (
+      <Box flexDirection="column" height={terminalHeight}>
+        <Box flexDirection="column" height={contentHeight} overflow="hidden">
+          <AgentPicker onSelect={handleAgentSelect} onCancel={handlePickerCancel} />
+        </Box>
+        <Box marginTop={1}>
+          <Text dimColor>ESC back</Text>
+        </Box>
+      </Box>
+    );
+  }
 
   return (
     <Box flexDirection="column" height={terminalHeight}>
@@ -286,7 +438,7 @@ export function TuiApp({
             key={item.paneId}
             item={item}
             selected={i === selectedIndex}
-            isFirst={i === 0}
+            isFirst={i === 0 && !item.projectHeader}
             isLast={i === items.length - 1}
             isNextSelected={i === selectedIndex - 1}
           />
@@ -294,7 +446,11 @@ export function TuiApp({
       </Box>
 
       <Box marginTop={1}>
-        <Text dimColor>j/k navigate Enter jump q quit</Text>
+        <Text dimColor>
+          {addProject
+            ? 'j/k navigate Enter jump p project q quit'
+            : 'j/k navigate Enter jump q quit'}
+        </Text>
       </Box>
     </Box>
   );
