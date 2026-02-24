@@ -1,7 +1,24 @@
 import { Command } from 'commander';
 import pc from 'picocolors';
 import { readDoc, listDocs } from '../lib/docs.js';
-import { handleError, colors } from '../lib/output.js';
+import { handleError, colors, success } from '../lib/output.js';
+import type { DocType } from '../lib/doc-add.js';
+
+/** Derive a doc name from a URL's last path segment. */
+function deriveNameFromUrl(url: string): string {
+  try {
+    const pathname = new URL(url).pathname;
+    const basename = pathname.split('/').pop() || 'unnamed';
+    return basename.replace(/\.md$/, '');
+  } catch {
+    return 'unnamed';
+  }
+}
+
+/** Map category directory name to DocType. */
+function categoryToDocType(category: string): DocType {
+  return category.replace(/s$/, '') as DocType;
+}
 
 /**
  * Factory for list/display commands that serve a single doc category.
@@ -12,32 +29,64 @@ export function createDocCommand(name: string, category: string, description: st
     .description(description)
     .argument('[name]', `${name} name`)
     .option('-l, --list', `List available ${category}`)
-    .action((docName: string | undefined, opts: { list?: boolean }) => {
-      try {
-        if (opts.list || !docName) {
-          const docs = listDocs(category);
-          if (docs.length === 0) {
-            console.log(colors.warn(`No ${category} found.`));
+    .option('--add <url>', 'Add a custom doc from a URL')
+    .option('--name <name>', 'Name for the added doc (default: derived from URL)')
+    .action(
+      async (
+        docName: string | undefined,
+        opts: { list?: boolean; add?: string; name?: string },
+      ) => {
+        try {
+          if (opts.add) {
+            const { addDoc } = await import('../lib/doc-add.js');
+            const { getRepoRoot } = await import('../lib/git.js');
+
+            const docNameForAdd = opts.name || deriveNameFromUrl(opts.add);
+            const repoRoot = getRepoRoot();
+
+            console.log(`Adding ${name}: ${docNameForAdd}`);
+            console.log(`  URL: ${opts.add}`);
+
+            const result = await addDoc(repoRoot, {
+              url: opts.add,
+              name: docNameForAdd,
+              docType: categoryToDocType(category),
+            });
+
+            if (result.usedGhCli) {
+              console.log(pc.dim('  (fetched via gh CLI due to direct access restriction)'));
+            }
+
+            success(name, `.paw/custom/${result.destPath}`);
+            console.log(pc.dim(`Run \`paw ${name} --list\` to verify.`));
             return;
           }
-          console.log(pc.bold(`Available ${category}:\n`));
-          const maxName = Math.max(...docs.map((d) => d.name.length));
-          for (const doc of docs) {
-            console.log(`  ${colors.info(doc.name.padEnd(maxName))}  ${pc.dim(doc.description)}`);
-          }
-          return;
-        }
 
-        const doc = readDoc(category, docName);
-        if (!doc) {
-          const label = name.charAt(0).toUpperCase() + name.slice(1);
-          console.error(colors.error(`${label} not found: ${docName}`));
-          console.error(pc.dim(`Run \`paw ${name} --list\` to see available ${category}.`));
-          process.exit(1);
+          if (opts.list || !docName) {
+            const docs = listDocs(category);
+            if (docs.length === 0) {
+              console.log(colors.warn(`No ${category} found.`));
+              return;
+            }
+            console.log(pc.bold(`Available ${category}:\n`));
+            const maxName = Math.max(...docs.map((d) => d.name.length));
+            for (const doc of docs) {
+              console.log(`  ${colors.info(doc.name.padEnd(maxName))}  ${pc.dim(doc.description)}`);
+            }
+            return;
+          }
+
+          const doc = readDoc(category, docName);
+          if (!doc) {
+            const label = name.charAt(0).toUpperCase() + name.slice(1);
+            console.error(colors.error(`${label} not found: ${docName}`));
+            console.error(pc.dim(`Run \`paw ${name} --list\` to see available ${category}.`));
+            process.exit(1);
+          }
+          console.log(doc.content);
+        } catch (err) {
+          handleError(err);
         }
-        console.log(doc.content);
-      } catch (err) {
-        handleError(err);
-      }
-    });
+      },
+    );
 }
