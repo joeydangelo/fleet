@@ -84,21 +84,9 @@ From the request, codebase, and `paw guidelines paw-task-decomposition`:
    These fields are optional. When present, `paw shortcut to-pr` uses them to
    reference issues in the PR body.
 
-6. **Detect project toolchain and configure hooks.** Look at the project's
-   language, package manager, and test runner. Set hooks so agents and the merge
-   process run the right commands automatically:
-   - `post-up`: runs in each worktree after creation during `paw up`. Use for
-     dependency installation, codegen, or any setup needed before agents start.
-     Git worktrees don't inherit `node_modules`, virtual environments, or build
-     artifacts — this hook makes worktrees ready to work.
-   - `post-merge`: runs after each clean merge in `paw merge`. Catches integration
-     failures when two task branches combine.
-
-   Hooks run via bash. Use YAML block scalar (`|`) for multi-line scripts
-   inline, or call an external script.
-
-   Detect the right commands from the project (e.g., `package.json` scripts,
-   `Makefile` targets, `pyproject.toml` config, `Cargo.toml`, `go.mod`).
+6. **Configure hooks.** Check `.paw/hooks/` for existing scripts. For any
+   missing hooks, run `paw shortcut generate-hook-script` for each event
+   (`post-up`, `post-merge`).
 
 7. **Check for gitignored files that need copying.** Git worktrees only contain
    tracked files. If the project has gitignored files that agents need (`.env`,
@@ -120,10 +108,11 @@ From the request, codebase, and `paw guidelines paw-task-decomposition`:
    #   - .env
    #   - .env.local
 
-   # Hooks run via bash. Use | for multi-line inline scripts.
+   # Hooks — write scripts to .paw/hooks/, reference paths here.
+   # Inline commands also work for simple one-liners.
    hooks:
-     post-up: pnpm install                                     # or: uv sync, cargo build
-     post-merge: pnpm test                                     # or: uv run pytest, cargo test
+     post-up: .paw/hooks/post-up.sh
+     post-merge: .paw/hooks/post-merge.sh
 
    tasks:
      task-name:

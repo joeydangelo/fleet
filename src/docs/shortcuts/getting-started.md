@@ -82,6 +82,7 @@ your-project/
 │   └── settings.json             # Claude Code hooks config
 ├── .paw/                         # Working state (gitignored)
 │   ├── paw.yaml                  # Task config
+│   ├── hooks/                    # Hook scripts (post-up.sh, post-merge.sh)
 │   └── docs/                     # Bundled shortcuts, guidelines, templates
 ├── AGENTS.md                     # Cross-agent compatibility (Codex, etc.)
 └── .gitignore                    # .paw/ added automatically

@@ -27,15 +27,13 @@ agent: claude
 #   - .env.local
 #   - "config/local.json"
 
-# Hooks. Detect the project's toolchain and set the right commands.
-# Hooks run via bash. Use YAML block scalar (|) for multi-line scripts inline,
-# or call an external script.
-#
-# post-up: runs in each worktree after creation. Install deps, run codegen, etc.
-# post-merge: runs after each clean merge. Catches integration failures.
+# Hooks — write scripts to .paw/hooks/, reference paths here.
+# post-up: runs in each worktree after creation (install deps, codegen, etc.)
+# post-merge: runs after each clean merge (catches integration failures)
+# Inline commands also work for simple one-liners (e.g., post-up: pnpm install).
 # hooks:
-#   post-up: pnpm install
-#   post-merge: pnpm test
+#   post-up: .paw/hooks/post-up.sh
+#   post-merge: .paw/hooks/post-merge.sh
 
 tasks:
   # Each key is the task name. It becomes the branch name suffix, worktree directory
