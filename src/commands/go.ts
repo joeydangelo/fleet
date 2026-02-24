@@ -55,7 +55,7 @@ export async function runGo(opts: GoOpts): Promise<void> {
   console.log(`  target: ${config.target}`);
   console.log(`  tasks:  ${Object.keys(config.tasks).length}\n`);
 
-  // Step 1: paw up
+  // Create worktrees
   console.log(pc.bold('Step 1/4: paw up\n'));
   const configArgs = opts.config ? ['-c', opts.config] : [];
   let phaseStart = Date.now();
@@ -66,7 +66,7 @@ export async function runGo(opts: GoOpts): Promise<void> {
   }
   if (verbose) console.log(colors.info(`⏰ up: ${formatElapsed(Date.now() - phaseStart)}`));
 
-  // Step 2: paw launch (+ watch)
+  // Launch agents and wait
   console.log(pc.bold('\nStep 2/4: paw launch\n'));
   phaseStart = Date.now();
   const launchResult = runPawCommand(['launch', ...configArgs]);
@@ -93,7 +93,7 @@ export async function runGo(opts: GoOpts): Promise<void> {
   if (verbose)
     console.log(colors.info(`⏰ launch + watch: ${formatElapsed(Date.now() - phaseStart)}`));
 
-  // Step 3: paw merge
+  // Merge results
   console.log(pc.bold('Step 3/4: paw merge\n'));
   phaseStart = Date.now();
 
@@ -112,7 +112,7 @@ export async function runGo(opts: GoOpts): Promise<void> {
   }
   if (verbose) console.log(colors.info(`⏰ merge: ${formatElapsed(Date.now() - phaseStart)}`));
 
-  // Step 4: paw down
+  // Tear down
   console.log(pc.bold('\nStep 4/4: paw down\n'));
   phaseStart = Date.now();
   const downResult = runPawCommand(['down', ...configArgs]);

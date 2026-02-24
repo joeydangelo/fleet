@@ -65,12 +65,9 @@ export function killPanes(tmux: TmuxServiceApi, repoRoot: string): void {
 }
 
 /**
- * Restore panes from persisted config. For each persisted task pane:
- * 1. If the pane ID still exists in tmux, keep it
- * 2. If the pane ID is gone, try title-based rebinding (match paw-{taskName})
- * 3. If no title match and worktree still exists, recreate the pane
- *
- * Also restores the orchestrator pane if it was tracked but is gone from the session.
+ * Restore panes from persisted config. Each task pane is resolved through a
+ * fallback chain: keep existing pane → title-based rebinding → recreate from
+ * worktree. Also restores the orchestrator pane if it was tracked but is gone.
  */
 export function restorePanes(
   tmux: TmuxServiceApi,

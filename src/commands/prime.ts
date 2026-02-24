@@ -287,7 +287,6 @@ function printFull(
     console.log();
   }
 
-  // Update last-check cursor so next prime run skips already-seen messages
   const now = new Date().toISOString();
   writeSyncState({ ...state, lastCheck: { ...state.lastCheck, [taskName]: now } }, repoRoot);
 
