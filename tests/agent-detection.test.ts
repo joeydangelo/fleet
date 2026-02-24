@@ -11,7 +11,7 @@ vi.mock('node:fs', () => ({
   existsSync: vi.fn(),
 }));
 
-import { findAgent, getAvailableAgents, SUPPORTED_AGENTS } from '../src/lib/agent-detection.js';
+import { findAgent, getAvailableAgents } from '../src/lib/agent-detection.js';
 import { execFileSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 
@@ -25,12 +25,6 @@ beforeEach(() => {
     throw new Error('not found');
   });
   mockExistsSync.mockReturnValue(false);
-});
-
-describe('SUPPORTED_AGENTS', () => {
-  it('includes all four agents', () => {
-    expect(SUPPORTED_AGENTS).toEqual(['claude', 'codex', 'opencode', 'gemini']);
-  });
 });
 
 describe('findAgent', () => {

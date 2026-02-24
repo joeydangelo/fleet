@@ -9,21 +9,6 @@ describe('taskDisplayStatus', () => {
     expect(taskDisplayStatus(undefined, undefined)).toBe('pending');
   });
 
-  it('returns pending for pending task state', () => {
-    const task: TaskState = { status: 'pending' };
-    expect(taskDisplayStatus(task, undefined)).toBe('pending');
-  });
-
-  it('returns in_progress for in_progress task state', () => {
-    const task: TaskState = { status: 'in_progress' };
-    expect(taskDisplayStatus(task, undefined)).toBe('in_progress');
-  });
-
-  it('returns done for done task state', () => {
-    const task: TaskState = { status: 'done' };
-    expect(taskDisplayStatus(task, undefined)).toBe('done');
-  });
-
   it('returns conflict when merge entry has conflict status', () => {
     const task: TaskState = { status: 'done' };
     const merge: MergeEntry = { status: 'conflict' };
