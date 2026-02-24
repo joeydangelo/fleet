@@ -8,6 +8,7 @@ import type { SyncState } from '../lib/sync.js';
 import { commandBadge, taskDisplayStatus, statusIcon, SIDEBAR_WIDTH } from '../lib/tui-helpers.js';
 import type { TuiStatus } from '../lib/tui-helpers.js';
 import { resolveGitRoot } from '../lib/dir-scanner.js';
+import { ORCHESTRATOR_ROLE } from '../lib/constants.js';
 import { ProjectPicker, AgentPicker } from './project-picker.js';
 
 const LINE_WIDTH = SIDEBAR_WIDTH - 2; // border chars consume 2 columns
@@ -190,9 +191,10 @@ export function buildDisplayItems(
   // Ad-hoc panes.
   for (const tp of tmuxPanes) {
     if (seen.has(tp.paneId) || tp.paneId === controlPaneId) continue;
+    const isOrchestrator = tp.role === ORCHESTRATOR_ROLE;
     tagged.push({
       paneId: tp.paneId,
-      label: labelFromTitle(tp.title, tp.paneId),
+      label: isOrchestrator ? 'orchestrator' : labelFromTitle(tp.title, tp.paneId),
       badge: commandBadge(tp.command),
       status: null,
       projectRoot: resolveProjectForPane(tp),

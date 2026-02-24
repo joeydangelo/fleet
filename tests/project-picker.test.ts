@@ -8,8 +8,9 @@ function makeTmuxPane(
   command: string,
   cwd: string,
   project: string,
+  role = '',
 ): TmuxPaneInfo {
-  return { paneId, title, command, cwd, project };
+  return { paneId, title, command, cwd, project, role };
 }
 
 function makeTaskPane(overrides: Partial<PawPane> = {}): PawPane {
@@ -172,5 +173,49 @@ describe('buildDisplayItems — addProject duplicate detection', () => {
     const items = buildDisplayItems(tmuxPanes, [], null, '%0', '%1', '/home/user/myapp');
     expect(items).toHaveLength(2);
     expect(items[1]!.label).toBe('orchestrator');
+  });
+});
+
+describe('buildDisplayItems — orchestrator role detection', () => {
+  it('labels ad-hoc pane as orchestrator when @paw_role is set, even if title is stomped', () => {
+    const tmuxPanes = [
+      makeTmuxPane(
+        '%1',
+        'paw-orchestrator',
+        'claude',
+        '/home/user/myapp',
+        '/home/user/myapp',
+        'paw-orchestrator',
+      ),
+      // Added project: title stomped by Claude Code, but @paw_role is still set
+      makeTmuxPane(
+        '%5',
+        'Claude Code',
+        'claude',
+        '/home/user/other',
+        '/home/user/other',
+        'paw-orchestrator',
+      ),
+    ];
+    const items = buildDisplayItems(tmuxPanes, [], null, '%0', '%1', '/home/user/myapp');
+    expect(items).toHaveLength(2);
+    expect(items[0]!.label).toBe('orchestrator'); // primary — hardcoded
+    expect(items[1]!.label).toBe('orchestrator'); // added project — detected by role
+  });
+
+  it('labels ad-hoc pane by title when @paw_role is not set', () => {
+    const tmuxPanes = [
+      makeTmuxPane(
+        '%1',
+        'paw-orchestrator',
+        'claude',
+        '/home/user/myapp',
+        '/home/user/myapp',
+        'paw-orchestrator',
+      ),
+      makeTmuxPane('%5', 'my-shell', 'bash', '/home/user/other', '/home/user/other'),
+    ];
+    const items = buildDisplayItems(tmuxPanes, [], null, '%0', '%1', '/home/user/myapp');
+    expect(items[1]!.label).toBe('my-shell');
   });
 });

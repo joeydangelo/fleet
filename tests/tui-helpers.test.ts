@@ -61,7 +61,7 @@ function makePane(taskName: string, paneId: string): PawPane {
 }
 
 function makeTmuxPane(paneId: string, title: string, command: string): TmuxPaneInfo {
-  return { paneId, title, command, cwd: '/home/user/myapp', project: '' };
+  return { paneId, title, command, cwd: '/home/user/myapp', project: '', role: '' };
 }
 
 describe('buildDisplayItems', () => {

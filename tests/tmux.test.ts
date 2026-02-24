@@ -331,11 +331,11 @@ describe('TmuxService with mock exec', () => {
     expect(map.size).toBe(0);
   });
 
-  it('listPanesDetailed returns pane ID, title, command, cwd, and project for each pane', () => {
+  it('listPanesDetailed returns pane ID, title, command, cwd, project, and role for each pane', () => {
     const responses = new Map([
       [
-        'list-panes -s -t paw-myapp -F #{pane_id}\t#{pane_title}\t#{pane_current_command}\t#{pane_current_path}\t#{@paw_project}',
-        '%0\tpaw-orchestrator\tclaude\t/home/user/myapp\t/home/user/myapp\n%1\tpaw-auth\tclaude\t/home/user/myapp/.paw/worktrees/auth\t/home/user/myapp\n%2\tbash\tbash\t/tmp\t',
+        'list-panes -s -t paw-myapp -F #{pane_id}\t#{pane_title}\t#{pane_current_command}\t#{pane_current_path}\t#{@paw_project}\t#{@paw_role}',
+        '%0\tpaw-orchestrator\tclaude\t/home/user/myapp\t/home/user/myapp\tpaw-orchestrator\n%1\tpaw-auth\tclaude\t/home/user/myapp/.paw/worktrees/auth\t/home/user/myapp\t\n%2\tbash\tbash\t/tmp\t\t',
       ],
     ]);
     const { fn } = createMockExec(responses);
@@ -348,6 +348,7 @@ describe('TmuxService with mock exec', () => {
         command: 'claude',
         cwd: '/home/user/myapp',
         project: '/home/user/myapp',
+        role: 'paw-orchestrator',
       },
       {
         paneId: '%1',
@@ -355,8 +356,9 @@ describe('TmuxService with mock exec', () => {
         command: 'claude',
         cwd: '/home/user/myapp/.paw/worktrees/auth',
         project: '/home/user/myapp',
+        role: '',
       },
-      { paneId: '%2', title: 'bash', command: 'bash', cwd: '/tmp', project: '' },
+      { paneId: '%2', title: 'bash', command: 'bash', cwd: '/tmp', project: '', role: '' },
     ]);
   });
 

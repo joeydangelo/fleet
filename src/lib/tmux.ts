@@ -18,6 +18,8 @@ export interface TmuxPaneInfo {
   cwd: string;
   /** Project root from @paw_project custom option. Empty string if not set. */
   project: string;
+  /** Pane role from @paw_role custom option. Empty string if not set. */
+  role: string;
 }
 
 /** Per-pane metadata persisted to .paw/panes.json. */
@@ -154,14 +156,15 @@ export class TmuxService implements TmuxServiceApi {
       '-t',
       sessionName,
       '-F',
-      '#{pane_id}\t#{pane_title}\t#{pane_current_command}\t#{pane_current_path}\t#{@paw_project}',
+      '#{pane_id}\t#{pane_title}\t#{pane_current_command}\t#{pane_current_path}\t#{@paw_project}\t#{@paw_role}',
     ]);
     return output
       .split('\n')
       .filter(Boolean)
       .map((line) => {
-        const [paneId = '', title = '', command = '', cwd = '', project = ''] = line.split('\t');
-        return { paneId, title, command, cwd, project };
+        const [paneId = '', title = '', command = '', cwd = '', project = '', role = ''] =
+          line.split('\t');
+        return { paneId, title, command, cwd, project, role };
       });
   }
 
