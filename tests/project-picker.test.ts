@@ -119,6 +119,50 @@ describe('buildDisplayItems — multi-project grouping', () => {
   });
 });
 
+describe('buildDisplayItems — worktree panes group with primary project', () => {
+  it('task panes without @paw_project use primaryProject, not cwd resolution', () => {
+    // Worktree panes have cwd in sibling dirs with their own .git files.
+    // Without @paw_project, they must fall back to primaryProject — not
+    // resolveGitRoot(cwd) which would treat each worktree as a separate project.
+    const tmuxPanes = [
+      makeTmuxPane('%1', 'paw-orchestrator', 'claude', '/home/user/paw-test', ''),
+      makeTmuxPane('%2', 'paw-auth', 'claude', '/home/user/paw-test-paw-auth', ''),
+      makeTmuxPane('%3', 'paw-api', 'claude', '/home/user/paw-test-paw-api', ''),
+    ];
+    const taskPanes = [
+      makeTaskPane({ paneId: '%2', taskName: 'auth' }),
+      makeTaskPane({ id: 'paw-2', paneId: '%3', taskName: 'api' }),
+    ];
+    const items = buildDisplayItems(tmuxPanes, taskPanes, null, '%0', '%1', '/home/user/paw-test');
+    // All 3 panes should be in the same project group — no headers (single project)
+    expect(items).toHaveLength(3);
+    expect(items.every((item) => !item.projectHeader)).toBe(true);
+  });
+
+  it('task panes with @paw_project set use that over cwd', () => {
+    const tmuxPanes = [
+      makeTmuxPane(
+        '%1',
+        'paw-orchestrator',
+        'claude',
+        '/home/user/paw-test',
+        '/home/user/paw-test',
+      ),
+      makeTmuxPane(
+        '%2',
+        'paw-auth',
+        'claude',
+        '/home/user/paw-test-paw-auth',
+        '/home/user/paw-test',
+      ),
+    ];
+    const taskPanes = [makeTaskPane({ paneId: '%2', taskName: 'auth' })];
+    const items = buildDisplayItems(tmuxPanes, taskPanes, null, '%0', '%1', '/home/user/paw-test');
+    expect(items).toHaveLength(2);
+    expect(items.every((item) => !item.projectHeader)).toBe(true);
+  });
+});
+
 describe('buildDisplayItems — addProject duplicate detection', () => {
   it('creates display items for new project panes', () => {
     const tmuxPanes = [

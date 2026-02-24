@@ -150,6 +150,9 @@ export function buildDisplayItems(
   const tagged: TaggedItem[] = [];
 
   // Orchestrator pane first.
+  // Use @paw_project if set, otherwise primaryProject directly — don't fall
+  // through to resolveGitRoot(cwd) because the orchestrator's cwd may be
+  // inside a worktree whose .git file would resolve to the wrong root.
   if (orchestratorPaneId && orchestratorPaneId !== controlPaneId) {
     const tmuxInfo = tmuxPanes.find((t) => t.paneId === orchestratorPaneId);
     if (tmuxInfo) {
@@ -159,12 +162,14 @@ export function buildDisplayItems(
         label: 'orchestrator',
         badge: commandBadge(tmuxInfo.command),
         status: null,
-        projectRoot: resolveProjectForPane(tmuxInfo) ?? primaryProject ?? null,
+        projectRoot: tmuxInfo.project || primaryProject || null,
       });
     }
   }
 
-  // Task panes in panes.json order.
+  // Task panes in panes.json order. These are known to belong to the primary
+  // project — use @paw_project or primaryProject, never resolveGitRoot(cwd)
+  // which would resolve worktree .git files to the worktree path itself.
   for (const pane of taskPanes) {
     const tmuxInfo = tmuxPanes.find((t) => t.paneId === pane.paneId);
     if (!tmuxInfo) continue;
@@ -178,7 +183,7 @@ export function buildDisplayItems(
       label: pane.taskName,
       badge: commandBadge(tmuxInfo.command),
       status: taskDisplayStatus(taskState, mergeEntry),
-      projectRoot: resolveProjectForPane(tmuxInfo) ?? primaryProject ?? null,
+      projectRoot: tmuxInfo.project || primaryProject || null,
     });
   }
 
