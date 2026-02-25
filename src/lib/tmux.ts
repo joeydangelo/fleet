@@ -38,8 +38,21 @@ export interface PawPane {
   branchName: string;
 }
 
+/** Agent running in a detached tmux session. */
+export interface DetachedAgent {
+  id: string;
+  /** tmux session name: paw-{project}-{task}. */
+  sessionName: string;
+  taskName: string;
+  worktreePath: string;
+  agent: AgentName;
+  branchName: string;
+}
+
 /** Persisted session state. */
 export interface PawPaneConfig {
+  /** 'attached' when inside tmux, 'detached' when running background sessions. */
+  mode?: 'attached' | 'detached';
   /** tmux session name. */
   sessionName: string;
   /** Repo root path. */
@@ -49,8 +62,10 @@ export interface PawPaneConfig {
    * The orchestrator is where the user types their AI agent command (claude, codex, etc.).
    */
   orchestratorPaneId: string;
-  /** Active agent panes (panes 2+). */
+  /** Active agent panes (panes 2+) — attached mode. */
   panes: PawPane[];
+  /** Detached tmux sessions — detached mode. */
+  detached?: DetachedAgent[];
   /** ISO timestamp of last update. */
   lastUpdated: string;
 }
@@ -320,12 +335,10 @@ export function tmuxSessionName(dirname: string): string {
 }
 
 /**
- * Check that tmux is available. Call this at the top of commands that need
- * tmux (paw, paw launch, paw go). On Windows, detects WSL and tmux inside
- * it to show the right guidance. Prints install instructions and exits
- * if tmux is not found.
+ * Verify tmux is installed (but not necessarily that we're inside a session).
+ * Use this in commands that need tmux as a background process manager (go, launch).
  */
-export function requireTmux(): void {
+export function ensureTmuxInstalled(): void {
   try {
     execFileSync('tmux', ['-V'], { stdio: 'pipe' });
     return;
@@ -339,6 +352,14 @@ export function requireTmux(): void {
     printUnixTmuxError();
   }
   process.exit(1);
+}
+
+/**
+ * Check that tmux is available. Delegates to ensureTmuxInstalled().
+ * Kept for backward compatibility — used only by `tui.ts`.
+ */
+export function requireTmux(): void {
+  ensureTmuxInstalled();
 }
 
 function tryExec(cmd: string, args: string[], timeoutMs = 5000): string | null {
@@ -512,4 +533,72 @@ export function launchTmux(
 
 export function createTmuxService(): TmuxService {
   return new TmuxService();
+}
+
+/** Create a detached tmux session and send the agent command into it. */
+export function createDetachedSession(
+  tmux: TmuxServiceApi,
+  sessionName: string,
+  cwd: string,
+  agentCommand: string,
+): void {
+  tmux.createSession(sessionName, cwd);
+  tmux.sendKeys(sessionName, agentCommand);
+}
+
+/** Kill a detached tmux session if it exists. */
+export function killDetachedSession(tmux: TmuxServiceApi, sessionName: string): void {
+  if (tmux.sessionExists(sessionName)) {
+    tmux.killSession(sessionName);
+  }
+}
+
+/** Check which of the given session names are still alive. */
+export function listDetachedSessions(tmux: TmuxServiceApi, sessionNames: string[]): string[] {
+  return sessionNames.filter((name) => tmux.sessionExists(name));
+}
+
+/**
+ * Launch agents in detached tmux sessions (one session per task).
+ * Returns DetachedAgent records for persistence.
+ */
+export function launchDetached(
+  tmux: TmuxServiceApi,
+  sessionPrefix: string,
+  worktrees: Array<{
+    taskName: string;
+    worktreePath: string;
+    agentCommand: string;
+    branchName?: string;
+  }>,
+  existingAgents: DetachedAgent[] = [],
+): DetachedAgent[] {
+  const liveByTask = new Map<string, DetachedAgent>();
+  for (const ea of existingAgents) {
+    if (tmux.sessionExists(ea.sessionName)) {
+      liveByTask.set(ea.taskName, ea);
+    }
+  }
+
+  const agents: DetachedAgent[] = [];
+  let index = 1;
+
+  for (const wt of worktrees) {
+    if (liveByTask.has(wt.taskName)) continue;
+
+    const sessionName = `${sessionPrefix}-${wt.taskName}`;
+    createDetachedSession(tmux, sessionName, wt.worktreePath, wt.agentCommand);
+
+    agents.push({
+      id: `paw-${index}`,
+      sessionName,
+      taskName: wt.taskName,
+      worktreePath: wt.worktreePath,
+      agent: parseAgentName(wt.agentCommand),
+      branchName: wt.branchName ?? '',
+    });
+    index++;
+  }
+
+  return agents;
 }

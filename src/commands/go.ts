@@ -6,7 +6,7 @@ import { loadConfig, resolveConfigPath } from '../lib/config.js';
 import { DEFAULT_POLL_INTERVAL } from '../lib/constants.js';
 import { isVerbose } from '../lib/context.js';
 import { handleError, colors } from '../lib/output.js';
-import { requireTmux } from '../lib/tmux.js';
+import { ensureTmuxInstalled } from '../lib/tmux.js';
 import { runWatchLoop } from './watch.js';
 
 function formatElapsed(ms: number): string {
@@ -34,10 +34,11 @@ export function runPawCommand(args: string[]): { exitCode: number } {
 export interface GoOpts {
   config?: string;
   pollInterval: string;
+  detached?: boolean;
 }
 
 export async function runGo(opts: GoOpts): Promise<void> {
-  requireTmux();
+  ensureTmuxInstalled();
   const repoRoot = getRepoRoot();
   const configPath = opts.config ?? resolveConfigPath(repoRoot);
   const pollInterval = parseInt(opts.pollInterval, 10);
@@ -69,7 +70,8 @@ export async function runGo(opts: GoOpts): Promise<void> {
   // Launch agents and wait
   console.log(pc.bold('\nStep 2/4: paw launch\n'));
   phaseStart = Date.now();
-  const launchResult = runPawCommand(['launch', ...configArgs]);
+  const detachedArgs = opts.detached ? ['--detached'] : [];
+  const launchResult = runPawCommand(['launch', ...configArgs, ...detachedArgs]);
   if (launchResult.exitCode !== 0) {
     console.error(colors.error('\npaw launch failed. Aborting.'));
     process.exit(launchResult.exitCode);
@@ -135,6 +137,7 @@ export function goCommand(): Command {
       'Poll interval in seconds for watching agents',
       DEFAULT_POLL_INTERVAL,
     )
+    .option('--detached', 'Force detached mode (background tmux sessions)')
     .action(async (opts: GoOpts) => {
       try {
         await runGo(opts);

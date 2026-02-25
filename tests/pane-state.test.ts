@@ -6,10 +6,12 @@ import {
   readPaneConfig,
   writePaneConfig,
   savePanes,
+  saveDetachedAgents,
   restorePanes,
   killPanes,
+  killDetachedAgents,
 } from '../src/lib/pane-state.js';
-import type { PawPane, PawPaneConfig, TmuxServiceApi } from '../src/lib/tmux.js';
+import type { PawPane, PawPaneConfig, TmuxServiceApi, DetachedAgent } from '../src/lib/tmux.js';
 
 function makeTempDir(): string {
   const dir = resolve(
@@ -203,6 +205,44 @@ describe('pane-state: readPaneConfig / writePaneConfig', () => {
 
     const result = readPaneConfig(tempDir);
     expect(result?.panes).toHaveLength(2);
+  });
+
+  it('reads config without mode field (backward compat)', () => {
+    const config: PawPaneConfig = {
+      sessionName: 'paw-myapp',
+      projectRoot: '/home/user/myapp',
+      orchestratorPaneId: '%1',
+      panes: [],
+      lastUpdated: '2026-02-21T00:00:00.000Z',
+    };
+    writePaneConfig(tempDir, config);
+    const result = readPaneConfig(tempDir);
+    expect(result?.mode).toBeUndefined();
+  });
+
+  it('round-trips detached mode config', () => {
+    const agent: DetachedAgent = {
+      id: 'paw-1',
+      sessionName: 'paw-myapp-auth',
+      taskName: 'auth',
+      worktreePath: '/tmp/wt-auth',
+      agent: 'claude',
+      branchName: 'feature-auth',
+    };
+    const config: PawPaneConfig = {
+      mode: 'detached',
+      sessionName: 'paw-myapp',
+      projectRoot: '/home/user/myapp',
+      orchestratorPaneId: '',
+      panes: [],
+      detached: [agent],
+      lastUpdated: '2026-02-21T00:00:00.000Z',
+    };
+    writePaneConfig(tempDir, config);
+    const result = readPaneConfig(tempDir);
+    expect(result?.mode).toBe('detached');
+    expect(result?.detached).toHaveLength(1);
+    expect(result?.detached?.[0]?.sessionName).toBe('paw-myapp-auth');
   });
 });
 
@@ -414,6 +454,120 @@ describe('pane-state: killPanes', () => {
     killPanes(mock, tempDir);
 
     const killCalls = mock.calls.filter((c) => c.method === 'killPane');
+    expect(killCalls).toHaveLength(0);
+  });
+});
+
+describe('pane-state: saveDetachedAgents', () => {
+  let tempDir: string;
+
+  beforeEach(() => {
+    tempDir = makeTempDir();
+  });
+
+  afterEach(() => {
+    rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  it('saves detached agents with mode=detached', () => {
+    const agents: DetachedAgent[] = [
+      {
+        id: 'paw-1',
+        sessionName: 'paw-myapp-auth',
+        taskName: 'auth',
+        worktreePath: '/tmp/wt-auth',
+        agent: 'claude',
+        branchName: 'feat-auth',
+      },
+    ];
+    saveDetachedAgents(tempDir, 'paw-myapp', agents);
+
+    const config = readPaneConfig(tempDir);
+    expect(config?.mode).toBe('detached');
+    expect(config?.detached).toHaveLength(1);
+    expect(config?.detached?.[0]?.sessionName).toBe('paw-myapp-auth');
+    expect(config?.panes).toHaveLength(0);
+    expect(config?.orchestratorPaneId).toBe('');
+  });
+});
+
+describe('pane-state: killDetachedAgents', () => {
+  let tempDir: string;
+
+  beforeEach(() => {
+    tempDir = makeTempDir();
+  });
+
+  afterEach(() => {
+    rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  it('kills all detached sessions and clears the array', () => {
+    const agents: DetachedAgent[] = [
+      {
+        id: 'paw-1',
+        sessionName: 'paw-myapp-auth',
+        taskName: 'auth',
+        worktreePath: '/tmp/wt-auth',
+        agent: 'claude',
+        branchName: '',
+      },
+      {
+        id: 'paw-2',
+        sessionName: 'paw-myapp-api',
+        taskName: 'api',
+        worktreePath: '/tmp/wt-api',
+        agent: 'claude',
+        branchName: '',
+      },
+    ];
+    saveDetachedAgents(tempDir, 'paw-myapp', agents);
+
+    // Mock: both sessions exist
+    const mock = createMockTmux();
+    mock.createSession('paw-myapp-auth', '/tmp');
+    mock.createSession('paw-myapp-api', '/tmp');
+    mock.calls.length = 0;
+
+    killDetachedAgents(mock, tempDir);
+
+    const killCalls = mock.calls.filter((c) => c.method === 'killSession');
+    expect(killCalls).toHaveLength(2);
+
+    const config = readPaneConfig(tempDir);
+    expect(config?.detached).toHaveLength(0);
+  });
+
+  it('skips sessions that no longer exist', () => {
+    const agents: DetachedAgent[] = [
+      {
+        id: 'paw-1',
+        sessionName: 'paw-myapp-gone',
+        taskName: 'auth',
+        worktreePath: '/tmp/wt-auth',
+        agent: 'claude',
+        branchName: '',
+      },
+    ];
+    saveDetachedAgents(tempDir, 'paw-myapp', agents);
+
+    const mock = createMockTmux();
+    // Override sessionExists to return false (session is dead)
+    mock.sessionExists = (name: string) => {
+      mock.calls.push({ method: 'sessionExists', args: [name] });
+      return false;
+    };
+    killDetachedAgents(mock, tempDir);
+
+    const killCalls = mock.calls.filter((c) => c.method === 'killSession');
+    expect(killCalls).toHaveLength(0);
+  });
+
+  it('does nothing when no panes.json exists', () => {
+    const mock = createMockTmux();
+    killDetachedAgents(mock, tempDir);
+
+    const killCalls = mock.calls.filter((c) => c.method === 'killSession');
     expect(killCalls).toHaveLength(0);
   });
 });

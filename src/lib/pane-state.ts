@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, mkdirSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { writeFileSync } from 'atomically';
-import type { PawPaneConfig, PawPane, TmuxServiceApi } from './tmux.js';
+import type { PawPaneConfig, PawPane, DetachedAgent, TmuxServiceApi } from './tmux.js';
 import { ORCHESTRATOR_ROLE } from './constants.js';
 
 const PANES_FILE = 'panes.json';
@@ -50,6 +50,24 @@ export function savePanes(
   writePaneConfig(repoRoot, config);
 }
 
+/** Persist detached agent sessions to panes.json. */
+export function saveDetachedAgents(
+  repoRoot: string,
+  sessionName: string,
+  agents: DetachedAgent[],
+): void {
+  const config: PawPaneConfig = {
+    mode: 'detached',
+    sessionName,
+    projectRoot: repoRoot,
+    orchestratorPaneId: '',
+    panes: [],
+    detached: agents,
+    lastUpdated: new Date().toISOString(),
+  };
+  writePaneConfig(repoRoot, config);
+}
+
 /**
  * Kill all persisted task panes, then clear the panes array in panes.json.
  * Preserves orchestratorPaneId so the next `paw` run finds the surviving
@@ -68,6 +86,24 @@ export function killPanes(tmux: TmuxServiceApi, repoRoot: string): void {
   // Clear task panes but keep orchestratorPaneId so the session can be
   // re-entered cleanly without spawning duplicate orchestrator panes.
   writePaneConfig(repoRoot, { ...config, panes: [], lastUpdated: new Date().toISOString() });
+}
+
+/** Kill all detached agent sessions recorded in panes.json. */
+export function killDetachedAgents(tmux: TmuxServiceApi, repoRoot: string): void {
+  const config = readPaneConfig(repoRoot);
+  if (!config?.detached) return;
+
+  for (const agent of config.detached) {
+    if (tmux.sessionExists(agent.sessionName)) {
+      tmux.killSession(agent.sessionName);
+    }
+  }
+
+  writePaneConfig(repoRoot, {
+    ...config,
+    detached: [],
+    lastUpdated: new Date().toISOString(),
+  });
 }
 
 /**

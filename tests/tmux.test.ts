@@ -1,6 +1,15 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { TmuxService, tmuxSessionName, isInsideTmux, launchTmux } from '../src/lib/tmux.js';
-import type { TmuxServiceApi, TmuxPaneInfo, PawPane } from '../src/lib/tmux.js';
+import {
+  TmuxService,
+  tmuxSessionName,
+  isInsideTmux,
+  launchTmux,
+  launchDetached,
+  createDetachedSession,
+  killDetachedSession,
+  listDetachedSessions,
+} from '../src/lib/tmux.js';
+import type { TmuxServiceApi, TmuxPaneInfo, PawPane, DetachedAgent } from '../src/lib/tmux.js';
 
 // --- Mock TmuxService for unit tests ---
 
@@ -629,5 +638,178 @@ describe('TmuxService pinSidebarLayout', () => {
     svc.pinSidebarLayout('paw-test', 40);
     expect(calls[0]).toEqual(['set-window-option', '-t', 'paw-test', 'main-pane-width', '40']);
     expect(calls[1]).toEqual(['select-layout', '-t', 'paw-test', 'main-vertical']);
+  });
+});
+
+describe('createDetachedSession', () => {
+  it('creates a tmux session and sends the agent command', () => {
+    const mock = createMockTmux();
+    createDetachedSession(mock, 'paw-myapp-auth', '/tmp/wt-auth', 'claude');
+
+    const createCall = mock.calls.find((c) => c.method === 'createSession');
+    expect(createCall).toBeDefined();
+    expect(createCall!.args).toEqual(['paw-myapp-auth', '/tmp/wt-auth']);
+
+    const sendCall = mock.calls.find((c) => c.method === 'sendKeys');
+    expect(sendCall).toBeDefined();
+    expect(sendCall!.args[1]).toBe('claude');
+  });
+
+  it('sends keys to the session name (first pane)', () => {
+    const mock = createMockTmux();
+    createDetachedSession(mock, 'paw-myapp-api', '/tmp/wt-api', 'codex --flag');
+
+    const sendCall = mock.calls.find((c) => c.method === 'sendKeys');
+    expect(sendCall!.args[0]).toBe('paw-myapp-api');
+  });
+});
+
+describe('killDetachedSession', () => {
+  it('kills a session that exists', () => {
+    const mock = createMockTmux();
+    mock.createSession('paw-myapp-auth', '/tmp');
+    mock.calls.length = 0;
+
+    killDetachedSession(mock, 'paw-myapp-auth');
+
+    const killCall = mock.calls.find((c) => c.method === 'killSession');
+    expect(killCall).toBeDefined();
+    expect(killCall!.args).toEqual(['paw-myapp-auth']);
+  });
+
+  it('does nothing when session does not exist', () => {
+    const mock = createMockTmux();
+    killDetachedSession(mock, 'paw-myapp-nonexistent');
+
+    const killCalls = mock.calls.filter((c) => c.method === 'killSession');
+    expect(killCalls).toHaveLength(0);
+  });
+});
+
+describe('listDetachedSessions', () => {
+  it('returns session names matching the prefix', () => {
+    const mock = createMockTmux();
+    // Override sessionExists to simulate listing
+    mock.createSession('paw-myapp-auth', '/tmp');
+    mock.createSession('paw-myapp-api', '/tmp');
+    mock.calls.length = 0;
+
+    const names = ['paw-myapp-auth', 'paw-myapp-api'];
+    const result = listDetachedSessions(mock, names);
+
+    expect(result).toEqual(['paw-myapp-auth', 'paw-myapp-api']);
+  });
+
+  it('filters out sessions that no longer exist', () => {
+    const mock = createMockTmux();
+    mock.createSession('paw-myapp-auth', '/tmp');
+    mock.calls.length = 0;
+
+    const names = ['paw-myapp-auth', 'paw-myapp-gone'];
+    const result = listDetachedSessions(mock, names);
+
+    expect(result).toEqual(['paw-myapp-auth']);
+  });
+
+  it('returns empty array when no sessions exist', () => {
+    const mock = createMockTmux();
+    const result = listDetachedSessions(mock, ['paw-myapp-auth']);
+    expect(result).toEqual([]);
+  });
+});
+
+describe('launchDetached', () => {
+  it('creates one detached session per worktree', () => {
+    const mock = createMockTmux();
+    const worktrees = [
+      { taskName: 'auth', worktreePath: '/tmp/wt-auth', agentCommand: 'claude' },
+      { taskName: 'api', worktreePath: '/tmp/wt-api', agentCommand: 'codex' },
+    ];
+    const agents = launchDetached(mock, 'paw-myapp', worktrees);
+    expect(agents).toHaveLength(2);
+
+    const createCalls = mock.calls.filter((c) => c.method === 'createSession');
+    expect(createCalls).toHaveLength(2);
+    expect(createCalls[0]!.args[0]).toBe('paw-myapp-auth');
+    expect(createCalls[1]!.args[0]).toBe('paw-myapp-api');
+  });
+
+  it('sends agent command into each session', () => {
+    const mock = createMockTmux();
+    const worktrees = [
+      { taskName: 'auth', worktreePath: '/tmp/wt-auth', agentCommand: 'claude --resume' },
+    ];
+    launchDetached(mock, 'paw-myapp', worktrees);
+
+    const sendCall = mock.calls.find((c) => c.method === 'sendKeys');
+    expect(sendCall).toBeDefined();
+    expect(sendCall!.args[1]).toBe('claude --resume');
+  });
+
+  it('returns DetachedAgent objects with correct structure', () => {
+    const mock = createMockTmux();
+    const worktrees = [
+      {
+        taskName: 'auth',
+        worktreePath: '/tmp/wt-auth',
+        agentCommand: 'claude',
+        branchName: 'feat-auth',
+      },
+    ];
+    const agents = launchDetached(mock, 'paw-myapp', worktrees);
+    expect(agents[0]).toMatchObject({
+      id: 'paw-1',
+      sessionName: 'paw-myapp-auth',
+      taskName: 'auth',
+      worktreePath: '/tmp/wt-auth',
+      agent: 'claude',
+      branchName: 'feat-auth',
+    });
+  });
+
+  it('skips tasks that already have a live session', () => {
+    const mock = createMockTmux();
+    mock.createSession('paw-myapp-auth', '/tmp');
+    mock.calls.length = 0;
+
+    const existing: DetachedAgent[] = [
+      {
+        id: 'paw-1',
+        sessionName: 'paw-myapp-auth',
+        taskName: 'auth',
+        worktreePath: '/tmp/wt-auth',
+        agent: 'claude',
+        branchName: '',
+      },
+    ];
+    const worktrees = [
+      { taskName: 'auth', worktreePath: '/tmp/wt-auth', agentCommand: 'claude' },
+      { taskName: 'api', worktreePath: '/tmp/wt-api', agentCommand: 'claude' },
+    ];
+    const agents = launchDetached(mock, 'paw-myapp', worktrees, existing);
+
+    expect(agents).toHaveLength(1);
+    expect(agents[0]!.taskName).toBe('api');
+  });
+
+  it('relaunches task when its session no longer exists', () => {
+    const mock = createMockTmux();
+    // Don't create the session — it's dead
+
+    const existing: DetachedAgent[] = [
+      {
+        id: 'paw-1',
+        sessionName: 'paw-myapp-auth',
+        taskName: 'auth',
+        worktreePath: '/tmp/wt-auth',
+        agent: 'claude',
+        branchName: '',
+      },
+    ];
+    const worktrees = [{ taskName: 'auth', worktreePath: '/tmp/wt-auth', agentCommand: 'claude' }];
+    const agents = launchDetached(mock, 'paw-myapp', worktrees, existing);
+
+    expect(agents).toHaveLength(1);
+    expect(agents[0]!.taskName).toBe('auth');
   });
 });
