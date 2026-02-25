@@ -29,6 +29,8 @@ export interface DisplayItem {
   status: TuiStatus | null;
   /** If set, render a project separator header before this item. */
   projectHeader?: string;
+  /** Optional color for the project header. Defaults to dim. */
+  headerColor?: string;
 }
 
 type OverlayState = 'none' | 'project' | 'agent';
@@ -64,7 +66,7 @@ function PaneCard({ item, selected, isFirst, isLast, isNextSelected }: PaneCardP
     <Box flexDirection="column" width={SIDEBAR_WIDTH}>
       {item.projectHeader && (
         <Box marginTop={isFirst ? 0 : 1}>
-          <Text dimColor>
+          <Text color={item.headerColor || undefined} dimColor={!item.headerColor}>
             {'── ' +
               item.projectHeader +
               ' ' +
@@ -233,15 +235,22 @@ export function buildDisplayItems(
     }
   }
 
-  // Ungrouped panes (no project root).
+  // Ungrouped panes (no project root) — show with red warning header.
   const ungrouped = tagged.filter((t) => t.projectRoot === null);
+  let isFirstUngrouped = true;
   for (const t of ungrouped) {
-    items.push({
+    const item: DisplayItem = {
       paneId: t.paneId,
       label: t.label,
       badge: t.badge,
       status: t.status,
-    });
+    };
+    if (isFirstUngrouped) {
+      item.projectHeader = 'not a git repo';
+      item.headerColor = 'red';
+      isFirstUngrouped = false;
+    }
+    items.push(item);
   }
 
   return items;

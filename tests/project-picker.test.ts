@@ -85,11 +85,12 @@ describe('buildDisplayItems — multi-project grouping', () => {
       makeTmuxPane('%6', 'bash', 'bash', '/tmp', ''),
     ];
     const items = buildDisplayItems(tmuxPanes, [], null, '%0', '%1', '/home/user/myapp');
-    // Managed panes get headers, ungrouped pane goes to bottom
+    // Managed panes get headers, ungrouped pane gets red warning header
     expect(items).toHaveLength(3);
     expect(items[0]!.projectHeader).toBe('myapp');
     expect(items[1]!.projectHeader).toBe('other');
-    expect(items[2]!.projectHeader).toBeUndefined();
+    expect(items[2]!.projectHeader).toBe('not a git repo');
+    expect(items[2]!.headerColor).toBe('red');
   });
 
   it('managed panes use @paw_project regardless of cwd', () => {
