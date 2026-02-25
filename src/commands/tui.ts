@@ -10,6 +10,7 @@ import type { PawPaneConfig } from '../lib/tmux.js';
 import { TuiApp } from '../components/tui-app.js';
 import { handleError, colors } from '../lib/output.js';
 import { SIDEBAR_WIDTH } from '../lib/tui-helpers.js';
+import { TUI_ROLE } from '../lib/constants.js';
 
 /**
  * Add a new project to the current workspace. Creates an orchestrator pane
@@ -69,11 +70,25 @@ function runTuiSidebar(
   panes: PawPane[],
   controlPaneId: string,
 ): void {
+  // Check if a TUI is already running in this session.
+  const existingPanes = tmux.listPanesDetailed(sessionName);
+  const existingTui = existingPanes.find((p) => p.role === TUI_ROLE && p.paneId !== controlPaneId);
+  if (existingTui) {
+    console.error(colors.error('paw TUI is already running in this session.'));
+    console.error(
+      colors.info(
+        `  Switch to pane ${existingTui.paneId} or press q to quit the existing TUI first.`,
+      ),
+    );
+    process.exit(1);
+  }
+
   tmux.resizePane(controlPaneId, SIDEBAR_WIDTH);
   tmux.pinSidebarLayout(sessionName, SIDEBAR_WIDTH);
 
-  // Set @paw_project on the control pane for grouping.
+  // Mark this pane as the TUI control pane.
   try {
+    tmux.setPaneRole(controlPaneId, TUI_ROLE);
     tmux.setPaneProject(controlPaneId, repoRoot);
   } catch {
     // Best-effort
