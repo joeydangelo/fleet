@@ -279,18 +279,18 @@ describe('pane-state: restorePanes', () => {
     expect(result.orchestratorPaneId).toBe('%1');
   });
 
-  it('recreates missing task panes when worktree exists', () => {
+  it('drops dead task panes instead of recreating empty shells', () => {
     const pane = makePane({ paneId: '%99', worktreePath: tempDir });
     savePanes(tempDir, 'paw-myapp', [pane], '');
 
     const mock = createMockTmux([]);
     const result = restorePanes(mock, 'paw-myapp', tempDir);
 
-    expect(result.panes).toHaveLength(1);
-    expect(result.panes[0]!.paneId).toBe('%101');
+    // Dead pane is dropped — user must `paw launch` to bring it back with an agent
+    expect(result.panes).toHaveLength(0);
 
     const createCall = mock.calls.find((c) => c.method === 'createPane');
-    expect(createCall).toBeDefined();
+    expect(createCall).toBeUndefined();
   });
 
   it('rebinds task pane by title when pane ID is gone but title exists', () => {

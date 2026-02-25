@@ -93,9 +93,24 @@ export function launchCommand(): Command {
 
         const tmux = createTmuxService();
         const existing = readPaneConfig(repoRoot);
-        const newPanes = launchTmux(tmux, sessionName, repoRoot, launchList, existing?.panes ?? []);
-        // Merge: keep existing live panes, append newly created ones.
-        const allPanes = [...(existing?.panes ?? []), ...newPanes];
+        const existingPanes = existing?.panes ?? [];
+        // Query live panes once and show which tasks are already running.
+        const livePaneIds = new Set(tmux.listPanes(sessionName));
+        for (const ep of existingPanes) {
+          if (launchList.some((l) => l.taskName === ep.taskName)) {
+            if (livePaneIds.has(ep.paneId)) {
+              skip(ep.taskName, `pane ${ep.paneId} alive in tmux`);
+            } else {
+              pending(ep.taskName, `pane ${ep.paneId} gone — will relaunch`);
+            }
+          }
+        }
+        const newPanes = launchTmux(tmux, sessionName, repoRoot, launchList, existingPanes);
+        // Merge: keep existing live panes (drop dead ones), append newly created ones.
+        const postLivePaneIds = new Set(tmux.listPanes(sessionName));
+        const livePanes = (existing?.panes ?? []).filter((p) => postLivePaneIds.has(p.paneId));
+        const newTaskNames = new Set(newPanes.map((p) => p.taskName));
+        const allPanes = [...livePanes.filter((p) => !newTaskNames.has(p.taskName)), ...newPanes];
         savePanes(repoRoot, sessionName, allPanes, existing?.orchestratorPaneId ?? '');
         // Re-enforce sidebar layout after adding agent panes.
         tmux.pinSidebarLayout(sessionName, SIDEBAR_WIDTH);

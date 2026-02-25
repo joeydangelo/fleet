@@ -473,10 +473,11 @@ export function launchTmux(
     tmux.createSession(sessionName, repoRoot);
   }
 
-  // Index existing panes by taskName for fast lookup.
+  // Query tmux once for all live pane IDs, then index existing panes.
+  const livePaneIds = new Set(tmux.listPanes(sessionName));
   const liveByTask = new Map<string, PawPane>();
   for (const ep of existingPanes) {
-    if (tmux.paneExists(ep.paneId)) {
+    if (livePaneIds.has(ep.paneId)) {
       liveByTask.set(ep.taskName, ep);
     }
   }

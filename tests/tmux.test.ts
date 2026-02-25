@@ -485,6 +485,11 @@ describe('launchTmux', () => {
   it('skips tasks that already have a live pane (by paneId)', () => {
     const mock = createMockTmux();
     mock.createSession('paw-myapp', '/tmp');
+    // %10 is alive in tmux
+    mock.listPanes = (sessionName: string) => {
+      mock.calls.push({ method: 'listPanes', args: [sessionName] });
+      return ['%10'];
+    };
     mock.calls.length = 0;
 
     const existingPanes: PawPane[] = [
@@ -513,10 +518,10 @@ describe('launchTmux', () => {
   it('relaunches task when its saved pane no longer exists in tmux', () => {
     const mock = createMockTmux();
     mock.createSession('paw-myapp', '/tmp');
-    // Override paneExists to return false for %10
-    mock.paneExists = (paneId: string) => {
-      mock.calls.push({ method: 'paneExists', args: [paneId] });
-      return paneId !== '%10';
+    // %10 is NOT in the live pane list (killed)
+    mock.listPanes = (sessionName: string) => {
+      mock.calls.push({ method: 'listPanes', args: [sessionName] });
+      return [];
     };
     mock.calls.length = 0;
 

@@ -112,13 +112,9 @@ export function restorePanes(
         continue;
       }
 
-      if (existsSync(pane.worktreePath)) {
-        const newPaneId = tmux.createPane(sessionName, pane.worktreePath);
-        tmux.setPaneTitle(newPaneId, expectedTitle);
-        tmux.setPaneRole(newPaneId, expectedTitle);
-        tmux.sendKeys(newPaneId, `echo "Restored pane: ${pane.taskName} (${pane.agent})"`);
-        restored.push({ ...pane, paneId: newPaneId });
-      }
+      // Dead task pane — drop it from tracking. The user can relaunch it
+      // with `paw launch` which will properly start the agent. Creating an
+      // empty shell here would block launch from detecting it as missing.
     }
   }
 
