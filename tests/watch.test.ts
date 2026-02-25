@@ -1,7 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import type { JournalEntry } from '../src/lib/journal.js';
 import type { TaskState } from '../src/lib/sync.js';
-import { diffJournal, diffStatuses, diffCommitCounts } from '../src/commands/watch.js';
+import {
+  diffJournal,
+  diffStatuses,
+  diffCommitCounts,
+  findDeadAgents,
+} from '../src/commands/watch.js';
 
 describe('diffJournal', () => {
   it('returns entries after lastSeenTs', () => {
@@ -130,5 +135,88 @@ describe('diffCommitCounts', () => {
 
     const result = diffCommitCounts(prev, curr);
     expect(result.deltas).toEqual([{ task: 'auth', from: 0, to: 2 }]);
+  });
+});
+
+describe('findDeadAgents', () => {
+  const tasks = (overrides: Record<string, Partial<TaskState>>): Record<string, TaskState> => {
+    const result: Record<string, TaskState> = {};
+    for (const [name, partial] of Object.entries(overrides)) {
+      result[name] = { status: 'in_progress', ...partial };
+    }
+    return result;
+  };
+
+  it('returns relaunch for dead + not done + under limit', () => {
+    const liveness = new Map([['auth', false]]);
+    const syncTasks = tasks({ auth: { status: 'in_progress' } });
+
+    const result = findDeadAgents(['auth'], liveness, syncTasks, {}, 3);
+    expect(result).toEqual([{ taskName: 'auth', action: 'relaunch' }]);
+  });
+
+  it('returns max-attempts when relaunch count equals limit', () => {
+    const liveness = new Map([['auth', false]]);
+    const syncTasks = tasks({ auth: { status: 'in_progress' } });
+
+    const result = findDeadAgents(['auth'], liveness, syncTasks, { auth: 3 }, 3);
+    expect(result).toEqual([{ taskName: 'auth', action: 'max-attempts' }]);
+  });
+
+  it('skips dead agents that are done', () => {
+    const liveness = new Map([['auth', false]]);
+    const syncTasks = tasks({ auth: { status: 'done' } });
+
+    const result = findDeadAgents(['auth'], liveness, syncTasks, {}, 3);
+    expect(result).toEqual([]);
+  });
+
+  it('skips alive agents', () => {
+    const liveness = new Map([['auth', true]]);
+    const syncTasks = tasks({ auth: { status: 'in_progress' } });
+
+    const result = findDeadAgents(['auth'], liveness, syncTasks, {}, 3);
+    expect(result).toEqual([]);
+  });
+
+  it('skips agents with no liveness data', () => {
+    const liveness = new Map<string, boolean>();
+    const syncTasks = tasks({ auth: { status: 'in_progress' } });
+
+    const result = findDeadAgents(['auth'], liveness, syncTasks, {}, 3);
+    expect(result).toEqual([]);
+  });
+
+  it('handles mixed task states', () => {
+    const liveness = new Map([
+      ['auth', false],
+      ['api', true],
+      ['tests', false],
+    ]);
+    const syncTasks = tasks({
+      auth: { status: 'in_progress' },
+      api: { status: 'in_progress' },
+      tests: { status: 'done' },
+    });
+
+    const result = findDeadAgents(['auth', 'api', 'tests'], liveness, syncTasks, {}, 3);
+    expect(result).toEqual([{ taskName: 'auth', action: 'relaunch' }]);
+  });
+
+  it('respects per-task relaunch counts independently', () => {
+    const liveness = new Map([
+      ['auth', false],
+      ['api', false],
+    ]);
+    const syncTasks = tasks({
+      auth: { status: 'in_progress' },
+      api: { status: 'in_progress' },
+    });
+
+    const result = findDeadAgents(['auth', 'api'], liveness, syncTasks, { auth: 3 }, 3);
+    expect(result).toEqual([
+      { taskName: 'auth', action: 'max-attempts' },
+      { taskName: 'api', action: 'relaunch' },
+    ]);
   });
 });

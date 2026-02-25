@@ -1,4 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import type { SyncState } from '../src/lib/sync.js';
+import type { PawPaneConfig } from '../src/lib/tmux.js';
+import type { AgentLivenessResult } from '../src/lib/tmux.js';
+import { resolveSessionState } from '../src/commands/go.js';
 
 // Mock child_process before importing go.ts
 vi.mock('node:child_process', () => ({
@@ -29,11 +33,46 @@ vi.mock('../src/lib/session.js', () => ({
     { taskName: 'auth', branch: 'feature/x-auth', worktreePath: '/fake/repo-paw-auth' },
     { taskName: 'api', branch: 'feature/x-api', worktreePath: '/fake/repo-paw-api' },
   ]),
+  createSession: vi.fn(() => [
+    { taskName: 'auth', branch: 'feature/x-auth', worktreePath: '/fake/repo-paw-auth' },
+    { taskName: 'api', branch: 'feature/x-api', worktreePath: '/fake/repo-paw-api' },
+  ]),
+  writeTaskFiles: vi.fn(),
+  copyIncludes: vi.fn(() => Promise.resolve([])),
+  runHook: vi.fn(),
 }));
 
 vi.mock('../src/lib/sync.js', () => ({
   readSyncState: vi.fn(() => null),
+  initSyncWorktree: vi.fn(),
+  initSyncState: vi.fn(() => ({
+    session: 'test',
+    config: '/fake/config',
+    target: 'feature/x',
+    tasks: {},
+  })),
+  writeSyncStateAndFiles: vi.fn(),
 }));
+
+vi.mock('../src/lib/pane-state.js', () => ({
+  readPaneConfig: vi.fn(() => null),
+  saveDetachedAgents: vi.fn(),
+  savePanes: vi.fn(),
+}));
+
+vi.mock('../src/lib/tmux.js', async () => {
+  const actual = await vi.importActual('../src/lib/tmux.js');
+  return {
+    ...actual,
+    createTmuxService: vi.fn(),
+    checkAgentLiveness: vi.fn(() => []),
+    ensureTmuxInstalled: vi.fn(),
+    tmuxSessionName: vi.fn(() => 'paw-test'),
+    isInsideTmux: vi.fn(() => false),
+    launchDetached: vi.fn(() => Promise.resolve([])),
+    launchTmux: vi.fn(() => Promise.resolve([])),
+  };
+});
 
 vi.mock('../src/lib/journal.js', () => ({
   readJournal: vi.fn(() => []),
@@ -130,6 +169,7 @@ describe('runWatchLoop', () => {
       repoRoot: '/fake/repo',
       configPath: '/fake/repo/.paw/paw.yaml',
       interval: 1,
+      stallThreshold: 0,
       noExit: false,
     });
 
@@ -167,6 +207,7 @@ describe('runWatchLoop', () => {
       repoRoot: '/fake/repo',
       configPath: '/fake/repo/.paw/paw.yaml',
       interval: 0.01, // very short for testing
+      stallThreshold: 0,
       noExit: false,
     });
 
@@ -235,7 +276,7 @@ describe('runGo: verbose timing display (paw-s3bg)', () => {
 
     const logs = vi.mocked(console.log).mock.calls.map((c) => String(c[0]));
     const timingLogs = logs.filter((msg) => msg.includes('⏰'));
-    expect(timingLogs.length).toBe(5); // up, launch+watch, merge, down, total
+    expect(timingLogs.length).toBe(6); // up, launch, watch, merge, down, total
     expect(timingLogs.some((msg) => msg.includes('up:'))).toBe(true);
     expect(timingLogs.some((msg) => msg.includes('total:'))).toBe(true);
   });
@@ -248,5 +289,141 @@ describe('runGo: verbose timing display (paw-s3bg)', () => {
     const logs = vi.mocked(console.log).mock.calls.map((c) => String(c[0]));
     const timingLogs = logs.filter((msg) => msg.includes('⏰'));
     expect(timingLogs.length).toBe(0);
+  });
+});
+
+describe('resolveSessionState', () => {
+  const baseSyncState: SyncState = {
+    session: '2026-02-25T00:00:00Z',
+    config: '/fake/config',
+    target: 'feature/x',
+    tasks: {},
+  };
+
+  const basePaneConfig: PawPaneConfig = {
+    mode: 'detached',
+    sessionName: 'paw-test',
+    projectRoot: '/fake/repo',
+    orchestratorPaneId: '',
+    panes: [],
+    detached: [
+      {
+        id: 'paw-1',
+        sessionName: 'paw-test-auth',
+        taskName: 'auth',
+        worktreePath: '/fake/repo-paw-auth',
+        agent: 'claude',
+        branchName: 'feature/x-auth',
+      },
+      {
+        id: 'paw-2',
+        sessionName: 'paw-test-api',
+        taskName: 'api',
+        worktreePath: '/fake/repo-paw-api',
+        agent: 'claude',
+        branchName: 'feature/x-api',
+      },
+    ],
+    lastUpdated: '2026-02-25T00:00:00Z',
+  };
+
+  it('returns no-session when sync state is null', () => {
+    expect(resolveSessionState(null, null, null)).toBe('no-session');
+  });
+
+  it('returns clean when sync state has no tasks', () => {
+    expect(resolveSessionState(baseSyncState, null, null)).toBe('clean');
+  });
+
+  it('returns all-done when every task is done', () => {
+    const state: SyncState = {
+      ...baseSyncState,
+      tasks: {
+        auth: { status: 'done', doneAt: '2026-02-25T00:01:00Z' },
+        api: { status: 'done', doneAt: '2026-02-25T00:02:00Z' },
+      },
+    };
+    expect(resolveSessionState(state, basePaneConfig, [])).toBe('all-done');
+  });
+
+  it('returns no-session when pane config is missing but tasks are not done', () => {
+    const state: SyncState = {
+      ...baseSyncState,
+      tasks: {
+        auth: { status: 'in_progress' },
+        api: { status: 'pending' },
+      },
+    };
+    expect(resolveSessionState(state, null, null)).toBe('no-session');
+  });
+
+  it('returns agents-running when all non-done agents are alive', () => {
+    const state: SyncState = {
+      ...baseSyncState,
+      tasks: {
+        auth: { status: 'in_progress' },
+        api: { status: 'in_progress' },
+      },
+    };
+    const liveness: AgentLivenessResult[] = [
+      { taskName: 'auth', alive: true },
+      { taskName: 'api', alive: true },
+    ];
+    expect(resolveSessionState(state, basePaneConfig, liveness)).toBe('agents-running');
+  });
+
+  it('returns has-dead-agents when some non-done agents are dead', () => {
+    const state: SyncState = {
+      ...baseSyncState,
+      tasks: {
+        auth: { status: 'in_progress' },
+        api: { status: 'in_progress' },
+      },
+    };
+    const liveness: AgentLivenessResult[] = [
+      { taskName: 'auth', alive: true },
+      { taskName: 'api', alive: false },
+    ];
+    expect(resolveSessionState(state, basePaneConfig, liveness)).toBe('has-dead-agents');
+  });
+
+  it('returns all-done when only done tasks remain and dead agents are done', () => {
+    const state: SyncState = {
+      ...baseSyncState,
+      tasks: {
+        auth: { status: 'done', doneAt: '2026-02-25T00:01:00Z' },
+        api: { status: 'done', doneAt: '2026-02-25T00:02:00Z' },
+      },
+    };
+    const liveness: AgentLivenessResult[] = [
+      { taskName: 'auth', alive: false },
+      { taskName: 'api', alive: false },
+    ];
+    expect(resolveSessionState(state, basePaneConfig, liveness)).toBe('all-done');
+  });
+
+  it('returns agents-running when one task is done and the other is alive', () => {
+    const state: SyncState = {
+      ...baseSyncState,
+      tasks: {
+        auth: { status: 'done', doneAt: '2026-02-25T00:01:00Z' },
+        api: { status: 'in_progress' },
+      },
+    };
+    const liveness: AgentLivenessResult[] = [
+      { taskName: 'auth', alive: false },
+      { taskName: 'api', alive: true },
+    ];
+    expect(resolveSessionState(state, basePaneConfig, liveness)).toBe('agents-running');
+  });
+
+  it('returns no-session when liveness is null (tmux unavailable)', () => {
+    const state: SyncState = {
+      ...baseSyncState,
+      tasks: {
+        auth: { status: 'in_progress' },
+      },
+    };
+    expect(resolveSessionState(state, basePaneConfig, null)).toBe('no-session');
   });
 });

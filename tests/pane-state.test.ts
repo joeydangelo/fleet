@@ -74,6 +74,10 @@ function createMockTmux(
       calls.push({ method: 'capturePane', args: [paneId, lines] });
       return '';
     },
+    capturePaneContent(sessionOrPane: string, lines?: number) {
+      calls.push({ method: 'capturePaneContent', args: [sessionOrPane, lines] });
+      return null as string | null;
+    },
     selectLayout(sessionName: string, layout: string) {
       calls.push({ method: 'selectLayout', args: [sessionName, layout] });
     },

@@ -3,6 +3,7 @@ import { cpSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import pc from 'picocolors';
 import { loadRepoConfig } from '../lib/config.js';
+import type { PawConfig } from '../lib/config.js';
 import {
   createSession,
   planWorktrees,
@@ -10,8 +11,65 @@ import {
   copyIncludes,
   runHook,
 } from '../lib/session.js';
+import type { WorktreeInfo } from '../lib/session.js';
 import { initSyncState, writeSyncStateAndFiles, initSyncWorktree } from '../lib/sync.js';
 import { success, pending, handleError } from '../lib/output.js';
+
+/** Create worktrees, copy config, run hooks, and initialize sync state for all tasks. */
+export async function runUp(
+  repoRoot: string,
+  configPath: string,
+  config: PawConfig,
+): Promise<WorktreeInfo[]> {
+  const worktrees = createSession(config, repoRoot);
+  writeTaskFiles(config, worktrees, config.target);
+
+  const claudeDir = resolve(repoRoot, '.claude');
+  if (existsSync(claudeDir)) {
+    for (const wt of worktrees) {
+      const dest = resolve(wt.worktreePath, '.claude');
+      if (!existsSync(dest)) {
+        cpSync(claudeDir, dest, { recursive: true });
+        success(wt.taskName, '.claude/ → worktree');
+      }
+    }
+  }
+
+  if (config.include?.length) {
+    for (const wt of worktrees) {
+      const copied = await copyIncludes(repoRoot, wt.worktreePath, config.include);
+      if (copied.length > 0) {
+        console.log(
+          pc.dim(`  copied ${copied.length} file(s) to ${wt.taskName}: ${copied.join(', ')}`),
+        );
+      }
+    }
+  }
+
+  const postUpHook = config.hooks?.['post-up'];
+  if (postUpHook) {
+    for (const wt of worktrees) {
+      console.log(pc.dim(`  running post-up hook in ${wt.taskName}: ${postUpHook}`));
+      runHook(wt.worktreePath, postUpHook);
+      success(wt.taskName, 'post-up hook passed');
+    }
+  }
+
+  const taskNames = Object.keys(config.tasks);
+  initSyncWorktree(repoRoot);
+  const focusMap: Record<string, string[]> = {};
+  for (const [name, task] of Object.entries(config.tasks)) {
+    focusMap[name] = Array.isArray(task.focus) ? task.focus : [task.focus];
+  }
+  const syncState = initSyncState(config.target, taskNames, configPath, focusMap);
+  writeSyncStateAndFiles(syncState, [{ path: 'journal/.gitkeep', content: '' }], repoRoot);
+
+  for (const wt of worktrees) {
+    success(wt.taskName, wt.worktreePath);
+  }
+
+  return worktrees;
+}
 
 export function upCommand(): Command {
   return new Command('up')
@@ -46,53 +104,7 @@ export function upCommand(): Command {
           return;
         }
 
-        const worktrees = createSession(config, repoRoot);
-        writeTaskFiles(config, worktrees, config.target);
-
-        // Copy .claude/ from main repo into each worktree so hooks fire for agents
-        const claudeDir = resolve(repoRoot, '.claude');
-        if (existsSync(claudeDir)) {
-          for (const wt of worktrees) {
-            const dest = resolve(wt.worktreePath, '.claude');
-            if (!existsSync(dest)) {
-              cpSync(claudeDir, dest, { recursive: true });
-              success(wt.taskName, '.claude/ → worktree');
-            }
-          }
-        }
-
-        if (config.include?.length) {
-          for (const wt of worktrees) {
-            const copied = await copyIncludes(repoRoot, wt.worktreePath, config.include);
-            if (copied.length > 0) {
-              console.log(
-                pc.dim(`  copied ${copied.length} file(s) to ${wt.taskName}: ${copied.join(', ')}`),
-              );
-            }
-          }
-        }
-
-        const postUpHook = config.hooks?.['post-up'];
-        if (postUpHook) {
-          for (const wt of worktrees) {
-            console.log(pc.dim(`  running post-up hook in ${wt.taskName}: ${postUpHook}`));
-            runHook(wt.worktreePath, postUpHook);
-            success(wt.taskName, 'post-up hook passed');
-          }
-        }
-
-        initSyncWorktree(repoRoot);
-        const focusMap: Record<string, string[]> = {};
-        for (const [name, task] of Object.entries(config.tasks)) {
-          focusMap[name] = Array.isArray(task.focus) ? task.focus : [task.focus];
-        }
-        const syncState = initSyncState(config.target, taskNames, configPath, focusMap);
-        writeSyncStateAndFiles(syncState, [{ path: 'journal/.gitkeep', content: '' }], repoRoot);
-
-        for (const wt of worktrees) {
-          success(wt.taskName, wt.worktreePath);
-        }
-
+        await runUp(repoRoot, configPath, config);
         console.log(pc.dim('\nOpen an agent session in each worktree path to begin.'));
       } catch (err) {
         handleError(err);

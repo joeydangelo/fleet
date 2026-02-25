@@ -34,6 +34,17 @@ npm install -g get-paw@latest
 paw init
 ```
 
+## Detached Mode
+
+paw auto-detects the terminal environment. Inside tmux, you get the full TUI
+with panes. Outside tmux (VS Code, Warp, any terminal), paw runs agents in
+background tmux sessions — no configuration needed.
+
+- `paw go` auto-detects via `$TMUX`
+- `paw go --detached` forces background mode
+- `paw watch` and `paw status` monitor from any terminal
+- `paw down` cleans up both attached panes and detached sessions
+
 ## Routine Commands
 
 ```bash
@@ -103,21 +114,14 @@ progress, merge results, handle conflicts, and clean up.
    target branch. Check `git remote -v` and `git branch`, then ask the
    user — PR, local merge, or iterate.
 
-For step-by-step control instead of `paw go`, load
-`paw shortcut orchestrate-agents`.
-
 ### Orchestrator action commands
 
 | Command | Purpose |
 |---|---|
 | `paw go` | Full lifecycle: up → spawn → watch → merge → down |
+| `paw go --detached` | Force background tmux sessions (auto-detected outside tmux) |
 | `paw go --poll-interval 10` | Adjust watch polling frequency (default 5s) |
-| `paw up` | Create worktrees and branches for all tasks |
-| `paw up --dry-run` | Preview what would be created |
-| `paw launch` | Spawn agents in tmux panes (one per worktree) |
 | `paw` | Open TUI — attach to tmux session with agent panes |
-| `paw launch --task <name>` | Spawn agent in a specific worktree |
-| `paw launch --dry-run` | Preview spawn commands without executing |
 | `paw status` | Check progress across all tasks |
 | `paw watch` | Continuous terminal monitor (auto-exits when done) |
 | `paw watch --no-exit` | Keep running after all tasks are done |

@@ -1,6 +1,13 @@
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { basename } from 'node:path';
+import {
+  BEACON_MESSAGE,
+  BEACON_TUI_TIMEOUT_MS,
+  BEACON_POLL_INTERVAL_MS,
+  BEACON_VERIFY_ATTEMPTS,
+  BEACON_VERIFY_DELAY_MS,
+} from './constants.js';
 
 export type AgentName = 'claude' | 'codex' | 'opencode' | 'gemini';
 
@@ -101,6 +108,8 @@ export interface TmuxServiceApi {
   hasAttachedClient(sessionName: string): boolean;
   switchClient(sessionName: string): void;
   attachSession(sessionName: string): void;
+  /** Capture visible pane content. Returns null if capture fails or content is empty. */
+  capturePaneContent(sessionOrPane: string, lines?: number): string | null;
 }
 
 /**
@@ -320,6 +329,15 @@ export class TmuxService implements TmuxServiceApi {
       stdio: 'inherit',
     });
   }
+
+  capturePaneContent(sessionOrPane: string, lines = 50): string | null {
+    try {
+      const output = this.exec(['capture-pane', '-t', sessionOrPane, '-p', '-S', `-${lines}`]);
+      return output.length > 0 ? output : null;
+    } catch {
+      return null;
+    }
+  }
 }
 
 /**
@@ -483,13 +501,14 @@ function parseAgentName(command: string): AgentName {
  * When `existingPanes` is provided, tasks that already have a live pane
  * (verified via `paneExists`) are skipped — only missing tasks get new panes.
  */
-export function launchTmux(
+export async function launchTmux(
   tmux: TmuxServiceApi,
   sessionName: string,
   repoRoot: string,
   worktrees: Array<{ taskName: string; worktreePath: string; agentCommand: string }>,
   existingPanes: PawPane[] = [],
-): PawPane[] {
+  beaconOpts?: BeaconOptions,
+): Promise<PawPane[]> {
   if (!tmux.sessionExists(sessionName)) {
     tmux.createSession(sessionName, repoRoot);
   }
@@ -523,6 +542,7 @@ export function launchTmux(
     tmux.setPaneRole(paneId, `paw-${wt.taskName}`);
     tmux.setPaneProject(paneId, repoRoot);
     tmux.sendKeys(paneId, wt.agentCommand);
+    await sendBeacon(tmux, paneId, beaconOpts);
 
     panes.push(pane);
     paneIndex++;
@@ -535,15 +555,109 @@ export function createTmuxService(): TmuxService {
   return new TmuxService();
 }
 
-/** Create a detached tmux session and send the agent command into it. */
-export function createDetachedSession(
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Wait for a tmux session/pane to have visible content (TUI rendered).
+ * Polls capture-pane until non-empty content appears.
+ */
+export async function waitForTuiReady(
+  tmux: TmuxServiceApi,
+  sessionOrPane: string,
+  timeoutMs = BEACON_TUI_TIMEOUT_MS,
+  pollIntervalMs = BEACON_POLL_INTERVAL_MS,
+): Promise<boolean> {
+  const maxAttempts = Math.ceil(timeoutMs / pollIntervalMs);
+  for (let i = 0; i < maxAttempts; i++) {
+    const content = tmux.capturePaneContent(sessionOrPane);
+    if (content !== null) return true;
+    if (!tmux.sessionExists(sessionOrPane)) return false;
+    await sleep(pollIntervalMs);
+  }
+  return false;
+}
+
+export interface BeaconOptions {
+  tuiTimeoutMs?: number;
+  tuiPollIntervalMs?: number;
+  postReadyDelayMs?: number;
+  verifyAttempts?: number;
+  verifyDelayMs?: number;
+}
+
+/**
+ * Send a beacon to an agent after Claude Code boots.
+ * Waits for TUI to render, sends the beacon message, then verifies
+ * it was received (retries if the welcome screen is still showing).
+ */
+export async function sendBeacon(
+  tmux: TmuxServiceApi,
+  sessionOrPane: string,
+  opts: BeaconOptions = {},
+): Promise<boolean> {
+  const tuiTimeoutMs = opts.tuiTimeoutMs ?? BEACON_TUI_TIMEOUT_MS;
+  const tuiPollIntervalMs = opts.tuiPollIntervalMs ?? BEACON_POLL_INTERVAL_MS;
+  const postReadyDelayMs = opts.postReadyDelayMs ?? 1_000;
+  const verifyAttempts = opts.verifyAttempts ?? BEACON_VERIFY_ATTEMPTS;
+  const verifyDelayMs = opts.verifyDelayMs ?? BEACON_VERIFY_DELAY_MS;
+
+  const ready = await waitForTuiReady(tmux, sessionOrPane, tuiTimeoutMs, tuiPollIntervalMs);
+  if (!ready) return false;
+
+  await sleep(postReadyDelayMs);
+
+  tmux.sendKeys(sessionOrPane, BEACON_MESSAGE);
+
+  // Verify beacon was received — retry if welcome screen still visible
+  for (let attempt = 0; attempt < verifyAttempts; attempt++) {
+    await sleep(verifyDelayMs);
+    const content = tmux.capturePaneContent(sessionOrPane);
+    if (content && !content.includes('Try "')) return true;
+    tmux.sendKeys(sessionOrPane, BEACON_MESSAGE);
+  }
+
+  // Gave up retrying — agent may or may not have received the beacon
+  return true;
+}
+
+export interface AgentLivenessResult {
+  taskName: string;
+  alive: boolean;
+}
+
+/** Check whether each agent is still alive in tmux. Works for both attached and detached modes. */
+export function checkAgentLiveness(
+  tmux: TmuxServiceApi,
+  config: PawPaneConfig,
+): AgentLivenessResult[] {
+  const mode = config.mode ?? 'attached';
+
+  if (mode === 'detached' && config.detached) {
+    return config.detached.map((agent) => ({
+      taskName: agent.taskName,
+      alive: tmux.sessionExists(agent.sessionName),
+    }));
+  }
+
+  return config.panes.map((pane) => ({
+    taskName: pane.taskName,
+    alive: tmux.paneExists(pane.paneId),
+  }));
+}
+
+/** Create a detached tmux session, send the agent command, and send the startup beacon. */
+export async function createDetachedSession(
   tmux: TmuxServiceApi,
   sessionName: string,
   cwd: string,
   agentCommand: string,
-): void {
+  beaconOpts?: BeaconOptions,
+): Promise<void> {
   tmux.createSession(sessionName, cwd);
   tmux.sendKeys(sessionName, agentCommand);
+  await sendBeacon(tmux, sessionName, beaconOpts);
 }
 
 /** Kill a detached tmux session if it exists. */
@@ -562,7 +676,7 @@ export function listDetachedSessions(tmux: TmuxServiceApi, sessionNames: string[
  * Launch agents in detached tmux sessions (one session per task).
  * Returns DetachedAgent records for persistence.
  */
-export function launchDetached(
+export async function launchDetached(
   tmux: TmuxServiceApi,
   sessionPrefix: string,
   worktrees: Array<{
@@ -572,7 +686,8 @@ export function launchDetached(
     branchName?: string;
   }>,
   existingAgents: DetachedAgent[] = [],
-): DetachedAgent[] {
+  beaconOpts?: BeaconOptions,
+): Promise<DetachedAgent[]> {
   const liveByTask = new Map<string, DetachedAgent>();
   for (const ea of existingAgents) {
     if (tmux.sessionExists(ea.sessionName)) {
@@ -587,7 +702,7 @@ export function launchDetached(
     if (liveByTask.has(wt.taskName)) continue;
 
     const sessionName = `${sessionPrefix}-${wt.taskName}`;
-    createDetachedSession(tmux, sessionName, wt.worktreePath, wt.agentCommand);
+    await createDetachedSession(tmux, sessionName, wt.worktreePath, wt.agentCommand, beaconOpts);
 
     agents.push({
       id: `paw-${index}`,

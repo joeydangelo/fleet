@@ -8,8 +8,26 @@ import {
   createDetachedSession,
   killDetachedSession,
   listDetachedSessions,
+  checkAgentLiveness,
+  waitForTuiReady,
+  sendBeacon,
 } from '../src/lib/tmux.js';
-import type { TmuxServiceApi, TmuxPaneInfo, PawPane, DetachedAgent } from '../src/lib/tmux.js';
+import type { BeaconOptions } from '../src/lib/tmux.js';
+import type {
+  TmuxServiceApi,
+  TmuxPaneInfo,
+  PawPane,
+  PawPaneConfig,
+  DetachedAgent,
+} from '../src/lib/tmux.js';
+
+const fastBeacon: BeaconOptions = {
+  tuiTimeoutMs: 100,
+  tuiPollIntervalMs: 5,
+  postReadyDelayMs: 5,
+  verifyAttempts: 2,
+  verifyDelayMs: 5,
+};
 
 // --- Mock TmuxService for unit tests ---
 
@@ -81,6 +99,10 @@ function createMockTmux(): TmuxServiceApi & {
     capturePane(paneId: string, lines?: number) {
       calls.push({ method: 'capturePane', args: [paneId, lines] });
       return '';
+    },
+    capturePaneContent(sessionOrPane: string, lines?: number) {
+      calls.push({ method: 'capturePaneContent', args: [sessionOrPane, lines] });
+      return 'Agent ready' as string | null;
     },
     selectLayout(sessionName: string, layout: string) {
       calls.push({ method: 'selectLayout', args: [sessionName, layout] });
@@ -379,85 +401,99 @@ describe('TmuxService with mock exec', () => {
 });
 
 describe('launchTmux', () => {
-  it('creates session when it does not exist', () => {
+  it('creates session when it does not exist', async () => {
     const mock = createMockTmux();
     const worktrees = [{ taskName: 'auth', worktreePath: '/tmp/wt-auth', agentCommand: 'claude' }];
-    launchTmux(mock, 'paw-myapp', '/home/user/myapp', worktrees);
+    await launchTmux(mock, 'paw-myapp', '/home/user/myapp', worktrees, [], fastBeacon);
     const createCall = mock.calls.find((c) => c.method === 'createSession');
     expect(createCall).toBeDefined();
     expect(createCall!.args).toEqual(['paw-myapp', '/home/user/myapp']);
   });
 
-  it('skips session creation when it already exists', () => {
+  it('skips session creation when it already exists', async () => {
     const mock = createMockTmux();
     // Pre-create the session
     mock.createSession('paw-myapp', '/tmp');
     mock.calls.length = 0; // Reset calls
 
     const worktrees = [{ taskName: 'auth', worktreePath: '/tmp/wt-auth', agentCommand: 'claude' }];
-    launchTmux(mock, 'paw-myapp', '/home/user/myapp', worktrees);
+    await launchTmux(mock, 'paw-myapp', '/home/user/myapp', worktrees, [], fastBeacon);
     const createCalls = mock.calls.filter((c) => c.method === 'createSession');
     expect(createCalls).toHaveLength(0);
   });
 
-  it('creates one pane per worktree', () => {
+  it('creates one pane per worktree', async () => {
     const mock = createMockTmux();
     const worktrees = [
       { taskName: 'auth', worktreePath: '/tmp/wt-auth', agentCommand: 'claude' },
       { taskName: 'api', worktreePath: '/tmp/wt-api', agentCommand: 'claude' },
       { taskName: 'tests', worktreePath: '/tmp/wt-tests', agentCommand: 'codex' },
     ];
-    const panes = launchTmux(mock, 'paw-myapp', '/home/user/myapp', worktrees);
+    const panes = await launchTmux(
+      mock,
+      'paw-myapp',
+      '/home/user/myapp',
+      worktrees,
+      [],
+      fastBeacon,
+    );
     const paneCalls = mock.calls.filter((c) => c.method === 'createPane');
     expect(paneCalls).toHaveLength(3);
     expect(panes).toHaveLength(3);
   });
 
-  it('sends agent command to each pane', () => {
+  it('sends agent command to each pane', async () => {
     const mock = createMockTmux();
     const worktrees = [
       { taskName: 'auth', worktreePath: '/tmp/wt-auth', agentCommand: 'claude --resume' },
     ];
-    launchTmux(mock, 'paw-myapp', '/home/user/myapp', worktrees);
+    await launchTmux(mock, 'paw-myapp', '/home/user/myapp', worktrees, [], fastBeacon);
     const sendCall = mock.calls.find((c) => c.method === 'sendKeys');
     expect(sendCall).toBeDefined();
     expect(sendCall!.args[1]).toBe('claude --resume');
   });
 
-  it('sets pane title for each pane', () => {
+  it('sets pane title for each pane', async () => {
     const mock = createMockTmux();
     const worktrees = [{ taskName: 'auth', worktreePath: '/tmp/wt-auth', agentCommand: 'claude' }];
-    launchTmux(mock, 'paw-myapp', '/home/user/myapp', worktrees);
+    await launchTmux(mock, 'paw-myapp', '/home/user/myapp', worktrees, [], fastBeacon);
     const titleCall = mock.calls.find((c) => c.method === 'setPaneTitle');
     expect(titleCall).toBeDefined();
     expect(titleCall!.args[1]).toBe('paw-auth');
   });
 
-  it('sets @paw_project on each task pane', () => {
+  it('sets @paw_project on each task pane', async () => {
     const mock = createMockTmux();
     const worktrees = [
       { taskName: 'auth', worktreePath: '/tmp/wt-auth', agentCommand: 'claude' },
       { taskName: 'api', worktreePath: '/tmp/wt-api', agentCommand: 'claude' },
     ];
-    launchTmux(mock, 'paw-myapp', '/home/user/myapp', worktrees);
+    await launchTmux(mock, 'paw-myapp', '/home/user/myapp', worktrees, [], fastBeacon);
     const projectCalls = mock.calls.filter((c) => c.method === 'setPaneProject');
     expect(projectCalls).toHaveLength(2);
     expect(projectCalls[0]!.args[1]).toBe('/home/user/myapp');
     expect(projectCalls[1]!.args[1]).toBe('/home/user/myapp');
   });
 
-  it('does not apply any layout (caller is responsible for sidebar layout)', () => {
+  it('does not apply any layout (caller is responsible for sidebar layout)', async () => {
     const mock = createMockTmux();
     const worktrees = [{ taskName: 'auth', worktreePath: '/tmp/wt-auth', agentCommand: 'claude' }];
-    launchTmux(mock, 'paw-myapp', '/home/user/myapp', worktrees);
+    await launchTmux(mock, 'paw-myapp', '/home/user/myapp', worktrees, [], fastBeacon);
     const layoutCalls = mock.calls.filter((c) => c.method === 'selectLayout');
     expect(layoutCalls).toHaveLength(0);
   });
 
-  it('returns PawPane objects with correct structure', () => {
+  it('returns PawPane objects with correct structure', async () => {
     const mock = createMockTmux();
     const worktrees = [{ taskName: 'auth', worktreePath: '/tmp/wt-auth', agentCommand: 'claude' }];
-    const panes = launchTmux(mock, 'paw-myapp', '/home/user/myapp', worktrees);
+    const panes = await launchTmux(
+      mock,
+      'paw-myapp',
+      '/home/user/myapp',
+      worktrees,
+      [],
+      fastBeacon,
+    );
     expect(panes[0]).toMatchObject({
       id: 'paw-1',
       taskName: 'auth',
@@ -467,31 +503,45 @@ describe('launchTmux', () => {
     expect(panes[0]!.paneId).toMatch(/^%/);
   });
 
-  it('sets agent field from agentCommand base name', () => {
+  it('sets agent field from agentCommand base name', async () => {
     const mock = createMockTmux();
     const worktrees = [
       { taskName: 'auth', worktreePath: '/tmp/wt-auth', agentCommand: 'codex' },
       { taskName: 'api', worktreePath: '/tmp/wt-api', agentCommand: 'opencode' },
       { taskName: 'tests', worktreePath: '/tmp/wt-tests', agentCommand: 'gemini' },
     ];
-    const panes = launchTmux(mock, 'paw-myapp', '/home/user/myapp', worktrees);
+    const panes = await launchTmux(
+      mock,
+      'paw-myapp',
+      '/home/user/myapp',
+      worktrees,
+      [],
+      fastBeacon,
+    );
     expect(panes[0]!.agent).toBe('codex');
     expect(panes[1]!.agent).toBe('opencode');
     expect(panes[2]!.agent).toBe('gemini');
   });
 
-  it('defaults agent to claude when command is unknown or has flags', () => {
+  it('defaults agent to claude when command is unknown or has flags', async () => {
     const mock = createMockTmux();
     const worktrees = [
       { taskName: 'auth', worktreePath: '/tmp/wt-auth', agentCommand: 'claude --some-flag' },
       { taskName: 'api', worktreePath: '/tmp/wt-api', agentCommand: 'my-custom-agent' },
     ];
-    const panes = launchTmux(mock, 'paw-myapp', '/home/user/myapp', worktrees);
+    const panes = await launchTmux(
+      mock,
+      'paw-myapp',
+      '/home/user/myapp',
+      worktrees,
+      [],
+      fastBeacon,
+    );
     expect(panes[0]!.agent).toBe('claude');
     expect(panes[1]!.agent).toBe('claude');
   });
 
-  it('skips tasks that already have a live pane (by paneId)', () => {
+  it('skips tasks that already have a live pane (by paneId)', async () => {
     const mock = createMockTmux();
     mock.createSession('paw-myapp', '/tmp');
     // %10 is alive in tmux
@@ -515,7 +565,14 @@ describe('launchTmux', () => {
       { taskName: 'auth', worktreePath: '/tmp/wt-auth', agentCommand: 'claude' },
       { taskName: 'api', worktreePath: '/tmp/wt-api', agentCommand: 'claude' },
     ];
-    const panes = launchTmux(mock, 'paw-myapp', '/home/user/myapp', worktrees, existingPanes);
+    const panes = await launchTmux(
+      mock,
+      'paw-myapp',
+      '/home/user/myapp',
+      worktrees,
+      existingPanes,
+      fastBeacon,
+    );
 
     // Only api should be created; auth already has a live pane
     const createCalls = mock.calls.filter((c) => c.method === 'createPane');
@@ -524,7 +581,7 @@ describe('launchTmux', () => {
     expect(panes[0]!.taskName).toBe('api');
   });
 
-  it('relaunches task when its saved pane no longer exists in tmux', () => {
+  it('relaunches task when its saved pane no longer exists in tmux', async () => {
     const mock = createMockTmux();
     mock.createSession('paw-myapp', '/tmp');
     // %10 is NOT in the live pane list (killed)
@@ -545,7 +602,14 @@ describe('launchTmux', () => {
       },
     ];
     const worktrees = [{ taskName: 'auth', worktreePath: '/tmp/wt-auth', agentCommand: 'claude' }];
-    const panes = launchTmux(mock, 'paw-myapp', '/home/user/myapp', worktrees, existingPanes);
+    const panes = await launchTmux(
+      mock,
+      'paw-myapp',
+      '/home/user/myapp',
+      worktrees,
+      existingPanes,
+      fastBeacon,
+    );
 
     // auth pane is dead — should be recreated
     const createCalls = mock.calls.filter((c) => c.method === 'createPane');
@@ -554,11 +618,18 @@ describe('launchTmux', () => {
     expect(panes[0]!.taskName).toBe('auth');
   });
 
-  it('works without existing panes (backward compatible)', () => {
+  it('works without existing panes (backward compatible)', async () => {
     const mock = createMockTmux();
     const worktrees = [{ taskName: 'auth', worktreePath: '/tmp/wt-auth', agentCommand: 'claude' }];
     // No existingPanes argument — should behave as before
-    const panes = launchTmux(mock, 'paw-myapp', '/home/user/myapp', worktrees);
+    const panes = await launchTmux(
+      mock,
+      'paw-myapp',
+      '/home/user/myapp',
+      worktrees,
+      [],
+      fastBeacon,
+    );
     expect(panes).toHaveLength(1);
     expect(panes[0]!.taskName).toBe('auth');
   });
@@ -642,9 +713,9 @@ describe('TmuxService pinSidebarLayout', () => {
 });
 
 describe('createDetachedSession', () => {
-  it('creates a tmux session and sends the agent command', () => {
+  it('creates a tmux session and sends the agent command', async () => {
     const mock = createMockTmux();
-    createDetachedSession(mock, 'paw-myapp-auth', '/tmp/wt-auth', 'claude');
+    await createDetachedSession(mock, 'paw-myapp-auth', '/tmp/wt-auth', 'claude', fastBeacon);
 
     const createCall = mock.calls.find((c) => c.method === 'createSession');
     expect(createCall).toBeDefined();
@@ -655,9 +726,9 @@ describe('createDetachedSession', () => {
     expect(sendCall!.args[1]).toBe('claude');
   });
 
-  it('sends keys to the session name (first pane)', () => {
+  it('sends keys to the session name (first pane)', async () => {
     const mock = createMockTmux();
-    createDetachedSession(mock, 'paw-myapp-api', '/tmp/wt-api', 'codex --flag');
+    await createDetachedSession(mock, 'paw-myapp-api', '/tmp/wt-api', 'codex --flag', fastBeacon);
 
     const sendCall = mock.calls.find((c) => c.method === 'sendKeys');
     expect(sendCall!.args[0]).toBe('paw-myapp-api');
@@ -719,13 +790,13 @@ describe('listDetachedSessions', () => {
 });
 
 describe('launchDetached', () => {
-  it('creates one detached session per worktree', () => {
+  it('creates one detached session per worktree', async () => {
     const mock = createMockTmux();
     const worktrees = [
       { taskName: 'auth', worktreePath: '/tmp/wt-auth', agentCommand: 'claude' },
       { taskName: 'api', worktreePath: '/tmp/wt-api', agentCommand: 'codex' },
     ];
-    const agents = launchDetached(mock, 'paw-myapp', worktrees);
+    const agents = await launchDetached(mock, 'paw-myapp', worktrees, [], fastBeacon);
     expect(agents).toHaveLength(2);
 
     const createCalls = mock.calls.filter((c) => c.method === 'createSession');
@@ -734,19 +805,19 @@ describe('launchDetached', () => {
     expect(createCalls[1]!.args[0]).toBe('paw-myapp-api');
   });
 
-  it('sends agent command into each session', () => {
+  it('sends agent command into each session', async () => {
     const mock = createMockTmux();
     const worktrees = [
       { taskName: 'auth', worktreePath: '/tmp/wt-auth', agentCommand: 'claude --resume' },
     ];
-    launchDetached(mock, 'paw-myapp', worktrees);
+    await launchDetached(mock, 'paw-myapp', worktrees, [], fastBeacon);
 
     const sendCall = mock.calls.find((c) => c.method === 'sendKeys');
     expect(sendCall).toBeDefined();
     expect(sendCall!.args[1]).toBe('claude --resume');
   });
 
-  it('returns DetachedAgent objects with correct structure', () => {
+  it('returns DetachedAgent objects with correct structure', async () => {
     const mock = createMockTmux();
     const worktrees = [
       {
@@ -756,7 +827,7 @@ describe('launchDetached', () => {
         branchName: 'feat-auth',
       },
     ];
-    const agents = launchDetached(mock, 'paw-myapp', worktrees);
+    const agents = await launchDetached(mock, 'paw-myapp', worktrees, [], fastBeacon);
     expect(agents[0]).toMatchObject({
       id: 'paw-1',
       sessionName: 'paw-myapp-auth',
@@ -767,7 +838,7 @@ describe('launchDetached', () => {
     });
   });
 
-  it('skips tasks that already have a live session', () => {
+  it('skips tasks that already have a live session', async () => {
     const mock = createMockTmux();
     mock.createSession('paw-myapp-auth', '/tmp');
     mock.calls.length = 0;
@@ -786,13 +857,13 @@ describe('launchDetached', () => {
       { taskName: 'auth', worktreePath: '/tmp/wt-auth', agentCommand: 'claude' },
       { taskName: 'api', worktreePath: '/tmp/wt-api', agentCommand: 'claude' },
     ];
-    const agents = launchDetached(mock, 'paw-myapp', worktrees, existing);
+    const agents = await launchDetached(mock, 'paw-myapp', worktrees, existing, fastBeacon);
 
     expect(agents).toHaveLength(1);
     expect(agents[0]!.taskName).toBe('api');
   });
 
-  it('relaunches task when its session no longer exists', () => {
+  it('relaunches task when its session no longer exists', async () => {
     const mock = createMockTmux();
     // Don't create the session — it's dead
 
@@ -807,9 +878,236 @@ describe('launchDetached', () => {
       },
     ];
     const worktrees = [{ taskName: 'auth', worktreePath: '/tmp/wt-auth', agentCommand: 'claude' }];
-    const agents = launchDetached(mock, 'paw-myapp', worktrees, existing);
+    const agents = await launchDetached(mock, 'paw-myapp', worktrees, existing, fastBeacon);
 
     expect(agents).toHaveLength(1);
     expect(agents[0]!.taskName).toBe('auth');
+  });
+});
+
+describe('checkAgentLiveness', () => {
+  it('checks detached sessions via sessionExists', () => {
+    const mock = createMockTmux();
+    mock.createSession('paw-myapp-auth', '/tmp');
+    mock.calls.length = 0;
+
+    const config: PawPaneConfig = {
+      mode: 'detached',
+      sessionName: 'paw-myapp',
+      projectRoot: '/home/user/myapp',
+      orchestratorPaneId: '',
+      panes: [],
+      detached: [
+        {
+          id: 'paw-1',
+          sessionName: 'paw-myapp-auth',
+          taskName: 'auth',
+          worktreePath: '/tmp/wt-auth',
+          agent: 'claude',
+          branchName: '',
+        },
+        {
+          id: 'paw-2',
+          sessionName: 'paw-myapp-api',
+          taskName: 'api',
+          worktreePath: '/tmp/wt-api',
+          agent: 'claude',
+          branchName: '',
+        },
+      ],
+      lastUpdated: new Date().toISOString(),
+    };
+
+    const result = checkAgentLiveness(mock, config);
+    expect(result).toEqual([
+      { taskName: 'auth', alive: true },
+      { taskName: 'api', alive: false },
+    ]);
+  });
+
+  it('checks attached panes via paneExists', () => {
+    const mock = createMockTmux();
+    mock.calls.length = 0;
+
+    const config: PawPaneConfig = {
+      mode: 'attached',
+      sessionName: 'paw-myapp',
+      projectRoot: '/home/user/myapp',
+      orchestratorPaneId: '%0',
+      panes: [
+        {
+          id: 'paw-1',
+          paneId: '%1',
+          taskName: 'auth',
+          worktreePath: '/tmp/wt-auth',
+          agent: 'claude',
+          branchName: '',
+        },
+        {
+          id: 'paw-2',
+          paneId: '%2',
+          taskName: 'api',
+          worktreePath: '/tmp/wt-api',
+          agent: 'claude',
+          branchName: '',
+        },
+      ],
+      lastUpdated: new Date().toISOString(),
+    };
+
+    // mock paneExists returns true by default
+    const result = checkAgentLiveness(mock, config);
+    expect(result).toEqual([
+      { taskName: 'auth', alive: true },
+      { taskName: 'api', alive: true },
+    ]);
+  });
+
+  it('defaults to attached mode when mode field is missing', () => {
+    const mock = createMockTmux();
+
+    const config: PawPaneConfig = {
+      sessionName: 'paw-myapp',
+      projectRoot: '/home/user/myapp',
+      orchestratorPaneId: '%0',
+      panes: [
+        {
+          id: 'paw-1',
+          paneId: '%1',
+          taskName: 'auth',
+          worktreePath: '/tmp/wt-auth',
+          agent: 'claude',
+          branchName: '',
+        },
+      ],
+      lastUpdated: new Date().toISOString(),
+    };
+
+    const result = checkAgentLiveness(mock, config);
+    expect(result).toHaveLength(1);
+    expect(result[0]!.taskName).toBe('auth');
+  });
+
+  it('returns empty array when no agents are registered', () => {
+    const mock = createMockTmux();
+
+    const config: PawPaneConfig = {
+      mode: 'detached',
+      sessionName: 'paw-myapp',
+      projectRoot: '/home/user/myapp',
+      orchestratorPaneId: '',
+      panes: [],
+      detached: [],
+      lastUpdated: new Date().toISOString(),
+    };
+
+    const result = checkAgentLiveness(mock, config);
+    expect(result).toEqual([]);
+  });
+});
+
+describe('waitForTuiReady', () => {
+  it('returns true immediately when content is available', async () => {
+    const mock = createMockTmux();
+    mock.capturePaneContent = (session: string) => {
+      mock.calls.push({ method: 'capturePaneContent', args: [session] });
+      return 'Claude Code v1.0';
+    };
+
+    const ready = await waitForTuiReady(mock, 'paw-test', 5000, 10);
+    expect(ready).toBe(true);
+  });
+
+  it('polls until content appears', async () => {
+    const mock = createMockTmux();
+    let callCount = 0;
+    mock.capturePaneContent = (session: string) => {
+      mock.calls.push({ method: 'capturePaneContent', args: [session] });
+      callCount++;
+      return callCount >= 3 ? 'Claude Code v1.0' : null;
+    };
+    mock.createSession('paw-test', '/tmp');
+
+    const ready = await waitForTuiReady(mock, 'paw-test', 5000, 10);
+    expect(ready).toBe(true);
+    expect(callCount).toBe(3);
+  });
+
+  it('returns false on timeout', async () => {
+    const mock = createMockTmux();
+    mock.capturePaneContent = (session: string) => {
+      mock.calls.push({ method: 'capturePaneContent', args: [session] });
+      return null;
+    };
+    mock.createSession('paw-test', '/tmp');
+
+    const ready = await waitForTuiReady(mock, 'paw-test', 50, 10);
+    expect(ready).toBe(false);
+  });
+
+  it('returns false when session dies during polling', async () => {
+    const mock = createMockTmux();
+    mock.capturePaneContent = (session: string) => {
+      mock.calls.push({ method: 'capturePaneContent', args: [session] });
+      return null;
+    };
+    // Session doesn't exist — sessionExists returns false
+
+    const ready = await waitForTuiReady(mock, 'paw-nonexistent', 5000, 10);
+    expect(ready).toBe(false);
+  });
+});
+
+describe('sendBeacon', () => {
+  const fastOpts: BeaconOptions = {
+    tuiTimeoutMs: 100,
+    tuiPollIntervalMs: 5,
+    postReadyDelayMs: 5,
+    verifyAttempts: 5,
+    verifyDelayMs: 5,
+  };
+
+  it('sends beacon message after TUI is ready', async () => {
+    const mock = createMockTmux();
+    mock.createSession('paw-test', '/tmp');
+    mock.capturePaneContent = (session: string) => {
+      mock.calls.push({ method: 'capturePaneContent', args: [session] });
+      return 'Claude Code output — agent is working';
+    };
+
+    const result = await sendBeacon(mock, 'paw-test', fastOpts);
+    expect(result).toBe(true);
+
+    const sendCalls = mock.calls.filter((c) => c.method === 'sendKeys');
+    expect(sendCalls.length).toBeGreaterThanOrEqual(1);
+    expect(sendCalls[0]!.args[1]).toBe('Begin working on your task.');
+  });
+
+  it('returns false when TUI never becomes ready', async () => {
+    const mock = createMockTmux();
+    mock.capturePaneContent = () => null;
+
+    const result = await sendBeacon(mock, 'paw-nonexistent', fastOpts);
+    expect(result).toBe(false);
+  });
+
+  it('retries beacon when welcome screen is still showing', async () => {
+    const mock = createMockTmux();
+    mock.createSession('paw-test', '/tmp');
+
+    let captureCount = 0;
+    mock.capturePaneContent = (session: string) => {
+      mock.calls.push({ method: 'capturePaneContent', args: [session] });
+      captureCount++;
+      if (captureCount === 1) return 'Welcome to Claude Code';
+      if (captureCount <= 3) return 'Try "help me refactor..."';
+      return 'Agent is working on task';
+    };
+
+    const result = await sendBeacon(mock, 'paw-test', fastOpts);
+    expect(result).toBe(true);
+
+    const sendCalls = mock.calls.filter((c) => c.method === 'sendKeys');
+    expect(sendCalls.length).toBeGreaterThanOrEqual(2);
   });
 });

@@ -6,16 +6,25 @@ import { loadRepoConfig } from '../lib/config.js';
 import { planWorktrees } from '../lib/session.js';
 import { readSyncState } from '../lib/sync.js';
 import { readJournal } from '../lib/journal.js';
-import {
-  success,
-  error,
-  warn,
-  pending,
-  skip,
-  unknown,
-  handleError,
-  formatFocusAreas,
-} from '../lib/output.js';
+import { readPaneConfig } from '../lib/pane-state.js';
+import { checkAgentLiveness, createTmuxService } from '../lib/tmux.js';
+import type { AgentLivenessResult } from '../lib/tmux.js';
+import { error, skip, unknown, handleError, formatFocusAreas } from '../lib/output.js';
+
+/** Build a taskName → alive map from liveness results. */
+function buildLivenessMap(results: AgentLivenessResult[]): Map<string, boolean> {
+  const map = new Map<string, boolean>();
+  for (const r of results) {
+    map.set(r.taskName, r.alive);
+  }
+  return map;
+}
+
+/** Format a liveness marker: ● alive, ○ dead. */
+function livenessMarker(alive: boolean | undefined): string {
+  if (alive === undefined) return ' ';
+  return alive ? pc.green('●') : pc.red('○');
+}
 
 export function statusCommand(): Command {
   return new Command('status')
@@ -27,11 +36,26 @@ export function statusCommand(): Command {
         const worktrees = planWorktrees(config, repoRoot);
         const syncState = readSyncState(repoRoot);
 
+        // Check tmux liveness when panes.json exists
+        let livenessMap = new Map<string, boolean>();
+        const paneConfig = readPaneConfig(repoRoot);
+        if (paneConfig) {
+          try {
+            const tmux = createTmuxService();
+            const results = checkAgentLiveness(tmux, paneConfig);
+            livenessMap = buildLivenessMap(results);
+          } catch {
+            // tmux not available — skip liveness check
+          }
+        }
+
         console.log(pc.bold('paw status\n'));
 
         for (const wt of worktrees) {
           const taskSync = syncState?.tasks[wt.taskName];
           const exists = existsSync(wt.worktreePath);
+          const alive = livenessMap.get(wt.taskName);
+          const marker = livenessMarker(alive);
 
           if (!exists) {
             error(wt.taskName, 'worktree not found');
@@ -52,11 +76,10 @@ export function statusCommand(): Command {
             const focusSuffix = focus ? `  ${focus}` : '';
 
             if (commits === 0) {
-              pending(wt.taskName, `no changes yet${syncLabel}${focusSuffix}`);
+              console.log(`  ${marker} ${wt.taskName} -- no changes yet${syncLabel}${focusSuffix}`);
             } else {
-              success(
-                wt.taskName,
-                `${commits} commit(s), ${files} file(s) changed${syncLabel}${focusSuffix}`,
+              console.log(
+                `  ${marker} ${wt.taskName} -- ${commits} commit(s), ${files} file(s) changed${syncLabel}${focusSuffix}`,
               );
             }
           } catch {
@@ -76,31 +99,6 @@ export function statusCommand(): Command {
           console.log(pc.bold('\nLatest broadcasts:'));
           for (const [from, msg] of latestBroadcasts) {
             console.log(`  ${pc.dim(`[${from}]`)} ${msg}`);
-          }
-        }
-
-        if (syncState?.merges) {
-          console.log(pc.bold('\nMerge state:'));
-          for (const wt of worktrees) {
-            const entry = syncState.merges[wt.taskName];
-            if (!entry) continue;
-            switch (entry.status) {
-              case 'merged':
-                success(wt.taskName, `merged${entry.merged ? ` at ${entry.merged}` : ''}`);
-                break;
-              case 'skipped':
-                skip(wt.taskName, 'skipped (no commits)');
-                break;
-              case 'conflict':
-                warn(wt.taskName, 'conflict (unresolved)');
-                break;
-              case 'hook_failed':
-                warn(wt.taskName, 'post-merge hook failed');
-                break;
-              case 'pending':
-                pending(wt.taskName, 'pending');
-                break;
-            }
           }
         }
       } catch (err) {

@@ -4,10 +4,16 @@ import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import pc from 'picocolors';
 import { getRepoRoot } from '../lib/git.js';
-import { detectTaskName } from '../lib/session.js';
+import { getCommitCount, getChangedFileCount } from '../lib/git.js';
+import { detectTaskName, planWorktrees } from '../lib/session.js';
+import { loadConfig, resolveConfigPath } from '../lib/config.js';
 import type { SyncState } from '../lib/sync.js';
 import { readSyncState, claimTask, writeSyncState, readSyncFile } from '../lib/sync.js';
 import { readJournal, readJournalForTask } from '../lib/journal.js';
+import { readPaneConfig } from '../lib/pane-state.js';
+import { checkAgentLiveness, createTmuxService } from '../lib/tmux.js';
+import type { PawPaneConfig } from '../lib/tmux.js';
+import type { PawConfig } from '../lib/config.js';
 import { computeThreads } from './threads.js';
 import { readDoc, stripFrontmatter } from '../lib/docs.js';
 import { ensureDocsFresh } from '../lib/doc-sync.js';
@@ -166,11 +172,73 @@ function printOrchestratorBrief(repoRoot: string): void {
     console.log('No active session');
   }
 
+  // Embed status snapshot when there's an active session with agents
+  const paneConfig = readPaneConfig(repoRoot);
+  if (paneConfig && state) {
+    printStatusSnapshot(repoRoot, state, paneConfig);
+  }
+
   // Orchestrator brief content
   const briefContent = loadOrchestratorBriefContent();
   if (briefContent) {
     console.log('');
     console.log(briefContent);
+  }
+}
+
+/** Print a compact status snapshot for the orchestrator brief (PreCompact). */
+function printStatusSnapshot(repoRoot: string, state: SyncState, paneConfig: PawPaneConfig): void {
+  // Check tmux liveness
+  const livenessMap = new Map<string, boolean>();
+  try {
+    const tmux = createTmuxService();
+    const results = checkAgentLiveness(tmux, paneConfig);
+    for (const r of results) {
+      livenessMap.set(r.taskName, r.alive);
+    }
+  } catch {
+    // tmux not available
+  }
+
+  let configObj: PawConfig | undefined;
+  try {
+    const configPath = resolveConfigPath(repoRoot);
+    configObj = loadConfig(configPath);
+  } catch {
+    // config not loadable
+  }
+
+  console.log('\n=== Agent Status ===');
+  for (const [name, task] of Object.entries(state.tasks)) {
+    const alive = livenessMap.get(name);
+    const marker = alive === true ? pc.green('●') : alive === false ? pc.red('○') : ' ';
+    const focus = formatFocusAreas(task.focus);
+    const focusSuffix = focus ? `  ${focus}` : '';
+
+    if (task.status === 'done') {
+      console.log(`  ${marker} ${name} -- done`);
+      continue;
+    }
+
+    // Try to get commit count
+    let commitInfo = '';
+    if (configObj) {
+      try {
+        const worktrees = planWorktrees(configObj, repoRoot);
+        const wt = worktrees.find((w) => w.taskName === name);
+        if (wt) {
+          const commits = getCommitCount(wt.branch, configObj.target, repoRoot);
+          const files =
+            commits > 0 ? getChangedFileCount(wt.branch, configObj.target, repoRoot) : 0;
+          commitInfo = commits > 0 ? `${commits} commit(s), ${files} file(s)` : 'no changes yet';
+        }
+      } catch {
+        commitInfo = 'unable to read';
+      }
+    }
+
+    const statusLabel = task.status === 'in_progress' ? ' [claimed]' : '';
+    console.log(`  ${marker} ${name} -- ${commitInfo}${statusLabel}${focusSuffix}`);
   }
 }
 
