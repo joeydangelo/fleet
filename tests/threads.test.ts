@@ -17,11 +17,12 @@ describe('computeThreads', () => {
     const entries = [
       entry({ type: 'ask', from: 'orchestrator', to: 'api', msg: 'Ready?', thread: 'abc123' }),
     ];
-    const { open, resolved } = computeThreads(entries);
+    const { open, resolved, broadcasts } = computeThreads(entries);
 
     expect(open).toHaveLength(1);
     expect(open[0]!.ask.msg).toBe('Ready?');
     expect(resolved).toHaveLength(0);
+    expect(broadcasts).toHaveLength(0);
   });
 
   it('ask with matching reply thread is resolved', () => {
@@ -51,22 +52,40 @@ describe('computeThreads', () => {
     expect(resolved[0]!.ask.to).toBe('api');
   });
 
-  it('entries without thread field are not shown', () => {
+  it('broadcasts are collected separately from threads', () => {
+    const entries = [
+      entry({ type: 'broadcast', from: 'auth', msg: 'Changed AuthConfig interface' }),
+      entry({ type: 'broadcast', from: 'api', msg: 'Added 3 new endpoints' }),
+      entry({ type: 'ask', from: 'orchestrator', to: 'api', msg: 'Ready?', thread: 'abc123' }),
+    ];
+    const { open, resolved, broadcasts } = computeThreads(entries);
+
+    expect(broadcasts).toHaveLength(2);
+    expect(broadcasts[0]!.from).toBe('auth');
+    expect(broadcasts[1]!.from).toBe('api');
+    expect(open).toHaveLength(1);
+    expect(resolved).toHaveLength(0);
+  });
+
+  it('entries without thread field are not shown as threads', () => {
     const entries = [
       entry({ type: 'ask', from: 'orchestrator', to: 'api', msg: 'No thread field' }),
       entry({ type: 'broadcast', from: 'api', msg: 'Some broadcast' }),
       entry({ type: 'reply', from: 'api', to: 'orchestrator', msg: 'No thread reply' }),
     ];
-    const { open, resolved } = computeThreads(entries);
+    const { open, resolved, broadcasts } = computeThreads(entries);
 
     expect(open).toHaveLength(0);
     expect(resolved).toHaveLength(0);
+    expect(broadcasts).toHaveLength(1);
+    expect(broadcasts[0]!.msg).toBe('Some broadcast');
   });
 
-  it('no threads returns empty', () => {
-    const { open, resolved } = computeThreads([]);
+  it('no entries returns empty', () => {
+    const { open, resolved, broadcasts } = computeThreads([]);
 
     expect(open).toHaveLength(0);
     expect(resolved).toHaveLength(0);
+    expect(broadcasts).toHaveLength(0);
   });
 });
