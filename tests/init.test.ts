@@ -121,9 +121,11 @@ describe('installHooks', () => {
     );
 
     const postToolUse = settings.hooks.PostToolUse;
-    expect(postToolUse).toHaveLength(1);
+    expect(postToolUse).toHaveLength(2);
     expect(postToolUse[0]).toHaveProperty('matcher', 'Bash');
     expect(postToolUse[0].hooks[0].command).toContain('paw-done-reminder.sh');
+    expect(postToolUse[1]).toHaveProperty('matcher', '');
+    expect(postToolUse[1].hooks[0].command).toContain('paw-heartbeat.sh');
   });
 
   it('writes the paw done reminder script (paw-xlg3)', () => {
@@ -146,7 +148,7 @@ describe('installHooks', () => {
     );
     expect(settings.hooks.SessionStart).toHaveLength(2);
     expect(settings.hooks.PreCompact).toHaveLength(1);
-    expect(settings.hooks.PostToolUse).toHaveLength(1);
+    expect(settings.hooks.PostToolUse).toHaveLength(2);
   });
 
   it('replaces old flat-format paw hooks with correct schema', () => {

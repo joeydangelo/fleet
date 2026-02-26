@@ -1,12 +1,13 @@
 import { AGENT_NAMES } from './tmux.js';
 import type { AgentName } from './tmux.js';
 import type { TaskState, MergeEntry } from './sync.js';
+import type { HealthState } from './health.js';
 
 /** Fixed column width of the TUI left sidebar. */
 export const SIDEBAR_WIDTH = 40;
 
 /** Task status as shown in the TUI left panel. */
-export type TuiStatus = 'pending' | 'in_progress' | 'done' | 'conflict';
+export type TuiStatus = 'pending' | 'in_progress' | 'done' | 'conflict' | 'stalled' | 'zombie';
 
 const AGENT_BADGES: Record<AgentName, string> = {
   claude: '[cc]',
@@ -37,8 +38,11 @@ export function commandBadge(command: string): string {
 export function taskDisplayStatus(
   task: TaskState | undefined,
   merge: MergeEntry | undefined,
+  health?: HealthState,
 ): TuiStatus {
   if (merge?.status === 'conflict') return 'conflict';
+  if (health === 'zombie') return 'zombie';
+  if (health === 'stalled') return 'stalled';
   return task?.status ?? 'pending';
 }
 
@@ -50,6 +54,10 @@ export function statusIcon(status: TuiStatus): { icon: string; color: string } {
       return { icon: '✓', color: 'green' };
     case 'conflict':
       return { icon: '✗', color: 'red' };
+    case 'stalled':
+      return { icon: '⚠', color: 'yellow' };
+    case 'zombie':
+      return { icon: '☠', color: 'red' };
     case 'pending':
       return { icon: '◌', color: 'gray' };
     default: {

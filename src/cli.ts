@@ -144,6 +144,18 @@ Getting Started:
     const m = await import('./commands/skill.js');
     return m.skillCommand();
   });
+  lazy(program, 'heartbeat', 'Record agent activity (called by hooks)', async () => {
+    const m = await import('./commands/heartbeat.js');
+    return m.heartbeatCommand();
+  });
+  lazy(program, 'inbox', 'Check for orchestrator messages (called by hooks)', async () => {
+    const m = await import('./commands/inbox.js');
+    return m.inboxCommand();
+  });
+  lazy(program, 'nudge', 'Send a message to an agent via file-based delivery', async () => {
+    const m = await import('./commands/nudge.js');
+    return m.nudgeCommand();
+  });
 
   // Default action: `paw` (bare command) opens the TUI
   program.action(async () => {

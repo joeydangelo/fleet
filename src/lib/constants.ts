@@ -3,12 +3,6 @@ export const SYNC_BRANCH = 'paw-sync';
 /** Unit: seconds. */
 export const DEFAULT_POLL_INTERVAL = '5';
 
-/** Unit: seconds. Default stall detection threshold for watch. */
-export const DEFAULT_STALL_THRESHOLD = '300';
-
-/** Max relaunch attempts per task before giving up. */
-export const MAX_RELAUNCH_ATTEMPTS = 3;
-
 /** The first message sent to an agent after Claude Code boots. */
 export const BEACON_MESSAGE = 'Begin working on your task.';
 
@@ -26,3 +20,23 @@ export const BEACON_VERIFY_DELAY_MS = 2_000;
 
 export const ORCHESTRATOR_ROLE = 'paw-orchestrator';
 export const TUI_ROLE = 'paw-tui';
+
+// --- Health monitoring thresholds ---
+
+/** Seconds with no heartbeat before an agent is considered stalled. */
+export const STALL_THRESHOLD_S = 180;
+
+/** Seconds with no heartbeat before an agent is considered a zombie. */
+export const ZOMBIE_THRESHOLD_S = 480;
+
+/** Seconds to wait after launch before expecting a heartbeat. */
+export const BOOT_GRACE_S = 60;
+
+/** Seconds between nudge messages to a stalled agent. */
+export const NUDGE_INTERVAL_S = 90;
+
+/** Maximum nudge attempts before declaring an agent a zombie. */
+export const MAX_NUDGES = 3;
+
+/** Minimum seconds between inbox checks (debounce). */
+export const INBOX_DEBOUNCE_S = 30;

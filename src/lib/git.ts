@@ -1,6 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import type { ExecFileSyncOptions } from 'node:child_process';
 import { rmSync } from 'node:fs';
+import { resolve } from 'node:path';
 
 /** Runs a git command synchronously. Strips trailing whitespace and throws on non-zero exit. */
 export function git(args: string[], options?: ExecFileSyncOptions): string {
@@ -19,6 +20,17 @@ export function git(args: string[], options?: ExecFileSyncOptions): string {
 
 export function getRepoRoot(cwd?: string): string {
   return git(['rev-parse', '--show-toplevel'], { cwd });
+}
+
+/**
+ * Resolve the main repo root from any worktree. Uses git-common-dir to find
+ * the shared .git directory, then goes up one level. Returns the same path
+ * as getRepoRoot() when called from the main worktree.
+ */
+export function resolveMainRoot(cwd?: string): string {
+  const dir = cwd ?? process.cwd();
+  const gitCommonDir = git(['rev-parse', '--git-common-dir'], { cwd: dir, stdio: 'pipe' });
+  return resolve(dir, gitCommonDir, '..');
 }
 
 export function getCurrentBranch(cwd?: string): string {

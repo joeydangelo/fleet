@@ -157,6 +157,43 @@ fi
 exit 0
 `;
 
+/** PostToolUse hook that records heartbeat and checks inbox on every tool use. */
+export const PAW_HEARTBEAT_SCRIPT = `#!/bin/bash
+# Record agent heartbeat and check inbox on every tool use
+# Installed by: paw init
+# Fires on PostToolUse (all tools)
+
+# Only in paw worktrees with active tasks
+if ! ls .paw/tasks/*.md 1>/dev/null 2>&1; then
+  exit 0
+fi
+
+# Get npm global bin in PATH
+NPM_PREFIX=$(npm config get prefix 2>/dev/null)
+if [ -n "$NPM_PREFIX" ] && [ -d "$NPM_PREFIX/bin" ]; then
+  export PATH="$NPM_PREFIX/bin:$PATH"
+fi
+export PATH="$HOME/.local/bin:$HOME/bin:/usr/local/bin:$PATH"
+
+# Record heartbeat (fast, fire-and-forget)
+paw heartbeat &
+
+# Debounced inbox check (every 30s)
+LAST_CHECK_FILE=".paw/.last-inbox-check"
+NOW=$(date +%s)
+LAST=0
+if [ -f "$LAST_CHECK_FILE" ]; then
+  LAST=$(cat "$LAST_CHECK_FILE" 2>/dev/null || echo 0)
+fi
+ELAPSED=$((NOW - LAST))
+if [ "$ELAPSED" -ge 30 ]; then
+  echo "$NOW" > "$LAST_CHECK_FILE"
+  paw inbox
+fi
+
+exit 0
+`;
+
 /** SessionStart hook that ensures gh CLI is installed and checks authentication. */
 export const CONFIRM_GH_CLI_SCRIPT = `#!/bin/bash
 # Automated GitHub CLI (gh) setup for Claude Code sessions
@@ -250,6 +287,7 @@ const SCRIPT_RELATIVE = '.claude/scripts/paw-session.sh';
 const GH_SCRIPT_RELATIVE = '.claude/scripts/confirm-gh-cli.sh';
 const GUARD_RELATIVE = '.claude/hooks/paw-guard.sh';
 const REMINDER_RELATIVE = '.claude/hooks/paw-done-reminder.sh';
+const HEARTBEAT_RELATIVE = '.claude/hooks/paw-heartbeat.sh';
 
 interface HookHandler {
   type: 'command';
@@ -273,6 +311,7 @@ export function installHooks(repoRoot: string): void {
   mkdirSync(hooksDir, { recursive: true });
   writeFileSync(resolve(repoRoot, GUARD_RELATIVE), PAW_GUARD_SCRIPT, 'utf-8');
   writeFileSync(resolve(repoRoot, REMINDER_RELATIVE), PAW_DONE_REMINDER_SCRIPT, 'utf-8');
+  writeFileSync(resolve(repoRoot, HEARTBEAT_RELATIVE), PAW_HEARTBEAT_SCRIPT, 'utf-8');
 
   const pawHooks: Record<string, MatcherGroup[]> = {
     SessionStart: [
@@ -328,6 +367,15 @@ export function installHooks(repoRoot: string): void {
           },
         ],
       },
+      {
+        matcher: '',
+        hooks: [
+          {
+            type: 'command',
+            command: `bash ${HEARTBEAT_RELATIVE}`,
+          },
+        ],
+      },
     ],
   };
 
@@ -359,6 +407,7 @@ export function installHooks(repoRoot: string): void {
   success('script', GH_SCRIPT_RELATIVE);
   success('script', GUARD_RELATIVE);
   success('script', REMINDER_RELATIVE);
+  success('script', HEARTBEAT_RELATIVE);
 }
 
 /** Detect any paw-related hook entry (old flat format or correct matcher group). */

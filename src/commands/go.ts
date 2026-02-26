@@ -163,9 +163,7 @@ export async function runGo(opts: GoOpts): Promise<void> {
       repoRoot,
       configPath,
       interval: pollInterval,
-      stallThreshold: 300,
       noExit: false,
-      crashRecovery: config.agent ? { agentCommand: config.agent } : undefined,
       header: pc.dim(
         `Watching ${Object.keys(config.tasks).length} task(s), polling every ${pollInterval}s...`,
       ),

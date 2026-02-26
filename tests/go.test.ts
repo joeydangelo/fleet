@@ -60,6 +60,28 @@ vi.mock('../src/lib/pane-state.js', () => ({
   savePanes: vi.fn(),
 }));
 
+vi.mock('../src/lib/health.js', () => ({
+  evaluateAllAgents: vi.fn(({ taskNames }: { taskNames: string[] }) => ({
+    timestamp: new Date().toISOString(),
+    agents: Object.fromEntries(
+      taskNames.map((t: string) => [
+        t,
+        {
+          taskName: t,
+          state: 'booting',
+          lastActivity: null,
+          stalledSince: null,
+          nudgeCount: 0,
+          lastNudge: null,
+        },
+      ]),
+    ),
+  })),
+  shouldNudge: vi.fn(() => false),
+  writeNudge: vi.fn(),
+  writeHealthSnapshot: vi.fn(),
+}));
+
 vi.mock('../src/lib/tmux.js', async () => {
   const actual = await vi.importActual('../src/lib/tmux.js');
   return {
@@ -169,7 +191,7 @@ describe('runWatchLoop', () => {
       repoRoot: '/fake/repo',
       configPath: '/fake/repo/.paw/paw.yaml',
       interval: 1,
-      stallThreshold: 0,
+
       noExit: false,
     });
 
@@ -207,7 +229,7 @@ describe('runWatchLoop', () => {
       repoRoot: '/fake/repo',
       configPath: '/fake/repo/.paw/paw.yaml',
       interval: 0.01, // very short for testing
-      stallThreshold: 0,
+
       noExit: false,
     });
 
