@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { resolveHealthState, shouldNudge } from '../src/lib/health.js';
+import { resolveHealthState, shouldNudge, shouldTriage } from '../src/lib/health.js';
 import type { AgentHealth } from '../src/lib/health.js';
 
 const STALL = 180; // 3 minutes
@@ -123,6 +123,8 @@ describe('shouldNudge', () => {
       stalledSince: '2026-01-01T00:03:00.000Z',
       nudgeCount: 0,
       lastNudge: null,
+      triaged: false,
+      triageVerdict: null,
       ...overrides,
     };
   }
@@ -139,7 +141,7 @@ describe('shouldNudge', () => {
 
   it('returns false when max nudges reached', () => {
     expect(
-      shouldNudge(makeHealth({ nudgeCount: 3 }), new Date('2026-01-01T00:04:00.000Z'), 90, 3),
+      shouldNudge(makeHealth({ nudgeCount: 1 }), new Date('2026-01-01T00:04:00.000Z'), 90, 1),
     ).toBe(false);
   });
 
@@ -165,7 +167,48 @@ describe('shouldNudge', () => {
         }),
         new Date('2026-01-01T00:05:31.000Z'), // 91s later
         90,
+        3, // allow up to 3 nudges for this timing test
       ),
     ).toBe(true);
+  });
+});
+
+describe('shouldTriage', () => {
+  function makeHealth(overrides: Partial<AgentHealth> = {}): AgentHealth {
+    return {
+      taskName: 'test',
+      state: 'stalled',
+      lastActivity: '2026-01-01T00:00:00.000Z',
+      stalledSince: '2026-01-01T00:03:00.000Z',
+      nudgeCount: 1,
+      lastNudge: '2026-01-01T00:04:30.000Z',
+      triaged: false,
+      triageVerdict: null,
+      ...overrides,
+    };
+  }
+
+  it('returns true when stalled, nudges exhausted, and not yet triaged', () => {
+    expect(shouldTriage(makeHealth())).toBe(true);
+  });
+
+  it('returns false when not stalled', () => {
+    expect(shouldTriage(makeHealth({ state: 'working' }))).toBe(false);
+  });
+
+  it('returns false when nudges not yet exhausted', () => {
+    expect(shouldTriage(makeHealth({ nudgeCount: 0 }))).toBe(false);
+  });
+
+  it('returns false when already triaged', () => {
+    expect(shouldTriage(makeHealth({ triaged: true }))).toBe(false);
+  });
+
+  it('returns false for zombie state', () => {
+    expect(shouldTriage(makeHealth({ state: 'zombie', nudgeCount: 1 }))).toBe(false);
+  });
+
+  it('returns false for completed state', () => {
+    expect(shouldTriage(makeHealth({ state: 'completed', nudgeCount: 1 }))).toBe(false);
   });
 });

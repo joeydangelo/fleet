@@ -73,13 +73,18 @@ vi.mock('../src/lib/health.js', () => ({
           stalledSince: null,
           nudgeCount: 0,
           lastNudge: null,
+          triaged: false,
+          triageVerdict: null,
         },
       ]),
     ),
   })),
   shouldNudge: vi.fn(() => false),
+  shouldTriage: vi.fn(() => false),
   writeNudge: vi.fn(),
   writeHealthSnapshot: vi.fn(),
+  triageAgent: vi.fn(() => ({ verdict: 'extend', captured: '' })),
+  saveTriageOutput: vi.fn(),
 }));
 
 vi.mock('../src/lib/tmux.js', async () => {

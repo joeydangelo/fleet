@@ -112,10 +112,7 @@ Getting Started:
     const m = await import('./commands/reply.js');
     return m.replyCommand();
   });
-  lazy(program, 'threads', 'Show open and resolved ask/reply threads', async () => {
-    const m = await import('./commands/threads.js');
-    return m.threadsCommand();
-  });
+  // 'threads' removed — consolidated into 'inbox --all'
   lazy(program, 'shortcut', 'Display a shortcut workflow', async () => {
     const m = await import('./commands/shortcut.js');
     return m.shortcutCommand();
@@ -148,7 +145,7 @@ Getting Started:
     const m = await import('./commands/heartbeat.js');
     return m.heartbeatCommand();
   });
-  lazy(program, 'inbox', 'Check for orchestrator messages (called by hooks)', async () => {
+  lazy(program, 'inbox', 'Check for messages, broadcasts, and open threads', async () => {
     const m = await import('./commands/inbox.js');
     return m.inboxCommand();
   });

@@ -40,8 +40,8 @@ paw auto-detects the terminal environment. Inside tmux, you get the full TUI
 with panes. Outside tmux (VS Code, Warp, any terminal), paw runs agents in
 background tmux sessions — no configuration needed.
 
-- `paw go` auto-detects via `$TMUX`
-- `paw go --detached` forces background mode
+- `paw go` and `paw launch` auto-detect via `$TMUX`
+- `paw go --detached` / `paw launch --detached` forces background mode
 - `paw watch` and `paw status` monitor from any terminal
 - `paw down` cleans up both attached panes and detached sessions
 
@@ -114,24 +114,49 @@ progress, merge results, handle conflicts, and clean up.
    target branch. Check `git remote -v` and `git branch`, then ask the
    user — PR, local merge, or iterate.
 
+For step-by-step control instead of `paw go`, load
+`paw shortcut orchestrate-agents`.
+
 ### Orchestrator action commands
+
+**Primary — covers 90% of use:**
 
 | Command | Purpose |
 |---|---|
-| `paw go` | Full lifecycle: up → spawn → watch → merge → down |
+| `paw go` | Full lifecycle: up → launch → watch → merge → down |
 | `paw go --detached` | Force background tmux sessions (auto-detected outside tmux) |
+| `paw go --task <name>` | Spawn and watch a single task only |
+| `paw go --no-merge` | Stop after all agents done (inspect before merging) |
+| `paw go --no-teardown` | Merge but keep worktrees (inspect after merging) |
+| `paw go --dry-run` | Preview what would happen without executing |
 | `paw go --poll-interval 10` | Adjust watch polling frequency (default 5s) |
-| `paw` | Open TUI — attach to tmux session with agent panes |
 | `paw status` | Check progress across all tasks |
+| `paw down` | Archive session, remove worktrees, reset config |
+| `paw down --dry-run` | Preview what would be removed |
+
+**Manual recovery — step-by-step control:**
+
+| Command | Purpose |
+|---|---|
+| `paw up` | Create worktrees and branches for all tasks |
+| `paw up --dry-run` | Preview what would be created |
+| `paw launch` | Spawn agents (auto-detects attached vs detached mode) |
+| `paw launch --task <name>` | Spawn agent in a specific worktree |
+| `paw launch --detached` | Force detached mode (background tmux sessions) |
+| `paw launch --dry-run` | Preview spawn commands without executing |
 | `paw watch` | Continuous terminal monitor (auto-exits when done) |
 | `paw watch --no-exit` | Keep running after all tasks are done |
 | `paw merge` | Merge completed task branches (respects `depends_on` order) |
 | `paw merge --continue` | Resume after conflict resolution |
 | `paw merge --pick <task>` | Merge a specific task only |
+| `paw` | Open TUI — attach to tmux session with agent panes |
+
+**Coordination:**
+
+| Command | Purpose |
+|---|---|
 | `paw ask <task> "..."` | Send a directed message to an agent |
 | `paw threads` | See open Q&A threads |
-| `paw down` | Archive session, remove worktrees, reset config |
-| `paw down --dry-run` | Preview what would be removed |
 
 ### Orchestrator informational commands
 

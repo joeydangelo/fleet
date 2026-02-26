@@ -48,7 +48,7 @@ const COLLABORATION_RULES = `## Collaboration Rules
 
 - Run \`paw broadcast "..."\` when you make significant changes, especially
   interface changes that affect other agents.
-- Run \`paw threads\` to see open Q&A threads and answer directed questions.
+- Run \`paw inbox --all\` to see open Q&A threads and answer directed questions.
 - Stay within your focus areas. If you need to modify files outside your
   focus, broadcast first.
 - Do NOT run \`git push\`. The orchestrator pushes the merged target branch

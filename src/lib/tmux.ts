@@ -487,6 +487,34 @@ export function isInsideTmux(): boolean {
   return !!process.env['TMUX'];
 }
 
+/**
+ * Send a nudge message via tmux send-keys to wake up an idle agent.
+ * Flattens newlines to spaces, sends the message, waits 500ms, then sends
+ * an empty Enter (first Enter may be consumed by TUI re-render).
+ * Retries up to 3 times on failure. Returns true if successful.
+ */
+export async function sendNudgeKeys(
+  tmux: TmuxServiceApi,
+  target: string,
+  message: string,
+): Promise<boolean> {
+  const flattened = message.replace(/\n/g, ' ');
+  const maxRetries = 3;
+
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      tmux.sendKeys(target, flattened);
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      tmux.sendKeys(target, '');
+      return true;
+    } catch {
+      if (attempt === maxRetries - 1) return false;
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
+  }
+  return false;
+}
+
 /** Parse the agent name from a command string (first word). Defaults to 'claude'. */
 function parseAgentName(command: string): AgentName {
   const base = command.trim().split(/\s+/)[0] ?? '';

@@ -38,6 +38,15 @@
             "command": "bash .claude/scripts/paw-session.sh"
           }
         ]
+      },
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/paw-inbox.sh"
+          }
+        ]
       }
     ],
     "PreCompact": [
@@ -78,6 +87,15 @@
             "command": "bash .claude/hooks/paw-done-reminder.sh"
           }
         ]
+      },
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/paw-heartbeat.sh"
+          }
+        ]
       }
     ],
     "PreToolUse": [
@@ -87,6 +105,17 @@
           {
             "type": "command",
             "command": "bash .claude/hooks/paw-guard.sh"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/paw-inbox.sh"
           }
         ]
       }

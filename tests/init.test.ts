@@ -30,9 +30,9 @@ describe('installHooks', () => {
     const settingsPath = resolve(repoRoot, '.claude', 'settings.json');
     const settings = JSON.parse(readFileSync(settingsPath, 'utf-8'));
 
-    // SessionStart should have matcher group format: gh CLI + paw session
+    // SessionStart should have matcher group format: gh CLI + paw session + inbox
     const sessionStart = settings.hooks.SessionStart;
-    expect(sessionStart).toHaveLength(2);
+    expect(sessionStart).toHaveLength(3);
     expect(sessionStart[0]).toHaveProperty('matcher', '');
     expect(sessionStart[0].hooks[0]).toEqual({
       type: 'command',
@@ -43,6 +43,20 @@ describe('installHooks', () => {
     expect(sessionStart[1].hooks[0]).toEqual({
       type: 'command',
       command: 'bash .claude/scripts/paw-session.sh',
+    });
+    expect(sessionStart[2]).toHaveProperty('matcher', '');
+    expect(sessionStart[2].hooks[0]).toEqual({
+      type: 'command',
+      command: 'bash .claude/hooks/paw-inbox.sh',
+    });
+
+    // UserPromptSubmit should have inbox check
+    const userPrompt = settings.hooks.UserPromptSubmit;
+    expect(userPrompt).toHaveLength(1);
+    expect(userPrompt[0]).toHaveProperty('matcher', '');
+    expect(userPrompt[0].hooks[0]).toEqual({
+      type: 'command',
+      command: 'bash .claude/hooks/paw-inbox.sh',
     });
 
     // PreCompact should call paw-session.sh --brief (prime embeds skill content)
@@ -106,11 +120,12 @@ describe('installHooks', () => {
 
     const settings = JSON.parse(readFileSync(resolve(settingsDir, 'settings.json'), 'utf-8'));
 
-    // Should have tbd + gh CLI + paw session hooks
-    expect(settings.hooks.SessionStart).toHaveLength(3);
+    // Should have tbd + gh CLI + paw session + paw inbox hooks
+    expect(settings.hooks.SessionStart).toHaveLength(4);
     expect(settings.hooks.SessionStart[0].hooks[0].command).toContain('tbd');
     expect(settings.hooks.SessionStart[1].hooks[0].command).toContain('confirm-gh-cli');
     expect(settings.hooks.SessionStart[2].hooks[0].command).toContain('paw-session');
+    expect(settings.hooks.SessionStart[3].hooks[0].command).toContain('paw-inbox');
   });
 
   it('registers PostToolUse hook for paw done reminder (paw-xlg3)', () => {
@@ -146,7 +161,8 @@ describe('installHooks', () => {
     const settings = JSON.parse(
       readFileSync(resolve(repoRoot, '.claude', 'settings.json'), 'utf-8'),
     );
-    expect(settings.hooks.SessionStart).toHaveLength(2);
+    expect(settings.hooks.SessionStart).toHaveLength(3);
+    expect(settings.hooks.UserPromptSubmit).toHaveLength(1);
     expect(settings.hooks.PreCompact).toHaveLength(1);
     expect(settings.hooks.PostToolUse).toHaveLength(2);
   });
@@ -168,12 +184,13 @@ describe('installHooks', () => {
 
     const settings = JSON.parse(readFileSync(resolve(settingsDir, 'settings.json'), 'utf-8'));
 
-    // Old flat format should be replaced with gh CLI + paw session
-    expect(settings.hooks.SessionStart).toHaveLength(2);
+    // Old flat format should be replaced with gh CLI + paw session + inbox
+    expect(settings.hooks.SessionStart).toHaveLength(3);
     expect(settings.hooks.SessionStart[0]).toHaveProperty('matcher');
     expect(settings.hooks.SessionStart[0]).toHaveProperty('hooks');
     expect(settings.hooks.SessionStart[0].hooks[0].command).toContain('confirm-gh-cli');
     expect(settings.hooks.SessionStart[1].hooks[0].command).toContain('paw-session');
+    expect(settings.hooks.SessionStart[2].hooks[0].command).toContain('paw-inbox');
   });
 });
 

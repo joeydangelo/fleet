@@ -9,10 +9,19 @@ import type { TaskState } from '../lib/sync.js';
 import { readJournal } from '../lib/journal.js';
 import type { JournalEntry } from '../lib/journal.js';
 import { readPaneConfig } from '../lib/pane-state.js';
-import { checkAgentLiveness, createTmuxService } from '../lib/tmux.js';
+import { checkAgentLiveness, createTmuxService, sendNudgeKeys } from '../lib/tmux.js';
+import type { PawPaneConfig, TmuxServiceApi } from '../lib/tmux.js';
 import { DEFAULT_POLL_INTERVAL } from '../lib/constants.js';
 import { handleError, colors } from '../lib/output.js';
-import { evaluateAllAgents, shouldNudge, writeNudge, writeHealthSnapshot } from '../lib/health.js';
+import {
+  evaluateAllAgents,
+  shouldNudge,
+  shouldTriage,
+  writeNudge,
+  writeHealthSnapshot,
+  triageAgent,
+  saveTriageOutput,
+} from '../lib/health.js';
 import type { HealthState, HealthSnapshot } from '../lib/health.js';
 
 // --- Color palette for task names ---
@@ -187,6 +196,16 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+/** Resolve the tmux target for sending nudge keys to an agent. */
+function resolveNudgeTarget(paneConfig: PawPaneConfig, taskName: string): string | null {
+  if (paneConfig.mode === 'detached' && paneConfig.detached) {
+    const agent = paneConfig.detached.find((a) => a.taskName === taskName);
+    return agent?.sessionName ?? null;
+  }
+  const pane = paneConfig.panes.find((p) => p.taskName === taskName);
+  return pane?.paneId ?? null;
+}
+
 /** Polls sync state, journal, commit counts, and agent health on an interval. */
 export async function runWatchLoop(opts: {
   repoRoot: string;
@@ -284,15 +303,17 @@ export async function runWatchLoop(opts: {
       // 4. Evaluate agent health (ZFC)
       const livenessMap = new Map<string, boolean>();
       const paneConfig = readPaneConfig(repoRoot);
+      let tmux: TmuxServiceApi | null = null;
       if (paneConfig) {
         try {
-          const tmux = createTmuxService();
+          tmux = createTmuxService();
           const results = checkAgentLiveness(tmux, paneConfig);
           for (const r of results) {
             livenessMap.set(r.taskName, r.alive);
           }
         } catch {
           // tmux not available — skip liveness
+          tmux = null;
         }
       }
 
@@ -316,6 +337,7 @@ export async function runWatchLoop(opts: {
           prevHealthStates[taskName] = health.state;
         }
 
+        // Nudge stalled agents
         if (shouldNudge(health, now)) {
           const stalledMs = health.stalledSince
             ? now.getTime() - new Date(health.stalledSince).getTime()
@@ -325,9 +347,59 @@ export async function runWatchLoop(opts: {
             `You appear stalled on task "${taskName}". ` +
             `No tool activity for ${stalledMin}m. ` +
             `If stuck, try a different approach or use paw broadcast to ask for help.`;
+
+          // Always write file nudge (works if agent resumes tool use)
           writeNudge(repoRoot, taskName, msg);
+
+          // Also send-keys if tmux is available (works if agent is idle at prompt)
+          if (paneConfig && tmux) {
+            const target = resolveNudgeTarget(paneConfig, taskName);
+            if (target) {
+              sendNudgeKeys(tmux, target, msg).catch(() => {});
+            }
+          }
+
           health.nudgeCount++;
           health.lastNudge = now.toISOString();
+        }
+
+        // Triage before zombie transition
+        if (shouldTriage(health) && paneConfig && tmux) {
+          const target = resolveNudgeTarget(paneConfig, taskName);
+          if (target) {
+            console.log(
+              `${timestamp()} ${colors.warn('🔍')} ${colorTask(taskName, taskIndex)} triaging stalled agent...`,
+            );
+            const { verdict, captured } = triageAgent(tmux, target, taskName);
+            saveTriageOutput(repoRoot, taskName, captured, verdict);
+
+            if (verdict === 'extend') {
+              console.log(
+                `${timestamp()}   ${colorTask(taskName, taskIndex)} triage: EXTEND — resetting nudge cycle`,
+              );
+              health.stalledSince = now.toISOString();
+              health.nudgeCount = 0;
+              health.lastNudge = null;
+              health.triaged = true;
+            } else if (verdict === 'retry') {
+              console.log(
+                `${timestamp()}   ${colorTask(taskName, taskIndex)} triage: RETRY — sending recovery nudge`,
+              );
+              const retryMsg =
+                `You appear stuck on task "${taskName}". ` +
+                `Try a completely different approach, or use paw broadcast to ask for help.`;
+              sendNudgeKeys(tmux, target, retryMsg).catch(() => {});
+              health.triaged = true;
+            } else {
+              console.log(
+                `${timestamp()} ${colors.error('☠')} ${colorTask(taskName, taskIndex)} triage: TERMINATE — marking zombie`,
+              );
+              health.state = 'zombie';
+              health.triaged = true;
+              printHealthTransition(taskName, 'stalled', 'zombie', taskIndex);
+              prevHealthStates[taskName] = 'zombie';
+            }
+          }
         }
       }
 

@@ -8,13 +8,17 @@
 import { existsSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
 import { writeFileSync } from 'atomically';
 import { resolve } from 'node:path';
+import { execFileSync } from 'node:child_process';
 import {
   STALL_THRESHOLD_S,
   ZOMBIE_THRESHOLD_S,
   BOOT_GRACE_S,
   NUDGE_INTERVAL_S,
   MAX_NUDGES,
+  TRIAGE_TIMEOUT_MS,
+  TRIAGE_CAPTURE_LINES,
 } from './constants.js';
+import type { TmuxServiceApi } from './tmux.js';
 
 // --- Types ---
 
@@ -31,7 +35,13 @@ export interface AgentHealth {
   nudgeCount: number;
   /** ISO timestamp of last nudge sent. */
   lastNudge: string | null;
+  /** Whether triage has been performed for this stall cycle. */
+  triaged: boolean;
+  /** Triage verdict: 'extend' | 'retry' | 'terminate', or null if not triaged. */
+  triageVerdict: string | null;
 }
+
+export type TriageVerdict = 'extend' | 'retry' | 'terminate';
 
 export interface HealthSnapshot {
   timestamp: string;
@@ -145,17 +155,23 @@ export function evaluateAllAgents(opts: {
     let stalledSince = prev?.stalledSince ?? null;
     let nudgeCount = prev?.nudgeCount ?? 0;
     let lastNudge = prev?.lastNudge ?? null;
+    let triaged = prev?.triaged ?? false;
+    let triageVerdict = prev?.triageVerdict ?? null;
 
     if (state === 'stalled' && prev?.state !== 'stalled') {
       // Just entered stalled — record when
       stalledSince = now.toISOString();
       nudgeCount = 0;
       lastNudge = null;
+      triaged = false;
+      triageVerdict = null;
     } else if (state !== 'stalled') {
       // Not stalled — reset escalation
       stalledSince = null;
       nudgeCount = 0;
       lastNudge = null;
+      triaged = false;
+      triageVerdict = null;
     }
 
     agents[taskName] = {
@@ -165,6 +181,8 @@ export function evaluateAllAgents(opts: {
       stalledSince,
       nudgeCount,
       lastNudge,
+      triaged,
+      triageVerdict,
     };
   }
 
@@ -236,4 +254,92 @@ export function clearNudge(repoRoot: string, taskName: string): void {
   } catch {
     // Already cleared or never existed
   }
+}
+
+// --- Inbox cursor I/O ---
+
+/** Read the inbox cursor (ISO timestamp) for a task. Returns null if no cursor exists. */
+export function readInboxCursor(repoRoot: string, taskName: string): string | null {
+  try {
+    const filePath = resolve(repoRoot, '.paw', `.inbox-cursor-${taskName}`);
+    return readFileSync(filePath, 'utf-8').trim() || null;
+  } catch {
+    return null;
+  }
+}
+
+/** Write the inbox cursor (ISO timestamp) for a task. */
+export function writeInboxCursor(repoRoot: string, taskName: string, cursor: string): void {
+  const dir = resolve(repoRoot, '.paw');
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(resolve(dir, `.inbox-cursor-${taskName}`), cursor, 'utf-8');
+}
+
+// --- Triage ---
+
+/**
+ * Determine whether a stalled agent should be triaged before zombie transition.
+ * Returns true if: stalled, nudges exhausted, and not yet triaged this cycle.
+ */
+export function shouldTriage(health: AgentHealth): boolean {
+  return health.state === 'stalled' && health.nudgeCount >= MAX_NUDGES && !health.triaged;
+}
+
+/**
+ * Triage a stalled agent by capturing terminal output and classifying
+ * the situation via Claude AI.
+ *
+ * Returns the verdict and captured terminal content.
+ */
+export function triageAgent(
+  tmux: TmuxServiceApi,
+  target: string,
+  taskName: string,
+): { verdict: TriageVerdict; captured: string } {
+  const captured = tmux.capturePaneContent(target, TRIAGE_CAPTURE_LINES) ?? '';
+
+  const prompt =
+    `You are a triage system for an AI coding agent running in tmux.\n` +
+    `The agent "${taskName}" appears stalled (no tool activity for several minutes).\n` +
+    `Below is the last ${TRIAGE_CAPTURE_LINES} lines of terminal output.\n\n` +
+    `Classify as one of:\n` +
+    `- EXTEND: Agent appears actively working (compiling, testing, thinking). Grant more time.\n` +
+    `- RETRY: Agent is stuck in an error loop or waiting at a prompt. Send recovery nudge.\n` +
+    `- TERMINATE: Agent has crashed, exited, or is unrecoverable (bash prompt, segfault, OOM).\n\n` +
+    `Respond with EXACTLY one word: EXTEND, RETRY, or TERMINATE.\n\n` +
+    `Terminal output:\n${captured}`;
+
+  try {
+    const result = execFileSync('claude', ['--print', '-p', prompt], {
+      encoding: 'utf-8',
+      timeout: TRIAGE_TIMEOUT_MS,
+      stdio: ['pipe', 'pipe', 'pipe'],
+    }).trim();
+
+    const upper = result.toUpperCase();
+    if (upper.includes('TERMINATE')) return { verdict: 'terminate', captured };
+    if (upper.includes('RETRY')) return { verdict: 'retry', captured };
+    // Default to 'extend' on any other response (safe default)
+    return { verdict: 'extend', captured };
+  } catch {
+    // On failure (timeout, claude not found, etc.), default to extend (safe)
+    return { verdict: 'extend', captured };
+  }
+}
+
+/** Save triage output for post-mortem debugging. */
+export function saveTriageOutput(
+  repoRoot: string,
+  taskName: string,
+  captured: string,
+  verdict: string,
+): void {
+  const dir = resolve(repoRoot, '.paw', 'triage');
+  mkdirSync(dir, { recursive: true });
+  const content =
+    `Triage verdict: ${verdict}\n` +
+    `Timestamp: ${new Date().toISOString()}\n` +
+    `Task: ${taskName}\n\n` +
+    `--- Terminal capture ---\n${captured}\n`;
+  writeFileSync(resolve(dir, `${taskName}.txt`), content, 'utf-8');
 }

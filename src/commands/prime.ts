@@ -14,7 +14,7 @@ import { readPaneConfig } from '../lib/pane-state.js';
 import { checkAgentLiveness, createTmuxService } from '../lib/tmux.js';
 import type { PawPaneConfig } from '../lib/tmux.js';
 import type { PawConfig } from '../lib/config.js';
-import { computeThreads } from './threads.js';
+import { computeThreads } from './inbox.js';
 import { readDoc, stripFrontmatter } from '../lib/docs.js';
 import { ensureDocsFresh } from '../lib/doc-sync.js';
 import { handleError, formatFocusAreas, colors, success } from '../lib/output.js';
@@ -400,7 +400,7 @@ function printFull(
   console.log(pc.dim('── Workflow ──'));
   console.log(pc.dim('1. Follow `paw shortcut precommit-process` when committing'));
   console.log(pc.dim('2. Run `paw broadcast "..."` when you change shared interfaces'));
-  console.log(pc.dim('3. Run `paw threads` to see open Q&A threads'));
+  console.log(pc.dim('3. Run `paw inbox --all` to see open Q&A threads'));
   console.log(pc.dim('4. Run `paw done` with a structured summary when finished'));
 
   // Full skill content

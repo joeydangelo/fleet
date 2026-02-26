@@ -35,8 +35,14 @@ export const BOOT_GRACE_S = 60;
 /** Seconds between nudge messages to a stalled agent. */
 export const NUDGE_INTERVAL_S = 90;
 
-/** Maximum nudge attempts before declaring an agent a zombie. */
-export const MAX_NUDGES = 3;
+/** Maximum nudge attempts before triaging (matches overstory's 1-nudge-then-triage pattern). */
+export const MAX_NUDGES = 1;
 
 /** Minimum seconds between inbox checks (debounce). */
 export const INBOX_DEBOUNCE_S = 30;
+
+/** Timeout (ms) for triage AI classification. */
+export const TRIAGE_TIMEOUT_MS = 30_000;
+
+/** Number of terminal lines to capture for triage. */
+export const TRIAGE_CAPTURE_LINES = 100;

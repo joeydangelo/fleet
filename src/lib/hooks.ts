@@ -157,6 +157,29 @@ fi
 exit 0
 `;
 
+/** Inbox hook for SessionStart and UserPromptSubmit — no debounce, no heartbeat. */
+export const PAW_INBOX_SCRIPT = `#!/bin/bash
+# Check inbox for messages from orchestrator and other agents
+# Installed by: paw init
+# Fires on SessionStart and UserPromptSubmit
+
+# Only in paw worktrees with active tasks
+if ! ls .paw/tasks/*.md 1>/dev/null 2>&1; then
+  exit 0
+fi
+
+# Get npm global bin in PATH
+NPM_PREFIX=$(npm config get prefix 2>/dev/null)
+if [ -n "$NPM_PREFIX" ] && [ -d "$NPM_PREFIX/bin" ]; then
+  export PATH="$NPM_PREFIX\\bin:$PATH"
+fi
+export PATH="$HOME\\.local\\bin:$HOME/bin:/usr/local/bin:$PATH"
+
+paw inbox
+
+exit 0
+`;
+
 /** PostToolUse hook that records heartbeat and checks inbox on every tool use. */
 export const PAW_HEARTBEAT_SCRIPT = `#!/bin/bash
 # Record agent heartbeat and check inbox on every tool use
@@ -288,6 +311,7 @@ const GH_SCRIPT_RELATIVE = '.claude/scripts/confirm-gh-cli.sh';
 const GUARD_RELATIVE = '.claude/hooks/paw-guard.sh';
 const REMINDER_RELATIVE = '.claude/hooks/paw-done-reminder.sh';
 const HEARTBEAT_RELATIVE = '.claude/hooks/paw-heartbeat.sh';
+const INBOX_RELATIVE = '.claude/hooks/paw-inbox.sh';
 
 interface HookHandler {
   type: 'command';
@@ -312,6 +336,7 @@ export function installHooks(repoRoot: string): void {
   writeFileSync(resolve(repoRoot, GUARD_RELATIVE), PAW_GUARD_SCRIPT, 'utf-8');
   writeFileSync(resolve(repoRoot, REMINDER_RELATIVE), PAW_DONE_REMINDER_SCRIPT, 'utf-8');
   writeFileSync(resolve(repoRoot, HEARTBEAT_RELATIVE), PAW_HEARTBEAT_SCRIPT, 'utf-8');
+  writeFileSync(resolve(repoRoot, INBOX_RELATIVE), PAW_INBOX_SCRIPT, 'utf-8');
 
   const pawHooks: Record<string, MatcherGroup[]> = {
     SessionStart: [
@@ -331,6 +356,26 @@ export function installHooks(repoRoot: string): void {
           {
             type: 'command',
             command: `bash ${SCRIPT_RELATIVE}`,
+          },
+        ],
+      },
+      {
+        matcher: '',
+        hooks: [
+          {
+            type: 'command',
+            command: `bash ${INBOX_RELATIVE}`,
+          },
+        ],
+      },
+    ],
+    UserPromptSubmit: [
+      {
+        matcher: '',
+        hooks: [
+          {
+            type: 'command',
+            command: `bash ${INBOX_RELATIVE}`,
           },
         ],
       },
@@ -401,13 +446,14 @@ export function installHooks(repoRoot: string): void {
   mkdirSync(resolve(settingsPath, '..'), { recursive: true });
   writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + '\n', 'utf-8');
 
-  success('hooks', 'SessionStart + PreCompact + PreToolUse + PostToolUse');
+  success('hooks', 'SessionStart + UserPromptSubmit + PreCompact + PreToolUse + PostToolUse');
 
   success('script', SCRIPT_RELATIVE);
   success('script', GH_SCRIPT_RELATIVE);
   success('script', GUARD_RELATIVE);
   success('script', REMINDER_RELATIVE);
   success('script', HEARTBEAT_RELATIVE);
+  success('script', INBOX_RELATIVE);
 }
 
 /** Detect any paw-related hook entry (old flat format or correct matcher group). */

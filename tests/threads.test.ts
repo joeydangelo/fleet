@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computeThreads } from '../src/commands/threads.js';
+import { computeThreads } from '../src/commands/inbox.js';
 import type { JournalEntry } from '../src/lib/journal.js';
 
 function entry(overrides: Partial<JournalEntry> & { thread?: string }): JournalEntry {
