@@ -588,8 +588,8 @@ function sleep(ms: number): Promise<void> {
 }
 
 /**
- * Wait for a tmux session/pane to have visible content (TUI rendered).
- * Polls capture-pane until non-empty content appears.
+ * Wait for the Claude Code interactive prompt to be ready in a tmux session/pane.
+ * Polls capture-pane until `isTuiPromptReady()` returns true.
  */
 export async function waitForTuiReady(
   tmux: TmuxServiceApi,
@@ -600,10 +600,18 @@ export async function waitForTuiReady(
   const maxAttempts = Math.ceil(timeoutMs / pollIntervalMs);
   for (let i = 0; i < maxAttempts; i++) {
     const content = tmux.capturePaneContent(sessionOrPane);
-    if (content !== null) return true;
+    if (content !== null && isTuiPromptReady(content)) return true;
     if (!tmux.sessionExists(sessionOrPane)) return false;
     await sleep(pollIntervalMs);
   }
+  return false;
+}
+
+/** Check if captured pane content shows the Claude Code interactive prompt. */
+export function isTuiPromptReady(content: string): boolean {
+  if (content.includes('❯')) return true;
+  if (content.includes('Try "')) return true;
+  if (/^>/m.test(content)) return true;
   return false;
 }
 
@@ -613,13 +621,11 @@ export interface BeaconOptions {
   postReadyDelayMs?: number;
   verifyAttempts?: number;
   verifyDelayMs?: number;
+  /** Delays (ms) for follow-up empty Enters after initial beacon send. */
+  followUpDelays?: number[];
 }
 
-/**
- * Send a beacon to an agent after Claude Code boots.
- * Waits for TUI to render, sends the beacon message, then verifies
- * it was received (retries if the welcome screen is still showing).
- */
+/** Send the initial task message to an agent after Claude Code boots. */
 export async function sendBeacon(
   tmux: TmuxServiceApi,
   sessionOrPane: string,
@@ -630,6 +636,7 @@ export async function sendBeacon(
   const postReadyDelayMs = opts.postReadyDelayMs ?? 1_000;
   const verifyAttempts = opts.verifyAttempts ?? BEACON_VERIFY_ATTEMPTS;
   const verifyDelayMs = opts.verifyDelayMs ?? BEACON_VERIFY_DELAY_MS;
+  const followUpDelays = opts.followUpDelays ?? [5_000, 10_000];
 
   const ready = await waitForTuiReady(tmux, sessionOrPane, tuiTimeoutMs, tuiPollIntervalMs);
   if (!ready) return false;
@@ -638,15 +645,22 @@ export async function sendBeacon(
 
   tmux.sendKeys(sessionOrPane, BEACON_MESSAGE);
 
-  // Verify beacon was received — retry if welcome screen still visible
+  // Follow-up empty Enters to dismiss trust prompt or late TUI initialization
+  for (const delay of followUpDelays) {
+    await sleep(delay);
+    tmux.sendKeys(sessionOrPane, '');
+  }
+
+  // Retry if welcome screen is still visible
   for (let attempt = 0; attempt < verifyAttempts; attempt++) {
     await sleep(verifyDelayMs);
     const content = tmux.capturePaneContent(sessionOrPane);
     if (content && !content.includes('Try "')) return true;
     tmux.sendKeys(sessionOrPane, BEACON_MESSAGE);
+    await sleep(followUpDelays[0] ?? 1_000);
+    tmux.sendKeys(sessionOrPane, '');
   }
 
-  // Gave up retrying — agent may or may not have received the beacon
   return true;
 }
 

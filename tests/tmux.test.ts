@@ -11,6 +11,7 @@ import {
   checkAgentLiveness,
   waitForTuiReady,
   sendBeacon,
+  isTuiPromptReady,
 } from '../src/lib/tmux.js';
 import type { BeaconOptions } from '../src/lib/tmux.js';
 import type {
@@ -27,6 +28,7 @@ const fastBeacon: BeaconOptions = {
   postReadyDelayMs: 5,
   verifyAttempts: 2,
   verifyDelayMs: 5,
+  followUpDelays: [5, 5],
 };
 
 // --- Mock TmuxService for unit tests ---
@@ -102,7 +104,7 @@ function createMockTmux(): TmuxServiceApi & {
     },
     capturePaneContent(sessionOrPane: string, lines?: number) {
       calls.push({ method: 'capturePaneContent', args: [sessionOrPane, lines] });
-      return 'Agent ready' as string | null;
+      return 'Claude Code v1.0\n❯' as string | null;
     },
     selectLayout(sessionName: string, layout: string) {
       calls.push({ method: 'selectLayout', args: [sessionName, layout] });
@@ -1007,24 +1009,42 @@ describe('checkAgentLiveness', () => {
 });
 
 describe('waitForTuiReady', () => {
-  it('returns true immediately when content is available', async () => {
+  it('returns true immediately when prompt is ready', async () => {
     const mock = createMockTmux();
     mock.capturePaneContent = (session: string) => {
       mock.calls.push({ method: 'capturePaneContent', args: [session] });
-      return 'Claude Code v1.0';
+      return 'Claude Code v1.0\n❯';
     };
 
     const ready = await waitForTuiReady(mock, 'paw-test', 5000, 10);
     expect(ready).toBe(true);
   });
 
-  it('polls until content appears', async () => {
+  it('does not return true for shell output without prompt', async () => {
     const mock = createMockTmux();
     let callCount = 0;
     mock.capturePaneContent = (session: string) => {
       mock.calls.push({ method: 'capturePaneContent', args: [session] });
       callCount++;
-      return callCount >= 3 ? 'Claude Code v1.0' : null;
+      // First calls return shell output ($ claude), not the TUI prompt
+      if (callCount < 3) return '$ claude --dangerously-skip-permissions';
+      // Eventually the TUI renders with the ❯ prompt
+      return 'Claude Code v1.0\n❯';
+    };
+    mock.createSession('paw-test', '/tmp');
+
+    const ready = await waitForTuiReady(mock, 'paw-test', 5000, 10);
+    expect(ready).toBe(true);
+    expect(callCount).toBe(3);
+  });
+
+  it('polls until prompt appears', async () => {
+    const mock = createMockTmux();
+    let callCount = 0;
+    mock.capturePaneContent = (session: string) => {
+      mock.calls.push({ method: 'capturePaneContent', args: [session] });
+      callCount++;
+      return callCount >= 3 ? 'Welcome!\n❯' : null;
     };
     mock.createSession('paw-test', '/tmp');
 
@@ -1058,6 +1078,32 @@ describe('waitForTuiReady', () => {
   });
 });
 
+describe('isTuiPromptReady', () => {
+  it('detects ❯ prompt character', () => {
+    expect(isTuiPromptReady('Claude Code v1.0\n❯')).toBe(true);
+    expect(isTuiPromptReady('❯ some input')).toBe(true);
+  });
+
+  it('detects welcome screen with Try indicator', () => {
+    expect(isTuiPromptReady('Try "help me refactor my code"')).toBe(true);
+  });
+
+  it('detects > at start of line as fallback', () => {
+    expect(isTuiPromptReady('some header\n> prompt')).toBe(true);
+    expect(isTuiPromptReady('> prompt')).toBe(true);
+  });
+
+  it('rejects plain shell output without prompt', () => {
+    expect(isTuiPromptReady('$ claude --dangerously-skip-permissions')).toBe(false);
+    expect(isTuiPromptReady('Loading...')).toBe(false);
+    expect(isTuiPromptReady('npm info paw@0.1.0')).toBe(false);
+  });
+
+  it('rejects > in the middle of a line (not a prompt)', () => {
+    expect(isTuiPromptReady('output -> result')).toBe(false);
+  });
+});
+
 describe('sendBeacon', () => {
   const fastOpts: BeaconOptions = {
     tuiTimeoutMs: 100,
@@ -1065,22 +1111,27 @@ describe('sendBeacon', () => {
     postReadyDelayMs: 5,
     verifyAttempts: 5,
     verifyDelayMs: 5,
+    followUpDelays: [5, 5],
   };
 
-  it('sends beacon message after TUI is ready', async () => {
+  it('sends beacon message and follow-up Enters after TUI is ready', async () => {
     const mock = createMockTmux();
     mock.createSession('paw-test', '/tmp');
     mock.capturePaneContent = (session: string) => {
       mock.calls.push({ method: 'capturePaneContent', args: [session] });
-      return 'Claude Code output — agent is working';
+      return 'Claude Code output — agent is working\n❯';
     };
 
     const result = await sendBeacon(mock, 'paw-test', fastOpts);
     expect(result).toBe(true);
 
     const sendCalls = mock.calls.filter((c) => c.method === 'sendKeys');
-    expect(sendCalls.length).toBeGreaterThanOrEqual(1);
+    // Beacon message + 2 follow-up empty Enters (minimum)
+    expect(sendCalls.length).toBeGreaterThanOrEqual(3);
     expect(sendCalls[0]!.args[1]).toBe('Begin working on your task.');
+    // Follow-up Enters are empty strings
+    expect(sendCalls[1]!.args[1]).toBe('');
+    expect(sendCalls[2]!.args[1]).toBe('');
   });
 
   it('returns false when TUI never becomes ready', async () => {
@@ -1099,9 +1150,9 @@ describe('sendBeacon', () => {
     mock.capturePaneContent = (session: string) => {
       mock.calls.push({ method: 'capturePaneContent', args: [session] });
       captureCount++;
-      if (captureCount === 1) return 'Welcome to Claude Code';
+      if (captureCount === 1) return 'Welcome to Claude Code\n❯';
       if (captureCount <= 3) return 'Try "help me refactor..."';
-      return 'Agent is working on task';
+      return 'Agent is working on task\n❯';
     };
 
     const result = await sendBeacon(mock, 'paw-test', fastOpts);
