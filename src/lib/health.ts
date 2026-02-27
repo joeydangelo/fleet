@@ -1,6 +1,6 @@
 /** ZFC Health Monitoring — state machine, heartbeat I/O, and nudge delivery. */
 
-import { existsSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
+import { mkdirSync, readFileSync, rmSync } from 'node:fs';
 import { writeFileSync } from 'atomically';
 import { resolve } from 'node:path';
 import { execFileSync } from 'node:child_process';
@@ -196,7 +196,6 @@ export function writeNudge(repoRoot: string, taskName: string, message: string):
 export function readNudge(repoRoot: string, taskName: string): string | null {
   try {
     const filePath = resolve(repoRoot, '.paw', 'run', 'nudges', `${taskName}.md`);
-    if (!existsSync(filePath)) return null;
     return readFileSync(filePath, 'utf-8');
   } catch {
     return null;
@@ -278,12 +277,13 @@ export function saveTriageOutput(
   taskName: string,
   captured: string,
   verdict: string,
+  timestamp: string,
 ): void {
   const dir = resolve(repoRoot, '.paw', 'run', 'triage');
   mkdirSync(dir, { recursive: true });
   const content =
     `Triage verdict: ${verdict}\n` +
-    `Timestamp: ${new Date().toISOString()}\n` +
+    `Timestamp: ${timestamp}\n` +
     `Task: ${taskName}\n\n` +
     `--- Terminal capture ---\n${captured}\n`;
   writeFileSync(resolve(dir, `${taskName}.txt`), content, 'utf-8');

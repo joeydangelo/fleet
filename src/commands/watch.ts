@@ -325,7 +325,6 @@ export async function runWatchLoop(opts: {
         now,
       });
       prevHealth = healthSnapshot;
-      writeHealthSnapshot(repoRoot, healthSnapshot);
 
       for (const [taskName, health] of Object.entries(healthSnapshot.agents)) {
         const prevState = prevHealthStates[taskName];
@@ -374,7 +373,7 @@ export async function runWatchLoop(opts: {
                     `${timestamp()} ${colors.warn('🔍')} ${colorTask(taskName, taskIndex)} triaging stalled agent...`,
                   );
                   const { verdict, captured } = triageAgent(tmux, target, taskName);
-                  saveTriageOutput(repoRoot, taskName, captured, verdict);
+                  saveTriageOutput(repoRoot, taskName, captured, verdict, new Date().toISOString());
 
                   if (verdict === 'extend') {
                     console.log(
@@ -421,6 +420,8 @@ export async function runWatchLoop(opts: {
 
         prevEscalationLevels[taskName] = health.escalationLevel;
       }
+
+      writeHealthSnapshot(repoRoot, healthSnapshot);
 
       // Check terminal conditions
       if (isAllDone(syncState.tasks)) {

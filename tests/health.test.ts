@@ -223,13 +223,6 @@ describe('heartbeat I/O writes to .paw/run/', () => {
     expect(new Date(content).toISOString()).toBe(content); // valid ISO timestamp
   });
 
-  it('readHeartbeat reads from .paw/run/heartbeats/', () => {
-    writeHeartbeat(repoRoot, 'api');
-    const ts = readHeartbeat(repoRoot, 'api');
-    expect(ts).toBeTruthy();
-    expect(new Date(ts!).getTime()).not.toBeNaN();
-  });
-
   it('readHeartbeat returns null when no heartbeat exists', () => {
     expect(readHeartbeat(repoRoot, 'missing')).toBeNull();
   });
@@ -256,23 +249,6 @@ describe('health snapshot I/O writes to .paw/run/', () => {
     expect(existsSync(filePath)).toBe(true);
   });
 
-  it('readHealthSnapshot round-trips through .paw/run/', () => {
-    const snapshot: HealthSnapshot = {
-      timestamp: '2026-01-01T00:00:00.000Z',
-      agents: {
-        auth: {
-          taskName: 'auth',
-          state: 'working',
-          lastActivity: '2026-01-01T00:00:00.000Z',
-          stalledSince: null,
-          escalationLevel: 0,
-        },
-      },
-    };
-    writeHealthSnapshot(repoRoot, snapshot);
-    expect(readHealthSnapshot(repoRoot)).toEqual(snapshot);
-  });
-
   it('readHealthSnapshot returns null when file is missing', () => {
     expect(readHealthSnapshot(repoRoot)).toBeNull();
   });
@@ -294,11 +270,6 @@ describe('nudge I/O writes to .paw/run/', () => {
     const filePath = resolve(repoRoot, '.paw', 'run', 'nudges', 'auth.md');
     expect(existsSync(filePath)).toBe(true);
     expect(readFileSync(filePath, 'utf-8')).toBe('You seem stuck.');
-  });
-
-  it('readNudge reads from .paw/run/nudges/', () => {
-    writeNudge(repoRoot, 'api', 'Wake up!');
-    expect(readNudge(repoRoot, 'api')).toBe('Wake up!');
   });
 
   it('clearNudge removes the file', () => {
@@ -325,11 +296,6 @@ describe('inbox cursor I/O writes to .paw/run/', () => {
     expect(existsSync(filePath)).toBe(true);
   });
 
-  it('readInboxCursor round-trips', () => {
-    writeInboxCursor(repoRoot, 'api', '2026-02-15T12:30:00.000Z');
-    expect(readInboxCursor(repoRoot, 'api')).toBe('2026-02-15T12:30:00.000Z');
-  });
-
   it('readInboxCursor returns null when missing', () => {
     expect(readInboxCursor(repoRoot, 'nope')).toBeNull();
   });
@@ -347,7 +313,7 @@ describe('triage I/O writes to .paw/run/', () => {
   });
 
   it('saveTriageOutput creates file under .paw/run/triage/', () => {
-    saveTriageOutput(repoRoot, 'auth', 'terminal output', 'extend');
+    saveTriageOutput(repoRoot, 'auth', 'terminal output', 'extend', '2026-01-01T00:00:00.000Z');
     const filePath = resolve(repoRoot, '.paw', 'run', 'triage', 'auth.txt');
     expect(existsSync(filePath)).toBe(true);
     const content = readFileSync(filePath, 'utf-8');

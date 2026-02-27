@@ -20,6 +20,11 @@ describe('taskDisplayStatus', () => {
     const merge: MergeEntry = { status: 'merged' };
     expect(taskDisplayStatus(task, merge)).toBe('done');
   });
+
+  it('returns zombie when health state is zombie', () => {
+    const task: TaskState = { status: 'in_progress' };
+    expect(taskDisplayStatus(task, undefined, 'zombie')).toBe('zombie');
+  });
 });
 
 describe('statusIcon', () => {

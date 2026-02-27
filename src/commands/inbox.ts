@@ -89,7 +89,7 @@ export function inboxCommand(): Command {
 
         // --all mode: full unfiltered view (replaces `paw threads`)
         if (opts.all) {
-          showAllThreads(opts.all);
+          showAllThreads();
           return;
         }
 
@@ -144,18 +144,13 @@ export function inboxCommand(): Command {
 }
 
 /** Full unfiltered view of all broadcasts, open threads, and resolved threads. */
-function showAllThreads(showResolved: boolean): void {
+function showAllThreads(): void {
   try {
     const repoRoot = getRepoRoot();
     const entries = readJournal(repoRoot);
     const { open, resolved, broadcasts } = computeThreads(entries);
 
     const hasContent = broadcasts.length > 0 || open.length > 0;
-
-    if (!hasContent && !showResolved) {
-      console.log('No broadcasts or open threads.');
-      return;
-    }
 
     // Broadcasts — informational, no reply needed
     if (broadcasts.length > 0) {
@@ -175,18 +170,16 @@ function showAllThreads(showResolved: boolean): void {
       }
     }
 
-    if (showResolved) {
-      if (broadcasts.length === 0 && open.length === 0) {
-        console.log('No broadcasts or open threads.');
-      }
-      if (resolved.length > 0) {
-        if (hasContent) console.log('');
-        console.log(pc.bold('Resolved threads'));
-        for (const { ask, reply } of resolved) {
-          const id = ask.thread.slice(0, 4);
-          console.log(`  ${pc.dim(`(${id})`)} ${ask.from} → ${ask.to}  "${ask.msg}"`);
-          console.log(`       └─ ${reply.from}: "${reply.msg}"`);
-        }
+    if (broadcasts.length === 0 && open.length === 0) {
+      console.log('No broadcasts or open threads.');
+    }
+    if (resolved.length > 0) {
+      if (hasContent) console.log('');
+      console.log(pc.bold('Resolved threads'));
+      for (const { ask, reply } of resolved) {
+        const id = ask.thread.slice(0, 4);
+        console.log(`  ${pc.dim(`(${id})`)} ${ask.from} → ${ask.to}  "${ask.msg}"`);
+        console.log(`       └─ ${reply.from}: "${reply.msg}"`);
       }
     }
   } catch (err) {
