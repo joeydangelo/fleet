@@ -150,6 +150,67 @@ describe('buildDisplayItems', () => {
     expect(items[0]!.status).toBe('conflict');
   });
 
+  it('recovers task label and status from @paw_role when pane not in panes.json', () => {
+    // Simulate a task pane that's NOT in panes.json (timing issue or pane ID shift)
+    // but has @paw_role set to 'paw-auth' by launchTmux.
+    const tmuxPanes: TmuxPaneInfo[] = [
+      {
+        paneId: '%3',
+        title: 'Claude Code',
+        command: 'claude',
+        cwd: '/home/user/myapp',
+        project: '/home/user/myapp',
+        role: 'paw-auth',
+      },
+    ];
+    const syncState: SyncState = {
+      session: 'paw-test',
+      config: 'paw.yaml',
+      target: 'main',
+      tasks: { auth: { status: 'in_progress' } },
+    };
+    // No task panes passed — simulates panes.json not yet written
+    const items = buildDisplayItems(tmuxPanes, [], syncState, '%0', '');
+    expect(items).toHaveLength(1);
+    expect(items[0]!.label).toBe('auth');
+    expect(items[0]!.status).toBe('in_progress');
+  });
+
+  it('recovers task label with health state from @paw_role', () => {
+    const tmuxPanes: TmuxPaneInfo[] = [
+      {
+        paneId: '%3',
+        title: 'Claude Code',
+        command: 'claude',
+        cwd: '/home/user/myapp',
+        project: '/home/user/myapp',
+        role: 'paw-auth',
+      },
+    ];
+    const syncState: SyncState = {
+      session: 'paw-test',
+      config: 'paw.yaml',
+      target: 'main',
+      tasks: { auth: { status: 'in_progress' } },
+    };
+    const health = {
+      timestamp: new Date().toISOString(),
+      agents: {
+        auth: {
+          taskName: 'auth',
+          state: 'stalled' as const,
+          lastActivity: null,
+          stalledSince: null,
+          escalationLevel: 1,
+        },
+      },
+    };
+    const items = buildDisplayItems(tmuxPanes, [], syncState, '%0', '', undefined, health);
+    expect(items).toHaveLength(1);
+    expect(items[0]!.label).toBe('auth');
+    expect(items[0]!.status).toBe('stalled');
+  });
+
   it('shows ad-hoc panes opened by the user', () => {
     const tmuxPanes = [
       makeTmuxPane('%0', 'bash', 'bash'),

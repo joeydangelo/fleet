@@ -9,6 +9,8 @@ import { commandBadge, taskDisplayStatus, statusIcon, SIDEBAR_WIDTH } from '../l
 import type { TuiStatus } from '../lib/tui-helpers.js';
 import { resolveGitRoot } from '../lib/dir-scanner.js';
 import { ORCHESTRATOR_ROLE } from '../lib/constants.js';
+import { readHealthSnapshot } from '../lib/health.js';
+import type { HealthSnapshot } from '../lib/health.js';
 import { ProjectPicker, AgentPicker } from './project-picker.js';
 
 const LINE_WIDTH = SIDEBAR_WIDTH - 2; // border chars consume 2 columns
@@ -144,6 +146,7 @@ export function buildDisplayItems(
   controlPaneId: string,
   orchestratorPaneId: string,
   primaryProject?: string,
+  healthSnapshot?: HealthSnapshot | null,
 ): DisplayItem[] {
   const seen = new Set<string>();
   const items: DisplayItem[] = [];
@@ -181,24 +184,43 @@ export function buildDisplayItems(
 
     const taskState = syncState?.tasks[pane.taskName];
     const mergeEntry = syncState?.merges?.[pane.taskName];
+    const health = healthSnapshot?.agents[pane.taskName]?.state;
     tagged.push({
       paneId: pane.paneId,
       label: pane.taskName,
       badge: commandBadge(tmuxInfo.command),
-      status: taskDisplayStatus(taskState, mergeEntry),
+      status: taskDisplayStatus(taskState, mergeEntry, health),
       projectRoot: tmuxInfo.project || primaryProject || null,
     });
   }
 
-  // Ad-hoc panes.
+  // Ad-hoc panes — includes task panes not yet in panes.json (timing) or
+  // whose pane IDs shifted. Recover task identity from @paw_role.
   for (const tp of tmuxPanes) {
     if (seen.has(tp.paneId) || tp.paneId === controlPaneId) continue;
     const isOrchestrator = tp.role === ORCHESTRATOR_ROLE;
+    const isTaskPane = tp.role.startsWith('paw-') && !isOrchestrator;
+    const taskName = isTaskPane ? tp.role.slice(4) : null;
+
+    let label: string;
+    let status: TuiStatus | null = null;
+    if (isOrchestrator) {
+      label = 'orchestrator';
+    } else if (taskName) {
+      label = taskName;
+      const taskState = syncState?.tasks[taskName];
+      const mergeEntry = syncState?.merges?.[taskName];
+      const health = healthSnapshot?.agents[taskName]?.state;
+      status = taskDisplayStatus(taskState, mergeEntry, health);
+    } else {
+      label = labelFromTitle(tp.title, tp.paneId);
+    }
+
     tagged.push({
       paneId: tp.paneId,
-      label: isOrchestrator ? 'orchestrator' : labelFromTitle(tp.title, tp.paneId),
+      label,
       badge: commandBadge(tp.command),
-      status: null,
+      status,
       projectRoot: resolveProjectForPane(tp),
     });
   }
@@ -289,6 +311,7 @@ export function TuiApp({
     const tmuxPanes = tmux.listPanesDetailed(sessionName);
     const config = readPaneConfig(repoRoot);
     const syncState = readSyncState(repoRoot);
+    const health = readHealthSnapshot(repoRoot);
     return buildDisplayItems(
       tmuxPanes,
       initialPanes,
@@ -296,6 +319,7 @@ export function TuiApp({
       controlPaneId,
       config?.orchestratorPaneId ?? '',
       repoRoot,
+      health,
     );
   });
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -308,6 +332,7 @@ export function TuiApp({
         const tmuxPanes = tmux.listPanesDetailed(sessionName);
         const config = readPaneConfig(repoRoot);
         const syncState = readSyncState(repoRoot);
+        const health = readHealthSnapshot(repoRoot);
         setItems(
           buildDisplayItems(
             tmuxPanes,
@@ -316,6 +341,7 @@ export function TuiApp({
             controlPaneId,
             config?.orchestratorPaneId ?? '',
             repoRoot,
+            health,
           ),
         );
       } catch {
