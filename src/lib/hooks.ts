@@ -4,6 +4,7 @@ import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { writeFileSync } from 'atomically';
 import { resolve } from 'node:path';
 import { success } from './output.js';
+import { INBOX_DEBOUNCE_S } from './constants.js';
 
 /** Wrapper script that resolves PATH and ensures paw is installed before running paw commands. */
 export const PAW_SESSION_SCRIPT = `#!/bin/bash
@@ -213,7 +214,7 @@ if [ -f "$LAST_CHECK_FILE" ]; then
   LAST=$(cat "$LAST_CHECK_FILE" 2>/dev/null || echo 0)
 fi
 ELAPSED=$((NOW - LAST))
-if [ "$ELAPSED" -ge 30 ]; then
+if [ "$ELAPSED" -ge ${INBOX_DEBOUNCE_S} ]; then
   echo "$NOW" > "$LAST_CHECK_FILE"
   paw inbox
 fi

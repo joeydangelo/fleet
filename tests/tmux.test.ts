@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import {
   TmuxService,
   tmuxSessionName,
@@ -86,7 +86,7 @@ describe('isInsideTmux', () => {
   });
 
   // Restore original
-  beforeEach(() => {
+  afterEach(() => {
     if (originalTmux !== undefined) {
       process.env['TMUX'] = originalTmux;
     } else {

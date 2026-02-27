@@ -14,8 +14,7 @@ import { restorePanes, savePanes, labelOrchestrator, writePaneConfig } from '../
 import type { PawPaneConfig } from '../lib/tmux.js';
 import { TuiApp } from '../components/tui-app.js';
 import { handleError, colors } from '../lib/output.js';
-import { SIDEBAR_WIDTH } from '../lib/tui-helpers.js';
-import { TUI_ROLE } from '../lib/constants.js';
+import { SIDEBAR_WIDTH, TUI_ROLE } from '../lib/constants.js';
 
 /**
  * Add a new project to the current workspace. Creates an orchestrator pane

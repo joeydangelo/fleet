@@ -16,9 +16,12 @@ import {
   saveTriageOutput,
 } from '../src/lib/health.js';
 import type { HealthSnapshot } from '../src/lib/health.js';
-
-const STALL = 300; // 5 minutes
-const ZOMBIE = 600; // 10 minutes
+import {
+  STALL_THRESHOLD_S as STALL,
+  ZOMBIE_THRESHOLD_S as ZOMBIE,
+  NUDGE_INTERVAL_S as NUDGE_INTERVAL,
+  MAX_ESCALATION_LEVEL as MAX_LEVEL,
+} from '../src/lib/constants.js';
 
 function makeOpts(overrides: Partial<Parameters<typeof resolveHealthState>[0]> = {}) {
   return {
@@ -150,8 +153,6 @@ describe('resolveHealthState', () => {
 });
 
 describe('computeEscalationLevel', () => {
-  const NUDGE_INTERVAL = 90; // seconds
-  const MAX_LEVEL = 3;
   const stalled = '2026-01-01T00:00:00.000Z';
 
   it('returns 0 before first interval elapses', () => {

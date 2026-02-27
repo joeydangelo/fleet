@@ -5,6 +5,7 @@ import { basename, resolve } from 'node:path';
 import pc from 'picocolors';
 import { getRepoRoot, getCurrentBranch, git } from '../lib/git.js';
 import { loadConfig, resolveConfigPath } from '../lib/config.js';
+import type { PawConfig } from '../lib/config.js';
 import { planWorktrees } from '../lib/session.js';
 import type { SyncState } from '../lib/sync.js';
 import { readSyncState } from '../lib/sync.js';
@@ -22,7 +23,7 @@ import { isVerbose } from '../lib/context.js';
 import { handleError, colors, pending, skip } from '../lib/output.js';
 import { runWatchLoop } from './watch.js';
 import { runUp } from './up.js';
-import { runLaunch } from './launch.js';
+import { runLaunch, printLaunchPreview } from './launch.js';
 
 function formatElapsed(ms: number): string {
   const seconds = ms / 1000;
@@ -228,7 +229,7 @@ export async function runGo(opts: GoOpts): Promise<void> {
   console.log(colors.success(`\nDone. Work merged to ${config.target}.`));
 }
 
-function printDryRun(repoRoot: string, config: ReturnType<typeof loadConfig>, opts: GoOpts): void {
+function printDryRun(repoRoot: string, config: PawConfig, opts: GoOpts): void {
   const state = detectSessionState(repoRoot);
   const useDetached = opts.detached || !isInsideTmux();
   const sessionName = tmuxSessionName(basename(repoRoot));
@@ -265,10 +266,7 @@ function printDryRun(repoRoot: string, config: ReturnType<typeof loadConfig>, op
     }
 
     console.log(pc.bold('\nWould launch agents:\n'));
-    for (const wt of targets) {
-      const verb = useDetached ? 'tmux new-session -d' : 'tmux split-window';
-      pending(wt.taskName, `${verb} -c ${wt.worktreePath} → ${config.agent}`);
-    }
+    printLaunchPreview(targets, syncState, useDetached, config.agent);
   }
 
   if (state === 'agents-running') {

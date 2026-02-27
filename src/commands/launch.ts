@@ -15,9 +15,31 @@ import {
   ensureTmuxInstalled,
 } from '../lib/tmux.js';
 import { savePanes, saveDetachedAgents, readPaneConfig } from '../lib/pane-state.js';
-import { SIDEBAR_WIDTH } from '../lib/tui-helpers.js';
+import { SIDEBAR_WIDTH } from '../lib/constants.js';
 import { success, skip, error, pending, handleError, colors } from '../lib/output.js';
 import { writeHeartbeat } from '../lib/health.js';
+import type { WorktreeInfo } from '../lib/session.js';
+import type { SyncState } from '../lib/sync.js';
+
+/** Print per-task launch preview lines (shared by launch and go dry-run). */
+export function printLaunchPreview(
+  targets: WorktreeInfo[],
+  syncState: SyncState | null,
+  useDetached: boolean,
+  agent?: string,
+): void {
+  for (const wt of targets) {
+    const taskState = syncState?.tasks[wt.taskName];
+    if (taskState?.status === 'done') {
+      skip(wt.taskName, 'done');
+    } else if (!existsSync(wt.worktreePath)) {
+      error(wt.taskName, 'worktree not found -- run paw up first');
+    } else {
+      const verb = useDetached ? 'tmux new-session -d' : 'tmux split-window';
+      pending(wt.taskName, `${verb} -c ${wt.worktreePath} → ${agent ?? 'claude'}`);
+    }
+  }
+}
 
 /** Spawn agents in tmux sessions (attached or detached) for tasks that aren't done. */
 export async function runLaunch(
@@ -168,17 +190,7 @@ export function launchCommand(): Command {
           console.log(`  session: ${sessionName}`);
           console.log(`  mode: ${useDetached ? 'detached' : 'attached'}\n`);
 
-          for (const wt of targets) {
-            const taskState = syncState?.tasks[wt.taskName];
-            if (taskState?.status === 'done') {
-              skip(wt.taskName, 'done');
-            } else if (!existsSync(wt.worktreePath)) {
-              error(wt.taskName, 'worktree not found -- run paw up first');
-            } else {
-              const verb = useDetached ? 'tmux new-session -d' : 'tmux split-window';
-              pending(wt.taskName, `${verb} -c ${wt.worktreePath} → ${config.agent}`);
-            }
-          }
+          printLaunchPreview(targets, syncState, useDetached, config.agent);
           console.log(pc.dim('\nDry run -- no sessions opened.'));
           return;
         }

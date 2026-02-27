@@ -44,6 +44,9 @@ export const MAX_ESCALATION_LEVEL = 3;
 /** Minimum seconds between inbox checks (debounce). */
 export const INBOX_DEBOUNCE_S = 30;
 
+/** Fixed column width of the TUI left sidebar. */
+export const SIDEBAR_WIDTH = 40;
+
 /** Timeout (ms) for triage AI classification. */
 export const TRIAGE_TIMEOUT_MS = 30_000;
 
