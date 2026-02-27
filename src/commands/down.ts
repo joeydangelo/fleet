@@ -1,6 +1,6 @@
 import { Command } from 'commander';
 import pc from 'picocolors';
-import { existsSync, mkdirSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, rmSync } from 'node:fs';
 import { writeFileSync } from 'atomically';
 import { resolve } from 'node:path';
 import { removeWorktree, branchExists, deleteBranch, cleanupBackupRefs } from '../lib/git.js';
@@ -88,6 +88,37 @@ export function downCommand(): Command {
 
         // Remove backup refs
         cleanupBackupRefs(repoRoot);
+
+        // Clean transient runtime state
+        const runDir = resolve(repoRoot, '.paw', 'run');
+        try {
+          rmSync(runDir, { recursive: true });
+        } catch {
+          /* already gone */
+        }
+        // Remove legacy pre-refactor files that lived at .paw/ root
+        try {
+          const pawDir = resolve(repoRoot, '.paw');
+          for (const f of readdirSync(pawDir)) {
+            if (
+              f.startsWith('.inbox-cursor-') ||
+              f === '.last-inbox-check' ||
+              f === '.session-ready' ||
+              f === 'health.json' ||
+              f === 'panes.json' ||
+              f === 'state.yml'
+            ) {
+              rmSync(resolve(pawDir, f), { force: true });
+            }
+          }
+          // Legacy dirs
+          for (const d of ['heartbeats', 'nudges', 'triage']) {
+            const p = resolve(pawDir, d);
+            if (existsSync(p)) rmSync(p, { recursive: true });
+          }
+        } catch {
+          /* best-effort cleanup */
+        }
 
         // Archive session data before destroying it
         if (opts.archive) {
