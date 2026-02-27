@@ -1,9 +1,4 @@
-/**
- * ZFC Health Monitoring — state machine, heartbeat I/O, and nudge delivery.
- *
- * Inspired by overstory's Zero Failure Crash design:
- * observable state (heartbeats + tmux) always beats recorded state (commits).
- */
+/** ZFC Health Monitoring — state machine, heartbeat I/O, and nudge delivery. */
 
 import { existsSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
 import { writeFileSync } from 'atomically';
@@ -12,9 +7,8 @@ import { execFileSync } from 'node:child_process';
 import {
   STALL_THRESHOLD_S,
   ZOMBIE_THRESHOLD_S,
-  BOOT_GRACE_S,
   NUDGE_INTERVAL_S,
-  MAX_NUDGES,
+  MAX_ESCALATION_LEVEL,
   TRIAGE_TIMEOUT_MS,
   TRIAGE_CAPTURE_LINES,
 } from './constants.js';
@@ -31,14 +25,8 @@ export interface AgentHealth {
   lastActivity: string | null;
   /** ISO timestamp when stall was first detected. */
   stalledSince: string | null;
-  /** Number of nudges sent while stalled. */
-  nudgeCount: number;
-  /** ISO timestamp of last nudge sent. */
-  lastNudge: string | null;
-  /** Whether triage has been performed for this stall cycle. */
-  triaged: boolean;
-  /** Triage verdict: 'extend' | 'retry' | 'terminate', or null if not triaged. */
-  triageVerdict: string | null;
+  /** Progressive escalation stage: 0=warn, 1=nudge, 2=triage, 3=terminate. */
+  escalationLevel: number;
 }
 
 export type TriageVerdict = 'extend' | 'retry' | 'terminate';
@@ -51,45 +39,26 @@ export interface HealthSnapshot {
 // --- Pure state evaluation (no I/O) ---
 
 /**
- * Resolve the health state for a single agent. Pure function — all inputs
- * are passed as parameters, no file system access.
+ * Resolve the health state for a single agent. Pure function — no I/O.
  *
- * ZFC rules (priority order):
- * 1. taskDone → completed
- * 2. tmux dead + not done → zombie immediately
- * 3. No heartbeat + within boot grace → booting
- * 4. No heartbeat + past boot grace → zombie
- * 5. Activity within stall threshold → working
- * 6. Activity within zombie threshold → stalled
- * 7. Activity past zombie threshold → zombie
+ * A launch heartbeat is written at spawn time, so lastActivity always exists.
+ * The 'booting' state is handled by evaluateAllAgents(), not here.
  */
 export function resolveHealthState(opts: {
   taskDone: boolean;
   tmuxAlive: boolean;
   lastActivity: string | null;
-  launchTime: string;
   now: Date;
   stallThreshold: number;
   zombieThreshold: number;
-  bootGrace: number;
 }): HealthState {
-  const { taskDone, tmuxAlive, lastActivity, launchTime, now } = opts;
-  const { stallThreshold, zombieThreshold, bootGrace } = opts;
+  const { taskDone, tmuxAlive, lastActivity, now } = opts;
+  const { stallThreshold, zombieThreshold } = opts;
 
-  // Rule 1: completed tasks are completed
   if (taskDone) return 'completed';
-
-  // Rule 2: dead tmux session → zombie immediately (ZFC: observable beats recorded)
   if (!tmuxAlive) return 'zombie';
+  if (!lastActivity) return 'zombie';
 
-  // No heartbeat yet — check boot grace
-  if (!lastActivity) {
-    const launchMs = new Date(launchTime).getTime();
-    const elapsedS = (now.getTime() - launchMs) / 1000;
-    return elapsedS < bootGrace ? 'booting' : 'zombie';
-  }
-
-  // Has heartbeat — check staleness
   const activityMs = new Date(lastActivity).getTime();
   const elapsedS = (now.getTime() - activityMs) / 1000;
 
@@ -99,22 +68,17 @@ export function resolveHealthState(opts: {
 }
 
 /**
- * Determine whether a stalled agent should receive a nudge.
- * Returns true if the nudge count is below max and enough time has passed
- * since the last nudge.
+ * Compute the expected escalation level from elapsed stall time.
+ * Level advances by one for each nudge interval elapsed, capped at max.
  */
-export function shouldNudge(
-  health: AgentHealth,
+export function computeEscalationLevel(
+  stalledSince: string,
   now: Date,
   nudgeInterval: number = NUDGE_INTERVAL_S,
-  maxNudges: number = MAX_NUDGES,
-): boolean {
-  if (health.state !== 'stalled') return false;
-  if (health.nudgeCount >= maxNudges) return false;
-
-  if (!health.lastNudge) return true;
-  const elapsed = (now.getTime() - new Date(health.lastNudge).getTime()) / 1000;
-  return elapsed >= nudgeInterval;
+  maxLevel: number = MAX_ESCALATION_LEVEL,
+): number {
+  const stalledMs = now.getTime() - new Date(stalledSince).getTime();
+  return Math.min(Math.floor(stalledMs / (nudgeInterval * 1000)), maxLevel);
 }
 
 /**
@@ -126,11 +90,10 @@ export function evaluateAllAgents(opts: {
   taskNames: string[];
   syncTasks: Record<string, { status: string }>;
   livenessMap: Map<string, boolean>;
-  launchTime: string;
   prevHealth: HealthSnapshot | null;
   now: Date;
 }): HealthSnapshot {
-  const { repoRoot, taskNames, syncTasks, livenessMap, launchTime, prevHealth, now } = opts;
+  const { repoRoot, taskNames, syncTasks, livenessMap, prevHealth, now } = opts;
 
   const agents: Record<string, AgentHealth> = {};
 
@@ -140,38 +103,39 @@ export function evaluateAllAgents(opts: {
     const lastActivity = readHeartbeat(repoRoot, taskName);
     const prev = prevHealth?.agents[taskName];
 
-    const state = resolveHealthState({
+    const rawState = resolveHealthState({
       taskDone,
       tmuxAlive,
       lastActivity,
-      launchTime,
       now,
       stallThreshold: STALL_THRESHOLD_S,
       zombieThreshold: ZOMBIE_THRESHOLD_S,
-      bootGrace: BOOT_GRACE_S,
     });
 
-    // Carry over escalation state from previous snapshot
+    // Stays 'booting' until the heartbeat value changes from the launch-written one
+    let state = rawState;
+    if (rawState === 'working') {
+      if (!prev) {
+        state = 'booting';
+      } else if (prev.state === 'booting') {
+        state = lastActivity !== prev.lastActivity ? 'working' : 'booting';
+      }
+    }
+
     let stalledSince = prev?.stalledSince ?? null;
-    let nudgeCount = prev?.nudgeCount ?? 0;
-    let lastNudge = prev?.lastNudge ?? null;
-    let triaged = prev?.triaged ?? false;
-    let triageVerdict = prev?.triageVerdict ?? null;
+    let escalationLevel = prev?.escalationLevel ?? 0;
 
     if (state === 'stalled' && prev?.state !== 'stalled') {
-      // Just entered stalled — record when
       stalledSince = now.toISOString();
-      nudgeCount = 0;
-      lastNudge = null;
-      triaged = false;
-      triageVerdict = null;
+      escalationLevel = 0;
+    } else if (state === 'stalled' && stalledSince) {
+      const expected = computeEscalationLevel(stalledSince, now);
+      if (expected > escalationLevel) {
+        escalationLevel = expected;
+      }
     } else if (state !== 'stalled') {
-      // Not stalled — reset escalation
       stalledSince = null;
-      nudgeCount = 0;
-      lastNudge = null;
-      triaged = false;
-      triageVerdict = null;
+      escalationLevel = 0;
     }
 
     agents[taskName] = {
@@ -179,10 +143,7 @@ export function evaluateAllAgents(opts: {
       state,
       lastActivity,
       stalledSince,
-      nudgeCount,
-      lastNudge,
-      triaged,
-      triageVerdict,
+      escalationLevel,
     };
   }
 
@@ -276,14 +237,6 @@ export function writeInboxCursor(repoRoot: string, taskName: string, cursor: str
 }
 
 // --- Triage ---
-
-/**
- * Determine whether a stalled agent should be triaged before zombie transition.
- * Returns true if: stalled, nudges exhausted, and not yet triaged this cycle.
- */
-export function shouldTriage(health: AgentHealth): boolean {
-  return health.state === 'stalled' && health.nudgeCount >= MAX_NUDGES && !health.triaged;
-}
 
 /**
  * Triage a stalled agent by capturing terminal output and classifying

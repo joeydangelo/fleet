@@ -1,21 +1,17 @@
 import { describe, it, expect } from 'vitest';
-import { resolveHealthState, shouldNudge, shouldTriage } from '../src/lib/health.js';
-import type { AgentHealth } from '../src/lib/health.js';
+import { resolveHealthState, computeEscalationLevel } from '../src/lib/health.js';
 
-const STALL = 180; // 3 minutes
-const ZOMBIE = 480; // 8 minutes
-const BOOT = 60; // 1 minute
+const STALL = 300; // 5 minutes
+const ZOMBIE = 600; // 10 minutes
 
 function makeOpts(overrides: Partial<Parameters<typeof resolveHealthState>[0]> = {}) {
   return {
     taskDone: false,
     tmuxAlive: true,
     lastActivity: null as string | null,
-    launchTime: '2026-01-01T00:00:00.000Z',
-    now: new Date('2026-01-01T00:00:30.000Z'), // 30s after launch
+    now: new Date('2026-01-01T00:00:30.000Z'),
     stallThreshold: STALL,
     zombieThreshold: ZOMBIE,
-    bootGrace: BOOT,
     ...overrides,
   };
 }
@@ -44,18 +40,8 @@ describe('resolveHealthState', () => {
     ).toBe('zombie');
   });
 
-  it('returns booting when no heartbeat and within boot grace', () => {
-    expect(resolveHealthState(makeOpts())).toBe('booting');
-  });
-
-  it('returns zombie when no heartbeat and past boot grace', () => {
-    expect(
-      resolveHealthState(
-        makeOpts({
-          now: new Date('2026-01-01T00:02:00.000Z'), // 2min after launch
-        }),
-      ),
-    ).toBe('zombie');
+  it('returns zombie when no lastActivity (launch heartbeat missing)', () => {
+    expect(resolveHealthState(makeOpts())).toBe('zombie');
   });
 
   it('returns working when heartbeat is within stall threshold', () => {
@@ -74,7 +60,7 @@ describe('resolveHealthState', () => {
       resolveHealthState(
         makeOpts({
           lastActivity: '2026-01-01T00:00:00.000Z',
-          now: new Date('2026-01-01T00:04:00.000Z'), // 4 min elapsed
+          now: new Date('2026-01-01T00:06:00.000Z'), // 6 min elapsed (between 5 and 10)
         }),
       ),
     ).toBe('stalled');
@@ -85,130 +71,114 @@ describe('resolveHealthState', () => {
       resolveHealthState(
         makeOpts({
           lastActivity: '2026-01-01T00:00:00.000Z',
-          now: new Date('2026-01-01T00:09:00.000Z'), // 9 min elapsed
+          now: new Date('2026-01-01T00:11:00.000Z'), // 11 min elapsed (past 10)
         }),
       ),
     ).toBe('zombie');
   });
 
-  it('returns working at exact stall boundary (< not <=)', () => {
-    // At exactly 180s, elapsed === threshold, so should be stalled
+  it('returns stalled at exact stall boundary (< not <=)', () => {
+    // At exactly 300s, elapsed === threshold, so should be stalled
     expect(
       resolveHealthState(
         makeOpts({
           lastActivity: '2026-01-01T00:00:00.000Z',
-          now: new Date('2026-01-01T00:03:00.000Z'),
+          now: new Date('2026-01-01T00:05:00.000Z'), // exactly 5 min
         }),
       ),
     ).toBe('stalled');
 
-    // At 179s, should still be working
+    // At 299s, should still be working
     expect(
       resolveHealthState(
         makeOpts({
           lastActivity: '2026-01-01T00:00:00.000Z',
-          now: new Date('2026-01-01T00:02:59.000Z'),
+          now: new Date('2026-01-01T00:04:59.000Z'),
+        }),
+      ),
+    ).toBe('working');
+  });
+
+  it('returns zombie at exact zombie boundary (< not <=)', () => {
+    // At exactly 600s, elapsed === threshold, so should be zombie
+    expect(
+      resolveHealthState(
+        makeOpts({
+          lastActivity: '2026-01-01T00:00:00.000Z',
+          now: new Date('2026-01-01T00:10:00.000Z'), // exactly 10 min
+        }),
+      ),
+    ).toBe('zombie');
+
+    // At 599s, should still be stalled
+    expect(
+      resolveHealthState(
+        makeOpts({
+          lastActivity: '2026-01-01T00:00:00.000Z',
+          now: new Date('2026-01-01T00:09:59.000Z'),
+        }),
+      ),
+    ).toBe('stalled');
+  });
+
+  it('returns working with launch heartbeat (lastActivity from spawn)', () => {
+    expect(
+      resolveHealthState(
+        makeOpts({
+          lastActivity: '2026-01-01T00:00:00.000Z',
+          now: new Date('2026-01-01T00:00:30.000Z'),
         }),
       ),
     ).toBe('working');
   });
 });
 
-describe('shouldNudge', () => {
-  function makeHealth(overrides: Partial<AgentHealth> = {}): AgentHealth {
-    return {
-      taskName: 'test',
-      state: 'stalled',
-      lastActivity: '2026-01-01T00:00:00.000Z',
-      stalledSince: '2026-01-01T00:03:00.000Z',
-      nudgeCount: 0,
-      lastNudge: null,
-      triaged: false,
-      triageVerdict: null,
-      ...overrides,
-    };
-  }
+describe('computeEscalationLevel', () => {
+  const NUDGE_INTERVAL = 90; // seconds
+  const MAX_LEVEL = 3;
+  const stalled = '2026-01-01T00:00:00.000Z';
 
-  it('returns true for first nudge on a stalled agent', () => {
-    expect(shouldNudge(makeHealth(), new Date('2026-01-01T00:04:00.000Z'))).toBe(true);
+  it('returns 0 before first interval elapses', () => {
+    const now = new Date('2026-01-01T00:01:00.000Z'); // 60s < 90s
+    expect(computeEscalationLevel(stalled, now, NUDGE_INTERVAL, MAX_LEVEL)).toBe(0);
   });
 
-  it('returns false when agent is not stalled', () => {
-    expect(
-      shouldNudge(makeHealth({ state: 'working' }), new Date('2026-01-01T00:04:00.000Z')),
-    ).toBe(false);
+  it('returns 1 after one interval', () => {
+    const now = new Date('2026-01-01T00:01:30.000Z'); // 90s
+    expect(computeEscalationLevel(stalled, now, NUDGE_INTERVAL, MAX_LEVEL)).toBe(1);
   });
 
-  it('returns false when max nudges reached', () => {
-    expect(
-      shouldNudge(makeHealth({ nudgeCount: 1 }), new Date('2026-01-01T00:04:00.000Z'), 90, 1),
-    ).toBe(false);
+  it('returns 2 after two intervals', () => {
+    const now = new Date('2026-01-01T00:03:00.000Z'); // 180s
+    expect(computeEscalationLevel(stalled, now, NUDGE_INTERVAL, MAX_LEVEL)).toBe(2);
   });
 
-  it('returns false when last nudge was too recent', () => {
-    expect(
-      shouldNudge(
-        makeHealth({
-          nudgeCount: 1,
-          lastNudge: '2026-01-01T00:04:00.000Z',
-        }),
-        new Date('2026-01-01T00:04:30.000Z'), // only 30s later
-        90,
-      ),
-    ).toBe(false);
+  it('returns 3 after three intervals', () => {
+    const now = new Date('2026-01-01T00:04:30.000Z'); // 270s
+    expect(computeEscalationLevel(stalled, now, NUDGE_INTERVAL, MAX_LEVEL)).toBe(3);
   });
 
-  it('returns true when enough time has passed since last nudge', () => {
-    expect(
-      shouldNudge(
-        makeHealth({
-          nudgeCount: 1,
-          lastNudge: '2026-01-01T00:04:00.000Z',
-        }),
-        new Date('2026-01-01T00:05:31.000Z'), // 91s later
-        90,
-        3, // allow up to 3 nudges for this timing test
-      ),
-    ).toBe(true);
-  });
-});
-
-describe('shouldTriage', () => {
-  function makeHealth(overrides: Partial<AgentHealth> = {}): AgentHealth {
-    return {
-      taskName: 'test',
-      state: 'stalled',
-      lastActivity: '2026-01-01T00:00:00.000Z',
-      stalledSince: '2026-01-01T00:03:00.000Z',
-      nudgeCount: 1,
-      lastNudge: '2026-01-01T00:04:30.000Z',
-      triaged: false,
-      triageVerdict: null,
-      ...overrides,
-    };
-  }
-
-  it('returns true when stalled, nudges exhausted, and not yet triaged', () => {
-    expect(shouldTriage(makeHealth())).toBe(true);
+  it('caps at max level', () => {
+    const now = new Date('2026-01-01T01:00:00.000Z'); // 3600s >> 270s
+    expect(computeEscalationLevel(stalled, now, NUDGE_INTERVAL, MAX_LEVEL)).toBe(3);
   });
 
-  it('returns false when not stalled', () => {
-    expect(shouldTriage(makeHealth({ state: 'working' }))).toBe(false);
+  it('advances level only forward (floor-based)', () => {
+    // At 89s → level 0, at 90s → level 1 (exact boundary)
+    const just_before = new Date('2026-01-01T00:01:29.999Z');
+    const at_boundary = new Date('2026-01-01T00:01:30.000Z');
+    expect(computeEscalationLevel(stalled, just_before, NUDGE_INTERVAL, MAX_LEVEL)).toBe(0);
+    expect(computeEscalationLevel(stalled, at_boundary, NUDGE_INTERVAL, MAX_LEVEL)).toBe(1);
   });
 
-  it('returns false when nudges not yet exhausted', () => {
-    expect(shouldTriage(makeHealth({ nudgeCount: 0 }))).toBe(false);
+  it('respects custom nudge interval', () => {
+    const now = new Date('2026-01-01T00:01:00.000Z'); // 60s
+    expect(computeEscalationLevel(stalled, now, 60, MAX_LEVEL)).toBe(1);
+    expect(computeEscalationLevel(stalled, now, 120, MAX_LEVEL)).toBe(0);
   });
 
-  it('returns false when already triaged', () => {
-    expect(shouldTriage(makeHealth({ triaged: true }))).toBe(false);
-  });
-
-  it('returns false for zombie state', () => {
-    expect(shouldTriage(makeHealth({ state: 'zombie', nudgeCount: 1 }))).toBe(false);
-  });
-
-  it('returns false for completed state', () => {
-    expect(shouldTriage(makeHealth({ state: 'completed', nudgeCount: 1 }))).toBe(false);
+  it('respects custom max level', () => {
+    const now = new Date('2026-01-01T00:04:30.000Z'); // 270s → would be 3 with default
+    expect(computeEscalationLevel(stalled, now, NUDGE_INTERVAL, 2)).toBe(2);
   });
 });
