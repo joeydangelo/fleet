@@ -1,5 +1,22 @@
-import { describe, it, expect } from 'vitest';
-import { resolveHealthState, computeEscalationLevel } from '../src/lib/health.js';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { mkdirSync, existsSync, readFileSync, rmSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { tmpdir } from 'node:os';
+import {
+  resolveHealthState,
+  computeEscalationLevel,
+  readHeartbeat,
+  writeHeartbeat,
+  readHealthSnapshot,
+  writeHealthSnapshot,
+  writeNudge,
+  readNudge,
+  clearNudge,
+  readInboxCursor,
+  writeInboxCursor,
+  saveTriageOutput,
+} from '../src/lib/health.js';
+import type { HealthSnapshot } from '../src/lib/health.js';
 
 const STALL = 300; // 5 minutes
 const ZOMBIE = 600; // 10 minutes
@@ -180,5 +197,165 @@ describe('computeEscalationLevel', () => {
   it('respects custom max level', () => {
     const now = new Date('2026-01-01T00:04:30.000Z'); // 270s → would be 3 with default
     expect(computeEscalationLevel(stalled, now, NUDGE_INTERVAL, 2)).toBe(2);
+  });
+});
+
+// --- I/O functions: all transient files go under .paw/run/ ---
+
+function makeTempDir(): string {
+  const dir = resolve(tmpdir(), `paw-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+  mkdirSync(dir, { recursive: true });
+  return dir;
+}
+
+describe('heartbeat I/O writes to .paw/run/', () => {
+  let repoRoot: string;
+
+  beforeEach(() => {
+    repoRoot = makeTempDir();
+  });
+
+  afterEach(() => {
+    rmSync(repoRoot, { recursive: true, force: true });
+  });
+
+  it('writeHeartbeat creates file under .paw/run/heartbeats/', () => {
+    writeHeartbeat(repoRoot, 'auth');
+    const filePath = resolve(repoRoot, '.paw', 'run', 'heartbeats', 'auth');
+    expect(existsSync(filePath)).toBe(true);
+    const content = readFileSync(filePath, 'utf-8').trim();
+    expect(new Date(content).toISOString()).toBe(content); // valid ISO timestamp
+  });
+
+  it('readHeartbeat reads from .paw/run/heartbeats/', () => {
+    writeHeartbeat(repoRoot, 'api');
+    const ts = readHeartbeat(repoRoot, 'api');
+    expect(ts).toBeTruthy();
+    expect(new Date(ts!).getTime()).not.toBeNaN();
+  });
+
+  it('readHeartbeat returns null when no heartbeat exists', () => {
+    expect(readHeartbeat(repoRoot, 'missing')).toBeNull();
+  });
+});
+
+describe('health snapshot I/O writes to .paw/run/', () => {
+  let repoRoot: string;
+
+  beforeEach(() => {
+    repoRoot = makeTempDir();
+  });
+
+  afterEach(() => {
+    rmSync(repoRoot, { recursive: true, force: true });
+  });
+
+  it('writeHealthSnapshot creates .paw/run/health.json', () => {
+    const snapshot: HealthSnapshot = {
+      timestamp: '2026-01-01T00:00:00.000Z',
+      agents: {},
+    };
+    writeHealthSnapshot(repoRoot, snapshot);
+    const filePath = resolve(repoRoot, '.paw', 'run', 'health.json');
+    expect(existsSync(filePath)).toBe(true);
+  });
+
+  it('readHealthSnapshot round-trips through .paw/run/', () => {
+    const snapshot: HealthSnapshot = {
+      timestamp: '2026-01-01T00:00:00.000Z',
+      agents: {
+        auth: {
+          taskName: 'auth',
+          state: 'working',
+          lastActivity: '2026-01-01T00:00:00.000Z',
+          stalledSince: null,
+          escalationLevel: 0,
+        },
+      },
+    };
+    writeHealthSnapshot(repoRoot, snapshot);
+    expect(readHealthSnapshot(repoRoot)).toEqual(snapshot);
+  });
+
+  it('readHealthSnapshot returns null when file is missing', () => {
+    expect(readHealthSnapshot(repoRoot)).toBeNull();
+  });
+});
+
+describe('nudge I/O writes to .paw/run/', () => {
+  let repoRoot: string;
+
+  beforeEach(() => {
+    repoRoot = makeTempDir();
+  });
+
+  afterEach(() => {
+    rmSync(repoRoot, { recursive: true, force: true });
+  });
+
+  it('writeNudge creates file under .paw/run/nudges/', () => {
+    writeNudge(repoRoot, 'auth', 'You seem stuck.');
+    const filePath = resolve(repoRoot, '.paw', 'run', 'nudges', 'auth.md');
+    expect(existsSync(filePath)).toBe(true);
+    expect(readFileSync(filePath, 'utf-8')).toBe('You seem stuck.');
+  });
+
+  it('readNudge reads from .paw/run/nudges/', () => {
+    writeNudge(repoRoot, 'api', 'Wake up!');
+    expect(readNudge(repoRoot, 'api')).toBe('Wake up!');
+  });
+
+  it('clearNudge removes the file', () => {
+    writeNudge(repoRoot, 'auth', 'msg');
+    clearNudge(repoRoot, 'auth');
+    expect(readNudge(repoRoot, 'auth')).toBeNull();
+  });
+});
+
+describe('inbox cursor I/O writes to .paw/run/', () => {
+  let repoRoot: string;
+
+  beforeEach(() => {
+    repoRoot = makeTempDir();
+  });
+
+  afterEach(() => {
+    rmSync(repoRoot, { recursive: true, force: true });
+  });
+
+  it('writeInboxCursor creates file under .paw/run/', () => {
+    writeInboxCursor(repoRoot, 'auth', '2026-01-01T00:00:00.000Z');
+    const filePath = resolve(repoRoot, '.paw', 'run', '.inbox-cursor-auth');
+    expect(existsSync(filePath)).toBe(true);
+  });
+
+  it('readInboxCursor round-trips', () => {
+    writeInboxCursor(repoRoot, 'api', '2026-02-15T12:30:00.000Z');
+    expect(readInboxCursor(repoRoot, 'api')).toBe('2026-02-15T12:30:00.000Z');
+  });
+
+  it('readInboxCursor returns null when missing', () => {
+    expect(readInboxCursor(repoRoot, 'nope')).toBeNull();
+  });
+});
+
+describe('triage I/O writes to .paw/run/', () => {
+  let repoRoot: string;
+
+  beforeEach(() => {
+    repoRoot = makeTempDir();
+  });
+
+  afterEach(() => {
+    rmSync(repoRoot, { recursive: true, force: true });
+  });
+
+  it('saveTriageOutput creates file under .paw/run/triage/', () => {
+    saveTriageOutput(repoRoot, 'auth', 'terminal output', 'extend');
+    const filePath = resolve(repoRoot, '.paw', 'run', 'triage', 'auth.txt');
+    expect(existsSync(filePath)).toBe(true);
+    const content = readFileSync(filePath, 'utf-8');
+    expect(content).toContain('extend');
+    expect(content).toContain('terminal output');
   });
 });

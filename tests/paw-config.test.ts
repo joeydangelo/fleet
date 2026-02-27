@@ -128,9 +128,10 @@ describe('readLocalState', () => {
     expect(state.last_doc_sync_at).toBeUndefined();
   });
 
-  it('reads existing state.yml', () => {
+  it('reads existing state.yml from .paw/run/', () => {
+    mkdirSync(resolve(repoRoot, '.paw', 'run'), { recursive: true });
     writeFileSync(
-      resolve(repoRoot, '.paw', 'state.yml'),
+      resolve(repoRoot, '.paw', 'run', 'state.yml'),
       'last_doc_sync_at: "2026-02-24T12:00:00Z"\n',
       'utf-8',
     );

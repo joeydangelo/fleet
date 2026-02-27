@@ -184,10 +184,11 @@ export async function runGo(opts: GoOpts): Promise<void> {
   console.log(pc.bold('\npaw merge\n'));
   let phaseStart = Date.now();
 
-  // Clean transient watch artifacts before checkout to avoid conflicts
-  const healthPath = resolve(repoRoot, '.paw', 'health.json');
+  // Clean all transient runtime state before checkout to avoid conflicts.
+  // Everything under .paw/run/ is session-scoped and disposable.
+  const runDir = resolve(repoRoot, '.paw', 'run');
   try {
-    rmSync(healthPath);
+    rmSync(runDir, { recursive: true });
   } catch {
     /* already gone */
   }

@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
-import { basename } from 'node:path';
+import { existsSync, readFileSync, rmSync } from 'node:fs';
+import { basename, resolve } from 'node:path';
 import {
   BEACON_MESSAGE,
   BEACON_TUI_TIMEOUT_MS,
@@ -570,7 +570,7 @@ export async function launchTmux(
     tmux.setPaneRole(paneId, `paw-${wt.taskName}`);
     tmux.setPaneProject(paneId, repoRoot);
     tmux.sendKeys(paneId, wt.agentCommand);
-    await sendBeacon(tmux, paneId, beaconOpts);
+    await sendBeacon(tmux, paneId, { ...beaconOpts, worktreePath: wt.worktreePath });
 
     panes.push(pane);
     paneIndex++;
@@ -623,6 +623,10 @@ export interface BeaconOptions {
   verifyDelayMs?: number;
   /** Delays (ms) for follow-up empty Enters after initial beacon send. */
   followUpDelays?: number[];
+  /** Worktree path — if set, beacon waits for .paw/.session-ready before sending. */
+  worktreePath?: string;
+  /** Max time (ms) to wait for session-ready sentinel. Default: 60_000. */
+  sessionReadyTimeoutMs?: number;
 }
 
 /** Send the initial task message to an agent after Claude Code boots. */
@@ -637,9 +641,29 @@ export async function sendBeacon(
   const verifyAttempts = opts.verifyAttempts ?? BEACON_VERIFY_ATTEMPTS;
   const verifyDelayMs = opts.verifyDelayMs ?? BEACON_VERIFY_DELAY_MS;
   const followUpDelays = opts.followUpDelays ?? [5_000, 10_000];
+  const sessionReadyTimeoutMs = opts.sessionReadyTimeoutMs ?? 60_000;
 
   const ready = await waitForTuiReady(tmux, sessionOrPane, tuiTimeoutMs, tuiPollIntervalMs);
   if (!ready) return false;
+
+  // Wait for SessionStart hooks to complete before sending the beacon.
+  // paw-session.sh writes .paw/run/.session-ready when paw prime finishes.
+  if (opts.worktreePath && sessionReadyTimeoutMs > 0) {
+    const sentinel = resolve(opts.worktreePath, '.paw', 'run', '.session-ready');
+    const pollMs = Math.max(tuiPollIntervalMs, 500);
+    const maxAttempts = Math.ceil(sessionReadyTimeoutMs / pollMs);
+    for (let i = 0; i < maxAttempts; i++) {
+      if (existsSync(sentinel)) {
+        try {
+          rmSync(sentinel);
+        } catch {
+          /* best-effort cleanup */
+        }
+        break;
+      }
+      await sleep(pollMs);
+    }
+  }
 
   await sleep(postReadyDelayMs);
 
@@ -744,7 +768,10 @@ export async function launchDetached(
     if (liveByTask.has(wt.taskName)) continue;
 
     const sessionName = `${sessionPrefix}-${wt.taskName}`;
-    await createDetachedSession(tmux, sessionName, wt.worktreePath, wt.agentCommand, beaconOpts);
+    await createDetachedSession(tmux, sessionName, wt.worktreePath, wt.agentCommand, {
+      ...beaconOpts,
+      worktreePath: wt.worktreePath,
+    });
 
     agents.push({
       id: `paw-${index}`,

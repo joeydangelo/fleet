@@ -180,7 +180,7 @@ describe('pane-state: readPaneConfig / writePaneConfig', () => {
     };
 
     writePaneConfig(tempDir, config);
-    const filePath = resolve(tempDir, '.paw', 'panes.json');
+    const filePath = resolve(tempDir, '.paw', 'run', 'panes.json');
     expect(existsSync(filePath)).toBe(true);
 
     const content = readFileSync(filePath, 'utf-8');

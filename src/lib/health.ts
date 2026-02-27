@@ -155,7 +155,7 @@ export function evaluateAllAgents(opts: {
 /** Read the last heartbeat timestamp for a task. Returns null if no heartbeat exists. */
 export function readHeartbeat(repoRoot: string, taskName: string): string | null {
   try {
-    const filePath = resolve(repoRoot, '.paw', 'heartbeats', taskName);
+    const filePath = resolve(repoRoot, '.paw', 'run', 'heartbeats', taskName);
     return readFileSync(filePath, 'utf-8').trim() || null;
   } catch {
     return null;
@@ -164,7 +164,7 @@ export function readHeartbeat(repoRoot: string, taskName: string): string | null
 
 /** Write a heartbeat timestamp for a task. */
 export function writeHeartbeat(repoRoot: string, taskName: string): void {
-  const dir = resolve(repoRoot, '.paw', 'heartbeats');
+  const dir = resolve(repoRoot, '.paw', 'run', 'heartbeats');
   mkdirSync(dir, { recursive: true });
   writeFileSync(resolve(dir, taskName), new Date().toISOString(), 'utf-8');
 }
@@ -174,7 +174,7 @@ export function writeHeartbeat(repoRoot: string, taskName: string): void {
 /** Read the computed health snapshot. Returns null if not yet written. */
 export function readHealthSnapshot(repoRoot: string): HealthSnapshot | null {
   try {
-    const filePath = resolve(repoRoot, '.paw', 'health.json');
+    const filePath = resolve(repoRoot, '.paw', 'run', 'health.json');
     return JSON.parse(readFileSync(filePath, 'utf-8')) as HealthSnapshot;
   } catch {
     return null;
@@ -183,7 +183,7 @@ export function readHealthSnapshot(repoRoot: string): HealthSnapshot | null {
 
 /** Write the computed health snapshot (single writer: watch loop only). */
 export function writeHealthSnapshot(repoRoot: string, snapshot: HealthSnapshot): void {
-  const dir = resolve(repoRoot, '.paw');
+  const dir = resolve(repoRoot, '.paw', 'run');
   mkdirSync(dir, { recursive: true });
   writeFileSync(resolve(dir, 'health.json'), JSON.stringify(snapshot, null, 2) + '\n', 'utf-8');
 }
@@ -192,7 +192,7 @@ export function writeHealthSnapshot(repoRoot: string, snapshot: HealthSnapshot):
 
 /** Write a nudge message for an agent to pick up. */
 export function writeNudge(repoRoot: string, taskName: string, message: string): void {
-  const dir = resolve(repoRoot, '.paw', 'nudges');
+  const dir = resolve(repoRoot, '.paw', 'run', 'nudges');
   mkdirSync(dir, { recursive: true });
   writeFileSync(resolve(dir, `${taskName}.md`), message, 'utf-8');
 }
@@ -200,7 +200,7 @@ export function writeNudge(repoRoot: string, taskName: string, message: string):
 /** Read a pending nudge for a task. Returns null if no nudge is pending. */
 export function readNudge(repoRoot: string, taskName: string): string | null {
   try {
-    const filePath = resolve(repoRoot, '.paw', 'nudges', `${taskName}.md`);
+    const filePath = resolve(repoRoot, '.paw', 'run', 'nudges', `${taskName}.md`);
     if (!existsSync(filePath)) return null;
     return readFileSync(filePath, 'utf-8');
   } catch {
@@ -211,7 +211,7 @@ export function readNudge(repoRoot: string, taskName: string): string | null {
 /** Delete a nudge file after the agent has read it. */
 export function clearNudge(repoRoot: string, taskName: string): void {
   try {
-    rmSync(resolve(repoRoot, '.paw', 'nudges', `${taskName}.md`));
+    rmSync(resolve(repoRoot, '.paw', 'run', 'nudges', `${taskName}.md`));
   } catch {
     // Already cleared or never existed
   }
@@ -222,7 +222,7 @@ export function clearNudge(repoRoot: string, taskName: string): void {
 /** Read the inbox cursor (ISO timestamp) for a task. Returns null if no cursor exists. */
 export function readInboxCursor(repoRoot: string, taskName: string): string | null {
   try {
-    const filePath = resolve(repoRoot, '.paw', `.inbox-cursor-${taskName}`);
+    const filePath = resolve(repoRoot, '.paw', 'run', `.inbox-cursor-${taskName}`);
     return readFileSync(filePath, 'utf-8').trim() || null;
   } catch {
     return null;
@@ -231,7 +231,7 @@ export function readInboxCursor(repoRoot: string, taskName: string): string | nu
 
 /** Write the inbox cursor (ISO timestamp) for a task. */
 export function writeInboxCursor(repoRoot: string, taskName: string, cursor: string): void {
-  const dir = resolve(repoRoot, '.paw');
+  const dir = resolve(repoRoot, '.paw', 'run');
   mkdirSync(dir, { recursive: true });
   writeFileSync(resolve(dir, `.inbox-cursor-${taskName}`), cursor, 'utf-8');
 }
@@ -287,7 +287,7 @@ export function saveTriageOutput(
   captured: string,
   verdict: string,
 ): void {
-  const dir = resolve(repoRoot, '.paw', 'triage');
+  const dir = resolve(repoRoot, '.paw', 'run', 'triage');
   mkdirSync(dir, { recursive: true });
   const content =
     `Triage verdict: ${verdict}\n` +

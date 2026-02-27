@@ -29,6 +29,7 @@ const fastBeacon: BeaconOptions = {
   verifyAttempts: 2,
   verifyDelayMs: 5,
   followUpDelays: [5, 5],
+  sessionReadyTimeoutMs: 0,
 };
 
 // --- Mock TmuxService for unit tests ---

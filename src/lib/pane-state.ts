@@ -12,7 +12,7 @@ export function labelOrchestrator(tmux: TmuxServiceApi, paneId: string): void {
 }
 
 function panesPath(repoRoot: string): string {
-  return resolve(repoRoot, '.paw', PANES_FILE);
+  return resolve(repoRoot, '.paw', 'run', PANES_FILE);
 }
 
 /** Read persisted pane config. Returns null if file is missing or corrupt. */

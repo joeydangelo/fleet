@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { writeFileSync } from 'atomically';
 import { resolve } from 'node:path';
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
@@ -68,7 +68,7 @@ export function writeProjectConfig(repoRoot: string, config: PawProjectConfig): 
 }
 
 export function readLocalState(repoRoot: string): LocalState {
-  const statePath = resolve(repoRoot, '.paw', 'state.yml');
+  const statePath = resolve(repoRoot, '.paw', 'run', 'state.yml');
   if (!existsSync(statePath)) {
     return LocalStateSchema.parse({});
   }
@@ -78,6 +78,8 @@ export function readLocalState(repoRoot: string): LocalState {
 }
 
 export function writeLocalState(repoRoot: string, state: LocalState): void {
-  const statePath = resolve(repoRoot, '.paw', 'state.yml');
+  const dir = resolve(repoRoot, '.paw', 'run');
+  mkdirSync(dir, { recursive: true });
+  const statePath = resolve(dir, 'state.yml');
   writeFileSync(statePath, stringifyYaml(state, YAML_OPTIONS), 'utf-8');
 }

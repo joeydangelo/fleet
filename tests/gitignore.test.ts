@@ -29,21 +29,23 @@ describe('ensurePawGitignore', () => {
     expect(created).toBe(true);
 
     const content = readFileSync(resolve(repoRoot, '.paw', '.gitignore'), 'utf-8');
+    expect(content).toContain('run/');
     expect(content).toContain('docs/');
-    expect(content).toContain('state.yml');
     expect(content).toContain('tasks/');
     expect(content).toContain('sync/');
     expect(content).toContain('sessions/');
-    expect(content).toContain('panes.json');
     expect(content).toContain('paw.yaml');
     expect(content).toContain('*.tmp');
   });
 
-  it('does not include config.yml or hooks/', () => {
+  it('does not include config.yml, hooks/, or individual runtime files', () => {
     ensurePawGitignore(repoRoot);
     const content = readFileSync(resolve(repoRoot, '.paw', '.gitignore'), 'utf-8');
     expect(content).not.toContain('config.yml');
     expect(content).not.toContain('hooks/');
+    // These moved into run/ — no longer need individual entries
+    expect(content).not.toContain('state.yml');
+    expect(content).not.toContain('panes.json');
   });
 
   it('is idempotent — returns false on second call', () => {

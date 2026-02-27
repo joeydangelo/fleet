@@ -2,16 +2,15 @@ import { existsSync, readFileSync } from 'node:fs';
 import { writeFileSync } from 'atomically';
 import { resolve } from 'node:path';
 
-const PAW_GITIGNORE_CONTENT = `# Installed documentation (regenerated on sync)
+const PAW_GITIGNORE_CONTENT = `# Transient runtime state (dies with session)
+run/
+# Installed documentation (regenerated on sync)
 docs/
-# Local state (per-machine)
-state.yml
 # Session runtime data
 paw.yaml
 tasks/
 sync/
 sessions/
-panes.json
 *.tmp
 `;
 

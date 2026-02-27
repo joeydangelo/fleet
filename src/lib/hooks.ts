@@ -68,6 +68,10 @@ ensure_paw || exit 1
 
 # Run paw prime with any passed arguments (e.g., --brief for PreCompact)
 paw prime "$@"
+
+# Signal that session hooks are complete — sendBeacon waits for this file
+mkdir -p .paw/run
+touch .paw/run/.session-ready
 `;
 
 /** PreToolUse hook that blocks dangerous git commands in paw worktrees before execution. */
@@ -202,7 +206,7 @@ export PATH="$HOME/.local/bin:$HOME/bin:/usr/local/bin:$PATH"
 paw heartbeat &
 
 # Debounced inbox check (every 30s)
-LAST_CHECK_FILE=".paw/.last-inbox-check"
+LAST_CHECK_FILE=".paw/run/.last-inbox-check"
 NOW=$(date +%s)
 LAST=0
 if [ -f "$LAST_CHECK_FILE" ]; then
