@@ -1,6 +1,6 @@
 import { Command } from 'commander';
 import { execFileSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, rmSync } from 'node:fs';
 import { basename, resolve } from 'node:path';
 import pc from 'picocolors';
 import { getRepoRoot, getCurrentBranch, git } from '../lib/git.js';
@@ -183,6 +183,14 @@ export async function runGo(opts: GoOpts): Promise<void> {
 
   console.log(pc.bold('\npaw merge\n'));
   let phaseStart = Date.now();
+
+  // Clean transient watch artifacts before checkout to avoid conflicts
+  const healthPath = resolve(repoRoot, '.paw', 'health.json');
+  try {
+    rmSync(healthPath);
+  } catch {
+    /* already gone */
+  }
 
   const currentBranch = getCurrentBranch(repoRoot);
   if (currentBranch !== config.target) {
