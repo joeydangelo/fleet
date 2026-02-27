@@ -194,7 +194,6 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-/** Resolve the tmux target for sending nudge keys to an agent. */
 function resolveNudgeTarget(paneConfig: PawPaneConfig, taskName: string): string | null {
   if (paneConfig.mode === 'detached' && paneConfig.detached) {
     const agent = paneConfig.detached.find((a) => a.taskName === taskName);
@@ -256,7 +255,7 @@ export async function runWatchLoop(opts: {
         continue;
       }
 
-      // 1. Diff journal
+      // Diff journal
       const journal = readJournal(repoRoot);
       const journalDiff = diffJournal(journal, lastSeenTs);
       lastSeenTs = journalDiff.lastSeenTs;
@@ -265,7 +264,7 @@ export async function runWatchLoop(opts: {
         printJournalEntry(entry, taskIndex);
       }
 
-      // 2. Diff statuses
+      // Diff statuses
       const statusDiff = diffStatuses(prevStatuses, syncState.tasks);
       prevStatuses = statusDiff.currentStatuses;
 
@@ -273,7 +272,7 @@ export async function runWatchLoop(opts: {
         printStatusTransition(t, taskIndex);
       }
 
-      // 3. Diff commit counts
+      // Diff commit counts
       const currentCommitCounts: Record<string, number> = {};
       for (const wt of worktrees) {
         try {
@@ -299,7 +298,7 @@ export async function runWatchLoop(opts: {
         printCommitDelta(d, taskIndex, fileCount);
       }
 
-      // 4. Evaluate agent health (ZFC)
+      // Evaluate agent health (ZFC)
       const livenessMap = new Map<string, boolean>();
       const paneConfig = readPaneConfig(repoRoot);
       let tmux: TmuxServiceApi | null = null;
@@ -423,7 +422,7 @@ export async function runWatchLoop(opts: {
         prevEscalationLevels[taskName] = health.escalationLevel;
       }
 
-      // 5. Check terminal conditions
+      // Check terminal conditions
       if (isAllDone(syncState.tasks)) {
         printSummary();
         if (!noExit) break;

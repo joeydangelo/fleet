@@ -11,7 +11,6 @@ import { checkAgentLiveness, createTmuxService } from '../lib/tmux.js';
 import type { AgentLivenessResult } from '../lib/tmux.js';
 import { error, skip, unknown, handleError, formatFocusAreas } from '../lib/output.js';
 
-/** Build a taskName → alive map from liveness results. */
 function buildLivenessMap(results: AgentLivenessResult[]): Map<string, boolean> {
   const map = new Map<string, boolean>();
   for (const r of results) {
@@ -20,7 +19,6 @@ function buildLivenessMap(results: AgentLivenessResult[]): Map<string, boolean> 
   return map;
 }
 
-/** Format a liveness marker: ● alive, ○ dead. */
 function livenessMarker(alive: boolean | undefined): string {
   if (alive === undefined) return ' ';
   return alive ? pc.green('●') : pc.red('○');

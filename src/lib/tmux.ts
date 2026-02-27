@@ -726,7 +726,6 @@ export async function createDetachedSession(
   await sendBeacon(tmux, sessionName, beaconOpts);
 }
 
-/** Kill a detached tmux session if it exists. */
 export function killDetachedSession(tmux: TmuxServiceApi, sessionName: string): void {
   if (tmux.sessionExists(sessionName)) {
     tmux.killSession(sessionName);

@@ -97,14 +97,14 @@ export function inboxCommand(): Command {
         if (!taskName) return;
         const mainRoot = resolveMainRoot(cwd);
 
-        // 1. Read nudge file
+        // Read nudge file
         const nudge = readNudge(mainRoot, taskName);
         if (nudge) {
           console.log(`\n[paw] Message from orchestrator:\n${nudge}\n`);
           clearNudge(mainRoot, taskName);
         }
 
-        // 2. Read journal entries since last cursor
+        // Read journal entries since last cursor
         const cursor = readInboxCursor(mainRoot, taskName);
         const entries = readJournalForTask(taskName, cwd, cursor ?? undefined);
 
@@ -119,7 +119,7 @@ export function inboxCommand(): Command {
           console.log();
         }
 
-        // 3. Check for unanswered threads directed at this agent
+        // Check for unanswered threads directed at this agent
         const allEntries = readJournal(cwd);
         const { open } = computeThreads(allEntries);
         const unanswered = open.filter((t) => t.ask.to === taskName);

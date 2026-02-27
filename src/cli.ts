@@ -112,7 +112,6 @@ Getting Started:
     const m = await import('./commands/reply.js');
     return m.replyCommand();
   });
-  // 'threads' removed — consolidated into 'inbox --all'
   lazy(program, 'shortcut', 'Display a shortcut workflow', async () => {
     const m = await import('./commands/shortcut.js');
     return m.shortcutCommand();

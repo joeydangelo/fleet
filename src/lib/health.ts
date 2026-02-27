@@ -152,7 +152,6 @@ export function evaluateAllAgents(opts: {
 
 // --- Heartbeat I/O ---
 
-/** Read the last heartbeat timestamp for a task. Returns null if no heartbeat exists. */
 export function readHeartbeat(repoRoot: string, taskName: string): string | null {
   try {
     const filePath = resolve(repoRoot, '.paw', 'run', 'heartbeats', taskName);
@@ -162,7 +161,6 @@ export function readHeartbeat(repoRoot: string, taskName: string): string | null
   }
 }
 
-/** Write a heartbeat timestamp for a task. */
 export function writeHeartbeat(repoRoot: string, taskName: string): void {
   const dir = resolve(repoRoot, '.paw', 'run', 'heartbeats');
   mkdirSync(dir, { recursive: true });
@@ -171,7 +169,6 @@ export function writeHeartbeat(repoRoot: string, taskName: string): void {
 
 // --- Health snapshot I/O ---
 
-/** Read the computed health snapshot. Returns null if not yet written. */
 export function readHealthSnapshot(repoRoot: string): HealthSnapshot | null {
   try {
     const filePath = resolve(repoRoot, '.paw', 'run', 'health.json');
@@ -181,7 +178,7 @@ export function readHealthSnapshot(repoRoot: string): HealthSnapshot | null {
   }
 }
 
-/** Write the computed health snapshot (single writer: watch loop only). */
+/** Single writer: called exclusively from the watch loop. */
 export function writeHealthSnapshot(repoRoot: string, snapshot: HealthSnapshot): void {
   const dir = resolve(repoRoot, '.paw', 'run');
   mkdirSync(dir, { recursive: true });
@@ -190,14 +187,12 @@ export function writeHealthSnapshot(repoRoot: string, snapshot: HealthSnapshot):
 
 // --- Nudge I/O ---
 
-/** Write a nudge message for an agent to pick up. */
 export function writeNudge(repoRoot: string, taskName: string, message: string): void {
   const dir = resolve(repoRoot, '.paw', 'run', 'nudges');
   mkdirSync(dir, { recursive: true });
   writeFileSync(resolve(dir, `${taskName}.md`), message, 'utf-8');
 }
 
-/** Read a pending nudge for a task. Returns null if no nudge is pending. */
 export function readNudge(repoRoot: string, taskName: string): string | null {
   try {
     const filePath = resolve(repoRoot, '.paw', 'run', 'nudges', `${taskName}.md`);
@@ -208,7 +203,6 @@ export function readNudge(repoRoot: string, taskName: string): string | null {
   }
 }
 
-/** Delete a nudge file after the agent has read it. */
 export function clearNudge(repoRoot: string, taskName: string): void {
   try {
     rmSync(resolve(repoRoot, '.paw', 'run', 'nudges', `${taskName}.md`));
@@ -219,7 +213,6 @@ export function clearNudge(repoRoot: string, taskName: string): void {
 
 // --- Inbox cursor I/O ---
 
-/** Read the inbox cursor (ISO timestamp) for a task. Returns null if no cursor exists. */
 export function readInboxCursor(repoRoot: string, taskName: string): string | null {
   try {
     const filePath = resolve(repoRoot, '.paw', 'run', `.inbox-cursor-${taskName}`);
@@ -229,7 +222,6 @@ export function readInboxCursor(repoRoot: string, taskName: string): string | nu
   }
 }
 
-/** Write the inbox cursor (ISO timestamp) for a task. */
 export function writeInboxCursor(repoRoot: string, taskName: string, cursor: string): void {
   const dir = resolve(repoRoot, '.paw', 'run');
   mkdirSync(dir, { recursive: true });
@@ -280,7 +272,7 @@ export function triageAgent(
   }
 }
 
-/** Save triage output for post-mortem debugging. */
+/** Persists terminal capture and verdict for post-session review. */
 export function saveTriageOutput(
   repoRoot: string,
   taskName: string,

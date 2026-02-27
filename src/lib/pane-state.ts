@@ -50,7 +50,6 @@ export function savePanes(
   writePaneConfig(repoRoot, config);
 }
 
-/** Persist detached agent sessions to panes.json. */
 export function saveDetachedAgents(
   repoRoot: string,
   sessionName: string,
