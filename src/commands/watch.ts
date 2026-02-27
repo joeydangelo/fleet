@@ -15,8 +15,6 @@ import { DEFAULT_POLL_INTERVAL } from '../lib/constants.js';
 import { handleError, colors } from '../lib/output.js';
 import {
   evaluateAllAgents,
-  shouldNudge,
-  shouldTriage,
   writeNudge,
   writeHealthSnapshot,
   triageAgent,
@@ -230,6 +228,7 @@ export async function runWatchLoop(opts: {
   // Health monitoring state
   let prevHealth: HealthSnapshot | null = null;
   const prevHealthStates: Record<string, HealthState> = {};
+  const prevEscalationLevels: Record<string, number> = {};
 
   let aborted = false;
   const onSignal = () => {
@@ -323,7 +322,6 @@ export async function runWatchLoop(opts: {
         taskNames,
         syncTasks: syncState.tasks,
         livenessMap,
-        launchTime: syncState.session,
         prevHealth,
         now,
       });
@@ -331,76 +329,98 @@ export async function runWatchLoop(opts: {
       writeHealthSnapshot(repoRoot, healthSnapshot);
 
       for (const [taskName, health] of Object.entries(healthSnapshot.agents)) {
-        const prev = prevHealthStates[taskName];
-        if (prev !== health.state) {
-          printHealthTransition(taskName, prev, health.state, taskIndex);
+        const prevState = prevHealthStates[taskName];
+        if (prevState !== health.state) {
+          printHealthTransition(taskName, prevState, health.state, taskIndex);
           prevHealthStates[taskName] = health.state;
         }
 
-        // Nudge stalled agents
-        if (shouldNudge(health, now)) {
-          const stalledMs = health.stalledSince
-            ? now.getTime() - new Date(health.stalledSince).getTime()
-            : 0;
-          const stalledMin = Math.floor(stalledMs / 60_000);
-          const msg =
-            `You appear stalled on task "${taskName}". ` +
-            `No tool activity for ${stalledMin}m. ` +
-            `If stuck, try a different approach or use paw broadcast to ask for help.`;
+        // Progressive escalation — act only on level transitions
+        const prevLevel = prevEscalationLevels[taskName] ?? 0;
+        const currLevel = health.escalationLevel;
 
-          // Always write file nudge (works if agent resumes tool use)
-          writeNudge(repoRoot, taskName, msg);
+        if (health.state === 'stalled' && currLevel > prevLevel) {
+          switch (currLevel) {
+            case 1: {
+              // Level 1: nudge — file + send-keys
+              console.log(
+                `${timestamp()} ${colors.warn('📩')} ${colorTask(taskName, taskIndex)} nudging stalled agent...`,
+              );
+              const stalledMs = health.stalledSince
+                ? now.getTime() - new Date(health.stalledSince).getTime()
+                : 0;
+              const stalledMin = Math.floor(stalledMs / 60_000);
+              const msg =
+                `You appear stalled on task "${taskName}". ` +
+                `No tool activity for ${stalledMin}m. ` +
+                `If stuck, try a different approach or use paw broadcast to ask for help.`;
 
-          // Also send-keys if tmux is available (works if agent is idle at prompt)
-          if (paneConfig && tmux) {
-            const target = resolveNudgeTarget(paneConfig, taskName);
-            if (target) {
-              sendNudgeKeys(tmux, target, msg).catch(() => {});
+              writeNudge(repoRoot, taskName, msg);
+
+              if (paneConfig && tmux) {
+                const target = resolveNudgeTarget(paneConfig, taskName);
+                if (target) {
+                  sendNudgeKeys(tmux, target, msg).catch(() => {});
+                }
+              }
+              break;
             }
-          }
 
-          health.nudgeCount++;
-          health.lastNudge = now.toISOString();
-        }
+            case 2: {
+              // Level 2: triage — AI classification
+              if (paneConfig && tmux) {
+                const target = resolveNudgeTarget(paneConfig, taskName);
+                if (target) {
+                  console.log(
+                    `${timestamp()} ${colors.warn('🔍')} ${colorTask(taskName, taskIndex)} triaging stalled agent...`,
+                  );
+                  const { verdict, captured } = triageAgent(tmux, target, taskName);
+                  saveTriageOutput(repoRoot, taskName, captured, verdict);
 
-        // Triage before zombie transition
-        if (shouldTriage(health) && paneConfig && tmux) {
-          const target = resolveNudgeTarget(paneConfig, taskName);
-          if (target) {
-            console.log(
-              `${timestamp()} ${colors.warn('🔍')} ${colorTask(taskName, taskIndex)} triaging stalled agent...`,
-            );
-            const { verdict, captured } = triageAgent(tmux, target, taskName);
-            saveTriageOutput(repoRoot, taskName, captured, verdict);
+                  if (verdict === 'extend') {
+                    console.log(
+                      `${timestamp()}   ${colorTask(taskName, taskIndex)} triage: EXTEND — resetting escalation`,
+                    );
+                    health.stalledSince = now.toISOString();
+                    health.escalationLevel = 0;
+                  } else if (verdict === 'retry') {
+                    console.log(
+                      `${timestamp()}   ${colorTask(taskName, taskIndex)} triage: RETRY — sending recovery nudge`,
+                    );
+                    const retryMsg =
+                      `You appear stuck on task "${taskName}". ` +
+                      `Try a completely different approach, or use paw broadcast to ask for help.`;
+                    sendNudgeKeys(tmux, target, retryMsg).catch(() => {});
+                  } else {
+                    console.log(
+                      `${timestamp()} ${colors.error('☠')} ${colorTask(taskName, taskIndex)} triage: TERMINATE — marking zombie`,
+                    );
+                    health.state = 'zombie';
+                    health.escalationLevel = 0;
+                    printHealthTransition(taskName, 'stalled', 'zombie', taskIndex);
+                    prevHealthStates[taskName] = 'zombie';
+                  }
+                }
+              }
+              break;
+            }
 
-            if (verdict === 'extend') {
+            default: {
+              // Level 3+: terminate — mark zombie
               console.log(
-                `${timestamp()}   ${colorTask(taskName, taskIndex)} triage: EXTEND — resetting nudge cycle`,
-              );
-              health.stalledSince = now.toISOString();
-              health.nudgeCount = 0;
-              health.lastNudge = null;
-              health.triaged = true;
-            } else if (verdict === 'retry') {
-              console.log(
-                `${timestamp()}   ${colorTask(taskName, taskIndex)} triage: RETRY — sending recovery nudge`,
-              );
-              const retryMsg =
-                `You appear stuck on task "${taskName}". ` +
-                `Try a completely different approach, or use paw broadcast to ask for help.`;
-              sendNudgeKeys(tmux, target, retryMsg).catch(() => {});
-              health.triaged = true;
-            } else {
-              console.log(
-                `${timestamp()} ${colors.error('☠')} ${colorTask(taskName, taskIndex)} triage: TERMINATE — marking zombie`,
+                `${timestamp()} ${colors.error('☠')} ${colorTask(taskName, taskIndex)} escalation reached terminal level — marking zombie`,
               );
               health.state = 'zombie';
-              health.triaged = true;
+              health.escalationLevel = 0;
+              health.stalledSince = null;
               printHealthTransition(taskName, 'stalled', 'zombie', taskIndex);
               prevHealthStates[taskName] = 'zombie';
+              break;
             }
           }
         }
+
+        prevEscalationLevels[taskName] = health.escalationLevel;
       }
 
       // 5. Check terminal conditions
