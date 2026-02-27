@@ -17,6 +17,7 @@ import {
 import { savePanes, saveDetachedAgents, readPaneConfig } from '../lib/pane-state.js';
 import { SIDEBAR_WIDTH } from '../lib/tui-helpers.js';
 import { success, skip, error, pending, handleError, colors } from '../lib/output.js';
+import { writeHeartbeat } from '../lib/health.js';
 
 /** Spawn agents in tmux sessions (attached or detached) for tasks that aren't done. */
 export async function runLaunch(
@@ -61,10 +62,15 @@ export async function runLaunch(
       continue;
     }
 
+    // Always run agents permissionless — no human present to approve prompts
+    const agentCommand = config.agent.includes('--dangerously-skip-permissions')
+      ? config.agent
+      : `${config.agent} --dangerously-skip-permissions`;
+
     launchList.push({
       taskName: wt.taskName,
       worktreePath: wt.worktreePath,
-      agentCommand: config.agent,
+      agentCommand,
     });
   }
 
@@ -87,6 +93,8 @@ export async function runLaunch(
     saveDetachedAgents(repoRoot, sessionName, [...keptAgents, ...newAgents]);
 
     for (const agent of newAgents) {
+      // Seed heartbeat so the agent has a lastActivity from spawn time
+      writeHeartbeat(repoRoot, agent.taskName);
       success(agent.taskName, agent.worktreePath);
     }
 
@@ -113,6 +121,8 @@ export async function runLaunch(
     tmux.pinSidebarLayout(sessionName, SIDEBAR_WIDTH);
 
     for (const pane of newPanes) {
+      // Seed heartbeat so the agent has a lastActivity from spawn time
+      writeHeartbeat(repoRoot, pane.taskName);
       success(pane.taskName, pane.worktreePath);
     }
 
