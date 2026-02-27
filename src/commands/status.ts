@@ -7,22 +7,13 @@ import { planWorktrees } from '../lib/session.js';
 import { readSyncState } from '../lib/sync.js';
 import { readJournal } from '../lib/journal.js';
 import { readPaneConfig } from '../lib/pane-state.js';
-import { checkAgentLiveness, createTmuxService } from '../lib/tmux.js';
-import type { AgentLivenessResult } from '../lib/tmux.js';
+import {
+  checkAgentLiveness,
+  createTmuxService,
+  buildLivenessMap,
+  livenessMarker,
+} from '../lib/tmux.js';
 import { error, skip, unknown, handleError, formatFocusAreas } from '../lib/output.js';
-
-function buildLivenessMap(results: AgentLivenessResult[]): Map<string, boolean> {
-  const map = new Map<string, boolean>();
-  for (const r of results) {
-    map.set(r.taskName, r.alive);
-  }
-  return map;
-}
-
-function livenessMarker(alive: boolean | undefined): string {
-  if (alive === undefined) return ' ';
-  return alive ? pc.green('●') : pc.red('○');
-}
 
 export function statusCommand(): Command {
   return new Command('status')

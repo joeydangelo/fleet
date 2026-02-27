@@ -2,7 +2,6 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { resolve } from 'node:path';
 import { cpSync, mkdirSync, existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
-import { tmpdir } from 'node:os';
 import { createSession, writeTaskFiles, planWorktrees } from '../src/lib/session.js';
 import {
   initSyncState,
@@ -14,12 +13,7 @@ import {
 import { branchExists, removeWorktree, deleteBranch } from '../src/lib/git.js';
 import { writeSyncStateAndFiles } from '../src/lib/sync.js';
 import type { PawConfig } from '../src/lib/config.js';
-
-function makeTempDir(): string {
-  const dir = resolve(tmpdir(), `paw-int-${Date.now()}-${Math.random().toString(36).slice(2)}`);
-  mkdirSync(dir, { recursive: true });
-  return dir;
-}
+import { makeTempDir } from './helpers/temp.js';
 
 function gitInit(dir: string): void {
   execFileSync('git', ['init', dir], { stdio: 'pipe' });

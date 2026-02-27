@@ -2,7 +2,6 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { resolve } from 'node:path';
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
-import { tmpdir } from 'node:os';
 import {
   initSyncState,
   writeSyncState,
@@ -11,12 +10,7 @@ import {
   removeSyncWorktree,
 } from '../src/lib/sync.js';
 import { appendJournalEntry, readJournalForTask } from '../src/lib/journal.js';
-
-function makeTempDir(): string {
-  const dir = resolve(tmpdir(), `paw-prime-${Date.now()}-${Math.random().toString(36).slice(2)}`);
-  mkdirSync(dir, { recursive: true });
-  return dir;
-}
+import { makeTempDir } from './helpers/temp.js';
 
 function gitInit(dir: string): void {
   execFileSync('git', ['init', dir], { stdio: 'pipe' });

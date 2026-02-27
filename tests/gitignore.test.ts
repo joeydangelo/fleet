@@ -2,15 +2,9 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdirSync, readFileSync, rmSync } from 'node:fs';
 import { writeFileSync } from 'atomically';
 import { resolve } from 'node:path';
-import { tmpdir } from 'node:os';
 
 import { ensurePawGitignore, removePawFromRootGitignore } from '../src/lib/gitignore.js';
-
-function makeTempDir(): string {
-  const dir = resolve(tmpdir(), `paw-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
-  mkdirSync(dir, { recursive: true });
-  return dir;
-}
+import { makeTempDir } from './helpers/temp.js';
 
 describe('ensurePawGitignore', () => {
   let repoRoot: string;

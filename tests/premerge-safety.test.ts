@@ -2,7 +2,6 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { resolve, dirname } from 'node:path';
 import { mkdirSync, writeFileSync, existsSync, rmSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
-import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import {
   git,
@@ -23,15 +22,7 @@ import {
 } from '../src/lib/sync.js';
 import { createSession } from '../src/lib/session.js';
 import type { PawConfig } from '../src/lib/config.js';
-
-function makeTempDir(): string {
-  const dir = resolve(
-    tmpdir(),
-    `paw-premerge-${Date.now()}-${Math.random().toString(36).slice(2)}`,
-  );
-  mkdirSync(dir, { recursive: true });
-  return dir;
-}
+import { makeTempDir } from './helpers/temp.js';
 
 function gitInit(dir: string): void {
   execFileSync('git', ['init', dir], { stdio: 'pipe' });

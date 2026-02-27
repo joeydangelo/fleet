@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdirSync, rmSync, readFileSync, existsSync } from 'node:fs';
+import { rmSync, readFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { tmpdir } from 'node:os';
 import {
   readPaneConfig,
   writePaneConfig,
@@ -11,122 +10,9 @@ import {
   killPanes,
   killDetachedAgents,
 } from '../src/lib/pane-state.js';
-import type { PawPane, PawPaneConfig, TmuxServiceApi, DetachedAgent } from '../src/lib/tmux.js';
-
-function makeTempDir(): string {
-  const dir = resolve(
-    tmpdir(),
-    `paw-pane-state-test-${Date.now()}-${Math.random().toString(36).slice(2)}`,
-  );
-  mkdirSync(resolve(dir, '.paw'), { recursive: true });
-  return dir;
-}
-
-function createMockTmux(
-  existingPanes: string[] = [],
-  titleMap: Map<string, string> = new Map(),
-): TmuxServiceApi & {
-  calls: Array<{ method: string; args: unknown[] }>;
-} {
-  const calls: Array<{ method: string; args: unknown[] }> = [];
-  let paneCounter = 100;
-
-  return {
-    calls,
-    sessionExists(name: string) {
-      calls.push({ method: 'sessionExists', args: [name] });
-      return true;
-    },
-    createSession(name: string, cwd: string) {
-      calls.push({ method: 'createSession', args: [name, cwd] });
-    },
-    killSession(name: string) {
-      calls.push({ method: 'killSession', args: [name] });
-    },
-    createPane(sessionName: string, cwd: string, opts?: { horizontal?: boolean }) {
-      calls.push({ method: 'createPane', args: [sessionName, cwd, opts] });
-      paneCounter++;
-      return `%${paneCounter}`;
-    },
-    killPane(paneId: string) {
-      calls.push({ method: 'killPane', args: [paneId] });
-    },
-    listPanes(sessionName: string) {
-      calls.push({ method: 'listPanes', args: [sessionName] });
-      return existingPanes;
-    },
-    listPanesDetailed(sessionName: string) {
-      calls.push({ method: 'listPanesDetailed', args: [sessionName] });
-      return [];
-    },
-    listPanesWithTitles(sessionName: string) {
-      calls.push({ method: 'listPanesWithTitles', args: [sessionName] });
-      return titleMap;
-    },
-    paneExists(paneId: string) {
-      calls.push({ method: 'paneExists', args: [paneId] });
-      return existingPanes.includes(paneId);
-    },
-    sendKeys(paneId: string, keys: string) {
-      calls.push({ method: 'sendKeys', args: [paneId, keys] });
-    },
-    capturePane(paneId: string, lines?: number) {
-      calls.push({ method: 'capturePane', args: [paneId, lines] });
-      return '';
-    },
-    capturePaneContent(sessionOrPane: string, lines?: number) {
-      calls.push({ method: 'capturePaneContent', args: [sessionOrPane, lines] });
-      return null as string | null;
-    },
-    selectLayout(sessionName: string, layout: string) {
-      calls.push({ method: 'selectLayout', args: [sessionName, layout] });
-    },
-    setPaneTitle(paneId: string, title: string) {
-      calls.push({ method: 'setPaneTitle', args: [paneId, title] });
-    },
-    setPaneRole(paneId: string, role: string) {
-      calls.push({ method: 'setPaneRole', args: [paneId, role] });
-    },
-    setPaneProject(paneId: string, projectRoot: string) {
-      calls.push({ method: 'setPaneProject', args: [paneId, projectRoot] });
-    },
-    listClients() {
-      calls.push({ method: 'listClients', args: [] });
-      return [];
-    },
-    hasAttachedClient(sessionName: string) {
-      calls.push({ method: 'hasAttachedClient', args: [sessionName] });
-      return false;
-    },
-    switchClient(sessionName: string) {
-      calls.push({ method: 'switchClient', args: [sessionName] });
-    },
-    attachSession(sessionName: string) {
-      calls.push({ method: 'attachSession', args: [sessionName] });
-    },
-    selectPane(paneId: string) {
-      calls.push({ method: 'selectPane', args: [paneId] });
-    },
-    getCurrentPaneId() {
-      calls.push({ method: 'getCurrentPaneId', args: [] });
-      return '%0';
-    },
-    getCurrentSessionName() {
-      calls.push({ method: 'getCurrentSessionName', args: [] });
-      return 'paw-myapp';
-    },
-    getPaneCurrentCommand(paneId: string) {
-      calls.push({ method: 'getPaneCurrentCommand', args: [paneId] });
-      return 'bash';
-    },
-    resizePane(paneId: string, width: number) {
-      calls.push({ method: 'resizePane', args: [paneId, width] });
-    },
-    pinSidebarLayout(sessionName: string, width: number) {
-      calls.push({ method: 'pinSidebarLayout', args: [sessionName, width] });
-    },
-  };
-}
+import type { PawPane, PawPaneConfig, DetachedAgent } from '../src/lib/tmux.js';
+import { makeTempDir } from './helpers/temp.js';
+import { createMockTmux } from './helpers/mock-tmux.js';
 
 function makePane(overrides: Partial<PawPane> = {}): PawPane {
   return {
@@ -144,7 +30,7 @@ describe('pane-state: readPaneConfig / writePaneConfig', () => {
   let tempDir: string;
 
   beforeEach(() => {
-    tempDir = makeTempDir();
+    tempDir = makeTempDir({ withPawDir: true });
   });
 
   afterEach(() => {
@@ -254,7 +140,7 @@ describe('pane-state: savePanes', () => {
   let tempDir: string;
 
   beforeEach(() => {
-    tempDir = makeTempDir();
+    tempDir = makeTempDir({ withPawDir: true });
   });
 
   afterEach(() => {
@@ -284,7 +170,7 @@ describe('pane-state: restorePanes', () => {
   let tempDir: string;
 
   beforeEach(() => {
-    tempDir = makeTempDir();
+    tempDir = makeTempDir({ withPawDir: true });
   });
 
   afterEach(() => {
@@ -300,7 +186,7 @@ describe('pane-state: restorePanes', () => {
 
   it('adopts surviving orchestrator by title when panes.json is absent', () => {
     const titleMap = new Map([['paw-orchestrator', '%3']]);
-    const mock = createMockTmux(['%3'], titleMap);
+    const mock = createMockTmux({ existingPanes: ['%3'], titleMap });
     const result = restorePanes(mock, 'paw-myapp', tempDir);
 
     expect(result.orchestratorPaneId).toBe('%3');
@@ -315,7 +201,7 @@ describe('pane-state: restorePanes', () => {
     const pane = makePane({ paneId: '%5' });
     savePanes(tempDir, 'paw-myapp', [pane], '%1');
 
-    const mock = createMockTmux(['%1', '%5']);
+    const mock = createMockTmux({ existingPanes: ['%1', '%5'] });
     const result = restorePanes(mock, 'paw-myapp', tempDir);
 
     expect(result.panes).toHaveLength(1);
@@ -327,7 +213,7 @@ describe('pane-state: restorePanes', () => {
     const pane = makePane({ paneId: '%99', worktreePath: tempDir });
     savePanes(tempDir, 'paw-myapp', [pane], '');
 
-    const mock = createMockTmux([]);
+    const mock = createMockTmux({ existingPanes: [] });
     const result = restorePanes(mock, 'paw-myapp', tempDir);
 
     // Dead pane is dropped — user must `paw launch` to bring it back with an agent
@@ -342,7 +228,7 @@ describe('pane-state: restorePanes', () => {
     savePanes(tempDir, 'paw-myapp', [pane], '');
 
     const titles = new Map([['paw-auth', '%50']]);
-    const mock = createMockTmux([], titles);
+    const mock = createMockTmux({ existingPanes: [], titleMap: titles });
     const result = restorePanes(mock, 'paw-myapp', tempDir);
 
     expect(result.panes).toHaveLength(1);
@@ -356,7 +242,7 @@ describe('pane-state: restorePanes', () => {
     const pane = makePane({ paneId: '%99', worktreePath: '/nonexistent/path' });
     savePanes(tempDir, 'paw-myapp', [pane], '');
 
-    const mock = createMockTmux([]);
+    const mock = createMockTmux({ existingPanes: [] });
     const result = restorePanes(mock, 'paw-myapp', tempDir);
 
     expect(result.panes).toHaveLength(0);
@@ -365,7 +251,7 @@ describe('pane-state: restorePanes', () => {
   it('recreates orchestrator pane when tracked pane is gone', () => {
     savePanes(tempDir, 'paw-myapp', [], '%55');
 
-    const mock = createMockTmux([]); // %55 not in session
+    const mock = createMockTmux({ existingPanes: [] }); // %55 not in session
     const result = restorePanes(mock, 'paw-myapp', tempDir);
 
     expect(result.orchestratorPaneId).toBe('%101');
@@ -382,7 +268,7 @@ describe('pane-state: restorePanes', () => {
   it('keeps orchestrator pane when it still exists', () => {
     savePanes(tempDir, 'paw-myapp', [], '%55');
 
-    const mock = createMockTmux(['%55']);
+    const mock = createMockTmux({ existingPanes: ['%55'] });
     const result = restorePanes(mock, 'paw-myapp', tempDir);
 
     expect(result.orchestratorPaneId).toBe('%55');
@@ -394,7 +280,7 @@ describe('pane-state: restorePanes', () => {
   it('returns empty orchestratorPaneId when none was tracked', () => {
     savePanes(tempDir, 'paw-myapp', [], '');
 
-    const mock = createMockTmux([]);
+    const mock = createMockTmux({ existingPanes: [] });
     const result = restorePanes(mock, 'paw-myapp', tempDir);
 
     expect(result.orchestratorPaneId).toBe('');
@@ -408,7 +294,7 @@ describe('pane-state: killPanes', () => {
   let tempDir: string;
 
   beforeEach(() => {
-    tempDir = makeTempDir();
+    tempDir = makeTempDir({ withPawDir: true });
   });
 
   afterEach(() => {
@@ -423,7 +309,7 @@ describe('pane-state: killPanes', () => {
     ];
     savePanes(tempDir, 'paw-myapp', panes, '%0');
 
-    const mock = createMockTmux(['%0', '%1', '%2', '%3']);
+    const mock = createMockTmux({ existingPanes: ['%0', '%1', '%2', '%3'] });
     killPanes(mock, tempDir);
 
     const killCalls = mock.calls.filter((c) => c.method === 'killPane');
@@ -445,7 +331,7 @@ describe('pane-state: killPanes', () => {
     ];
     savePanes(tempDir, 'paw-myapp', panes, '%0');
 
-    const mock = createMockTmux(['%1']); // %0 and %2 gone
+    const mock = createMockTmux({ existingPanes: ['%1'] }); // %0 and %2 gone
     killPanes(mock, tempDir);
 
     const killCalls = mock.calls.filter((c) => c.method === 'killPane');
@@ -466,7 +352,7 @@ describe('pane-state: saveDetachedAgents', () => {
   let tempDir: string;
 
   beforeEach(() => {
-    tempDir = makeTempDir();
+    tempDir = makeTempDir({ withPawDir: true });
   });
 
   afterEach(() => {
@@ -499,7 +385,7 @@ describe('pane-state: killDetachedAgents', () => {
   let tempDir: string;
 
   beforeEach(() => {
-    tempDir = makeTempDir();
+    tempDir = makeTempDir({ withPawDir: true });
   });
 
   afterEach(() => {

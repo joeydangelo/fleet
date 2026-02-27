@@ -1,17 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
 import { installHooks } from '../src/lib/hooks.js';
 import { readDoc, parseFrontmatter } from '../src/lib/docs.js';
 import { updatePawSection } from '../src/commands/init.js';
-
-function makeTempDir(): string {
-  const dir = resolve(tmpdir(), `paw-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
-  mkdirSync(dir, { recursive: true });
-  return dir;
-}
+import { makeTempDir } from './helpers/temp.js';
 
 describe('installHooks', () => {
   let repoRoot: string;

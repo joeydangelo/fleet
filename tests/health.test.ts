@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdirSync, existsSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, readFileSync, rmSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { tmpdir } from 'node:os';
 import {
   resolveHealthState,
   computeEscalationLevel,
@@ -202,11 +201,7 @@ describe('computeEscalationLevel', () => {
 
 // --- I/O functions: all transient files go under .paw/run/ ---
 
-function makeTempDir(): string {
-  const dir = resolve(tmpdir(), `paw-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
-  mkdirSync(dir, { recursive: true });
-  return dir;
-}
+import { makeTempDir } from './helpers/temp.js';
 
 describe('heartbeat I/O writes to .paw/run/', () => {
   let repoRoot: string;

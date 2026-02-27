@@ -2,7 +2,6 @@ import { describe, it, expect, afterEach } from 'vitest';
 import { resolve } from 'node:path';
 import { mkdirSync, readFileSync, writeFileSync, existsSync, rmSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
-import { tmpdir } from 'node:os';
 import type { PawConfig } from '../src/lib/config.js';
 import {
   planWorktrees,
@@ -13,12 +12,7 @@ import {
   copyIncludes,
   runHook,
 } from '../src/lib/session.js';
-
-function makeTempDir(): string {
-  const dir = resolve(tmpdir(), `paw-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
-  mkdirSync(dir, { recursive: true });
-  return dir;
-}
+import { makeTempDir } from './helpers/temp.js';
 
 const baseConfig: PawConfig = {
   base: 'main',

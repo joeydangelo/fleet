@@ -1,14 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { writeFileSync, mkdirSync, rmSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { tmpdir } from 'node:os';
 import { loadConfig, resolveConfigPath, topologicalSort } from '../src/lib/config.js';
-
-function makeTempDir(): string {
-  const dir = resolve(tmpdir(), `paw-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
-  mkdirSync(dir, { recursive: true });
-  return dir;
-}
+import { makeTempDir } from './helpers/temp.js';
 
 describe('loadConfig', () => {
   it('parses a valid paw.yaml', () => {

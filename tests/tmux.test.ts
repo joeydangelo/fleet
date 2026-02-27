@@ -14,13 +14,8 @@ import {
   isTuiPromptReady,
 } from '../src/lib/tmux.js';
 import type { BeaconOptions } from '../src/lib/tmux.js';
-import type {
-  TmuxServiceApi,
-  TmuxPaneInfo,
-  PawPane,
-  PawPaneConfig,
-  DetachedAgent,
-} from '../src/lib/tmux.js';
+import type { PawPane, PawPaneConfig, DetachedAgent } from '../src/lib/tmux.js';
+import { createMockTmux } from './helpers/mock-tmux.js';
 
 const fastBeacon: BeaconOptions = {
   tuiTimeoutMs: 100,
@@ -46,112 +41,6 @@ function createMockExec(responses?: Map<string, string>) {
     return '';
   };
   return { fn, calls };
-}
-
-function createMockTmux(): TmuxServiceApi & {
-  calls: Array<{ method: string; args: unknown[] }>;
-} {
-  const calls: Array<{ method: string; args: unknown[] }> = [];
-  let paneCounter = 0;
-  const sessions = new Set<string>();
-
-  return {
-    calls,
-    selectPane(paneId: string) {
-      calls.push({ method: 'selectPane', args: [paneId] });
-    },
-    sessionExists(name: string) {
-      calls.push({ method: 'sessionExists', args: [name] });
-      return sessions.has(name);
-    },
-    createSession(name: string, cwd: string) {
-      calls.push({ method: 'createSession', args: [name, cwd] });
-      sessions.add(name);
-    },
-    killSession(name: string) {
-      calls.push({ method: 'killSession', args: [name] });
-      sessions.delete(name);
-    },
-    createPane(sessionName: string, cwd: string, opts?: { horizontal?: boolean }) {
-      calls.push({ method: 'createPane', args: [sessionName, cwd, opts] });
-      paneCounter++;
-      return `%${paneCounter}`;
-    },
-    killPane(paneId: string) {
-      calls.push({ method: 'killPane', args: [paneId] });
-    },
-    listPanes(sessionName: string) {
-      calls.push({ method: 'listPanes', args: [sessionName] });
-      return [];
-    },
-    listPanesDetailed(sessionName: string) {
-      calls.push({ method: 'listPanesDetailed', args: [sessionName] });
-      return [] as TmuxPaneInfo[];
-    },
-    listPanesWithTitles(sessionName: string) {
-      calls.push({ method: 'listPanesWithTitles', args: [sessionName] });
-      return new Map<string, string>();
-    },
-    paneExists(paneId: string) {
-      calls.push({ method: 'paneExists', args: [paneId] });
-      return true;
-    },
-    sendKeys(paneId: string, keys: string) {
-      calls.push({ method: 'sendKeys', args: [paneId, keys] });
-    },
-    capturePane(paneId: string, lines?: number) {
-      calls.push({ method: 'capturePane', args: [paneId, lines] });
-      return '';
-    },
-    capturePaneContent(sessionOrPane: string, lines?: number) {
-      calls.push({ method: 'capturePaneContent', args: [sessionOrPane, lines] });
-      return 'Claude Code v1.0\n❯' as string | null;
-    },
-    selectLayout(sessionName: string, layout: string) {
-      calls.push({ method: 'selectLayout', args: [sessionName, layout] });
-    },
-    setPaneTitle(paneId: string, title: string) {
-      calls.push({ method: 'setPaneTitle', args: [paneId, title] });
-    },
-    setPaneRole(paneId: string, role: string) {
-      calls.push({ method: 'setPaneRole', args: [paneId, role] });
-    },
-    setPaneProject(paneId: string, projectRoot: string) {
-      calls.push({ method: 'setPaneProject', args: [paneId, projectRoot] });
-    },
-    listClients() {
-      calls.push({ method: 'listClients', args: [] });
-      return [];
-    },
-    hasAttachedClient(sessionName: string) {
-      calls.push({ method: 'hasAttachedClient', args: [sessionName] });
-      return false;
-    },
-    getCurrentPaneId() {
-      calls.push({ method: 'getCurrentPaneId', args: [] });
-      return '%0';
-    },
-    getCurrentSessionName() {
-      calls.push({ method: 'getCurrentSessionName', args: [] });
-      return 'paw-myapp';
-    },
-    getPaneCurrentCommand(paneId: string) {
-      calls.push({ method: 'getPaneCurrentCommand', args: [paneId] });
-      return 'bash';
-    },
-    resizePane(paneId: string, width: number) {
-      calls.push({ method: 'resizePane', args: [paneId, width] });
-    },
-    pinSidebarLayout(sessionName: string, width: number) {
-      calls.push({ method: 'pinSidebarLayout', args: [sessionName, width] });
-    },
-    switchClient(sessionName: string) {
-      calls.push({ method: 'switchClient', args: [sessionName] });
-    },
-    attachSession(sessionName: string) {
-      calls.push({ method: 'attachSession', args: [sessionName] });
-    },
-  };
 }
 
 describe('tmuxSessionName', () => {

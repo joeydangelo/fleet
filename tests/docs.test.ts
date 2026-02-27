@@ -2,17 +2,11 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { mkdirSync, rmSync } from 'node:fs';
 import { writeFileSync } from 'atomically';
 import { resolve } from 'node:path';
-import { tmpdir } from 'node:os';
 
 import { readDoc, listDocs } from '../src/lib/docs.js';
 import { writeProjectConfig } from '../src/lib/paw-config.js';
 import type { PawProjectConfig } from '../src/lib/paw-config.js';
-
-function makeTempDir(): string {
-  const dir = resolve(tmpdir(), `paw-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
-  mkdirSync(dir, { recursive: true });
-  return dir;
-}
+import { makeTempDir } from './helpers/temp.js';
 
 function writeConfig(repoRoot: string, config: PawProjectConfig): void {
   mkdirSync(resolve(repoRoot, '.paw'), { recursive: true });

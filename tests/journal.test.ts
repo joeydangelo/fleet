@@ -1,8 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { resolve } from 'node:path';
-import { mkdirSync, rmSync } from 'node:fs';
+import { rmSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
-import { tmpdir } from 'node:os';
 import {
   initSyncState,
   writeSyncState,
@@ -16,12 +14,7 @@ import {
   readJournalForTask,
   generateThreadId,
 } from '../src/lib/journal.js';
-
-function makeTempDir(): string {
-  const dir = resolve(tmpdir(), `paw-journal-${Date.now()}-${Math.random().toString(36).slice(2)}`);
-  mkdirSync(dir, { recursive: true });
-  return dir;
-}
+import { makeTempDir } from './helpers/temp.js';
 
 function gitInit(dir: string): void {
   execFileSync('git', ['init', dir], { stdio: 'pipe' });

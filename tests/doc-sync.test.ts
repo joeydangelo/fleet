@@ -2,7 +2,6 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { existsSync, mkdirSync, rmSync } from 'node:fs';
 import { writeFileSync } from 'atomically';
 import { resolve, join } from 'node:path';
-import { tmpdir } from 'node:os';
 
 import {
   generateDefaultManifest,
@@ -12,12 +11,7 @@ import {
   isDocsStale,
 } from '../src/lib/doc-sync.js';
 import { readProjectConfig, writeProjectConfig, readLocalState } from '../src/lib/paw-config.js';
-
-function makeTempDir(): string {
-  const dir = resolve(tmpdir(), `paw-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
-  mkdirSync(dir, { recursive: true });
-  return dir;
-}
+import { makeTempDir } from './helpers/temp.js';
 
 describe('generateDefaultManifest', () => {
   it('returns internal-prefixed entries for bundled docs', () => {

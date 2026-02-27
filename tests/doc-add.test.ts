@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { existsSync, mkdirSync, rmSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { tmpdir } from 'node:os';
 
 import { validateDocContent, getDocTypeSubdir, addDoc } from '../src/lib/doc-add.js';
 import { readProjectConfig, writeProjectConfig } from '../src/lib/paw-config.js';
@@ -17,11 +16,7 @@ import { fetchWithGhFallback } from '../src/lib/github-fetch.js';
 
 const mockedFetch = vi.mocked(fetchWithGhFallback);
 
-function makeTempDir(): string {
-  const dir = resolve(tmpdir(), `paw-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
-  mkdirSync(dir, { recursive: true });
-  return dir;
-}
+import { makeTempDir } from './helpers/temp.js';
 
 describe('validateDocContent', () => {
   it('accepts valid markdown', () => {

@@ -11,7 +11,12 @@ import type { SyncState } from '../lib/sync.js';
 import { readSyncState, claimTask, writeSyncState, readSyncFile } from '../lib/sync.js';
 import { readJournal, readJournalForTask } from '../lib/journal.js';
 import { readPaneConfig } from '../lib/pane-state.js';
-import { checkAgentLiveness, createTmuxService } from '../lib/tmux.js';
+import {
+  checkAgentLiveness,
+  createTmuxService,
+  buildLivenessMap,
+  livenessMarker,
+} from '../lib/tmux.js';
 import type { PawPaneConfig } from '../lib/tmux.js';
 import type { PawConfig } from '../lib/config.js';
 import { computeThreads } from './inbox.js';
@@ -189,13 +194,11 @@ function printOrchestratorBrief(repoRoot: string): void {
 /** Print a compact status snapshot for the orchestrator brief (PreCompact). */
 function printStatusSnapshot(repoRoot: string, state: SyncState, paneConfig: PawPaneConfig): void {
   // Check tmux liveness
-  const livenessMap = new Map<string, boolean>();
+  let livenessMap = new Map<string, boolean>();
   try {
     const tmux = createTmuxService();
     const results = checkAgentLiveness(tmux, paneConfig);
-    for (const r of results) {
-      livenessMap.set(r.taskName, r.alive);
-    }
+    livenessMap = buildLivenessMap(results);
   } catch {
     // tmux not available
   }
@@ -211,7 +214,7 @@ function printStatusSnapshot(repoRoot: string, state: SyncState, paneConfig: Paw
   console.log('\n=== Agent Status ===');
   for (const [name, task] of Object.entries(state.tasks)) {
     const alive = livenessMap.get(name);
-    const marker = alive === true ? pc.green('●') : alive === false ? pc.red('○') : ' ';
+    const marker = livenessMarker(alive);
     const focus = formatFocusAreas(task.focus);
     const focusSuffix = focus ? `  ${focus}` : '';
 

@@ -18,6 +18,12 @@ export const BEACON_VERIFY_ATTEMPTS = 5;
 /** Delay (ms) between beacon verification checks. */
 export const BEACON_VERIFY_DELAY_MS = 2_000;
 
+/** Max time (ms) to wait for session-ready sentinel before sending beacon. */
+export const BEACON_SESSION_READY_TIMEOUT_MS = 60_000;
+
+/** Delays (ms) for follow-up empty Enters after initial beacon send. */
+export const BEACON_FOLLOWUP_DELAYS: readonly number[] = [5_000, 10_000];
+
 export const ORCHESTRATOR_ROLE = 'paw-orchestrator';
 export const TUI_ROLE = 'paw-tui';
 

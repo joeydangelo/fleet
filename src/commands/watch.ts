@@ -9,10 +9,16 @@ import type { TaskState } from '../lib/sync.js';
 import { readJournal } from '../lib/journal.js';
 import type { JournalEntry } from '../lib/journal.js';
 import { readPaneConfig } from '../lib/pane-state.js';
-import { checkAgentLiveness, createTmuxService, sendNudgeKeys } from '../lib/tmux.js';
+import {
+  checkAgentLiveness,
+  createTmuxService,
+  sendNudgeKeys,
+  buildLivenessMap,
+} from '../lib/tmux.js';
 import type { PawPaneConfig, TmuxServiceApi } from '../lib/tmux.js';
 import { DEFAULT_POLL_INTERVAL } from '../lib/constants.js';
 import { handleError, colors } from '../lib/output.js';
+import { sleep } from '../lib/util.js';
 import {
   evaluateAllAgents,
   writeNudge,
@@ -190,10 +196,6 @@ function printHealthTransition(
 
 // --- Poll loop ---
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
 function resolveNudgeTarget(paneConfig: PawPaneConfig, taskName: string): string | null {
   if (paneConfig.mode === 'detached' && paneConfig.detached) {
     const agent = paneConfig.detached.find((a) => a.taskName === taskName);
@@ -299,16 +301,14 @@ export async function runWatchLoop(opts: {
       }
 
       // Evaluate agent health (ZFC)
-      const livenessMap = new Map<string, boolean>();
+      let livenessMap = new Map<string, boolean>();
       const paneConfig = readPaneConfig(repoRoot);
       let tmux: TmuxServiceApi | null = null;
       if (paneConfig) {
         try {
           tmux = createTmuxService();
           const results = checkAgentLiveness(tmux, paneConfig);
-          for (const r of results) {
-            livenessMap.set(r.taskName, r.alive);
-          }
+          livenessMap = buildLivenessMap(results);
         } catch {
           // tmux not available — skip liveness
           tmux = null;

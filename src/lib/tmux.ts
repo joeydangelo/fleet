@@ -1,13 +1,17 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync, rmSync } from 'node:fs';
 import { basename, resolve } from 'node:path';
+import pc from 'picocolors';
 import {
   BEACON_MESSAGE,
   BEACON_TUI_TIMEOUT_MS,
   BEACON_POLL_INTERVAL_MS,
   BEACON_VERIFY_ATTEMPTS,
   BEACON_VERIFY_DELAY_MS,
+  BEACON_SESSION_READY_TIMEOUT_MS,
+  BEACON_FOLLOWUP_DELAYS,
 } from './constants.js';
+import { sleep } from './util.js';
 
 export type AgentName = 'claude' | 'codex' | 'opencode' | 'gemini';
 
@@ -372,14 +376,6 @@ export function ensureTmuxInstalled(): void {
   process.exit(1);
 }
 
-/**
- * Check that tmux is available. Delegates to ensureTmuxInstalled().
- * Kept for backward compatibility — used only by `tui.ts`.
- */
-export function requireTmux(): void {
-  ensureTmuxInstalled();
-}
-
 function tryExec(cmd: string, args: string[], timeoutMs = 5000): string | null {
   try {
     return execFileSync(cmd, args, { stdio: 'pipe', encoding: 'utf-8', timeout: timeoutMs }).trim();
@@ -583,10 +579,6 @@ export function createTmuxService(): TmuxService {
   return new TmuxService();
 }
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
 /**
  * Wait for the Claude Code interactive prompt to be ready in a tmux session/pane.
  * Polls capture-pane until `isTuiPromptReady()` returns true.
@@ -640,8 +632,8 @@ export async function sendBeacon(
   const postReadyDelayMs = opts.postReadyDelayMs ?? 1_000;
   const verifyAttempts = opts.verifyAttempts ?? BEACON_VERIFY_ATTEMPTS;
   const verifyDelayMs = opts.verifyDelayMs ?? BEACON_VERIFY_DELAY_MS;
-  const followUpDelays = opts.followUpDelays ?? [5_000, 10_000];
-  const sessionReadyTimeoutMs = opts.sessionReadyTimeoutMs ?? 60_000;
+  const followUpDelays = opts.followUpDelays ?? BEACON_FOLLOWUP_DELAYS;
+  const sessionReadyTimeoutMs = opts.sessionReadyTimeoutMs ?? BEACON_SESSION_READY_TIMEOUT_MS;
 
   const ready = await waitForTuiReady(tmux, sessionOrPane, tuiTimeoutMs, tuiPollIntervalMs);
   if (!ready) return false;
@@ -681,7 +673,7 @@ export async function sendBeacon(
     const content = tmux.capturePaneContent(sessionOrPane);
     if (content && !content.includes('Try "')) return true;
     tmux.sendKeys(sessionOrPane, BEACON_MESSAGE);
-    await sleep(followUpDelays[0] ?? 1_000);
+    await sleep(followUpDelays[0] ?? BEACON_FOLLOWUP_DELAYS[0]!);
     tmux.sendKeys(sessionOrPane, '');
   }
 
@@ -711,6 +703,19 @@ export function checkAgentLiveness(
     taskName: pane.taskName,
     alive: tmux.paneExists(pane.paneId),
   }));
+}
+
+export function buildLivenessMap(results: AgentLivenessResult[]): Map<string, boolean> {
+  const map = new Map<string, boolean>();
+  for (const r of results) {
+    map.set(r.taskName, r.alive);
+  }
+  return map;
+}
+
+export function livenessMarker(alive: boolean | undefined): string {
+  if (alive === undefined) return ' ';
+  return alive ? pc.green('●') : pc.red('○');
 }
 
 /** Create a detached tmux session, send the agent command, and send the startup beacon. */

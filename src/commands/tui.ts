@@ -3,7 +3,12 @@ import { existsSync, mkdirSync } from 'node:fs';
 import { render } from 'ink';
 import React from 'react';
 import { getRepoRoot } from '../lib/git.js';
-import { createTmuxService, tmuxSessionName, isInsideTmux, requireTmux } from '../lib/tmux.js';
+import {
+  createTmuxService,
+  tmuxSessionName,
+  isInsideTmux,
+  ensureTmuxInstalled,
+} from '../lib/tmux.js';
 import type { TmuxServiceApi, PawPane, AgentName } from '../lib/tmux.js';
 import { restorePanes, savePanes, labelOrchestrator, writePaneConfig } from '../lib/pane-state.js';
 import type { PawPaneConfig } from '../lib/tmux.js';
@@ -125,7 +130,7 @@ function runTuiSidebar(
  */
 export function runTui(): void {
   try {
-    requireTmux();
+    ensureTmuxInstalled();
     const repoRoot = getRepoRoot();
     const sessionName = tmuxSessionName(basename(repoRoot));
     const tmux = createTmuxService();

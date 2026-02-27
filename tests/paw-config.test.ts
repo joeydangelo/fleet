@@ -2,7 +2,6 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdirSync, readFileSync, rmSync } from 'node:fs';
 import { writeFileSync } from 'atomically';
 import { resolve } from 'node:path';
-import { tmpdir } from 'node:os';
 
 import {
   readProjectConfig,
@@ -11,12 +10,7 @@ import {
   writeLocalState,
 } from '../src/lib/paw-config.js';
 import type { PawProjectConfig, LocalState } from '../src/lib/paw-config.js';
-
-function makeTempDir(): string {
-  const dir = resolve(tmpdir(), `paw-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
-  mkdirSync(dir, { recursive: true });
-  return dir;
-}
+import { makeTempDir } from './helpers/temp.js';
 
 describe('readProjectConfig', () => {
   let repoRoot: string;
