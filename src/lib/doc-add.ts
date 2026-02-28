@@ -7,7 +7,7 @@ import { readProjectConfig, writeProjectConfig } from './paw-config.js';
 
 export type DocType = 'shortcut' | 'guideline' | 'template';
 
-export interface AddDocResult {
+interface AddDocResult {
   destPath: string;
   rawUrl: string;
   usedGhCli: boolean;
@@ -29,7 +29,7 @@ export function validateDocContent(content: string, name: string): void {
 }
 
 /** Map doc type to its subdirectory name. */
-export function getDocTypeSubdir(docType: DocType): string {
+function getDocTypeSubdir(docType: DocType): string {
   switch (docType) {
     case 'guideline':
       return 'guidelines';

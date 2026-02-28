@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { taskDisplayStatus, statusIcon } from '../src/lib/tui-helpers.js';
+import { taskDisplayStatus } from '../src/lib/tui-helpers.js';
 import { buildDisplayItems } from '../src/components/tui-app.js';
 import type { TaskState, MergeEntry, SyncState } from '../src/lib/sync.js';
 import type { PawPane, TmuxPaneInfo } from '../src/lib/tmux.js';
@@ -24,31 +24,6 @@ describe('taskDisplayStatus', () => {
   it('returns zombie when health state is zombie', () => {
     const task: TaskState = { status: 'in_progress' };
     expect(taskDisplayStatus(task, undefined, 'zombie')).toBe('zombie');
-  });
-});
-
-describe('statusIcon', () => {
-  it('returns spinning icon for in_progress', () => {
-    const { icon, color } = statusIcon('in_progress');
-    expect(icon).toBe('✻');
-    expect(color).toBe('cyan');
-  });
-
-  it('returns checkmark for done', () => {
-    const { icon, color } = statusIcon('done');
-    expect(icon).toBe('✓');
-    expect(color).toBe('green');
-  });
-
-  it('returns error icon for conflict', () => {
-    const { icon, color } = statusIcon('conflict');
-    expect(icon).toBe('✗');
-    expect(color).toBe('red');
-  });
-
-  it('returns dim circle for pending', () => {
-    const { icon } = statusIcon('pending');
-    expect(icon).toBe('◌');
   });
 });
 

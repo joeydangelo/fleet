@@ -24,7 +24,7 @@ const __dirname = dirname(__filename);
 
 const INTERNAL_PREFIX = 'internal:';
 
-export interface SyncResult {
+interface SyncResult {
   added: string[];
   updated: string[];
   removed: string[];
@@ -35,7 +35,7 @@ export interface SyncResult {
  * Resolve the bundled docs base directory. Checks dist/docs/ first,
  * falls back to src/docs/ for local development.
  */
-export function getDocsBasePath(): string {
+function getDocsBasePath(): string {
   const candidates = [
     join(__dirname, 'docs'),
     join(__dirname, '..', 'src', 'docs'),

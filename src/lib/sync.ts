@@ -135,7 +135,7 @@ export function removeSyncWorktree(cwd: string): void {
  * Stage all changes in the sync worktree and commit with retry.
  * Retries on index.lock contention (concurrent multi-agent writes).
  */
-export function commitSyncChanges(syncDir: string, message: string): void {
+function commitSyncChanges(syncDir: string, message: string): void {
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
       git(['add', '-A'], { cwd: syncDir, stdio: 'pipe' });

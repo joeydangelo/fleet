@@ -19,7 +19,6 @@ docs_cache:
     shortcuts/build-task.md: internal:shortcuts/build-task.md
     shortcuts/from-github-issue.md: internal:shortcuts/from-github-issue.md
     shortcuts/from-issues.md: internal:shortcuts/from-issues.md
-    shortcuts/generate-hook-script.md: internal:shortcuts/generate-hook-script.md
     shortcuts/generate-paw-yaml.md: internal:shortcuts/generate-paw-yaml.md
     shortcuts/getting-started.md: internal:shortcuts/getting-started.md
     shortcuts/orchestrate-agents.md: internal:shortcuts/orchestrate-agents.md

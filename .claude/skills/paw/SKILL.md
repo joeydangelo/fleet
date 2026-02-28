@@ -228,7 +228,6 @@ finished.
 | `paw shortcut build-task` | Take a task from assignment to done with TDD, testing, and atomic commits |
 | `paw shortcut from-github-issue` | Fetch GitHub issues, decompose them into tasks, and generate paw.yaml |
 | `paw shortcut from-issues` | Detect the repo's issue tracker, read open issues, and generate paw.yaml |
-| `paw shortcut generate-hook-script` | Create a custom hook script in .paw/hooks/ |
 | `paw shortcut generate-paw-yaml` | Analyze a codebase and generate .paw/paw.yaml with well-decomposed parallel tasks |
 | `paw shortcut getting-started` | Install paw and run your first parallel agent session |
 | `paw shortcut orchestrate-agents` | Full orchestrator workflow — decompose, dispatch agents, monitor, merge, clean up |

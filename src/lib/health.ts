@@ -18,7 +18,7 @@ import type { TmuxServiceApi } from './tmux.js';
 
 export type HealthState = 'booting' | 'working' | 'stalled' | 'zombie' | 'completed';
 
-export interface AgentHealth {
+interface AgentHealth {
   taskName: string;
   state: HealthState;
   /** ISO timestamp of last tool invocation (from heartbeat file). */
@@ -29,7 +29,7 @@ export interface AgentHealth {
   escalationLevel: number;
 }
 
-export type TriageVerdict = 'extend' | 'retry' | 'terminate';
+type TriageVerdict = 'extend' | 'retry' | 'terminate';
 
 export interface HealthSnapshot {
   timestamp: string;

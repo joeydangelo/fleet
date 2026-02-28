@@ -7,7 +7,7 @@ import { success } from './output.js';
 import { INBOX_DEBOUNCE_S } from './constants.js';
 
 /** Wrapper script that resolves PATH and ensures paw is installed before running paw commands. */
-export const PAW_SESSION_SCRIPT = `#!/bin/bash
+const PAW_SESSION_SCRIPT = `#!/bin/bash
 # Ensure paw CLI is installed and run paw commands for Claude Code sessions
 # Installed by: paw init
 # This script runs on SessionStart and PreCompact
@@ -76,7 +76,7 @@ touch .paw/run/.session-ready
 `;
 
 /** PreToolUse hook that blocks dangerous commands and sync state access in paw worktrees. */
-export const PAW_GUARD_SCRIPT = `#!/bin/bash
+const PAW_GUARD_SCRIPT = `#!/bin/bash
 # Block dangerous commands and sync state access in paw worktrees
 # Installed by: paw init
 # Fires on PreToolUse:Bash|Edit|Write, returns permissionDecision:"deny" to prevent execution
@@ -149,7 +149,7 @@ exit 0
 `;
 
 /** PostToolUse hook that reminds agents to run paw done after committing. */
-export const PAW_DONE_REMINDER_SCRIPT = `#!/bin/bash
+const PAW_DONE_REMINDER_SCRIPT = `#!/bin/bash
 # Remind agents to run paw done after committing
 # Installed by: paw init
 # Fires on PostToolUse:Bash for git commit commands
@@ -187,7 +187,7 @@ exit 0
 `;
 
 /** Inbox hook for SessionStart and UserPromptSubmit — no debounce, no heartbeat. */
-export const PAW_INBOX_SCRIPT = `#!/bin/bash
+const PAW_INBOX_SCRIPT = `#!/bin/bash
 # Check inbox for messages from orchestrator and other agents
 # Installed by: paw init
 # Fires on SessionStart and UserPromptSubmit
@@ -210,7 +210,7 @@ exit 0
 `;
 
 /** PostToolUse hook that records heartbeat and checks inbox on every tool use. */
-export const PAW_HEARTBEAT_SCRIPT = `#!/bin/bash
+const PAW_HEARTBEAT_SCRIPT = `#!/bin/bash
 # Record agent heartbeat and check inbox on every tool use
 # Installed by: paw init
 # Fires on PostToolUse (all tools)
@@ -247,7 +247,7 @@ exit 0
 `;
 
 /** SessionStart hook that ensures gh CLI is installed and checks authentication. */
-export const CONFIRM_GH_CLI_SCRIPT = `#!/bin/bash
+const CONFIRM_GH_CLI_SCRIPT = `#!/bin/bash
 # Automated GitHub CLI (gh) setup for Claude Code sessions
 # Installed by: paw init
 # This script runs on SessionStart to ensure gh is available for paw workflows

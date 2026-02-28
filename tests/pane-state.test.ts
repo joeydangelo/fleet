@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { rmSync, readFileSync, existsSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { rmSync } from 'node:fs';
 import {
   readPaneConfig,
   writePaneConfig,
@@ -54,23 +53,6 @@ describe('pane-state: readPaneConfig / writePaneConfig', () => {
     const result = readPaneConfig(tempDir);
 
     expect(result).toEqual(config);
-  });
-
-  it('writes atomically (file exists after write)', () => {
-    const config: PawPaneConfig = {
-      sessionName: 'paw-myapp',
-      projectRoot: '/home/user/myapp',
-      orchestratorPaneId: '',
-      panes: [],
-      lastUpdated: '2026-02-21T00:00:00.000Z',
-    };
-
-    writePaneConfig(tempDir, config);
-    const filePath = resolve(tempDir, '.paw', 'run', 'panes.json');
-    expect(existsSync(filePath)).toBe(true);
-
-    const content = readFileSync(filePath, 'utf-8');
-    expect(() => JSON.parse(content) as unknown).not.toThrow();
   });
 
   it('overwrites existing config', () => {

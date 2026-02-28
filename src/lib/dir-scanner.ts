@@ -2,7 +2,7 @@ import { readdirSync, existsSync, type Dirent } from 'node:fs';
 import { join, dirname, basename } from 'node:path';
 import { homedir } from 'node:os';
 
-export interface DirEntry {
+interface DirEntry {
   name: string;
   fullPath: string;
   isGitRepo: boolean;

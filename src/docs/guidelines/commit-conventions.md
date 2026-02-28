@@ -36,6 +36,7 @@ Software development:
 - `ci`: CI/CD configuration and scripts
 - `chore`: Maintenance (deps, config, upgrades)
 - `docs`: User-facing documentation
+- `resolve`: Merge conflict resolution (from `paw merge` conflicts)
 
 Agentic project work:
 
@@ -43,7 +44,6 @@ Agentic project work:
 - `research`: Investigation, notes, comparison reports
 - `ops`: Operational tasks (issue tracking, publishing, maintenance)
 - `process`: Methodology, conventions, workflow changes
-- `resolve`: Merge conflict resolution (from `paw merge` conflicts)
 
 The type reflects the *category of artifact* being changed. Fixing a typo in docs is
 `docs:`, not `fix:`.

@@ -13,7 +13,7 @@ import {
 } from './constants.js';
 import { sleep } from './util.js';
 
-export type AgentName = 'claude';
+type AgentName = 'claude';
 
 /** Lightweight snapshot of a tmux pane returned by listPanesDetailed. */
 export interface TmuxPaneInfo {

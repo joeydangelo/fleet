@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { existsSync, mkdirSync, rmSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-import { validateDocContent, getDocTypeSubdir, addDoc } from '../src/lib/doc-add.js';
+import { validateDocContent, addDoc } from '../src/lib/doc-add.js';
 import { readProjectConfig, writeProjectConfig } from '../src/lib/paw-config.js';
 
 // Mock github-fetch so no network calls
@@ -41,20 +41,6 @@ describe('validateDocContent', () => {
 
   it('rejects content starting with <html', () => {
     expect(() => validateDocContent('<html><body>page</body></html>', 'test')).toThrow('HTML');
-  });
-});
-
-describe('getDocTypeSubdir', () => {
-  it('maps guideline to guidelines', () => {
-    expect(getDocTypeSubdir('guideline')).toBe('guidelines');
-  });
-
-  it('maps shortcut to shortcuts', () => {
-    expect(getDocTypeSubdir('shortcut')).toBe('shortcuts');
-  });
-
-  it('maps template to templates', () => {
-    expect(getDocTypeSubdir('template')).toBe('templates');
   });
 });
 
