@@ -46,9 +46,6 @@ Fix the conflict, commit, then run: paw merge --continue
 Run `paw shortcut resolve-merge-conflict` — it walks through reading the brief,
 resolving files, testing, committing, and running `paw merge --continue`.
 
-On `post-merge` hook failure: fix the issue and run `paw merge --continue`,
-or roll back with `git reset --hard refs/paw-backup/{task}`.
-
 ## After paw go completes
 
 `paw go` runs `paw down` automatically — archives session data, removes worktrees,

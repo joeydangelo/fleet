@@ -1,5 +1,4 @@
 import { Command } from 'commander';
-import { execSync } from 'node:child_process';
 import pc from 'picocolors';
 import {
   getRepoRoot,
@@ -109,35 +108,6 @@ function handleMergeContinue(
     process.exit(1);
   }
 
-  // Handle hook_failed: the merge commit already exists, user fixed the issue
-  const hookFailedTask = worktrees.find(
-    (wt) => state.merges?.[wt.taskName]?.status === 'hook_failed',
-  );
-
-  if (hookFailedTask) {
-    // Verify the branch's commits are actually in HEAD (paw-0yqg)
-    if (!isAncestor(hookFailedTask.branch, 'HEAD', repoRoot)) {
-      console.error(
-        colors.error(
-          `Branch '${hookFailedTask.branch}' was not merged into the target. ` +
-            `Its commits are not in HEAD. Re-run \`paw merge\` to retry.`,
-        ),
-      );
-      process.exit(1);
-    }
-
-    const updated = updateMergeEntry(state, hookFailedTask.taskName, {
-      status: 'merged',
-      merged: new Date().toISOString(),
-    });
-    writeSyncState(updated, repoRoot);
-
-    console.log(pc.bold('paw merge --continue\n'));
-    success(hookFailedTask.taskName, 'hook failure resolved');
-
-    return updated;
-  }
-
   const conflictTask = worktrees.find((wt) => state.merges?.[wt.taskName]?.status === 'conflict');
 
   if (!conflictTask) {
@@ -180,7 +150,6 @@ function runMergeLoop(
 ): void {
   let state = initialState;
   const target = config.target;
-  const postMergeHook = config.hooks?.['post-merge'];
 
   for (const wt of worktrees) {
     const mergeEntry = state.merges?.[wt.taskName];
@@ -198,15 +167,6 @@ function runMergeLoop(
       console.log(colors.warn('\nResolve the conflict, commit, then run: paw merge --continue'));
       process.exit(1);
     }
-    if (mergeEntry?.status === 'hook_failed') {
-      warn(wt.taskName, 'post-merge hook failed');
-      console.log(colors.warn('\nFix the issue, then run: paw merge --continue'));
-      console.log(
-        colors.warn(`To roll back:        git reset --hard refs/paw-backup/${wt.taskName}`),
-      );
-      process.exit(1);
-    }
-
     const commits = getCommitCount(wt.branch, target, repoRoot);
     if (commits === 0) {
       state = updateMergeEntry(state, wt.taskName, { status: 'skipped' });
@@ -226,26 +186,6 @@ function runMergeLoop(
     const result = mergeBranch(wt.branch, repoRoot);
     if (result.success) {
       success(wt.taskName, 'merged clean');
-
-      // Run post-merge hook if configured
-      if (postMergeHook) {
-        console.log(pc.dim(`    Running post-merge hook: ${postMergeHook}`));
-        const hookOk = runPostMergeHook(postMergeHook, repoRoot);
-        if (!hookOk) {
-          state = updateMergeEntry(state, wt.taskName, {
-            status: 'hook_failed',
-          });
-          writeSyncState(state, repoRoot);
-
-          warn(wt.taskName, 'post-merge hook failed');
-          console.log(colors.warn('\n  The merge committed but validation failed.'));
-          console.log(colors.warn('  To continue anyway:  paw merge --continue'));
-          console.log(
-            colors.warn(`  To roll back:        git reset --hard refs/paw-backup/${wt.taskName}`),
-          );
-          process.exit(1);
-        }
-      }
 
       state = updateMergeEntry(state, wt.taskName, {
         status: 'merged',
@@ -274,15 +214,5 @@ function runMergeLoop(
       console.log(colors.warn('\nResolve the conflict, commit, then run: paw merge --continue'));
       process.exit(1);
     }
-  }
-}
-
-/** Run a post-merge hook command. Returns true if successful, false on failure. */
-function runPostMergeHook(command: string, cwd: string): boolean {
-  try {
-    execSync(command, { cwd, stdio: 'inherit', shell: 'bash' });
-    return true;
-  } catch {
-    return false;
   }
 }

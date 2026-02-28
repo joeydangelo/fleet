@@ -1,8 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { resolve, dirname } from 'node:path';
-import { mkdirSync, writeFileSync, existsSync, rmSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { writeFileSync, existsSync, rmSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
 import {
   git,
   getHeadRef,
@@ -11,15 +10,7 @@ import {
   mergeBranch,
   removeWorktree,
 } from '../src/lib/git.js';
-import {
-  initSyncState,
-  writeSyncState,
-  readSyncState,
-  initMergeState,
-  updateMergeEntry,
-  initSyncWorktree,
-  removeSyncWorktree,
-} from '../src/lib/sync.js';
+import { initSyncWorktree, removeSyncWorktree } from '../src/lib/sync.js';
 import { createSession } from '../src/lib/session.js';
 import type { PawConfig } from '../src/lib/config.js';
 import { makeTempDir } from './helpers/temp.js';
@@ -185,103 +176,5 @@ describe('backup refs during merge', () => {
 
     const headRestored = getHeadRef(repoDir);
     expect(headRestored).toBe(headBefore);
-  });
-});
-
-describe('hook_failed status display', () => {
-  it('paw status renders hook_failed merge state', () => {
-    const dir = makeTempDir();
-    gitInit(dir);
-
-    // Create paw config so status command can load it
-    const pawDir = resolve(dir, '.paw');
-    mkdirSync(pawDir, { recursive: true });
-    writeFileSync(
-      resolve(pawDir, 'paw.yaml'),
-      `target: feature/dash\ntasks:\n  auth:\n    focus: src/auth/\n  api:\n    focus: src/api/\n`,
-    );
-
-    // Set up sync state with hook_failed
-    initSyncWorktree(dir);
-    const state = initSyncState('feature/dash', ['auth', 'api'], 'paw.yaml');
-    const withMerges = {
-      ...state,
-      merges: initMergeState(['auth', 'api']),
-    };
-    const hookFailed = updateMergeEntry(withMerges, 'auth', {
-      status: 'hook_failed' as const,
-    });
-    writeSyncState(hookFailed, dir);
-
-    // Run paw status via the built CLI entry point
-    const testDir = dirname(fileURLToPath(import.meta.url));
-    const binPath = resolve(testDir, '..', 'dist', 'bin.mjs');
-    const output = execFileSync(process.execPath, [binPath, 'status'], {
-      cwd: dir,
-      encoding: 'utf-8',
-      stdio: 'pipe',
-    });
-
-    expect(output).toContain('hook failed');
-
-    removeSyncWorktree(dir);
-    rmSync(dir, { recursive: true, force: true });
-  });
-});
-
-describe('hook_failed merge status', () => {
-  it('round-trips hook_failed status through sync state', () => {
-    const dir = makeTempDir();
-    gitInit(dir);
-    initSyncWorktree(dir);
-
-    const state = initSyncState('feature/dash', ['auth', 'api'], 'paw.yaml');
-    const withMerges = {
-      ...state,
-      merges: initMergeState(['auth', 'api']),
-    };
-    writeSyncState(withMerges, dir);
-
-    const updated = updateMergeEntry(withMerges, 'auth', {
-      status: 'hook_failed',
-    });
-    writeSyncState(updated, dir);
-
-    const read = readSyncState(dir);
-    expect(read?.merges?.['auth']?.status).toBe('hook_failed');
-    expect(read?.merges?.['api']?.status).toBe('pending');
-
-    removeSyncWorktree(dir);
-    rmSync(dir, { recursive: true, force: true });
-  });
-
-  it('continues from hook_failed to merged', () => {
-    const dir = makeTempDir();
-    gitInit(dir);
-    initSyncWorktree(dir);
-
-    const state = initSyncState('feature/dash', ['auth', 'api'], 'paw.yaml');
-    const withMerges = {
-      ...state,
-      merges: initMergeState(['auth', 'api']),
-    };
-
-    const hookFailed = updateMergeEntry(withMerges, 'auth', {
-      status: 'hook_failed',
-    });
-    writeSyncState(hookFailed, dir);
-
-    // Simulate --continue: mark as merged
-    const resolved = updateMergeEntry(hookFailed, 'auth', {
-      status: 'merged',
-      merged: new Date().toISOString(),
-    });
-    writeSyncState(resolved, dir);
-
-    const read = readSyncState(dir);
-    expect(read?.merges?.['auth']?.status).toBe('merged');
-
-    removeSyncWorktree(dir);
-    rmSync(dir, { recursive: true, force: true });
   });
 });

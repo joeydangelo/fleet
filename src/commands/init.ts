@@ -126,11 +126,6 @@ export function initCommand(): Command {
         skip('config', 'paw-yaml template not found (run pnpm build)');
       }
 
-      // Create .paw/hooks/ directory for user hook scripts
-      const hooksDir = resolve(repoRoot, '.paw', 'hooks');
-      mkdirSync(hooksDir, { recursive: true });
-      success('hooks', hooksDir);
-
       // Install Claude Code hooks and wrapper script
       installHooks(repoRoot);
 

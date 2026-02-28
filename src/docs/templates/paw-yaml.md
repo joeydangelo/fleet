@@ -27,14 +27,6 @@ agent: claude
 #   - .env.local
 #   - "config/local.json"
 
-# Hooks — write scripts to .paw/hooks/, reference paths here.
-# post-up: runs in each worktree after creation (install deps, codegen, etc.)
-# post-merge: runs after each clean merge (catches integration failures)
-# Inline commands also work for simple one-liners (e.g., post-up: pnpm install).
-# hooks:
-#   post-up: .paw/hooks/post-up.sh
-#   post-merge: .paw/hooks/post-merge.sh
-
 tasks:
   # Each key is the task name. It becomes the branch name suffix, worktree directory
   # name, and the agent's identity for broadcasts and summaries.

@@ -39,7 +39,6 @@ vi.mock('../src/lib/session.js', () => ({
   ]),
   writeTaskFiles: vi.fn(),
   copyIncludes: vi.fn(() => Promise.resolve([])),
-  runHook: vi.fn(),
 }));
 
 vi.mock('../src/lib/sync.js', () => ({

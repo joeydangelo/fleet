@@ -30,8 +30,6 @@ From the request, codebase, and `paw guidelines paw-task-decomposition`:
 - Target branch — use `paw-<feature-name>` convention
 - Number of tasks — 2–5; LLM decides
 - Task prompts — from the request and codebase analysis
-- Hooks — detected from the toolchain (package.json, pyproject.toml, etc.)
-
 ## Instructions
 
 1. **Gather context.** If you already have a spec, feature plan, or clear build
@@ -72,20 +70,16 @@ From the request, codebase, and `paw guidelines paw-task-decomposition`:
    These fields are optional. When present, `paw shortcut to-pr` uses them to
    reference issues in the PR body.
 
-6. **Configure hooks.** Check `.paw/hooks/` for existing scripts. For any
-   missing hooks, run `paw shortcut generate-hook-script` for each event
-   (`post-up`, `post-merge`).
-
-7. **Check for gitignored files that need copying.** Git worktrees only contain
+6. **Check for gitignored files that need copying.** Git worktrees only contain
    tracked files. If the project has gitignored files that agents need (`.env`,
    `.env.local`, local configs, credentials), list them under `include:`. Supports
    glob patterns. Files that already exist in the worktree are skipped.
 
-8. **Set `base` if needed.** The `base` field controls which branch `target` is
+7. **Set `base` if needed.** The `base` field controls which branch `target` is
    created from (defaults to `main`). Set it explicitly when the work should fork
    from a branch other than main (e.g., a release branch or existing feature branch).
 
-9. **Write `.paw/paw.yaml`:**
+8. **Write `.paw/paw.yaml`:**
 
    ```yaml
    target: feature/branch-name
@@ -95,12 +89,6 @@ From the request, codebase, and `paw guidelines paw-task-decomposition`:
    # include:                     # gitignored files to copy into each worktree
    #   - .env
    #   - .env.local
-
-   # Hooks — write scripts to .paw/hooks/, reference paths here.
-   # Inline commands also work for simple one-liners.
-   hooks:
-     post-up: .paw/hooks/post-up.sh
-     post-merge: .paw/hooks/post-merge.sh
 
    tasks:
      task-name:
@@ -114,7 +102,7 @@ From the request, codebase, and `paw guidelines paw-task-decomposition`:
          Mention interfaces shared with other tasks.
    ```
 
-10. **Validate the decomposition:**
+9. **Validate the decomposition:**
     - [ ] `agent:` field is set
     - [ ] No two tasks share the same focus files (minimal overlap)
     - [ ] Each task can start immediately (no hidden sequencing)
@@ -122,7 +110,6 @@ From the request, codebase, and `paw guidelines paw-task-decomposition`:
     - [ ] Consumer tasks set `depends_on` to merge after their producers
     - [ ] 2-5 tasks (fewer is better; more agents != faster)
     - [ ] A `tests` task exists if the feature needs cross-cutting test coverage
-    - [ ] Hooks are set for the project's toolchain
     - [ ] Gitignored files agents need are listed under `include`
 
 ## Common Patterns

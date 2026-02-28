@@ -22,7 +22,7 @@ export interface TaskState {
   focus?: string[];
 }
 
-type MergeStatus = 'pending' | 'merged' | 'skipped' | 'conflict' | 'hook_failed';
+type MergeStatus = 'pending' | 'merged' | 'skipped' | 'conflict';
 
 /** Per-task merge tracking: whether a task branch was merged, skipped, or hit a conflict. */
 export interface MergeEntry {

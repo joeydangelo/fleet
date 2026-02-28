@@ -12,21 +12,15 @@ const TaskSchema = z.object({
   depends_on: z.union([z.string(), z.array(z.string())]).optional(),
 });
 
-const HooksSchema = z.object({
-  'post-merge': z.string().optional(),
-  'post-up': z.string().optional(),
-});
-
 const PawConfigSchema = z.object({
   base: z.string().default('main'),
   target: z.string(),
   agent: z.string().optional(),
   include: z.array(z.string()).optional(),
-  hooks: HooksSchema.optional(),
   tasks: z.record(z.string(), TaskSchema),
 });
 
-/** Parsed paw.yaml configuration: target branch, task definitions, hook commands, and file-copy patterns. */
+/** Parsed paw.yaml configuration: target branch, task definitions, and file-copy patterns. */
 export type PawConfig = z.infer<typeof PawConfigSchema>;
 
 export function loadConfig(configPath: string): PawConfig {

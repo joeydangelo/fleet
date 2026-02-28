@@ -232,7 +232,6 @@ finished.
 | `paw shortcut resolve-merge-conflict` | Read conflict brief, resolve files, `paw merge --continue` |
 | `paw shortcut to-pr` | Create PR from merged agent work |
 | `paw shortcut setup-github-cli` | Ensure GitHub CLI (gh) is installed and authenticated |
-| `paw shortcut generate-hook-script` | Create a custom hook script in .paw/hooks/ |
 | `paw shortcut getting-started` | Install paw and run your first parallel agent session |
 | `paw shortcut setup-tmux` | Ensure tmux is installed for paw's terminal management |
 | `paw shortcut build-task` | TDD workflow from task assignment to done |
