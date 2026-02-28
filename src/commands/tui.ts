@@ -9,7 +9,7 @@ import {
   isInsideTmux,
   ensureTmuxInstalled,
 } from '../lib/tmux.js';
-import type { TmuxServiceApi, PawPane, AgentName } from '../lib/tmux.js';
+import type { TmuxServiceApi, PawPane } from '../lib/tmux.js';
 import { restorePanes, savePanes, labelOrchestrator, writePaneConfig } from '../lib/pane-state.js';
 import type { PawPaneConfig } from '../lib/tmux.js';
 import { TuiApp } from '../components/tui-app.js';
@@ -23,8 +23,8 @@ import { SIDEBAR_WIDTH, TUI_ROLE } from '../lib/constants.js';
 function createAddProject(
   tmux: TmuxServiceApi,
   sessionName: string,
-): (projectRoot: string, agent: AgentName) => void {
-  return (projectRoot: string, agent: AgentName) => {
+): (projectRoot: string) => void {
+  return (projectRoot: string) => {
     // Check for duplicate: scan panes for @paw_project matching this root.
     const panes = tmux.listPanesDetailed(sessionName);
     const existing = panes.find((p) => p.project === projectRoot);
@@ -55,7 +55,7 @@ function createAddProject(
     writePaneConfig(projectRoot, config);
 
     // Send agent command to the new pane.
-    tmux.sendKeys(paneId, agent);
+    tmux.sendKeys(paneId, 'claude');
 
     // Re-pin sidebar layout so the new pane stacks correctly.
     try {

@@ -84,15 +84,11 @@ your-project/
 │   ├── paw.yaml                  # Task config
 │   ├── hooks/                    # Hook scripts (post-up.sh, post-merge.sh)
 │   └── docs/                     # Bundled shortcuts, guidelines, templates
-├── AGENTS.md                     # Cross-agent compatibility (Codex, etc.)
 └── .gitignore                    # .paw/ added automatically
 ```
 
 - **`.claude/skills/paw/SKILL.md`** — Claude Code skill with full workflow
   guide, command reference, and resource directories.
-- **`AGENTS.md`** — paw integration section wrapped in HTML markers for
-  cross-agent compatibility (Codex and other agents that read AGENTS.md).
-  Existing content and other integrations are preserved.
 - **`.paw/`** — working state directory, automatically added to `.gitignore`.
   Contains task config and bundled docs (shortcuts, guidelines, templates).
 - **`.claude/settings.json`** — hooks for SessionStart (`paw prime`),

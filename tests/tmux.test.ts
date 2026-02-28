@@ -319,7 +319,7 @@ describe('launchTmux', () => {
     const worktrees = [
       { taskName: 'auth', worktreePath: '/tmp/wt-auth', agentCommand: 'claude' },
       { taskName: 'api', worktreePath: '/tmp/wt-api', agentCommand: 'claude' },
-      { taskName: 'tests', worktreePath: '/tmp/wt-tests', agentCommand: 'codex' },
+      { taskName: 'tests', worktreePath: '/tmp/wt-tests', agentCommand: 'claude' },
     ];
     const panes = await launchTmux(
       mock,
@@ -395,27 +395,7 @@ describe('launchTmux', () => {
     expect(panes[0]!.paneId).toMatch(/^%/);
   });
 
-  it('sets agent field from agentCommand base name', async () => {
-    const mock = createMockTmux();
-    const worktrees = [
-      { taskName: 'auth', worktreePath: '/tmp/wt-auth', agentCommand: 'codex' },
-      { taskName: 'api', worktreePath: '/tmp/wt-api', agentCommand: 'opencode' },
-      { taskName: 'tests', worktreePath: '/tmp/wt-tests', agentCommand: 'gemini' },
-    ];
-    const panes = await launchTmux(
-      mock,
-      'paw-myapp',
-      '/home/user/myapp',
-      worktrees,
-      [],
-      fastBeacon,
-    );
-    expect(panes[0]!.agent).toBe('codex');
-    expect(panes[1]!.agent).toBe('opencode');
-    expect(panes[2]!.agent).toBe('gemini');
-  });
-
-  it('defaults agent to claude when command is unknown or has flags', async () => {
+  it('sets agent field to claude regardless of command', async () => {
     const mock = createMockTmux();
     const worktrees = [
       { taskName: 'auth', worktreePath: '/tmp/wt-auth', agentCommand: 'claude --some-flag' },
@@ -620,7 +600,7 @@ describe('createDetachedSession', () => {
 
   it('sends keys to the session name (first pane)', async () => {
     const mock = createMockTmux();
-    await createDetachedSession(mock, 'paw-myapp-api', '/tmp/wt-api', 'codex --flag', fastBeacon);
+    await createDetachedSession(mock, 'paw-myapp-api', '/tmp/wt-api', 'claude --flag', fastBeacon);
 
     const sendCall = mock.calls.find((c) => c.method === 'sendKeys');
     expect(sendCall!.args[0]).toBe('paw-myapp-api');
@@ -686,7 +666,7 @@ describe('launchDetached', () => {
     const mock = createMockTmux();
     const worktrees = [
       { taskName: 'auth', worktreePath: '/tmp/wt-auth', agentCommand: 'claude' },
-      { taskName: 'api', worktreePath: '/tmp/wt-api', agentCommand: 'codex' },
+      { taskName: 'api', worktreePath: '/tmp/wt-api', agentCommand: 'claude' },
     ];
     const agents = await launchDetached(mock, 'paw-myapp', worktrees, [], fastBeacon);
     expect(agents).toHaveLength(2);

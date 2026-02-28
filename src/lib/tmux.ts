@@ -13,9 +13,7 @@ import {
 } from './constants.js';
 import { sleep } from './util.js';
 
-export type AgentName = 'claude' | 'codex' | 'opencode' | 'gemini';
-
-export const AGENT_NAMES: readonly AgentName[] = ['claude', 'codex', 'opencode', 'gemini'] as const;
+export type AgentName = 'claude';
 
 /** Lightweight snapshot of a tmux pane returned by listPanesDetailed. */
 export interface TmuxPaneInfo {
@@ -70,7 +68,7 @@ export interface PawPaneConfig {
   projectRoot: string;
   /**
    * Pane ID of the orchestrator shell (pane 1). Empty string if not yet created.
-   * The orchestrator is where the user types their AI agent command (claude, codex, etc.).
+   * The orchestrator is where the user types their AI agent command (claude).
    */
   orchestratorPaneId: string;
   /** Active agent panes (panes 2+) — attached mode. */
@@ -511,10 +509,9 @@ export async function sendNudgeKeys(
   return false;
 }
 
-/** Parse the agent name from a command string (first word). Defaults to 'claude'. */
-function parseAgentName(command: string): AgentName {
-  const base = command.trim().split(/\s+/)[0] ?? '';
-  return (AGENT_NAMES as readonly string[]).includes(base) ? (base as AgentName) : 'claude';
+/** Parse the agent name from a command string. Currently only 'claude' is supported. */
+function parseAgentName(_command: string): AgentName {
+  return 'claude';
 }
 
 /**

@@ -13,25 +13,13 @@ Ask these questions first — before analyzing the codebase or writing the yaml.
 
 Ask only what you can't infer from context:
 
-**1. Agent type** (if not obvious)
-> Which CLI agent will run the tasks?
-> Options: `claude`, `codex`, `gemini`, `opencode`, or a custom command.
-> This becomes the `agent:` field — it's what `paw launch` runs in each worktree.
-
-Skip if: the user is on Claude Code and hasn't mentioned another agent, or they've said "use codex" in their request.
-
-**2. Spec or issue link** (if not provided)
+**1. Spec or issue link** (if not provided)
 > Is there a spec file or issue IDs to link to these tasks?
 > If yes, what's the path or ID? Goes into the `spec:` and `issue:` fields.
 
 Skip if: already in the user's message.
 
-**If you are Claude Code:** use the `AskUserQuestion` tool.
-
-**If you are Codex, Gemini, opencode, or another CLI agent:**
-1. Restate what you understood from the request
-2. Ask open questions as a numbered list with options
-3. Wait for answers before writing the yaml
+Use the `AskUserQuestion` tool to ask.
 
 ### What to infer (never ask)
 
@@ -102,7 +90,7 @@ From the request, codebase, and `paw guidelines paw-task-decomposition`:
    ```yaml
    target: feature/branch-name
    # base: main                  # branch to create target from (default: main)
-   agent: claude                  # or codex, opencode, gemini, etc.
+   agent: claude
 
    # include:                     # gitignored files to copy into each worktree
    #   - .env

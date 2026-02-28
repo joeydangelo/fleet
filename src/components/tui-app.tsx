@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Text, useApp, useInput, useStdout } from 'ink';
 import { basename, dirname } from 'node:path';
-import type { TmuxServiceApi, PawPane, TmuxPaneInfo, AgentName } from '../lib/tmux.js';
+import type { TmuxServiceApi, PawPane, TmuxPaneInfo } from '../lib/tmux.js';
 import { readPaneConfig } from '../lib/pane-state.js';
 import { readSyncState } from '../lib/sync.js';
 import type { SyncState } from '../lib/sync.js';
@@ -11,7 +11,7 @@ import { resolveGitRoot } from '../lib/dir-scanner.js';
 import { ORCHESTRATOR_ROLE } from '../lib/constants.js';
 import { readHealthSnapshot } from '../lib/health.js';
 import type { HealthSnapshot } from '../lib/health.js';
-import { ProjectPicker, AgentPicker } from './project-picker.js';
+import { ProjectPicker } from './project-picker.js';
 
 const LINE_WIDTH = SIDEBAR_WIDTH - 2; // border chars consume 2 columns
 const CONTENT_WIDTH = LINE_WIDTH - 2; // inner padding consumes 2 columns
@@ -35,7 +35,7 @@ export interface DisplayItem {
   headerColor?: string;
 }
 
-type OverlayState = 'none' | 'project' | 'agent';
+type OverlayState = 'none' | 'project';
 
 interface PaneCardProps {
   item: DisplayItem;
@@ -287,7 +287,7 @@ interface TuiAppProps {
   controlPaneId: string;
   onQuit: () => void;
   /** Callback to add a new project to the workspace. */
-  addProject?: (projectRoot: string, agent: AgentName) => void;
+  addProject?: (projectRoot: string) => void;
 }
 
 /**
@@ -324,7 +324,6 @@ export function TuiApp({
   });
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [overlay, setOverlay] = useState<OverlayState>('none');
-  const [pendingProject, setPendingProject] = useState<string | null>(null);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -411,25 +410,13 @@ export function TuiApp({
   });
 
   const handleProjectSelect = (projectRoot: string) => {
-    setPendingProject(projectRoot);
-    setOverlay('agent');
-  };
-
-  const handleAgentSelect = (agent: AgentName) => {
-    if (pendingProject && addProject) {
-      addProject(pendingProject, agent);
+    if (addProject) {
+      addProject(projectRoot);
     }
-    setPendingProject(null);
     setOverlay('none');
   };
 
   const handlePickerCancel = () => {
-    if (overlay === 'agent') {
-      // Go back to project picker
-      setOverlay('project');
-      return;
-    }
-    setPendingProject(null);
     setOverlay('none');
   };
 
@@ -449,19 +436,6 @@ export function TuiApp({
         </Box>
         <Box marginTop={1}>
           <Text dimColor>ESC cancel</Text>
-        </Box>
-      </Box>
-    );
-  }
-
-  if (overlay === 'agent') {
-    return (
-      <Box flexDirection="column" height={terminalHeight}>
-        <Box flexDirection="column" height={contentHeight} overflow="hidden">
-          <AgentPicker onSelect={handleAgentSelect} onCancel={handlePickerCancel} />
-        </Box>
-        <Box marginTop={1}>
-          <Text dimColor>ESC back</Text>
         </Box>
       </Box>
     );

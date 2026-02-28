@@ -1,8 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { Box, Text, useInput } from 'ink';
 import { parsePathInput, scanDirectories } from '../lib/dir-scanner.js';
-import { getAvailableAgents } from '../lib/agent-detection.js';
-import type { AgentName } from '../lib/tmux.js';
 import { SIDEBAR_WIDTH } from '../lib/tui-helpers.js';
 
 const LINE_WIDTH = SIDEBAR_WIDTH - 4; // box border + padding
@@ -105,78 +103,6 @@ export function ProjectPicker({ defaultPath, onSelect, onCancel }: ProjectPicker
 
       <Box marginTop={1}>
         <Text dimColor>↓ browse Tab complete Enter select ESC cancel</Text>
-      </Box>
-    </Box>
-  );
-}
-
-interface AgentPickerProps {
-  onSelect: (agent: AgentName) => void;
-  onCancel: () => void;
-}
-
-export function AgentPicker({ onSelect, onCancel }: AgentPickerProps) {
-  const [agents, setAgents] = useState<AgentName[]>([]);
-  const [selectedIndex, setSelectedIndex] = useState(0);
-  const [autoSelected, setAutoSelected] = useState(false);
-
-  useEffect(() => {
-    const available = getAvailableAgents();
-    setAgents(available);
-    if (available.length === 1) {
-      setAutoSelected(true);
-      onSelect(available[0]!);
-    }
-  }, []);
-
-  useInput((_input, key) => {
-    if (autoSelected) return;
-
-    if (key.escape) {
-      onCancel();
-      return;
-    }
-
-    if (key.downArrow || _input === 'j') {
-      setSelectedIndex((i) => Math.min(agents.length - 1, i + 1));
-      return;
-    }
-    if (key.upArrow || _input === 'k') {
-      setSelectedIndex((i) => Math.max(0, i - 1));
-      return;
-    }
-
-    if (key.return) {
-      const agent = agents[selectedIndex];
-      if (agent) onSelect(agent);
-    }
-  });
-
-  if (autoSelected || agents.length === 0) {
-    return (
-      <Box flexDirection="column" width={SIDEBAR_WIDTH}>
-        <Text dimColor>{agents.length === 0 ? 'No agents found' : 'Auto-selecting agent...'}</Text>
-      </Box>
-    );
-  }
-
-  return (
-    <Box flexDirection="column" width={SIDEBAR_WIDTH}>
-      <Box marginBottom={1}>
-        <Text bold>Select Agent</Text>
-      </Box>
-
-      {agents.map((agent, i) => (
-        <Box key={agent}>
-          <Text color={i === selectedIndex ? 'cyan' : undefined} bold={i === selectedIndex}>
-            {i === selectedIndex ? '  ❯ ' : '    '}
-            {agent}
-          </Text>
-        </Box>
-      ))}
-
-      <Box marginTop={1}>
-        <Text dimColor>↑/↓ navigate Enter select ESC cancel</Text>
       </Box>
     </Box>
   );

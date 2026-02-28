@@ -15,7 +15,7 @@ target: feature/my-feature
 # base: main
 
 # The command to run in each worktree terminal. Required for `paw launch`.
-# Can be any CLI command: claude, codex, "claude --print", etc.
+# The agent command to run in each worktree terminal. Required for `paw launch`.
 agent: claude
 
 # Files to copy from the main repo into each worktree during `paw up`.

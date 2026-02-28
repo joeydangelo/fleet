@@ -4,7 +4,6 @@ import { resolve } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { installHooks } from '../src/lib/hooks.js';
 import { readDoc, parseFrontmatter } from '../src/lib/docs.js';
-import { updatePawSection } from '../src/commands/init.js';
 import { makeTempDir } from './helpers/temp.js';
 
 describe('installHooks', () => {
@@ -218,41 +217,6 @@ describe('SKILL.md bundling (paw-m5d5)', () => {
   });
 });
 
-describe('updatePawSection — AGENTS.md markers', () => {
-  it('replaces content between BEGIN/END markers, preserving content after', () => {
-    const content = [
-      '# My Project',
-      '',
-      '<!-- BEGIN PAW INTEGRATION -->',
-      'old paw content here',
-      '<!-- END PAW INTEGRATION -->',
-      '',
-      '## User Notes',
-      'Important user content that must be preserved.',
-    ].join('\n');
-
-    const newSection = [
-      '<!-- BEGIN PAW INTEGRATION -->',
-      'new paw content',
-      '<!-- END PAW INTEGRATION -->',
-    ].join('\n');
-
-    const result = updatePawSection(content, newSection);
-
-    expect(result).toContain('# My Project');
-    expect(result).toContain('new paw content');
-    expect(result).toContain('## User Notes');
-    expect(result).toContain('Important user content that must be preserved.');
-    expect(result).not.toContain('old paw content here');
-  });
-
-  it('returns content unchanged when no markers are present', () => {
-    const content = '# My Project\n\nSome content here.';
-    const result = updatePawSection(content, 'new section');
-    expect(result).toBe(content);
-  });
-});
-
 describe('parseFrontmatter', () => {
   it('extracts title and description from YAML frontmatter', () => {
     const content = '---\ntitle: My Title\ndescription: My description\n---\n# Body';
@@ -283,7 +247,7 @@ describe('parseFrontmatter', () => {
   });
 });
 
-describe('paw init — AGENTS.md + dynamic directories', () => {
+describe('paw init — dynamic directories', () => {
   let repoRoot: string;
 
   beforeEach(() => {
@@ -298,21 +262,6 @@ describe('paw init — AGENTS.md + dynamic directories', () => {
 
   afterEach(() => {
     rmSync(repoRoot, { recursive: true, force: true });
-  });
-
-  it('creates AGENTS.md with both BEGIN and END markers', () => {
-    const binPath = resolve(process.cwd(), 'dist', 'bin.mjs');
-    execFileSync(process.execPath, [binPath, 'init'], {
-      cwd: repoRoot,
-      stdio: 'pipe',
-    });
-
-    const agentsPath = resolve(repoRoot, 'AGENTS.md');
-    expect(existsSync(agentsPath)).toBe(true);
-
-    const content = readFileSync(agentsPath, 'utf-8');
-    expect(content).toContain('<!-- BEGIN PAW INTEGRATION -->');
-    expect(content).toContain('<!-- END PAW INTEGRATION -->');
   });
 
   it('installed SKILL.md has shortcut directory with full paw shortcut <name> format', () => {

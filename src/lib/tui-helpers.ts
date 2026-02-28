@@ -1,5 +1,3 @@
-import { AGENT_NAMES } from './tmux.js';
-import type { AgentName } from './tmux.js';
 import type { TaskState, MergeEntry } from './sync.js';
 import type { HealthState } from './health.js';
 import { SIDEBAR_WIDTH } from './constants.js';
@@ -9,24 +7,16 @@ export { SIDEBAR_WIDTH };
 /** Task status as shown in the TUI left panel. */
 export type TuiStatus = 'pending' | 'in_progress' | 'done' | 'conflict' | 'stalled' | 'zombie';
 
-const AGENT_BADGES: Record<AgentName, string> = {
-  claude: '[cc]',
-  codex: '[cx]',
-  opencode: '[oc]',
-  gemini: '[gm]',
-};
-
-const KNOWN_AGENTS = new Set<string>(AGENT_NAMES);
 const KNOWN_SHELLS = new Set(['bash', 'zsh', 'fish', 'sh', 'ksh', 'tcsh', 'csh']);
 
 /**
  * Returns a display badge for a pane's currently running command.
- * Handles shells (bash, zsh, fish, …), known agents (claude → [cc]), and unknowns.
+ * Handles shells (bash, zsh, fish, …), claude ([cc]), and unknowns.
  */
 export function commandBadge(command: string): string {
   const cmd = (command || '').toLowerCase().split('/').pop() ?? '';
   if (KNOWN_SHELLS.has(cmd)) return `[${cmd}]`;
-  if (KNOWN_AGENTS.has(cmd)) return AGENT_BADGES[cmd as AgentName];
+  if (cmd === 'claude') return '[cc]';
   if (cmd) return `[${cmd.substring(0, 4)}]`;
   return '[sh]';
 }
