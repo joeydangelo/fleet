@@ -30,7 +30,7 @@ them — but you can check in or intervene at any time:
 - **`paw watch`** — continuous monitor. Shows broadcasts, status changes, commit
   counts. Auto-exits when all agents are done. Use `--interval 10` to adjust polling.
 - **`paw status`** — point-in-time snapshot of agent progress
-- **`paw threads`** — see open Q&A threads; answer questions agents directed at you
+- **`paw inbox --all`** — see open Q&A threads; answer questions agents directed at you
 - **`paw ask <task> "..."`** — send a message to redirect an agent mid-session
 
 ## On conflict
@@ -81,7 +81,7 @@ cherry-pick merges, or make changes on the target branch between merge and clean
 paw up                           # create worktrees, branches, task files
 paw launch                       # open terminal + agent in each worktree
 paw launch --task <name>         # launch a single worktree
-# monitor: paw status, paw watch, paw threads, paw ask <task> "..."
+# monitor: paw status, paw watch, paw inbox --all, paw ask <task> "..."
 paw merge                        # merge when all tasks are done
 paw merge --pick <task>          # merge a specific task only
 paw down                         # archive, tear down, reset config

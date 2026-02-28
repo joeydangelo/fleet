@@ -11,9 +11,9 @@ fi
 # Get npm global bin in PATH
 NPM_PREFIX=$(npm config get prefix 2>/dev/null)
 if [ -n "$NPM_PREFIX" ] && [ -d "$NPM_PREFIX/bin" ]; then
-  export PATH="$NPM_PREFIX\bin:$PATH"
+  export PATH="$NPM_PREFIX/bin:$PATH"
 fi
-export PATH="$HOME\.local\bin:$HOME/bin:/usr/local/bin:$PATH"
+export PATH="$HOME/.local/bin:$HOME/bin:/usr/local/bin:$PATH"
 
 paw inbox
 

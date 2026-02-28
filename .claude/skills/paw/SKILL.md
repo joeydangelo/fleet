@@ -156,7 +156,7 @@ For step-by-step control instead of `paw go`, load
 | Command | Purpose |
 |---|---|
 | `paw ask <task> "..."` | Send a directed message to an agent |
-| `paw threads` | See open Q&A threads |
+| `paw inbox --all` | See all broadcasts, open threads, and resolved threads |
 
 ### Orchestrator informational commands
 
@@ -185,9 +185,8 @@ finished.
 1. **Broadcast your intent** before starting work: `paw broadcast "..."`.
 2. **Work on your task**, staying within your focus areas.
 3. **`paw broadcast "..."`** when you change interfaces other agents depend on.
-4. **`paw threads`** periodically to check for questions directed at you.
-5. **When committing**, load `paw shortcut precommit-process` and follow it.
-6. **When finished**, run `paw done` with a structured summary (see `paw template task-summary`).
+4. **When committing**, load `paw shortcut precommit-process` and follow it.
+5. **When finished**, run `paw done` with a structured summary (see `paw template task-summary`).
 
 ### Agent action commands
 
@@ -197,7 +196,6 @@ finished.
 | `paw ask <task> "..."` | Send a directed message to another agent |
 | `paw reply "..."` | Reply to the most recent message |
 | `paw reply --to <thread> "..."` | Reply to a specific thread |
-| `paw threads` | See open Q&A threads |
 | `paw status` | Check progress across all tasks |
 | `paw done << 'EOF'` | Mark task done with summary (heredoc) |
 | `paw done --force << 'EOF'` | Bypass summary section validation |
@@ -208,12 +206,6 @@ finished.
 |---|---|
 | `paw shortcut build-task` | TDD workflow from task assignment to done |
 | `paw shortcut precommit-process` | Check messages, review, validate, broadcast, commit |
-
-### CRITICAL: What agents must NEVER do
-
-- **NEVER manually edit `state.json` or any file on the sync branch.** The paw
-  CLI manages all sync state. Writing to state.json directly corrupts
-  coordination and breaks `paw watch`, `paw go`, and `paw merge`.
 
 ---
 
@@ -274,7 +266,7 @@ finished.
 
 - **Orchestrator** runs in main repo, **Worktree agent** runs in isolated worktree
 - Config: `.paw/paw.yaml` — tasks, target branch, base, dependencies
-- Session state: `paw-sync` branch (managed by paw CLI — never edit directly)
+- Session state: `paw-sync` branch (managed by paw CLI)
 - Full lifecycle: `paw go` (up → launch → watch → merge → down)
 - TUI: `paw` (bare command) attaches to tmux session with agent panes
 - Resource discovery: `paw shortcut --list`, `paw guidelines --list`, `paw template --list`

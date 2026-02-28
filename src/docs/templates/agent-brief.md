@@ -14,7 +14,6 @@ Run `paw prime` to restore full session context.
 paw broadcast "..."        # Announce a change to all agents
 paw ask <task> "..."       # Send a directed message to another agent
 paw reply "..."            # Reply to the most recent message
-paw threads                # Check for messages directed at you
 paw done << 'EOF'          # Mark task done with summary
 ```
 
@@ -26,7 +25,3 @@ paw done << 'EOF'          # Mark task done with summary
 | Ready to commit | `paw shortcut precommit-process` |
 | Changed shared interfaces | `paw broadcast "..."` |
 | Task is complete | `paw done << 'EOF'` with summary |
-
-## Rules
-
-- NEVER edit `state.json` or any file on the sync branch.

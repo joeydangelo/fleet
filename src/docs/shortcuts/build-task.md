@@ -41,7 +41,7 @@ clean commits.
   coordination action.
 - **Ask when blocked.** If you need something from another task — a type definition,
   an interface shape, a decision — don't guess. Use `paw ask <task> "..."` to direct
-  a question, then `paw threads` to check when the answer arrives.
+  a question, then `paw inbox --all` to check when the answer arrives.
 - **Commit when tests are green,** not when you feel "done." Small, frequent commits
   with passing tests beat large commits at the end.
 - **Stay in your focus area.** Your task file lists which files you own. Edits outside

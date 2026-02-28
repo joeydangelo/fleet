@@ -11,7 +11,7 @@ agents informed.
 1. **Check for open threads.**
 
    ```
-   paw threads
+   paw inbox --all
    ```
 
    See open Q&A threads and answer directed questions before reviewing your own work.

@@ -25,7 +25,3 @@ paw down                   # Archive session, remove worktrees
 | Merge conflict occurred | `paw shortcut resolve-merge-conflict` |
 | Work done, want a PR | `paw shortcut to-pr` |
 | Ready to commit | `paw shortcut precommit-process` |
-
-## Rules
-
-- NEVER edit `state.json` or any file on the sync branch.

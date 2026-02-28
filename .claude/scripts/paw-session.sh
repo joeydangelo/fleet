@@ -60,3 +60,7 @@ ensure_paw || exit 1
 
 # Run paw prime with any passed arguments (e.g., --brief for PreCompact)
 paw prime "$@"
+
+# Signal that session hooks are complete — sendBeacon waits for this file
+mkdir -p .paw/run
+touch .paw/run/.session-ready
