@@ -509,8 +509,8 @@ export async function sendNudgeKeys(
   return false;
 }
 
-/** Parse the agent name from a command string. Currently only 'claude' is supported. */
-function parseAgentName(_command: string): AgentName {
+/** Agent name for pane metadata. Currently only 'claude' is supported. */
+function parseAgentName(): AgentName {
   return 'claude';
 }
 
@@ -555,7 +555,7 @@ export async function launchTmux(
       paneId,
       taskName: wt.taskName,
       worktreePath: wt.worktreePath,
-      agent: parseAgentName(wt.agentCommand),
+      agent: parseAgentName(),
       branchName: '',
     };
 
@@ -779,7 +779,7 @@ export async function launchDetached(
       sessionName,
       taskName: wt.taskName,
       worktreePath: wt.worktreePath,
-      agent: parseAgentName(wt.agentCommand),
+      agent: parseAgentName(),
       branchName: wt.branchName ?? '',
     });
     index++;

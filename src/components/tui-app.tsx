@@ -5,7 +5,8 @@ import type { TmuxServiceApi, PawPane, TmuxPaneInfo } from '../lib/tmux.js';
 import { readPaneConfig } from '../lib/pane-state.js';
 import { readSyncState } from '../lib/sync.js';
 import type { SyncState } from '../lib/sync.js';
-import { commandBadge, taskDisplayStatus, statusIcon, SIDEBAR_WIDTH } from '../lib/tui-helpers.js';
+import { commandBadge, taskDisplayStatus, statusIcon } from '../lib/tui-helpers.js';
+import { SIDEBAR_WIDTH } from '../lib/constants.js';
 import type { TuiStatus } from '../lib/tui-helpers.js';
 import { resolveGitRoot } from '../lib/dir-scanner.js';
 import { ORCHESTRATOR_ROLE } from '../lib/constants.js';
@@ -90,7 +91,6 @@ function PaneCard({ item, selected, isFirst, isLast, isNextSelected }: PaneCardP
           <Text color={borderColor}>╮</Text>
         </Box>
       )}
-      {isFirst && !item.projectHeader ? null : null}
       <Box width={SIDEBAR_WIDTH}>
         <Text color={borderColor}>{'│ '}</Text>
         <Box width={CONTENT_WIDTH} justifyContent="space-between">

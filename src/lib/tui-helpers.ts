@@ -1,8 +1,5 @@
 import type { TaskState, MergeEntry } from './sync.js';
 import type { HealthState } from './health.js';
-import { SIDEBAR_WIDTH } from './constants.js';
-
-export { SIDEBAR_WIDTH };
 
 /** Task status as shown in the TUI left panel. */
 export type TuiStatus = 'pending' | 'in_progress' | 'done' | 'conflict' | 'stalled' | 'zombie';

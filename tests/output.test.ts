@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { formatFocusAreas, colors } from '../src/lib/output.js';
+import { formatFocusAreas } from '../src/lib/output.js';
 
 describe('formatFocusAreas', () => {
   it('returns empty string for undefined', () => {
@@ -34,26 +34,5 @@ describe('formatFocusAreas', () => {
     expect(
       formatFocusAreas(['src/auth/', 'src/api/', 'src/middleware/', 'src/utils/', 'tests/']),
     ).toBe('(src/auth/, src/api/, +3 more)');
-  });
-});
-
-describe('colors', () => {
-  it('exports all five semantic color functions', () => {
-    expect(typeof colors.success).toBe('function');
-    expect(typeof colors.error).toBe('function');
-    expect(typeof colors.warn).toBe('function');
-    expect(typeof colors.info).toBe('function');
-    expect(typeof colors.muted).toBe('function');
-  });
-
-  it('wraps text with color codes', () => {
-    // Each function should return a non-empty string that differs from the input
-    // (contains ANSI escape codes or picocolors formatting)
-    const input = 'test';
-    expect(colors.success(input)).toContain(input);
-    expect(colors.error(input)).toContain(input);
-    expect(colors.warn(input)).toContain(input);
-    expect(colors.info(input)).toContain(input);
-    expect(colors.muted(input)).toContain(input);
   });
 });

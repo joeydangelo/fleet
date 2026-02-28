@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { Box, Text, useInput } from 'ink';
 import { parsePathInput, scanDirectories } from '../lib/dir-scanner.js';
-import { SIDEBAR_WIDTH } from '../lib/tui-helpers.js';
+import { SIDEBAR_WIDTH } from '../lib/constants.js';
 
 const LINE_WIDTH = SIDEBAR_WIDTH - 4; // box border + padding
 
