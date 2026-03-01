@@ -10,6 +10,7 @@ import {
   commitUntrackedFiles,
   getHeadRef,
   createBackupRef,
+  closePrForBranch,
 } from '../lib/git.js';
 import { loadConfig, resolveConfigPath, topologicalSort } from '../lib/config.js';
 import type { PawConfig } from '../lib/config.js';
@@ -135,6 +136,12 @@ function handleMergeContinue(
   console.log(pc.bold('paw merge --continue\n'));
   success(conflictTask.taskName, 'conflict resolved');
 
+  if (
+    closePrForBranch(conflictTask.branch, `Merged into ${updated.target} by paw merge.`, repoRoot)
+  ) {
+    console.log(pc.dim(`    PR for ${conflictTask.branch} closed`));
+  }
+
   return updated;
 }
 
@@ -186,6 +193,10 @@ function runMergeLoop(
     const result = mergeBranch(wt.branch, repoRoot);
     if (result.success) {
       success(wt.taskName, 'merged clean');
+
+      if (closePrForBranch(wt.branch, `Merged into ${target} by paw merge.`, repoRoot)) {
+        console.log(pc.dim(`    PR for ${wt.branch} closed`));
+      }
 
       state = updateMergeEntry(state, wt.taskName, {
         status: 'merged',

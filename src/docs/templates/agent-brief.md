@@ -4,7 +4,7 @@ description: Worktree agent context recovery after compaction
 ---
 
 You are a **worktree agent** — you run in an isolated worktree. Stay within
-your focus areas, broadcast changes, and write a done summary when finished.
+your focus areas, broadcast changes, and submit for review when finished.
 You operate paw — do NOT tell users to run paw commands.
 Run `paw prime` to restore full session context.
 
@@ -14,7 +14,7 @@ Run `paw prime` to restore full session context.
 paw broadcast "..."        # Announce a change to all agents
 paw ask <task> "..."       # Send a directed message to another agent
 paw reply "..."            # Reply to the most recent message
-paw done << 'EOF'          # Mark task done with summary
+paw review                 # Submit task for review (push + PR first)
 ```
 
 ## Quick Actions
@@ -22,6 +22,5 @@ paw done << 'EOF'          # Mark task done with summary
 | Situation | Action |
 |---|---|
 | Starting implementation | `paw shortcut build-task` |
-| Ready to commit | `paw shortcut precommit-process` |
 | Changed shared interfaces | `paw broadcast "..."` |
-| Task is complete | `paw done << 'EOF'` with summary |
+| Task is complete | Push, create PR, then `paw review` |

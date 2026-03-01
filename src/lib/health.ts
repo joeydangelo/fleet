@@ -98,7 +98,8 @@ export function evaluateAllAgents(opts: {
   const agents: Record<string, AgentHealth> = {};
 
   for (const taskName of taskNames) {
-    const taskDone = syncTasks[taskName]?.status === 'done';
+    const status = syncTasks[taskName]?.status;
+    const taskDone = status === 'done' || status === 'in_review';
     const tmuxAlive = livenessMap.get(taskName) ?? true; // assume alive if no data
     const lastActivity = readHeartbeat(repoRoot, taskName);
     const prev = prevHealth?.agents[taskName];

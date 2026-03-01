@@ -30,8 +30,8 @@ export function printLaunchPreview(
 ): void {
   for (const wt of targets) {
     const taskState = syncState?.tasks[wt.taskName];
-    if (taskState?.status === 'done') {
-      skip(wt.taskName, 'done');
+    if (taskState?.status === 'done' || taskState?.status === 'in_review') {
+      skip(wt.taskName, taskState.status === 'in_review' ? 'in review' : 'done');
     } else if (!existsSync(wt.worktreePath)) {
       error(wt.taskName, 'worktree not found -- run paw up first');
     } else {
@@ -74,8 +74,8 @@ export async function runLaunch(
   for (const wt of targets) {
     const taskState = syncState?.tasks[wt.taskName];
 
-    if (taskState?.status === 'done') {
-      skip(wt.taskName, 'done');
+    if (taskState?.status === 'done' || taskState?.status === 'in_review') {
+      skip(wt.taskName, taskState.status === 'in_review' ? 'in review' : 'done');
       continue;
     }
 

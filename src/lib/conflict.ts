@@ -1,4 +1,4 @@
-import { readSyncFile } from './sync.js';
+import { execFileSync } from 'node:child_process';
 import { readJournal } from './journal.js';
 import { getDiffOutput, getConflictingFiles } from './git.js';
 import type { SyncState } from './sync.js';
@@ -14,8 +14,23 @@ interface ConflictBriefOpts {
   cwd: string;
 }
 
+/** Try to fetch a PR body for a branch via gh CLI. Returns null on failure. */
+function getPrBody(branch: string, cwd: string): string | null {
+  try {
+    const raw = execFileSync('gh', ['pr', 'view', branch, '--json', 'body', '-q', '.body'], {
+      cwd,
+      encoding: 'utf-8',
+      timeout: 10_000,
+    });
+    const body = raw.trim();
+    return body || null;
+  } catch {
+    return null;
+  }
+}
+
 /**
- * Generate a conflict brief assembling context from summaries, journal, and diff.
+ * Generate a conflict brief assembling context from PR descriptions, journal, and diff.
  * Written to conflicts/{taskName}-into-target.md on the sync branch.
  */
 export function generateConflictBrief(opts: ConflictBriefOpts): string {
@@ -53,22 +68,24 @@ export function generateConflictBrief(opts: ConflictBriefOpts): string {
     lines.push('');
   }
 
-  // Summary for the conflicting task
-  const conflictSummary = readSyncFile(`summaries/${conflictingTask}.md`, cwd);
+  // PR description for the conflicting task
+  const conflictBranch = `${target}-${conflictingTask}`;
+  const conflictPr = getPrBody(conflictBranch, cwd);
   lines.push(`## Task being merged: ${conflictingTask}`);
-  if (conflictSummary) {
-    lines.push(conflictSummary);
+  if (conflictPr) {
+    lines.push(conflictPr);
   } else {
-    lines.push('*No summary available.*');
+    lines.push('*No PR description available.*');
   }
   lines.push('');
 
-  // Summaries for already-merged tasks
+  // PR descriptions for already-merged tasks
   for (const [name] of mergedTasks) {
-    const summary = readSyncFile(`summaries/${name}.md`, cwd);
-    if (summary) {
+    const branch = `${target}-${name}`;
+    const prBody = getPrBody(branch, cwd);
+    if (prBody) {
       lines.push(`## Task already in target: ${name}`);
-      lines.push(summary);
+      lines.push(prBody);
       lines.push('');
     }
   }

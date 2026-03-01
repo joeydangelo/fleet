@@ -16,7 +16,7 @@ const STATE_FILE = 'state.json';
 const MAX_RETRIES = 3;
 
 export interface TaskState {
-  status: 'pending' | 'in_progress' | 'done';
+  status: 'pending' | 'in_progress' | 'in_review' | 'done';
   claimed?: string;
   doneAt?: string;
   focus?: string[];
@@ -253,6 +253,22 @@ export function claimTask(state: SyncState, taskName: string): SyncState {
   };
 }
 
+export function submitForReview(state: SyncState, taskName: string): SyncState {
+  const task = state.tasks[taskName];
+  if (!task) throw new Error(`Task not found in sync state: ${taskName}`);
+
+  return {
+    ...state,
+    tasks: {
+      ...state.tasks,
+      [taskName]: {
+        ...task,
+        status: 'in_review',
+      },
+    },
+  };
+}
+
 export function completeTask(state: SyncState, taskName: string): SyncState {
   const task = state.tasks[taskName];
   if (!task) throw new Error(`Task not found in sync state: ${taskName}`);
@@ -265,6 +281,22 @@ export function completeTask(state: SyncState, taskName: string): SyncState {
         ...task,
         status: 'done',
         doneAt: new Date().toISOString(),
+      },
+    },
+  };
+}
+
+export function reopenTask(state: SyncState, taskName: string): SyncState {
+  const task = state.tasks[taskName];
+  if (!task) throw new Error(`Task not found in sync state: ${taskName}`);
+
+  return {
+    ...state,
+    tasks: {
+      ...state.tasks,
+      [taskName]: {
+        ...task,
+        status: 'in_progress',
       },
     },
   };
@@ -290,7 +322,7 @@ export function updateMergeEntry(state: SyncState, taskName: string, entry: Merg
 
 /**
  * Archive the sync worktree contents to .paw/sessions/<date>-<target>/.
- * Copies state.json, journal/, summaries/, conflicts/, and paw.yaml.
+ * Copies state.json, journal/, conflicts/, and paw.yaml.
  * Returns the archive path, or null if nothing to archive.
  */
 export function archiveSession(repoRoot: string, target: string): string | null {
@@ -318,7 +350,7 @@ export function archiveSession(repoRoot: string, target: string): string | null 
   copyFileSync(stateFile, resolve(archiveDir, 'state.json'));
 
   // Copy directories that exist
-  for (const dir of ['journal', 'summaries', 'conflicts']) {
+  for (const dir of ['journal', 'review', 'conflicts']) {
     const src = resolve(syncDir, dir);
     if (existsSync(src)) {
       cpSync(src, resolve(archiveDir, dir), { recursive: true });

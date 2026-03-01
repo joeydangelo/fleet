@@ -121,7 +121,7 @@ describe('installHooks', () => {
     expect(settings.hooks.SessionStart[3].hooks[0].command).toContain('paw-inbox');
   });
 
-  it('registers PostToolUse hook for paw done reminder (paw-xlg3)', () => {
+  it('registers PostToolUse hook for paw review reminder (paw-xlg3)', () => {
     installHooks(repoRoot);
 
     const settings = JSON.parse(
@@ -131,20 +131,20 @@ describe('installHooks', () => {
     const postToolUse = settings.hooks.PostToolUse;
     expect(postToolUse).toHaveLength(2);
     expect(postToolUse[0]).toHaveProperty('matcher', 'Bash');
-    expect(postToolUse[0].hooks[0].command).toContain('paw-done-reminder.sh');
+    expect(postToolUse[0].hooks[0].command).toContain('paw-review-reminder.sh');
     expect(postToolUse[1]).toHaveProperty('matcher', '');
     expect(postToolUse[1].hooks[0].command).toContain('paw-heartbeat.sh');
   });
 
-  it('writes the paw done reminder script (paw-xlg3)', () => {
+  it('writes the paw review reminder script', () => {
     installHooks(repoRoot);
 
-    const scriptPath = resolve(repoRoot, '.claude', 'hooks', 'paw-done-reminder.sh');
+    const scriptPath = resolve(repoRoot, '.claude', 'hooks', 'paw-review-reminder.sh');
     expect(existsSync(scriptPath)).toBe(true);
 
     const content = readFileSync(scriptPath, 'utf-8');
-    expect(content).toContain('paw done');
-    expect(content).toContain('paw-sync:summaries');
+    expect(content).toContain('paw review');
+    expect(content).toContain('paw-sync:state.json');
   });
 
   it('is idempotent -- does not duplicate paw hooks', () => {

@@ -52,3 +52,12 @@ export const TRIAGE_TIMEOUT_MS = 30_000;
 
 /** Number of terminal lines to capture for triage. */
 export const TRIAGE_CAPTURE_LINES = 100;
+
+/** Timeout (ms) for PR review session (full agent session with tool calls). */
+export const REVIEW_TIMEOUT_MS = 600_000;
+
+/** Time (ms) before sending a nudge to a slow reviewer. */
+export const REVIEW_NUDGE_MS = 300_000;
+
+/** Max review cycles before proceeding with merge anyway. */
+export const REVIEW_MAX_RETRIES = 2;

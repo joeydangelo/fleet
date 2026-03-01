@@ -2,7 +2,14 @@ import type { TaskState, MergeEntry } from './sync.js';
 import type { HealthState } from './health.js';
 
 /** Task status as shown in the TUI left panel. */
-export type TuiStatus = 'pending' | 'in_progress' | 'done' | 'conflict' | 'stalled' | 'zombie';
+export type TuiStatus =
+  | 'pending'
+  | 'in_progress'
+  | 'in_review'
+  | 'done'
+  | 'conflict'
+  | 'stalled'
+  | 'zombie';
 
 const KNOWN_SHELLS = new Set(['bash', 'zsh', 'fish', 'sh', 'ksh', 'tcsh', 'csh']);
 
@@ -37,6 +44,8 @@ export function statusIcon(status: TuiStatus): { icon: string; color: string } {
   switch (status) {
     case 'in_progress':
       return { icon: '✻', color: 'cyan' };
+    case 'in_review':
+      return { icon: '⟳', color: 'blue' };
     case 'done':
       return { icon: '✓', color: 'green' };
     case 'conflict':

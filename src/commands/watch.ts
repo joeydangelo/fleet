@@ -117,7 +117,7 @@ export function diffCommitCounts(
 function isAllDone(tasks: Record<string, TaskState>): boolean {
   const entries = Object.values(tasks);
   if (entries.length === 0) return false;
-  return entries.every((t) => t.status === 'done');
+  return entries.every((t) => t.status === 'done' || t.status === 'in_review');
 }
 
 // --- Output formatting ---
@@ -152,6 +152,8 @@ function printStatusTransition(t: StatusTransition, taskIndex: Map<string, numbe
 
   if (t.to === 'in_progress') {
     console.log(`${timestamp()} ${colors.success('+')} ${name} claimed task`);
+  } else if (t.to === 'in_review') {
+    console.log(`${timestamp()} ${colors.info('⟳')} ${name} submitted for review`);
   } else if (t.to === 'done') {
     console.log(`${timestamp()} ${colors.success('✓')} ${name} done`);
   } else if (t.from === undefined) {

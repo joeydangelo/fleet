@@ -5,7 +5,6 @@ import fg from 'fast-glob';
 import type { PawConfig } from './config.js';
 import { normalizeDeps } from './config.js';
 import { branchExists, createBranch, createWorktree, getFileFromBranch } from './git.js';
-import { REQUIRED_SECTIONS } from './summary.js';
 
 /** Identity triple for a task worktree: task name, its branch, and the filesystem path. */
 export interface WorktreeInfo {
@@ -49,26 +48,17 @@ const COLLABORATION_RULES = `## Collaboration Rules
   interface changes that affect other agents.
 - Run \`paw inbox --all\` to see open Q&A threads and answer directed questions.
 - Stay within your focus areas. If you need to modify files outside your
-  focus, broadcast first.
-- Do NOT run \`git push\`. The orchestrator pushes the merged target branch
-  after \`paw merge\`. Pushing from a worktree bypasses conflict resolution.`;
+  focus, broadcast first.`;
 
-const SECTION_DESCRIPTIONS: Record<string, string> = {
-  'What I did': '- Bullet list of what you built or changed',
-  'Interface changes':
-    '- New exports, changed signatures, renamed types\n- Anything another agent importing from your files needs to know',
-  'Watch out': '- Breaking changes, migration needs, gotchas\n- Files other agents should check',
-};
+const PUBLISH_INSTRUCTIONS = `## When You're Done
 
-const SUMMARY_TEMPLATE = [
-  `## When You're Done`,
-  ``,
-  `Run \`paw done --summary "..."\` with a structured summary. Use this format:`,
-  ``,
-  ...REQUIRED_SECTIONS.flatMap((s) => [`### ${s}`, SECTION_DESCRIPTIONS[s] ?? '- [Details]', ``]),
-  `This summary feeds the conflict brief. Be specific about interface changes --`,
-  `other agents depend on this information to resolve merge conflicts.`,
-].join('\n');
+Follow \`paw shortcut build-task\` for the full Build/Verify/Publish workflow.
+After verifying your changes:
+
+1. Commit with conventional format (\`paw guidelines commit-conventions\`)
+2. \`git push -u origin HEAD\`
+3. Create or update a PR using \`paw template pr-template\` for the body structure
+4. \`paw review\` to submit for review`;
 
 export function generateTaskFile(config: PawConfig, worktreeInfo: WorktreeInfo): string {
   const { taskName } = worktreeInfo;
@@ -96,7 +86,7 @@ export function generateTaskFile(config: PawConfig, worktreeInfo: WorktreeInfo):
     lines.push(``, `## Instructions`, ``, task.prompt.trimEnd());
   }
 
-  lines.push(``, COLLABORATION_RULES, ``, SUMMARY_TEMPLATE);
+  lines.push(``, COLLABORATION_RULES, ``, PUBLISH_INSTRUCTIONS);
 
   return lines.join('\n') + '\n';
 }

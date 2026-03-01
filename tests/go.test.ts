@@ -447,4 +447,41 @@ describe('resolveSessionState', () => {
     };
     expect(resolveSessionState(state, basePaneConfig, null)).toBe('no-session');
   });
+
+  it('returns all-done when all tasks are in_review', () => {
+    const state: SyncState = {
+      ...baseSyncState,
+      tasks: {
+        auth: { status: 'in_review' },
+        api: { status: 'in_review' },
+      },
+    };
+    expect(resolveSessionState(state, basePaneConfig, [])).toBe('all-done');
+  });
+
+  it('returns all-done when tasks are a mix of done and in_review', () => {
+    const state: SyncState = {
+      ...baseSyncState,
+      tasks: {
+        auth: { status: 'done', doneAt: '2026-02-25T00:01:00Z' },
+        api: { status: 'in_review' },
+      },
+    };
+    expect(resolveSessionState(state, basePaneConfig, [])).toBe('all-done');
+  });
+
+  it('excludes in_review tasks from liveness checks', () => {
+    const state: SyncState = {
+      ...baseSyncState,
+      tasks: {
+        auth: { status: 'in_review' },
+        api: { status: 'in_progress' },
+      },
+    };
+    const liveness: AgentLivenessResult[] = [
+      { taskName: 'auth', alive: false },
+      { taskName: 'api', alive: true },
+    ];
+    expect(resolveSessionState(state, basePaneConfig, liveness)).toBe('agents-running');
+  });
 });

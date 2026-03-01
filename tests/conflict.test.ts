@@ -4,7 +4,7 @@ import { writeFileSync, existsSync, rmSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import {
   initSyncState,
-  writeSyncStateAndFiles,
+  writeSyncState,
   initMergeState,
   updateMergeEntry,
   initSyncWorktree,
@@ -132,7 +132,7 @@ describe('generateConflictBrief', () => {
     rmSync(repoDir, { recursive: true, force: true });
   });
 
-  it('generates brief with summaries, journal, and diff', () => {
+  it('generates brief with journal and diff', () => {
     const worktrees = createSession(config, repoDir);
     worktreePaths = worktrees.map((w) => w.worktreePath);
 
@@ -142,22 +142,7 @@ describe('generateConflictBrief', () => {
       ...state,
       merges: initMergeState(Object.keys(config.tasks)),
     };
-
-    // Write summaries
-    writeSyncStateAndFiles(
-      withMerges,
-      [
-        {
-          path: 'summaries/auth.md',
-          content: '# Summary: auth\n\nChanged auth middleware.',
-        },
-        {
-          path: 'summaries/api.md',
-          content: '# Summary: api\n\nAdded API endpoints.',
-        },
-      ],
-      repoDir,
-    );
+    writeSyncState(withMerges, repoDir);
 
     // Write journal entries
     appendJournalEntry('auth', { type: 'broadcast', msg: 'Changed auth interface' }, repoDir);
@@ -170,8 +155,7 @@ describe('generateConflictBrief', () => {
     const authWt = worktrees.find((w) => w.taskName === 'auth')!;
     commitFile(authWt.worktreePath, 'shared.txt', 'auth-content', 'auth commit');
 
-    // Merge auth -- first merge auth cleanly... but we want to test conflict
-    // Let's create: merge auth (conflicts with target)
+    // Merge auth (conflicts with target)
     checkout(repoDir, config.target);
     const result = mergeBranch(authWt.branch, repoDir);
     expect(result.success).toBe(false);
@@ -190,16 +174,16 @@ describe('generateConflictBrief', () => {
       cwd: repoDir,
     });
 
-    // Verify brief content
+    // Verify brief content — PR descriptions come from gh pr view (unavailable
+    // in tests), so only check structural sections, journal, and diff.
     expect(brief).toContain('# Merge Conflict: auth into feature/dash');
     expect(brief).toContain('shared.txt');
     expect(brief).toContain('Task being merged: auth');
-    expect(brief).toContain('Changed auth middleware');
     expect(brief).toContain('Changed auth interface');
     expect(brief).toContain('What token type?');
   });
 
-  it('includes already-merged task summaries', () => {
+  it('includes already-merged task entries', () => {
     const worktrees = createSession(config, repoDir);
     worktreePaths = worktrees.map((w) => w.worktreePath);
 
@@ -208,18 +192,7 @@ describe('generateConflictBrief', () => {
       ...state,
       merges: initMergeState(Object.keys(config.tasks)),
     };
-
-    // Write auth summary
-    writeSyncStateAndFiles(
-      withMerges,
-      [
-        {
-          path: 'summaries/auth.md',
-          content: 'Auth did important work.',
-        },
-      ],
-      repoDir,
-    );
+    writeSyncState(withMerges, repoDir);
 
     // Mark auth as already merged
     const authMerged = updateMergeEntry(withMerges, 'auth', {
@@ -252,7 +225,5 @@ describe('generateConflictBrief', () => {
     expect(brief).toContain('# Merge Conflict: api into feature/dash');
     expect(brief).toContain('Already merged (in target)');
     expect(brief).toContain('auth -- merged clean at 2026-02-10T15:00:00Z');
-    expect(brief).toContain('Task already in target: auth');
-    expect(brief).toContain('Auth did important work.');
   });
 });

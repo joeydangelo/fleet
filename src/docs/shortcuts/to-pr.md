@@ -1,10 +1,10 @@
 ---
 title: Create PR from Merged Results
-description: Combine agent done summaries into a PR with issue references
+description: Combine agent PR descriptions into a final PR with issue references
 category: orchestrator
 ---
-After `paw merge`, create a pull request whose description combines the done
-summaries from all completed tasks.
+After `paw merge`, create a pull request whose description combines context
+from the individual agent PRs.
 
 ## Prerequisites
 
@@ -15,32 +15,36 @@ Run `paw shortcut setup-github-cli` to ensure `gh` is installed and authenticate
 1. **Verify the merge is complete.** Run `paw status` and confirm all tasks are
    done and merged. If tasks are still in progress, wait for them to finish.
 
-2. **Read done summaries.** After `paw go` (which runs `paw down`), summaries
-   are archived at `.paw/sessions/<latest>/summaries/`. Each agent wrote a
-   structured summary with "What I did", "Interface changes", and "Watch out"
-   sections.
+2. **Read agent PRs.** Each agent created a PR during the Publish phase. List
+   them to gather context:
 
-3. **Collect issue references.** Scan the paw.yaml `issue` fields and the done
-   summaries for tracker IDs (e.g., `GH#42`). Any tracker ID format works. These go in the PR
-   body so GitHub auto-links or closes them.
+   ```bash
+   gh pr list --state all --head <target-branch-prefix>
+   ```
 
-4. **Build the PR body.** Combine the summaries into a single PR description:
+   Each agent PR has Summary, Changes, Testing, and References sections.
+
+3. **Collect issue references.** Scan the paw.yaml `issue` fields and the agent
+   PR descriptions for tracker IDs (e.g., `GH#42`). Any tracker ID format works.
+   These go in the PR body so GitHub auto-links or closes them.
+
+4. **Build the PR body.** Combine the agent PR context into a single description:
 
    ```markdown
    ## Summary
 
    ### task-name-1
-   - What this agent built (from its done summary)
+   - What this agent built (from its PR description)
 
    ### task-name-2
-   - What this agent built (from its done summary)
+   - What this agent built (from its PR description)
 
    ## Issues
    - Closes #42
    - References GH#45
    ```
 
-   Keep it concise. Extract the key points from each summary rather than
+   Keep it concise. Extract the key points from each agent PR rather than
    pasting them verbatim.
 
 5. **Determine the base branch.** The PR targets the `base` branch from
@@ -67,7 +71,7 @@ Run `paw shortcut setup-github-cli` to ensure `gh` is installed and authenticate
      --title "Brief description of the feature" \
      --body "$(cat <<'EOF'
    ## Summary
-   ...combined summaries...
+   ...combined from agent PRs...
 
    ## Issues
    - Closes #42

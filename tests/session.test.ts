@@ -232,7 +232,7 @@ describe('generateTaskFile', () => {
     expect(result).toContain('Stay within your focus areas');
   });
 
-  it('includes summary template section', () => {
+  it('includes publish instructions section', () => {
     const worktree = {
       taskName: 'auth',
       branch: 'feature/dashboard-auth',
@@ -242,14 +242,13 @@ describe('generateTaskFile', () => {
     const result = generateTaskFile(baseConfig, worktree);
 
     expect(result).toContain("## When You're Done");
-    expect(result).toContain('paw done --summary');
-    expect(result).toContain('### What I did');
-    expect(result).toContain('### Interface changes');
-    expect(result).toContain('### Watch out');
-    expect(result).toContain('conflict brief');
+    expect(result).toContain('paw shortcut build-task');
+    expect(result).toContain('git push -u origin HEAD');
+    expect(result).toContain('Create or update a PR');
+    expect(result).toContain('paw review');
   });
 
-  it('places collaboration rules and summary template after instructions', () => {
+  it('places collaboration rules and publish instructions after instructions', () => {
     const config: PawConfig = {
       ...baseConfig,
       tasks: {

@@ -61,9 +61,9 @@ Verify: `tmux -V` should print a version.
    paw go
    ```
 
-   This runs `up → launch → watch → merge → down` — creates worktrees,
-   spawns agents in tmux panes around you, watches until all agents finish,
-   merges results, and cleans up.
+   This runs `up → launch → watch → review → merge → down` — creates
+   worktrees, spawns agents, watches until all agents submit for review,
+   reviews PRs, merges results, and cleans up.
 
 ## What Gets Created
 
@@ -78,7 +78,7 @@ your-project/
 │   │   ├── paw-session.sh        # SessionStart hook (runs paw prime)
 │   │   └── confirm-gh-cli.sh     # Ensures GitHub CLI is available
 │   ├── hooks/
-│   │   └── paw-done-reminder.sh  # Reminds agents to run paw done
+│   │   └── paw-review-reminder.sh # Reminds agents to run paw review
 │   └── settings.json             # Claude Code hooks config
 ├── .paw/                         # Working state (gitignored)
 │   ├── paw.yaml                  # Task config

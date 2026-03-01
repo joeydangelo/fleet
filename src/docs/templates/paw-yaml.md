@@ -29,7 +29,7 @@ agent: claude
 
 tasks:
   # Each key is the task name. It becomes the branch name suffix, worktree directory
-  # name, and the agent's identity for broadcasts and summaries.
+  # name, and the agent's identity for broadcasts and coordination.
   #
   # Branch:    {target}-{taskName}     (e.g., feature/my-feature-auth)
   # Worktree:  {repoName}-paw-{taskName}  (e.g., myapp-paw-auth)
@@ -87,6 +87,6 @@ tasks:
       - api
     prompt: |
       Write integration tests for the auth and api tasks.
-      Read their done summaries via `paw prime` to understand what to test.
+      Read their PRs and broadcasts via `paw prime` to understand what to test.
       Wait for broadcasts about interface shapes before writing assertions.
 ```

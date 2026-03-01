@@ -13,10 +13,10 @@ name: paw
 1. **Orchestrate Agents**: Decompose work into tasks, create isolated worktrees,
    spawn agents with task files, monitor progress, merge completed branches,
    and clean up — the full orchestrator lifecycle.
-2. **Agent Coordination**: Broadcasts, directed messages, Q&A threads, and done
-   summaries keep agents aligned without blocking each other.
+2. **Agent Coordination**: Broadcasts, directed messages, and Q&A threads
+   keep agents aligned without blocking each other.
 3. **Conflict Resolution**: When merges conflict, paw generates context-rich
-   briefs built from both agents' summaries and journal entries so the resolver
+   briefs built from PR descriptions and journal entries so the resolver
    has full intent — not just raw diff markers.
 4. **Automated Workflow**: `paw go` handles the full loop (up → spawn → watch →
    merge → down), or run each step manually for fine-grained control.
@@ -67,7 +67,7 @@ There are two roles. You are one of them:
 - **Orchestrator** — runs in the main repo. Decomposes work, sets up worktrees,
   monitors agents, merges results, handles conflicts, cleans up.
 - **Worktree agent** — runs inside an isolated worktree. Reads its task, works
-  autonomously, broadcasts changes, commits work, writes a done summary.
+  autonomously, broadcasts changes, commits work, creates a PR, and submits for review.
 
 Read the section for your role.
 
@@ -79,6 +79,7 @@ Read the section for your role.
 
 | User Intent | What You Do |
 |---|---|
+| Wants to plan a feature | Load `paw shortcut new-plan-spec`, follow it to create a spec, then decompose with `paw shortcut generate-paw-yaml` |
 | Wants work parallelized | Load `paw shortcut generate-paw-yaml`, follow it to write `.paw/paw.yaml`, then `paw go` |
 | Wants GitHub issues worked on | Load `paw shortcut from-github-issue`, follow it, then `paw go` |
 | Wants open tracker issues done | Load `paw shortcut from-issues`, follow it, then `paw go` |
@@ -101,21 +102,22 @@ progress, merge results, handle conflicts, and clean up.
 
 ### Orchestrator workflow
 
-1. **Decompose work.** Load `paw shortcut generate-paw-yaml` and follow it to
-   write `.paw/paw.yaml`. Review and approve the yaml before continuing.
-2. **Run the session.**
+1. **(Optional) Plan first.** For complex features, load
+   `paw shortcut new-plan-spec` to create a feature spec in
+   `docs/project/specs/active/` before decomposing.
+2. **Decompose work.** Load `paw shortcut generate-paw-yaml` and follow it to
+   write `.paw/paw.yaml`. If a spec exists, reference it in task `spec:` fields.
+   Review and approve the yaml before continuing.
+3. **Run the session.**
    ```bash
-   paw go    # up → spawn → watch → merge → down
+   paw go    # up → launch → watch → review → merge → down
    ```
-3. **Handle conflicts.** If `paw go` exits on a conflict, load
+4. **Handle conflicts.** If `paw go` exits on a conflict, load
    `paw shortcut resolve-merge-conflict` — it reads the brief, resolves
    files, and continues merging.
-4. **Ask what's next.** When `paw go` completes, the merged work is on the
+5. **Ask what's next.** When `paw go` completes, the merged work is on the
    target branch. Check `git remote -v` and `git branch`, then ask the
    user — PR, local merge, or iterate.
-
-For step-by-step control instead of `paw go`, load
-`paw shortcut orchestrate-agents`.
 
 ### Orchestrator action commands
 
@@ -123,7 +125,8 @@ For step-by-step control instead of `paw go`, load
 
 | Command | Purpose |
 |---|---|
-| `paw go` | Full lifecycle: up → launch → watch → merge → down |
+| `paw go` | Full lifecycle: up → launch → watch → review → merge → down |
+| `paw go --no-review` | Skip the PR review phase |
 | `paw go --detached` | Force background tmux sessions (auto-detected outside tmux) |
 | `paw go --task <name>` | Spawn and watch a single task only |
 | `paw go --no-merge` | Stop after all agents done (inspect before merging) |
@@ -164,10 +167,10 @@ These load workflow guidance — read the output and follow the instructions.
 
 | Command | Purpose |
 |---|---|
+| `paw shortcut new-plan-spec` | How to create a feature spec before decomposing into tasks |
 | `paw shortcut generate-paw-yaml` | How to analyze a codebase and create .paw/paw.yaml |
 | `paw shortcut from-issues` | How to generate paw.yaml from CLI issue tracker |
 | `paw shortcut from-github-issue` | How to generate paw.yaml from GitHub issue(s) |
-| `paw shortcut orchestrate-agents` | Full orchestrator lifecycle: monitor, conflicts, post-session |
 | `paw shortcut resolve-merge-conflict` | How to read conflict brief, resolve files, `paw merge --continue` |
 | `paw shortcut to-pr` | How to create PR from merged agent work |
 | `paw shortcut setup-github-cli` | How to ensure gh CLI is installed and authenticated |
@@ -177,16 +180,17 @@ These load workflow guidance — read the output and follow the instructions.
 ## Worktree Agent
 
 You run inside an isolated worktree. Your job: complete your assigned task,
-broadcast changes that affect other agents, and write a done summary when
+broadcast changes that affect other agents, and submit a PR for review when
 finished.
 
 ### Agent workflow
 
-1. **Broadcast your intent** before starting work: `paw broadcast "..."`.
-2. **Work on your task**, staying within your focus areas.
-3. **`paw broadcast "..."`** when you change interfaces other agents depend on.
-4. **When committing**, load `paw shortcut precommit-process` and follow it.
-5. **When finished**, run `paw done` with a structured summary (see `paw template task-summary`).
+Follow `paw shortcut build-task` for the full workflow:
+
+1. **Build** — Broadcast intent, plan work, implement with TDD.
+2. **Verify** — Review diff, format/lint/test, broadcast interface changes.
+3. **Publish** — Commit, push branch, create PR (`paw template pr-template`),
+   then `paw review` to submit for review.
 
 ### Agent action commands
 
@@ -197,15 +201,14 @@ finished.
 | `paw reply "..."` | Reply to the most recent message |
 | `paw reply --to <thread> "..."` | Reply to a specific thread |
 | `paw status` | Check progress across all tasks |
-| `paw done << 'EOF'` | Mark task done with summary (heredoc) |
-| `paw done --force << 'EOF'` | Bypass summary section validation |
+| `paw review` | Submit task for review (push + PR first) |
 
 ### Agent informational commands
 
 | Command | Purpose |
 |---|---|
-| `paw shortcut build-task` | TDD workflow from task assignment to done |
-| `paw shortcut precommit-process` | Check messages, review, validate, broadcast, commit |
+| `paw shortcut build-task` | Build/Verify/Publish workflow from task assignment to review |
+| `paw shortcut review-pr` | Review a task PR — return PASS or FAIL with findings |
 
 ---
 
@@ -225,17 +228,17 @@ finished.
 <!-- BEGIN SHORTCUT DIRECTORY -->
 | Command | Purpose |
 |---|---|
-| `paw shortcut build-task` | Take a task from assignment to done with TDD, testing, and atomic commits |
+| `paw shortcut build-task` | Build, verify, and publish your paw task — the full worktree agent workflow |
 | `paw shortcut from-github-issue` | Fetch GitHub issues, decompose them into tasks, and generate paw.yaml |
 | `paw shortcut from-issues` | Detect the repo's issue tracker, read open issues, and generate paw.yaml |
 | `paw shortcut generate-paw-yaml` | Analyze a codebase and generate .paw/paw.yaml with well-decomposed parallel tasks |
 | `paw shortcut getting-started` | Install paw and run your first parallel agent session |
-| `paw shortcut orchestrate-agents` | Full orchestrator workflow — decompose, dispatch agents, monitor, merge, clean up |
-| `paw shortcut precommit-process` | Check messages, review, validate, broadcast, and commit — the checklist before every commit |
+| `paw shortcut new-plan-spec` | Create a new feature planning specification document |
 | `paw shortcut resolve-merge-conflict` | Read a conflict brief, resolve the merge conflict, and continue merging |
+| `paw shortcut review-pr` | Review a task PR for design, testing, code quality, and security — return PASS or FAIL |
 | `paw shortcut setup-github-cli` | Ensure GitHub CLI (gh) is installed and authenticated |
 | `paw shortcut setup-tmux` | Ensure tmux is installed for paw's terminal management |
-| `paw shortcut to-pr` | Combine agent done summaries into a PR with issue references |
+| `paw shortcut to-pr` | Combine agent PR descriptions into a final PR with issue references |
 <!-- END SHORTCUT DIRECTORY -->
 
 ### Available guidelines
@@ -256,7 +259,8 @@ finished.
 | Command | Purpose |
 |---|---|
 | `paw template paw-yaml` | Annotated config structure for .paw/paw.yaml |
-| `paw template task-summary` | Structure for paw done summaries — what you did, interface changes, warnings |
+| `paw template plan-spec` | Template for feature planning specification documents |
+| `paw template pr-template` | Pull request body template for paw worktree agents |
 <!-- END TEMPLATE DIRECTORY -->
 
 ---
@@ -266,6 +270,6 @@ finished.
 - **Orchestrator** runs in main repo, **Worktree agent** runs in isolated worktree
 - Config: `.paw/paw.yaml` — tasks, target branch, base, dependencies
 - Session state: `paw-sync` branch (managed by paw CLI)
-- Full lifecycle: `paw go` (up → launch → watch → merge → down)
+- Full lifecycle: `paw go` (up → launch → watch → review → merge → down)
 - TUI: `paw` (bare command) attaches to tmux session with agent panes
 - Resource discovery: `paw shortcut --list`, `paw guidelines --list`, `paw template --list`

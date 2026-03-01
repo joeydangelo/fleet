@@ -84,7 +84,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/hooks/paw-done-reminder.sh"
+            "command": "bash .claude/hooks/paw-review-reminder.sh"
           }
         ]
       },

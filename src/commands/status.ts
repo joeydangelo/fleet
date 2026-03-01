@@ -51,8 +51,8 @@ export function statusCommand(): Command {
             continue;
           }
 
-          if (taskSync?.status === 'done') {
-            skip(wt.taskName, 'done');
+          if (taskSync?.status === 'done' || taskSync?.status === 'in_review') {
+            skip(wt.taskName, taskSync.status === 'in_review' ? 'in review' : 'done');
             continue;
           }
 

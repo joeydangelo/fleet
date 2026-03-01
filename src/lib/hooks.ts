@@ -100,18 +100,13 @@ tool_name=$(echo "$input" | grep -o '"tool_name"[[:space:]]*:[[:space:]]*"[^"]*"
 if [ "$tool_name" = "Edit" ] || [ "$tool_name" = "Write" ]; then
   file_path=$(echo "$input" | grep -o '"file_path"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"file_path"[[:space:]]*:[[:space:]]*"\\(.*\\)"/\\1/')
   if echo "$file_path" | grep -qE '\\.paw/sync/|\\.paw\\\\\\\\sync\\\\\\\\'; then
-    deny "Do not edit files in .paw/sync/. The paw CLI manages all sync state (state.json, journal entries, summaries). Manual edits corrupt coordination and break paw watch, paw merge, and paw go. Use paw commands (paw done, paw broadcast, paw status) instead."
+    deny "Do not edit files in .paw/sync/. The paw CLI manages all sync state. Manual edits corrupt coordination and break paw watch, paw merge, and paw go. Use paw commands (paw review, paw broadcast, paw status) instead."
   fi
   exit 0
 fi
 
 # --- Bash guard: block dangerous git commands and sync state access ---
 command=$(echo "$input" | grep -o '"command"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"command"[[:space:]]*:[[:space:]]*"\\(.*\\)"/\\1/')
-
-# Block git push (orchestrator handles pushing after merge)
-if echo "$command" | grep -qE '\\bgit\\s+push\\b'; then
-  deny "Do not push from a paw worktree. Complete your task with 'paw done'. The orchestrator handles merging and pushing."
-fi
 
 # Block git checkout / git switch (agents must stay on their task branch)
 if echo "$command" | grep -qE '\\bgit\\s+(checkout|switch)\\b'; then
@@ -123,11 +118,6 @@ if echo "$command" | grep -qE '\\bgit\\s+merge\\b'; then
   deny "Do not merge branches in a paw worktree. The orchestrator handles merging after all tasks are done."
 fi
 
-# Block pull request creation (orchestrator's job)
-if echo "$command" | grep -qE '\\bgh\\s+pr\\s+create\\b'; then
-  deny "Do not create pull requests from a paw worktree. The orchestrator creates PRs after merging all task branches."
-fi
-
 # Block orchestrator commands from worktrees
 if echo "$command" | grep -qE '\\bpaw\\s+(up|down|merge|go|launch)\\b'; then
   deny "Do not run orchestrator commands from a paw worktree. These commands are for the orchestrator in the main repo."
@@ -136,10 +126,10 @@ fi
 # Block direct access to sync state (state.json, .paw/sync/, paw-sync branch)
 # The paw CLI manages all sync state. Manual edits corrupt coordination and break paw watch, merge, and go.
 if echo "$command" | grep -qE '\\.paw/sync/'; then
-  deny "Do not access .paw/sync/ directly. The paw CLI manages sync state. Manual edits corrupt coordination and break paw watch, paw merge, and paw go. Use paw commands (paw done, paw broadcast, paw status) instead."
+  deny "Do not access .paw/sync/ directly. The paw CLI manages sync state. Manual edits corrupt coordination and break paw watch, paw merge, and paw go. Use paw commands (paw review, paw broadcast, paw status) instead."
 fi
 if echo "$command" | grep -qE '\\bgit\\s+(show|log|cat-file|diff).*paw-sync'; then
-  # Allow read-only git commands on paw-sync (paw-done-reminder uses git show)
+  # Allow read-only git commands on paw-sync (paw-review-reminder uses git show)
   :
 elif echo "$command" | grep -qE 'paw-sync'; then
   deny "Do not interact with the paw-sync branch directly. The paw CLI manages this branch. Manual changes corrupt session state and break paw watch, paw merge, and paw go."
@@ -148,36 +138,35 @@ fi
 exit 0
 `;
 
-/** PostToolUse hook that reminds agents to run paw done after committing. */
-const PAW_DONE_REMINDER_SCRIPT = `#!/bin/bash
-# Remind agents to run paw done after committing
+/** PostToolUse hook that reminds agents to submit for review after committing. */
+const PAW_REVIEW_REMINDER_SCRIPT = `#!/bin/bash
+# Remind agents to submit for review after committing
 # Installed by: paw init
 # Fires on PostToolUse:Bash for git commit commands
 
 input=$(cat)
 
-# Remind about paw done on git commit
+# Remind about paw review on git commit
 if [[ "$input" == *"git commit"* ]]; then
   if ls .paw/tasks/*.md 1>/dev/null 2>&1; then
     task_file=$(ls .paw/tasks/*.md 2>/dev/null | head -1)
     task_name=$(basename "$task_file" .md)
 
-    # Check if summary exists on sync branch (paw done writes it there)
-    if ! git show "paw-sync:summaries/$task_name.md" >/dev/null 2>&1; then
+    # Check if task is already in_review or done on sync branch
+    task_status=$(git show "paw-sync:state.json" 2>/dev/null | grep -A2 "\\"$task_name\\"" | grep -o '"status"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"\\([^"]*\\)"/\\1/')
+    if [ "$task_status" != "in_review" ] && [ "$task_status" != "done" ]; then
+      BRANCH=$(git branch --show-current)
       echo ""
-      echo "PAW REMINDER: You have not run 'paw done' yet."
-      echo "  Use a heredoc to write your summary:"
-      echo "    paw done << 'EOF'"
-      echo "    ## What I did"
-      echo "    - ..."
-      echo ""
-      echo "    ## Interface changes"
-      echo "    - ..."
-      echo ""
-      echo "    ## Watch out"
-      echo "    - ..."
-      echo "    EOF"
-      echo "  Your summary is critical for merge conflict resolution."
+      echo "PAW REMINDER: You have not submitted for review yet."
+      echo "  After committing, follow the Publish phase:"
+      echo "    1. git push -u origin HEAD"
+      PR_NUM=$(gh pr view "$BRANCH" --json number -q '.number' 2>/dev/null)
+      if [ -n "$PR_NUM" ]; then
+        echo "    2. gh pr edit $BRANCH --title '...' --body '...'  (PR #$PR_NUM exists)"
+      else
+        echo "    2. gh pr create --title '...' --body '...'"
+      fi
+      echo "    3. paw review"
       echo ""
     fi
   fi
@@ -338,7 +327,7 @@ exit 0
 const SCRIPT_RELATIVE = '.claude/scripts/paw-session.sh';
 const GH_SCRIPT_RELATIVE = '.claude/scripts/confirm-gh-cli.sh';
 const GUARD_RELATIVE = '.claude/hooks/paw-guard.sh';
-const REMINDER_RELATIVE = '.claude/hooks/paw-done-reminder.sh';
+const REMINDER_RELATIVE = '.claude/hooks/paw-review-reminder.sh';
 const HEARTBEAT_RELATIVE = '.claude/hooks/paw-heartbeat.sh';
 const INBOX_RELATIVE = '.claude/hooks/paw-inbox.sh';
 
@@ -363,7 +352,7 @@ export function installHooks(repoRoot: string): void {
   const hooksDir = resolve(repoRoot, '.claude', 'hooks');
   mkdirSync(hooksDir, { recursive: true });
   writeFileSync(resolve(repoRoot, GUARD_RELATIVE), PAW_GUARD_SCRIPT, 'utf-8');
-  writeFileSync(resolve(repoRoot, REMINDER_RELATIVE), PAW_DONE_REMINDER_SCRIPT, 'utf-8');
+  writeFileSync(resolve(repoRoot, REMINDER_RELATIVE), PAW_REVIEW_REMINDER_SCRIPT, 'utf-8');
   writeFileSync(resolve(repoRoot, HEARTBEAT_RELATIVE), PAW_HEARTBEAT_SCRIPT, 'utf-8');
   writeFileSync(resolve(repoRoot, INBOX_RELATIVE), PAW_INBOX_SCRIPT, 'utf-8');
 

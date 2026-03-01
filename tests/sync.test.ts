@@ -6,6 +6,8 @@ import {
   initSyncState,
   claimTask,
   completeTask,
+  submitForReview,
+  reopenTask,
   writeSyncState,
   readSyncState,
   writeSyncFile,
@@ -81,6 +83,39 @@ describe('completeTask', () => {
   });
 });
 
+describe('submitForReview', () => {
+  it('sets status to in_review', () => {
+    const state = initSyncState('feature/dash', ['auth', 'api'], 'paw.yaml');
+    const claimed = claimTask(state, 'auth');
+    const reviewed = submitForReview(claimed, 'auth');
+
+    expect(reviewed.tasks['auth']?.status).toBe('in_review');
+    expect(reviewed.tasks['api']?.status).toBe('pending');
+  });
+
+  it('throws on unknown task', () => {
+    const state = initSyncState('feature/dash', ['auth'], 'paw.yaml');
+
+    expect(() => submitForReview(state, 'nope')).toThrow('Task not found in sync state: nope');
+  });
+});
+
+describe('reopenTask', () => {
+  it('transitions in_review back to in_progress', () => {
+    const state = initSyncState('feature/dash', ['auth'], 'paw.yaml');
+    const reviewed = submitForReview(claimTask(state, 'auth'), 'auth');
+    const reopened = reopenTask(reviewed, 'auth');
+
+    expect(reopened.tasks['auth']?.status).toBe('in_progress');
+  });
+
+  it('throws on unknown task', () => {
+    const state = initSyncState('feature/dash', ['auth'], 'paw.yaml');
+
+    expect(() => reopenTask(state, 'nope')).toThrow('Task not found in sync state: nope');
+  });
+});
+
 describe('writeSyncState / readSyncState', () => {
   let repoDir: string;
 
@@ -142,19 +177,19 @@ describe('writeSyncFile / readSyncFile', () => {
   });
 
   it('round-trips a file through the sync worktree', () => {
-    const content = '# Summary\n\nDid some work.';
-    writeSyncFile('summaries/auth.md', content, repoDir);
+    const content = '# Review: auth\n\nFindings here.';
+    writeSyncFile('review/auth.md', content, repoDir);
 
-    const read = readSyncFile('summaries/auth.md', repoDir);
+    const read = readSyncFile('review/auth.md', repoDir);
     expect(read).toBe(content);
   });
 
   it('preserves existing files when writing new ones', () => {
-    writeSyncFile('summaries/auth.md', 'auth summary', repoDir);
-    writeSyncFile('summaries/api.md', 'api summary', repoDir);
+    writeSyncFile('review/auth.md', 'auth findings', repoDir);
+    writeSyncFile('review/api.md', 'api findings', repoDir);
 
-    expect(readSyncFile('summaries/auth.md', repoDir)).toBe('auth summary');
-    expect(readSyncFile('summaries/api.md', repoDir)).toBe('api summary');
+    expect(readSyncFile('review/auth.md', repoDir)).toBe('auth findings');
+    expect(readSyncFile('review/api.md', repoDir)).toBe('api findings');
   });
 });
 
@@ -176,17 +211,13 @@ describe('writeSyncStateAndFiles', () => {
     const state = initSyncState('feature/dash', ['auth'], 'paw.yaml');
     const completed = completeTask(state, 'auth');
 
-    writeSyncStateAndFiles(
-      completed,
-      [{ path: 'summaries/auth.md', content: 'auth done' }],
-      repoDir,
-    );
+    writeSyncStateAndFiles(completed, [{ path: 'review/auth.md', content: 'auth done' }], repoDir);
 
     const readState = readSyncState(repoDir);
     expect(readState?.tasks['auth']?.status).toBe('done');
 
-    const summary = readSyncFile('summaries/auth.md', repoDir);
-    expect(summary).toBe('auth done');
+    const findings = readSyncFile('review/auth.md', repoDir);
+    expect(findings).toBe('auth done');
   });
 });
 
@@ -205,16 +236,16 @@ describe('listSyncDir', () => {
   });
 
   it('returns empty array when directory does not exist', () => {
-    expect(listSyncDir('summaries', repoDir)).toEqual([]);
+    expect(listSyncDir('review', repoDir)).toEqual([]);
   });
 
   it('lists files under a prefix', () => {
-    writeSyncFile('summaries/auth.md', 'auth summary', repoDir);
-    writeSyncFile('summaries/api.md', 'api summary', repoDir);
+    writeSyncFile('review/auth.md', 'auth findings', repoDir);
+    writeSyncFile('review/api.md', 'api findings', repoDir);
 
-    const files = listSyncDir('summaries', repoDir);
-    expect(files).toContain('summaries/auth.md');
-    expect(files).toContain('summaries/api.md');
+    const files = listSyncDir('review', repoDir);
+    expect(files).toContain('review/auth.md');
+    expect(files).toContain('review/api.md');
     expect(files).toHaveLength(2);
   });
 });
@@ -377,12 +408,12 @@ describe('archiveSession', () => {
     expect(archiveSession(repoDir, 'feature/foo')).toBeNull();
   });
 
-  it('archives state.json, journal, and summaries', () => {
+  it('archives state.json, journal, and review findings', () => {
     initSyncWorktree(repoDir);
     const state = initSyncState('feature/dash', ['auth', 'api'], 'paw.yaml');
     writeSyncState(state, repoDir);
     writeSyncFile('journal/auth.jsonl', '{"type":"broadcast"}\n', repoDir);
-    writeSyncFile('summaries/auth.md', '# Auth summary\n', repoDir);
+    writeSyncFile('review/auth-cycle-1.md', '# Review findings\n', repoDir);
 
     const archivePath = archiveSession(repoDir, 'feature/dash');
 
@@ -390,7 +421,7 @@ describe('archiveSession', () => {
     expect(archivePath!).toContain('feature-dash');
     expect(existsSync(resolve(archivePath!, 'state.json'))).toBe(true);
     expect(existsSync(resolve(archivePath!, 'journal', 'auth.jsonl'))).toBe(true);
-    expect(existsSync(resolve(archivePath!, 'summaries', 'auth.md'))).toBe(true);
+    expect(existsSync(resolve(archivePath!, 'review', 'auth-cycle-1.md'))).toBe(true);
   });
 
   it('copies paw.yaml from .paw/ into archive', () => {

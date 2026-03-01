@@ -88,9 +88,9 @@ Getting Started:
     const m = await import('./commands/status.js');
     return m.statusCommand();
   });
-  lazy(program, 'done', 'Mark current task as done', async () => {
-    const m = await import('./commands/done.js');
-    return m.doneCommand();
+  lazy(program, 'review', 'Submit task for review — push branch and create PR first', async () => {
+    const m = await import('./commands/review.js');
+    return m.reviewCommand();
   });
   lazy(program, 'merge', 'Merge done task branches into the target branch', async () => {
     const m = await import('./commands/merge.js');

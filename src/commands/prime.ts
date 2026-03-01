@@ -27,7 +27,10 @@ import { handleError, formatFocusAreas, colors, success } from '../lib/output.js
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 function statusColor(status: string): (text: string) => string {
-  return status === 'done' ? colors.success : status === 'in_progress' ? colors.warn : colors.muted;
+  if (status === 'done') return colors.success;
+  if (status === 'in_review') return colors.info;
+  if (status === 'in_progress') return colors.warn;
+  return colors.muted;
 }
 
 function summarizeTasks(state: SyncState): { total: number; inProgress: number; done: number } {
@@ -218,8 +221,8 @@ function printStatusSnapshot(repoRoot: string, state: SyncState, paneConfig: Paw
     const focus = formatFocusAreas(task.focus);
     const focusSuffix = focus ? `  ${focus}` : '';
 
-    if (task.status === 'done') {
-      console.log(`  ${marker} ${name} -- done`);
+    if (task.status === 'done' || task.status === 'in_review') {
+      console.log(`  ${marker} ${name} -- ${task.status === 'in_review' ? 'in review' : 'done'}`);
       continue;
     }
 
@@ -363,23 +366,6 @@ function printFull(
   const now = new Date().toISOString();
   writeSyncState({ ...state, lastCheck: { ...state.lastCheck, [taskName]: now } }, repoRoot);
 
-  // Done summaries
-  const doneTasks = Object.entries(state.tasks).filter(
-    ([name, task]) => name !== taskName && task.status === 'done',
-  );
-  if (doneTasks.length > 0) {
-    console.log(separator);
-    console.log(pc.bold('Done Summaries\n'));
-    for (const [name] of doneTasks) {
-      const summary = readSyncFile(`summaries/${name}.md`, repoRoot);
-      if (summary) {
-        console.log(pc.bold(`### ${name}`));
-        console.log(summary);
-        console.log();
-      }
-    }
-  }
-
   // Active conflict brief
   if (state.merges) {
     const conflictEntries = Object.entries(state.merges).filter(
@@ -401,10 +387,10 @@ function printFull(
 
   // Workflow footer
   console.log(pc.dim('── Workflow ──'));
-  console.log(pc.dim('1. Follow `paw shortcut precommit-process` when committing'));
+  console.log(pc.dim('1. Follow `paw shortcut build-task` for Build/Verify/Publish workflow'));
   console.log(pc.dim('2. Run `paw broadcast "..."` when you change shared interfaces'));
   console.log(pc.dim('3. Run `paw inbox --all` to see open Q&A threads'));
-  console.log(pc.dim('4. Run `paw done` with a structured summary when finished'));
+  console.log(pc.dim('4. Push, create PR, then `paw review` when finished'));
 
   // Full skill content
   const skillContent = loadSkillContent();
