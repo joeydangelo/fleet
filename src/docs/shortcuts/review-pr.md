@@ -57,7 +57,7 @@ edit or write files. Return a verdict (PASS or FAIL) with structured findings.
 
    **Categories:** `design`, `testing`, `quality`, `security`, `style`
 
-6. **Return verdict.** Start your response with the verdict on the first line:
+6. **Return verdict.** Print the verdict on its own line:
 
    **PASS** — No findings. The code is clean and ready to merge.
 

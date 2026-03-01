@@ -1,6 +1,6 @@
 /** Claude Code hook installation for paw agent sessions. */
 
-import { existsSync, mkdirSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
 import { writeFileSync } from 'atomically';
 import { resolve } from 'node:path';
 import { success } from './output.js';
@@ -355,6 +355,14 @@ export function installHooks(repoRoot: string): void {
   writeFileSync(resolve(repoRoot, REMINDER_RELATIVE), PAW_REVIEW_REMINDER_SCRIPT, 'utf-8');
   writeFileSync(resolve(repoRoot, HEARTBEAT_RELATIVE), PAW_HEARTBEAT_SCRIPT, 'utf-8');
   writeFileSync(resolve(repoRoot, INBOX_RELATIVE), PAW_INBOX_SCRIPT, 'utf-8');
+
+  // Clean up renamed hooks from prior versions
+  const oldReminderPath = resolve(hooksDir, 'paw-done-reminder.sh');
+  try {
+    rmSync(oldReminderPath);
+  } catch {
+    /* already gone */
+  }
 
   const pawHooks: Record<string, MatcherGroup[]> = {
     SessionStart: [

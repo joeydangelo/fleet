@@ -114,7 +114,7 @@ function buildReviewPrompt(
     'STEP 2: Get the diff by running: git diff ' + targetBranch + '...' + taskBranch,
     'STEP 3: Load relevant guidelines as instructed by the review-pr shortcut.',
     'STEP 4: Perform the review and compile findings.',
-    'STEP 5: Print your verdict. The FIRST line must be exactly PASS or FAIL.',
+    'STEP 5: Print your verdict — a line with just PASS or FAIL.',
     'STEP 6: After your full review output, print this exact line:',
     REVIEW_DONE_MARKER,
   );
@@ -127,7 +127,7 @@ function buildNudgeMessage(): string {
   return [
     'You have been reviewing for a while.',
     'Please wrap up your review and print your verdict now.',
-    'The FIRST line must be exactly PASS or FAIL, followed by your findings.',
+    'Print your verdict — a line with just PASS or FAIL — followed by your findings.',
     'Then print this exact line: ' + REVIEW_DONE_MARKER,
   ].join(' ');
 }
@@ -135,7 +135,8 @@ function buildNudgeMessage(): string {
 /**
  * Parse the reviewer's output to extract the verdict and findings.
  * Scans captured pane content for the done marker, then looks backward
- * for the PASS/FAIL verdict line.
+ * from the marker for the last PASS/FAIL verdict line, avoiding
+ * false-positive matches from analysis text earlier in the output.
  */
 export function parseReviewOutput(captured: string): ReviewResult | null {
   if (!captured.includes(REVIEW_DONE_MARKER)) return null;
@@ -143,10 +144,11 @@ export function parseReviewOutput(captured: string): ReviewResult | null {
   // Everything before the done marker is the review output
   const beforeMarker = captured.split(REVIEW_DONE_MARKER)[0] ?? '';
 
-  // Find the verdict — scan lines for one starting with PASS or FAIL
+  // Scan backward from the marker so analysis text that mentions "PASS" or
+  // "FAIL" before the real verdict doesn't cause a false-positive match.
   const lines = beforeMarker.split('\n');
   let verdictLine = -1;
-  for (let i = 0; i < lines.length; i++) {
+  for (let i = lines.length - 1; i >= 0; i--) {
     const trimmed = lines[i]!.trim().toUpperCase();
     if (
       trimmed === 'PASS' ||

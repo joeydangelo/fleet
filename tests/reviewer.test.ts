@@ -77,6 +77,39 @@ This should be ignored.`;
   it('returns null for empty string', () => {
     expect(parseReviewOutput('')).toBeNull();
   });
+
+  it('ignores PASS/FAIL in analysis text before the real verdict', () => {
+    const output = `Loading review-pr shortcut...
+Reviewing diff for task branch...
+
+The FAIL case is not handled properly in the error path.
+I also note that PASS is mentioned in a comment but never tested.
+
+After full review, the code looks correct:
+
+PASS
+All issues are minor and pre-existing, not introduced by this PR.
+${REVIEW_DONE_MARKER}`;
+
+    const result = parseReviewOutput(output);
+    expect(result).not.toBeNull();
+    expect(result!.verdict).toBe('pass');
+    expect(result!.findings).toContain('All issues are minor');
+  });
+
+  it('picks last FAIL when analysis text mentions PASS before real verdict', () => {
+    const output = `The code currently returns PASS for all inputs.
+This is wrong — validation is missing.
+
+FAIL
+Missing input validation in handler.ts.
+${REVIEW_DONE_MARKER}`;
+
+    const result = parseReviewOutput(output);
+    expect(result).not.toBeNull();
+    expect(result!.verdict).toBe('fail');
+    expect(result!.findings).toContain('Missing input validation');
+  });
 });
 
 describe('REVIEW_DONE_MARKER', () => {
