@@ -16,7 +16,7 @@
 
 import { execFileSync } from 'node:child_process';
 import { resolve } from 'node:path';
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, existsSync, readFileSync, rmSync } from 'node:fs';
 import { writeFileSync } from 'atomically';
 import type { TmuxServiceApi } from './tmux.js';
 import { waitForTuiReady, killDetachedSession, isTuiPromptReady } from './tmux.js';
@@ -46,11 +46,31 @@ const REVIEW_POLL_MS = 3_000;
 /** Lines of pane content to capture when checking for verdict. */
 const REVIEW_CAPTURE_LINES = 200;
 
-/** Marker the reviewer prints after the verdict so we know it's done. */
+/** @deprecated Kept for backward-compat in tests. No longer used for control flow. */
 export const REVIEW_DONE_MARKER = '--- PAW_REVIEW_COMPLETE ---';
 
 /** Time (ms) before logging a warning that the reviewer is still working. */
 const REVIEW_WARN_MS = 120_000;
+
+/** Compute the path for the out-of-band verdict sentinel file. */
+export function verdictFilePath(repoRoot: string, taskBranch: string): string {
+  const safeName = taskBranch.replace(/[^a-zA-Z0-9-]/g, '-');
+  return resolve(repoRoot, '.paw', 'run', `review-verdict-${safeName}.json`);
+}
+
+/** Read and parse the verdict sentinel file. Returns null if not yet written. */
+export function readVerdictFile(filePath: string): ReviewResult | null {
+  if (!existsSync(filePath)) return null;
+  try {
+    const raw = readFileSync(filePath, 'utf-8');
+    const data = JSON.parse(raw) as { verdict?: string; findings?: string };
+    const v = String(data.verdict ?? '').toLowerCase();
+    const verdict: ReviewVerdict = v === 'pass' ? 'pass' : v === 'fail' ? 'fail' : 'fail';
+    return { verdict, findings: String(data.findings ?? '') };
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Build the claude command for the reviewer session.
@@ -69,6 +89,7 @@ function buildReviewerCommand(): string {
     'Bash(git diff*)',
     'Bash(git log*)',
     'Bash(gh pr *)',
+    'Bash(node -e *)',
   ].join(',');
 
   const disallowedTools = ['Edit', 'Write', 'NotebookEdit', 'Agent'].join(',');
@@ -88,11 +109,12 @@ function buildReviewerCommand(): string {
 /**
  * Build the review prompt sent via send-keys after the session starts.
  * Tells the reviewer to load `paw shortcut review-pr`, follow its instructions,
- * and print the done marker when finished.
+ * and write a verdict JSON file when finished (out-of-band signaling).
  */
 function buildReviewPrompt(
   taskBranch: string,
   targetBranch: string,
+  verdictPath: string,
   priorFindingsPaths?: string[],
 ): string {
   const steps = [`You are reviewing task branch "${taskBranch}" against "${targetBranch}".`, ''];
@@ -109,26 +131,32 @@ function buildReviewPrompt(
     steps.push('');
   }
 
+  // Escape the path for embedding in a JSON string inside a node -e command
+  const escapedPath = verdictPath.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+
   steps.push(
     'STEP 1: Run `paw shortcut review-pr` and read the review instructions.',
     'STEP 2: Get the diff by running: git diff ' + targetBranch + '...' + taskBranch,
     'STEP 3: Load relevant guidelines as instructed by the review-pr shortcut.',
     'STEP 4: Perform the review and compile findings.',
-    'STEP 5: Print your verdict — a line with just PASS or FAIL.',
-    'STEP 6: After your full review output, print this exact line:',
-    REVIEW_DONE_MARKER,
+    'STEP 5: Determine your verdict (PASS or FAIL).',
+    'STEP 6: Write the verdict file by running this Bash command (replace VERDICT and FINDINGS):',
+    `node -e "require('fs').writeFileSync('${escapedPath}', JSON.stringify({verdict:'PASS_OR_FAIL', findings:'your findings text here'}))"`,
+    'Replace PASS_OR_FAIL with your actual verdict (PASS or FAIL) and put your full findings text in the findings field.',
+    'This file write is MANDATORY — it signals completion to the orchestrator.',
   );
 
   return steps.join(' ');
 }
 
 /** Build the nudge message sent when the reviewer is taking too long. */
-function buildNudgeMessage(): string {
+function buildNudgeMessage(verdictPath: string): string {
+  const escapedPath = verdictPath.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
   return [
     'You have been reviewing for a while.',
-    'Please wrap up your review and print your verdict now.',
-    'Print your verdict — a line with just PASS or FAIL — followed by your findings.',
-    'Then print this exact line: ' + REVIEW_DONE_MARKER,
+    'Please wrap up your review and write the verdict file now.',
+    'Run this Bash command with your verdict (PASS or FAIL) and findings:',
+    `node -e "require('fs').writeFileSync('${escapedPath}', JSON.stringify({verdict:'PASS_OR_FAIL', findings:'your findings'}))"`,
   ].join(' ');
 }
 
@@ -242,9 +270,18 @@ export async function reviewTask(
   priorFindingsPaths?: string[],
 ): Promise<ReviewResult> {
   const sessionName = `${REVIEW_SESSION_PREFIX}${taskBranch.replace(/[^a-zA-Z0-9-]/g, '-')}`;
+  const vPath = verdictFilePath(repoRoot, taskBranch);
 
-  // Clean up any leftover session from a previous run
+  // Clean up any leftover session or verdict file from a previous run
   killDetachedSession(tmux, sessionName);
+  try {
+    rmSync(vPath);
+  } catch {
+    /* already gone */
+  }
+
+  // Ensure the parent directory exists for the verdict file
+  mkdirSync(resolve(repoRoot, '.paw', 'run'), { recursive: true });
 
   // Escalation flags — each fires once
   let warned = false;
@@ -265,7 +302,10 @@ export async function reviewTask(
     await new Promise((r) => setTimeout(r, 2_000));
 
     // Send the review prompt
-    tmux.sendKeys(sessionName, buildReviewPrompt(taskBranch, targetBranch, priorFindingsPaths));
+    tmux.sendKeys(
+      sessionName,
+      buildReviewPrompt(taskBranch, targetBranch, vPath, priorFindingsPaths),
+    );
 
     // Follow-up empty Enters to dismiss trust/permission dialogs (same as sendBeacon)
     for (const delay of BEACON_FOLLOWUP_DELAYS) {
@@ -283,21 +323,20 @@ export async function reviewTask(
 
       // Check if session is still alive
       if (!tmux.sessionExists(sessionName)) {
+        // Session died — check if it wrote a verdict before exiting
+        const fileResult = readVerdictFile(vPath);
+        if (fileResult) return fileResult;
         return {
           verdict: 'skip',
           findings: 'Reviewer session exited unexpectedly — skipping review.',
         };
       }
 
-      // Capture pane content
-      const captured = tmux.capturePaneContent(sessionName, REVIEW_CAPTURE_LINES);
-      if (!captured) continue;
+      // Primary: check for verdict file (out-of-band sentinel)
+      const fileResult = readVerdictFile(vPath);
+      if (fileResult) return fileResult;
 
-      // Check for completed review
-      const result = parseReviewOutput(captured);
-      if (result) return result;
-
-      // Mini-ZFC escalation
+      // Mini-ZFC escalation (uses pane capture for idle detection only)
 
       // Warning: reviewer is taking a while (2min)
       if (!warned && elapsed >= REVIEW_WARN_MS) {
@@ -311,8 +350,9 @@ export async function reviewTask(
         callbacks?.onNudge?.(formatElapsed(elapsed));
 
         // Only nudge if the reviewer appears idle at the prompt
-        if (isTuiPromptReady(captured)) {
-          tmux.sendKeys(sessionName, buildNudgeMessage());
+        const captured = tmux.capturePaneContent(sessionName, REVIEW_CAPTURE_LINES);
+        if (captured && isTuiPromptReady(captured)) {
+          tmux.sendKeys(sessionName, buildNudgeMessage(vPath));
           // Follow-up Enter to dismiss any dialog
           await new Promise((r) => setTimeout(r, BEACON_FOLLOWUP_DELAYS[0]));
           tmux.sendKeys(sessionName, '');
@@ -320,13 +360,12 @@ export async function reviewTask(
       }
     }
 
-    // Timeout: capture pane for diagnostics, then pass
+    // Timeout: one last check for verdict file, then capture pane for diagnostics
+    const finalFileResult = readVerdictFile(vPath);
+    if (finalFileResult) return finalFileResult;
+
     const finalCapture = tmux.capturePaneContent(sessionName, REVIEW_CAPTURE_LINES);
     if (finalCapture) {
-      // One last attempt to parse — maybe verdict appeared in final capture
-      const lastResult = parseReviewOutput(finalCapture);
-      if (lastResult) return lastResult;
-
       const capturePath = saveCapture(repoRoot, taskBranch, finalCapture);
       callbacks?.onCapture?.(formatElapsed(Date.now() - startTime), capturePath);
       callbacks?.onTimeout?.(formatElapsed(REVIEW_TIMEOUT_MS));
@@ -334,7 +373,12 @@ export async function reviewTask(
 
     return { verdict: 'skip', findings: 'Review timed out — skipping review.' };
   } finally {
-    // Always clean up the reviewer session
+    // Always clean up the reviewer session and verdict file
     killDetachedSession(tmux, sessionName);
+    try {
+      rmSync(vPath);
+    } catch {
+      /* already gone */
+    }
   }
 }
