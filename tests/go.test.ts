@@ -41,22 +41,27 @@ vi.mock('../src/lib/session.js', () => ({
   copyIncludes: vi.fn(() => Promise.resolve([])),
 }));
 
-vi.mock('../src/lib/sync.js', () => ({
-  readSyncState: vi.fn(() => null),
-  initSyncWorktree: vi.fn(),
-  initSyncState: vi.fn(() => ({
-    session: 'test',
-    config: '/fake/config',
-    target: 'feature/x',
-    tasks: {},
-  })),
-  writeSyncStateAndFiles: vi.fn(),
-}));
+vi.mock('../src/lib/sync.js', async (importOriginal) => {
+  const actual = (await importOriginal());
+  return {
+    readSyncState: vi.fn(() => null),
+    initSyncWorktree: vi.fn(),
+    initSyncState: vi.fn(() => ({
+      session: 'test',
+      config: '/fake/config',
+      target: 'feature/x',
+      tasks: {},
+    })),
+    writeSyncStateAndFiles: vi.fn(),
+    isTerminalStatus: actual.isTerminalStatus,
+  };
+});
 
 vi.mock('../src/lib/pane-state.js', () => ({
   readPaneConfig: vi.fn(() => null),
   saveDetachedAgents: vi.fn(),
   savePanes: vi.fn(),
+  resolvePaneTarget: vi.fn(() => null),
 }));
 
 vi.mock('../src/lib/health.js', () => ({

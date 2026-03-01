@@ -67,6 +67,16 @@ export function saveDetachedAgents(
   writePaneConfig(repoRoot, config);
 }
 
+/** Resolve the tmux target (session name or pane ID) for a task by name. */
+export function resolvePaneTarget(paneConfig: PawPaneConfig, taskName: string): string | null {
+  if (paneConfig.mode === 'detached' && paneConfig.detached) {
+    const agent = paneConfig.detached.find((a) => a.taskName === taskName);
+    return agent?.sessionName ?? null;
+  }
+  const pane = paneConfig.panes.find((p) => p.taskName === taskName);
+  return pane?.paneId ?? null;
+}
+
 /**
  * Kill all persisted task panes, then clear the panes array in panes.json.
  * Preserves orchestratorPaneId so the next `paw` run finds the surviving

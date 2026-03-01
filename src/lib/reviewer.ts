@@ -25,7 +25,7 @@ import { REVIEW_TIMEOUT_MS, REVIEW_NUDGE_MS } from './constants.js';
 /** Prefix for all reviewer tmux sessions. */
 const REVIEW_SESSION_PREFIX = 'paw-review-';
 
-export type ReviewVerdict = 'pass' | 'fail';
+export type ReviewVerdict = 'pass' | 'fail' | 'skip';
 
 export interface ReviewResult {
   verdict: ReviewVerdict;
@@ -47,7 +47,7 @@ const REVIEW_POLL_MS = 3_000;
 const REVIEW_CAPTURE_LINES = 200;
 
 /** Marker the reviewer prints after the verdict so we know it's done. */
-const REVIEW_DONE_MARKER = '--- PAW_REVIEW_COMPLETE ---';
+export const REVIEW_DONE_MARKER = '--- PAW_REVIEW_COMPLETE ---';
 
 /** Time (ms) before logging a warning that the reviewer is still working. */
 const REVIEW_WARN_MS = 120_000;
@@ -137,7 +137,7 @@ function buildNudgeMessage(): string {
  * Scans captured pane content for the done marker, then looks backward
  * for the PASS/FAIL verdict line.
  */
-function parseReviewOutput(captured: string): ReviewResult | null {
+export function parseReviewOutput(captured: string): ReviewResult | null {
   if (!captured.includes(REVIEW_DONE_MARKER)) return null;
 
   // Everything before the done marker is the review output
@@ -203,6 +203,7 @@ export function killReviewerSessions(tmux: TmuxServiceApi): void {
     });
     sessions = raw.trim().split('\n').filter(Boolean);
   } catch {
+    // tmux not running — no sessions to clean up
     return;
   }
 
@@ -221,7 +222,7 @@ export function killReviewerSessions(tmux: TmuxServiceApi): void {
  *   0–2min:  polling silently
  *   2min:    warning — reviewer is still working
  *   5min:    nudge — send-keys reminder to wrap up
- *   10min:   timeout — capture pane for diagnostics, default to pass
+ *   10min:   timeout — capture pane for diagnostics, default to skip
  *
  * @param tmux - Tmux service for session management
  * @param taskBranch - The task branch to review (e.g., "feature/api-auth")
@@ -255,7 +256,7 @@ export async function reviewTask(
     // Wait for Claude TUI to be ready
     const ready = await waitForTuiReady(tmux, sessionName, 30_000, 1_000);
     if (!ready) {
-      return { verdict: 'pass', findings: 'Reviewer session failed to start — skipping review.' };
+      return { verdict: 'skip', findings: 'Reviewer session failed to start — skipping review.' };
     }
 
     // Small delay for TUI to fully initialize
@@ -275,7 +276,7 @@ export async function reviewTask(
       // Check if session is still alive
       if (!tmux.sessionExists(sessionName)) {
         return {
-          verdict: 'pass',
+          verdict: 'skip',
           findings: 'Reviewer session exited unexpectedly — skipping review.',
         };
       }
@@ -316,14 +317,11 @@ export async function reviewTask(
       if (lastResult) return lastResult;
 
       const capturePath = saveCapture(repoRoot, taskBranch, finalCapture);
-      callbacks?.onCapture?.(
-        formatElapsed(Date.now() - (Date.now() - REVIEW_TIMEOUT_MS)),
-        capturePath,
-      );
+      callbacks?.onCapture?.(formatElapsed(Date.now() - startTime), capturePath);
       callbacks?.onTimeout?.(formatElapsed(REVIEW_TIMEOUT_MS));
     }
 
-    return { verdict: 'pass', findings: 'Review timed out — skipping review.' };
+    return { verdict: 'skip', findings: 'Review timed out — skipping review.' };
   } finally {
     // Always clean up the reviewer session
     killDetachedSession(tmux, sessionName);

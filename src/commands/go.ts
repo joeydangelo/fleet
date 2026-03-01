@@ -16,8 +16,9 @@ import {
   writeSyncFile,
   listSyncDir,
   resolveSyncDir,
+  isTerminalStatus,
 } from '../lib/sync.js';
-import type { PawPaneConfig, AgentLivenessResult } from '../lib/tmux.js';
+import type { PawPaneConfig, AgentLivenessResult, TmuxServiceApi } from '../lib/tmux.js';
 import {
   createTmuxService,
   checkAgentLiveness,
@@ -26,7 +27,7 @@ import {
   tmuxSessionName,
   sendNudgeKeys,
 } from '../lib/tmux.js';
-import { readPaneConfig } from '../lib/pane-state.js';
+import { readPaneConfig, resolvePaneTarget } from '../lib/pane-state.js';
 import { DEFAULT_POLL_INTERVAL, REVIEW_MAX_RETRIES } from '../lib/constants.js';
 import { isVerbose } from '../lib/context.js';
 import { handleError, colors, pending, skip } from '../lib/output.js';
@@ -76,14 +77,14 @@ export function resolveSessionState(
 
   const tasks = Object.values(syncState.tasks);
   if (tasks.length === 0) return 'clean';
-  if (tasks.every((t) => t.status === 'done' || t.status === 'in_review')) return 'all-done';
+  if (tasks.every((t) => isTerminalStatus(t.status))) return 'all-done';
 
   if (!paneConfig) return 'no-session';
   if (!liveness) return 'no-session';
 
   const notDone = liveness.filter((l) => {
     const status = syncState.tasks[l.taskName]?.status;
-    return status !== 'done' && status !== 'in_review';
+    return !status || !isTerminalStatus(status);
   });
   if (notDone.length === 0) return 'all-done';
   if (notDone.every((l) => l.alive)) return 'agents-running';
@@ -194,7 +195,7 @@ export async function runGo(opts: GoOpts): Promise<void> {
   if (!opts.noReview) {
     const worktrees = planWorktrees(config, repoRoot);
     const paneConfig = readPaneConfig(repoRoot);
-    let tmux: ReturnType<typeof createTmuxService> | null = null;
+    let tmux: TmuxServiceApi | null = null;
     try {
       tmux = createTmuxService();
     } catch {
@@ -265,11 +266,11 @@ export async function runGo(opts: GoOpts): Promise<void> {
           ].join('\n');
           try {
             writeSyncFile(findingsPath, findingsContent, repoRoot);
-          } catch {
-            // Best-effort — don't block the review loop
+          } catch (err: unknown) {
+            console.log(pc.dim(`  warning: failed to persist findings: ${String(err)}`));
           }
 
-          if (result.verdict === 'pass') {
+          if (result.verdict === 'pass' || result.verdict === 'skip') {
             console.log(colors.success(`  ${taskName} -- PASS`));
             syncState = completeTask(syncState, taskName);
             writeSyncState(syncState, repoRoot);
@@ -290,12 +291,14 @@ export async function runGo(opts: GoOpts): Promise<void> {
 
             // Send findings back to builder agent via tmux
             if (paneConfig) {
-              const target = resolveReviewTarget(paneConfig, taskName);
+              const target = resolvePaneTarget(paneConfig, taskName);
               if (target) {
                 const msg =
                   `Review FAIL for "${taskName}". Fix these findings, then run paw review again:\n` +
                   result.findings;
-                sendNudgeKeys(tmux, target, msg).catch(() => {});
+                sendNudgeKeys(tmux, target, msg).catch((err) => {
+                  if (isVerbose()) console.log(pc.dim(`  nudge delivery failed: ${err}`));
+                });
               }
             }
           }
@@ -396,15 +399,6 @@ export async function runGo(opts: GoOpts): Promise<void> {
 
   if (verbose) console.log(colors.info(`⏰ total: ${formatElapsed(Date.now() - totalStart)}`));
   console.log(colors.success(`\nDone. Work merged to ${config.target}.`));
-}
-
-function resolveReviewTarget(paneConfig: PawPaneConfig, taskName: string): string | null {
-  if (paneConfig.mode === 'detached' && paneConfig.detached) {
-    const agent = paneConfig.detached.find((a) => a.taskName === taskName);
-    return agent?.sessionName ?? null;
-  }
-  const pane = paneConfig.panes.find((p) => p.taskName === taskName);
-  return pane?.paneId ?? null;
 }
 
 function printDryRun(repoRoot: string, config: PawConfig, opts: GoOpts): void {

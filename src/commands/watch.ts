@@ -4,19 +4,20 @@ import type { Formatter } from 'picocolors/types.js';
 import { getRepoRoot, getCommitCount, getChangedFileCount } from '../lib/git.js';
 import { loadConfig, resolveConfigPath } from '../lib/config.js';
 import { planWorktrees } from '../lib/session.js';
-import { readSyncState } from '../lib/sync.js';
+import { readSyncState, isTerminalStatus } from '../lib/sync.js';
 import type { TaskState } from '../lib/sync.js';
 import { readJournal } from '../lib/journal.js';
 import type { JournalEntry } from '../lib/journal.js';
-import { readPaneConfig } from '../lib/pane-state.js';
+import { readPaneConfig, resolvePaneTarget } from '../lib/pane-state.js';
 import {
   checkAgentLiveness,
   createTmuxService,
   sendNudgeKeys,
   buildLivenessMap,
 } from '../lib/tmux.js';
-import type { PawPaneConfig, TmuxServiceApi } from '../lib/tmux.js';
+import type { TmuxServiceApi } from '../lib/tmux.js';
 import { DEFAULT_POLL_INTERVAL } from '../lib/constants.js';
+import { isVerbose } from '../lib/context.js';
 import { handleError, colors } from '../lib/output.js';
 import { sleep } from '../lib/util.js';
 import {
@@ -117,7 +118,7 @@ export function diffCommitCounts(
 function isAllDone(tasks: Record<string, TaskState>): boolean {
   const entries = Object.values(tasks);
   if (entries.length === 0) return false;
-  return entries.every((t) => t.status === 'done' || t.status === 'in_review');
+  return entries.every((t) => isTerminalStatus(t.status));
 }
 
 // --- Output formatting ---
@@ -150,16 +151,28 @@ function printJournalEntry(entry: JournalEntry, taskIndex: Map<string, number>):
 function printStatusTransition(t: StatusTransition, taskIndex: Map<string, number>): void {
   const name = colorTask(t.task, taskIndex);
 
-  if (t.to === 'in_progress') {
-    console.log(`${timestamp()} ${colors.success('+')} ${name} claimed task`);
-  } else if (t.to === 'in_review') {
-    console.log(`${timestamp()} ${colors.info('⟳')} ${name} submitted for review`);
-  } else if (t.to === 'done') {
-    console.log(`${timestamp()} ${colors.success('✓')} ${name} done`);
-  } else if (t.from === undefined) {
+  if (t.from === undefined) {
     // New task appearing -- skip silent "pending" entries on first poll
-  } else {
-    console.log(`${timestamp()}   ${name} ${t.from} → ${t.to}`);
+    return;
+  }
+
+  switch (t.to) {
+    case 'in_progress':
+      console.log(`${timestamp()} ${colors.success('+')} ${name} claimed task`);
+      break;
+    case 'in_review':
+      console.log(`${timestamp()} ${colors.info('⟳')} ${name} submitted for review`);
+      break;
+    case 'done':
+      console.log(`${timestamp()} ${colors.success('✓')} ${name} done`);
+      break;
+    case 'pending':
+      console.log(`${timestamp()}   ${name} ${t.from} → ${t.to}`);
+      break;
+    default: {
+      const exhaustive: never = t.to;
+      console.log(`${timestamp()}   ${name} ${t.from} → ${String(exhaustive)}`);
+    }
   }
 }
 
@@ -197,15 +210,6 @@ function printHealthTransition(
 }
 
 // --- Poll loop ---
-
-function resolveNudgeTarget(paneConfig: PawPaneConfig, taskName: string): string | null {
-  if (paneConfig.mode === 'detached' && paneConfig.detached) {
-    const agent = paneConfig.detached.find((a) => a.taskName === taskName);
-    return agent?.sessionName ?? null;
-  }
-  const pane = paneConfig.panes.find((p) => p.taskName === taskName);
-  return pane?.paneId ?? null;
-}
 
 /** Polls sync state, journal, commit counts, and agent health on an interval. */
 export async function runWatchLoop(opts: {
@@ -358,9 +362,11 @@ export async function runWatchLoop(opts: {
               writeNudge(repoRoot, taskName, msg);
 
               if (paneConfig && tmux) {
-                const target = resolveNudgeTarget(paneConfig, taskName);
+                const target = resolvePaneTarget(paneConfig, taskName);
                 if (target) {
-                  sendNudgeKeys(tmux, target, msg).catch(() => {});
+                  sendNudgeKeys(tmux, target, msg).catch((err) => {
+                    if (isVerbose()) console.log(pc.dim(`  nudge delivery failed: ${err}`));
+                  });
                 }
               }
               break;
@@ -369,7 +375,7 @@ export async function runWatchLoop(opts: {
             case 2: {
               // Level 2: triage — AI classification
               if (paneConfig && tmux) {
-                const target = resolveNudgeTarget(paneConfig, taskName);
+                const target = resolvePaneTarget(paneConfig, taskName);
                 if (target) {
                   console.log(
                     `${timestamp()} ${colors.warn('🔍')} ${colorTask(taskName, taskIndex)} triaging stalled agent...`,
@@ -390,7 +396,9 @@ export async function runWatchLoop(opts: {
                     const retryMsg =
                       `You appear stuck on task "${taskName}". ` +
                       `Try a completely different approach, or use paw broadcast to ask for help.`;
-                    sendNudgeKeys(tmux, target, retryMsg).catch(() => {});
+                    sendNudgeKeys(tmux, target, retryMsg).catch((err) => {
+                      if (isVerbose()) console.log(pc.dim(`  nudge delivery failed: ${err}`));
+                    });
                   } else {
                     console.log(
                       `${timestamp()} ${colors.error('☠')} ${colorTask(taskName, taskIndex)} triage: TERMINATE — marking zombie`,

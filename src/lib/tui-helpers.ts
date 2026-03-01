@@ -57,8 +57,8 @@ export function statusIcon(status: TuiStatus): { icon: string; color: string } {
     case 'pending':
       return { icon: '◌', color: 'gray' };
     default: {
-      const _exhaustive: never = status;
-      throw new Error(`Unhandled TUI status: ${String(_exhaustive)}`);
+      const exhaustive: never = status;
+      throw new Error(`Unhandled TUI status: ${String(exhaustive)}`);
     }
   }
 }

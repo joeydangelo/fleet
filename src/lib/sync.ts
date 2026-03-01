@@ -22,6 +22,22 @@ export interface TaskState {
   focus?: string[];
 }
 
+/** Exhaustive check: returns true for statuses where the task is complete or awaiting review. */
+export function isTerminalStatus(status: TaskState['status']): boolean {
+  switch (status) {
+    case 'done':
+    case 'in_review':
+      return true;
+    case 'pending':
+    case 'in_progress':
+      return false;
+    default: {
+      const exhaustive: never = status;
+      throw new Error(`Unhandled task status: ${String(exhaustive)}`);
+    }
+  }
+}
+
 type MergeStatus = 'pending' | 'merged' | 'skipped' | 'conflict';
 
 /** Per-task merge tracking: whether a task branch was merged, skipped, or hit a conflict. */
