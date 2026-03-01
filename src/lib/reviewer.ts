@@ -20,7 +20,7 @@ import { mkdirSync } from 'node:fs';
 import { writeFileSync } from 'atomically';
 import type { TmuxServiceApi } from './tmux.js';
 import { waitForTuiReady, killDetachedSession, isTuiPromptReady } from './tmux.js';
-import { REVIEW_TIMEOUT_MS, REVIEW_NUDGE_MS } from './constants.js';
+import { REVIEW_TIMEOUT_MS, REVIEW_NUDGE_MS, BEACON_FOLLOWUP_DELAYS } from './constants.js';
 
 /** Prefix for all reviewer tmux sessions. */
 const REVIEW_SESSION_PREFIX = 'paw-review-';
@@ -267,6 +267,12 @@ export async function reviewTask(
     // Send the review prompt
     tmux.sendKeys(sessionName, buildReviewPrompt(taskBranch, targetBranch, priorFindingsPaths));
 
+    // Follow-up empty Enters to dismiss trust/permission dialogs (same as sendBeacon)
+    for (const delay of BEACON_FOLLOWUP_DELAYS) {
+      await new Promise((r) => setTimeout(r, delay));
+      tmux.sendKeys(sessionName, '');
+    }
+
     const startTime = Date.now();
     const maxPolls = Math.ceil(REVIEW_TIMEOUT_MS / REVIEW_POLL_MS);
 
@@ -307,6 +313,9 @@ export async function reviewTask(
         // Only nudge if the reviewer appears idle at the prompt
         if (isTuiPromptReady(captured)) {
           tmux.sendKeys(sessionName, buildNudgeMessage());
+          // Follow-up Enter to dismiss any dialog
+          await new Promise((r) => setTimeout(r, BEACON_FOLLOWUP_DELAYS[0]));
+          tmux.sendKeys(sessionName, '');
         }
       }
     }

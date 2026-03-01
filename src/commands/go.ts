@@ -271,7 +271,11 @@ export async function runGo(opts: GoOpts): Promise<void> {
           }
 
           if (result.verdict === 'pass' || result.verdict === 'skip') {
-            console.log(colors.success(`  ${taskName} -- PASS`));
+            if (result.verdict === 'skip') {
+              skip(taskName, 'SKIP (review timed out)');
+            } else {
+              console.log(colors.success(`  ${taskName} -- PASS`));
+            }
             syncState = completeTask(syncState, taskName);
             writeSyncState(syncState, repoRoot);
           } else {
