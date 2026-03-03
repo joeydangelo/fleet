@@ -15,6 +15,7 @@ import { SYNC_BRANCH } from './constants.js';
 const STATE_FILE = 'state.json';
 const MAX_RETRIES = 3;
 
+/** Lifecycle status and metadata for a single task in the sync state. */
 export interface TaskState {
   status: 'pending' | 'in_progress' | 'in_review' | 'done';
   claimed?: string;
@@ -106,8 +107,9 @@ export function initSyncWorktree(cwd: string): string {
  * Agents run in task worktrees (-paw-auth, -paw-api) but the sync
  * worktree lives in the main repo. This uses git-common-dir to find
  * the shared .git path and derives the main worktree from it.
+ *
+ * Memoized per-process — safe because paw runs as a short-lived CLI.
  */
-/** Memoize resolved sync dirs. Safe because paw runs as a short-lived CLI process. */
 const syncDirCache = new Map<string, string>();
 
 export function resolveSyncDir(cwd: string): string {
@@ -118,8 +120,6 @@ export function resolveSyncDir(cwd: string): string {
     cwd,
     stdio: 'pipe',
   });
-  // git-common-dir is relative to cwd. Resolve it, then go up one level
-  // to get the main worktree root (since git-common-dir points to .git/).
   const mainRoot = resolve(cwd, gitCommonDir, '..');
   const result = resolve(mainRoot, '.paw', 'sync');
   syncDirCache.set(cwd, result);
@@ -142,11 +142,10 @@ export function removeSyncWorktree(cwd: string): void {
     rmSync(worktreePath, { recursive: true, force: true });
   }
 
-  // Prune stale worktree references
   try {
     git(['worktree', 'prune'], { cwd, stdio: 'pipe' });
   } catch {
-    // Ignore prune errors
+    // Prune failure is non-critical — stale refs get cleaned next session
   }
 }
 
@@ -173,6 +172,7 @@ function commitSyncChanges(syncDir: string, message: string): void {
   }
 }
 
+/** Read and parse the sync state from the sync worktree, or null if unavailable. */
 export function readSyncState(cwd?: string): SyncState | null {
   try {
     const syncDir = resolveSyncDir(cwd ?? process.cwd());
@@ -183,6 +183,7 @@ export function readSyncState(cwd?: string): SyncState | null {
   }
 }
 
+/** Read a file from the sync worktree by relative path, or null if missing. */
 export function readSyncFile(path: string, cwd?: string): string | null {
   try {
     const syncDir = resolveSyncDir(cwd ?? process.cwd());
@@ -192,6 +193,7 @@ export function readSyncFile(path: string, cwd?: string): string | null {
   }
 }
 
+/** List files under a directory prefix in the sync worktree. */
 export function listSyncDir(prefix: string, cwd?: string): string[] {
   try {
     const syncDir = resolveSyncDir(cwd ?? process.cwd());
@@ -235,6 +237,7 @@ export function writeSyncFile(path: string, content: string, cwd?: string): void
   commitSyncChanges(syncDir, `paw: update ${path}`);
 }
 
+/** Build the initial `SyncState` for a new session from task names and config. */
 export function initSyncState(
   target: string,
   taskNames: string[],
@@ -255,6 +258,7 @@ export function initSyncState(
   };
 }
 
+/** Transition a task to `in_progress` with a claimed timestamp. */
 export function claimTask(state: SyncState, taskName: string): SyncState {
   const task = state.tasks[taskName];
   if (!task) throw new Error(`Task not found in sync state: ${taskName}`);
@@ -272,6 +276,7 @@ export function claimTask(state: SyncState, taskName: string): SyncState {
   };
 }
 
+/** Transition a task to `in_review` and increment its review cycle counter. */
 export function submitForReview(state: SyncState, taskName: string): SyncState {
   const task = state.tasks[taskName];
   if (!task) throw new Error(`Task not found in sync state: ${taskName}`);
@@ -289,6 +294,7 @@ export function submitForReview(state: SyncState, taskName: string): SyncState {
   };
 }
 
+/** Transition a task to `done` with a completion timestamp. */
 export function completeTask(state: SyncState, taskName: string): SyncState {
   const task = state.tasks[taskName];
   if (!task) throw new Error(`Task not found in sync state: ${taskName}`);
@@ -306,6 +312,7 @@ export function completeTask(state: SyncState, taskName: string): SyncState {
   };
 }
 
+/** Revert a task back to `in_progress` (e.g. after a failed review). */
 export function reopenTask(state: SyncState, taskName: string): SyncState {
   const task = state.tasks[taskName];
   if (!task) throw new Error(`Task not found in sync state: ${taskName}`);
@@ -322,6 +329,7 @@ export function reopenTask(state: SyncState, taskName: string): SyncState {
   };
 }
 
+/** Create the initial merge tracking map with all tasks set to `pending`. */
 export function initMergeState(taskNames: string[]): Record<string, MergeEntry> {
   const merges: Record<string, MergeEntry> = {};
   for (const name of taskNames) {
@@ -330,6 +338,7 @@ export function initMergeState(taskNames: string[]): Record<string, MergeEntry> 
   return merges;
 }
 
+/** Replace the merge entry for a single task in the sync state. */
 export function updateMergeEntry(state: SyncState, taskName: string, entry: MergeEntry): SyncState {
   return {
     ...state,
@@ -352,24 +361,20 @@ export function archiveSession(repoRoot: string, target: string): string | null 
   const stateFile = resolve(syncDir, STATE_FILE);
   if (!existsSync(stateFile)) return null;
 
-  // Read session date from state.json
   let datePrefix: string;
   try {
     const state = JSON.parse(readFileSync(stateFile, 'utf-8')) as SyncState;
-    datePrefix = state.session.slice(0, 10); // ISO date portion
+    datePrefix = state.session.slice(0, 10);
   } catch {
     datePrefix = new Date().toISOString().slice(0, 10);
   }
 
-  // Sanitize target branch for folder name (feature/foo-bar → feature-foo-bar)
   const sanitized = target.replace(/\//g, '-');
   const archiveDir = resolve(repoRoot, '.paw', 'sessions', `${datePrefix}-${sanitized}`);
   mkdirSync(archiveDir, { recursive: true });
 
-  // Copy state.json
   copyFileSync(stateFile, resolve(archiveDir, 'state.json'));
 
-  // Copy directories that exist
   for (const dir of ['journal', 'review', 'conflicts']) {
     const src = resolve(syncDir, dir);
     if (existsSync(src)) {
@@ -377,7 +382,6 @@ export function archiveSession(repoRoot: string, target: string): string | null 
     }
   }
 
-  // Copy paw.yaml from .paw/
   const configPath = resolve(repoRoot, '.paw', 'paw.yaml');
   if (existsSync(configPath)) {
     copyFileSync(configPath, resolve(archiveDir, 'paw.yaml'));

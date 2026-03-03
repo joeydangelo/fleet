@@ -56,6 +56,7 @@ export async function runUp(
   return worktrees;
 }
 
+/** CLI command: create worktrees and branches for all tasks in the session. */
 export function upCommand(): Command {
   return new Command('up')
     .description('Create worktrees and branches for all tasks')

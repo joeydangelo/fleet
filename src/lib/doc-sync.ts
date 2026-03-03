@@ -70,7 +70,7 @@ export function generateDefaultManifest(): Record<string, string> {
   return manifest;
 }
 
-/** Merge existing manifest with defaults. User entries win. */
+/** User entries take precedence over bundled defaults. */
 export function mergeManifest(
   existing: Record<string, string>,
   defaults: Record<string, string>,
@@ -78,7 +78,7 @@ export function mergeManifest(
   return { ...defaults, ...existing };
 }
 
-/** Remove internal entries whose bundled source no longer exists. */
+/** Drop entries for docs that were removed from the bundled package. */
 export function pruneStaleInternals(manifest: Record<string, string>): Record<string, string> {
   let docsDir: string;
   try {
@@ -101,7 +101,7 @@ export function pruneStaleInternals(manifest: Record<string, string>): Record<st
   return result;
 }
 
-/** Migrate .paw/custom/ into .paw/docs/ (one-time backward compat). */
+/** One-time migration from legacy .paw/custom/ layout. */
 function migrateCustomDir(repoRoot: string, docsDir: string): Record<string, string> {
   const customPath = join(repoRoot, '.paw', 'custom');
   if (!existsSync(customPath)) return {};
@@ -138,10 +138,7 @@ function migrateCustomDir(repoRoot: string, docsDir: string): Record<string, str
   return customManifest;
 }
 
-/**
- * Migrate manifest.json entries into config.yml.
- * Called once if manifest.json exists and config.yml has no files.
- */
+/** One-time migration from legacy manifest.json to config.yml. */
 function migrateManifestJson(repoRoot: string): Record<string, string> {
   const manifestPath = join(repoRoot, '.paw', 'docs', 'manifest.json');
   if (!existsSync(manifestPath)) return {};
@@ -167,25 +164,19 @@ export function syncDocs(repoRoot: string): SyncResult {
   const docsDir = join(repoRoot, '.paw', 'docs');
   mkdirSync(docsDir, { recursive: true });
 
-  // Migrate legacy .paw/custom/ if present
   const migratedEntries = migrateCustomDir(repoRoot, docsDir);
 
-  // Migrate manifest.json → config.yml if needed
   const manifestEntries = migrateManifestJson(repoRoot);
 
-  // Read existing files from config.yml
   const config = readProjectConfig(repoRoot);
   let existing: Record<string, string> = { ...config.docs_cache.files };
 
-  // Merge migrated entries
   existing = { ...existing, ...migratedEntries, ...manifestEntries };
 
-  // Generate defaults, merge, prune
   const defaults = generateDefaultManifest();
   const merged = mergeManifest(existing, defaults);
   const final = pruneStaleInternals(merged);
 
-  // Determine pruned entries (in merged but not in final)
   const prunedKeys = Object.keys(merged).filter((k) => !(k in final));
 
   const added: string[] = [];
@@ -201,7 +192,6 @@ export function syncDocs(repoRoot: string): SyncResult {
     return { added, updated, removed, skipped };
   }
 
-  // Sync each entry
   for (const [key, source] of Object.entries(final)) {
     if (!source.startsWith(INTERNAL_PREFIX)) {
       skipped.push(key);
@@ -234,7 +224,6 @@ export function syncDocs(repoRoot: string): SyncResult {
     }
   }
 
-  // Remove files for pruned internal entries
   for (const key of prunedKeys) {
     const filePath = join(docsDir, key);
     if (existsSync(filePath)) {
@@ -243,10 +232,8 @@ export function syncDocs(repoRoot: string): SyncResult {
     }
   }
 
-  // Write final state to config.yml
   writeProjectConfig(repoRoot, { ...config, docs_cache: { ...config.docs_cache, files: final } });
 
-  // Update local state with sync timestamp
   const state = readLocalState(repoRoot);
   writeLocalState(repoRoot, { ...state, last_doc_sync_at: new Date().toISOString() });
 

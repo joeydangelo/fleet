@@ -157,6 +157,7 @@ interface LaunchOpts {
   detached?: boolean;
 }
 
+/** Build the `paw launch` CLI command. */
 export function launchCommand(): Command {
   return new Command('launch')
     .description('Spawn agents in tmux panes for each task worktree')

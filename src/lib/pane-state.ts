@@ -6,6 +6,7 @@ import { ORCHESTRATOR_ROLE } from './constants.js';
 
 const PANES_FILE = 'panes.json';
 
+/** Tag a pane with the orchestrator role so it can be identified on restore. */
 export function labelOrchestrator(tmux: TmuxServiceApi, paneId: string): void {
   tmux.setPaneTitle(paneId, ORCHESTRATOR_ROLE);
   tmux.setPaneRole(paneId, ORCHESTRATOR_ROLE);
@@ -34,6 +35,7 @@ export function writePaneConfig(repoRoot: string, config: PawPaneConfig): void {
   writeFileSync(p, JSON.stringify(config, null, 2) + '\n');
 }
 
+/** Persist the current pane layout for later restore or TUI re-attach. */
 export function savePanes(
   repoRoot: string,
   sessionName: string,
@@ -50,6 +52,7 @@ export function savePanes(
   writePaneConfig(repoRoot, config);
 }
 
+/** Persist detached-mode agent sessions for monitoring and teardown. */
 export function saveDetachedAgents(
   repoRoot: string,
   sessionName: string,
@@ -92,8 +95,7 @@ export function killPanes(tmux: TmuxServiceApi, repoRoot: string): void {
     }
   }
 
-  // Clear task panes but keep orchestratorPaneId so the session can be
-  // re-entered cleanly without spawning duplicate orchestrator panes.
+  /** Preserve `orchestratorPaneId` so re-entry doesn't spawn a duplicate. */
   writePaneConfig(repoRoot, { ...config, panes: [], lastUpdated: new Date().toISOString() });
 }
 
@@ -157,14 +159,11 @@ export function restorePanes(
         continue;
       }
 
-      // Dead task pane — drop it from tracking. The user can relaunch it
-      // with `paw launch` which will properly start the agent. Creating an
-      // empty shell here would block launch from detecting it as missing.
+      /** An empty shell here would block `paw launch` from detecting the missing agent. */
     }
   }
 
-  // Restore orchestrator pane if it was tracked but is gone from the session.
-  // Use paneExists rather than listPanes to avoid timing races on cold start.
+  /** Use `paneExists` rather than `listPanes` to avoid timing races on cold start. */
   let orchestratorPaneId = config.orchestratorPaneId;
   if (orchestratorPaneId && !tmux.paneExists(orchestratorPaneId)) {
     orchestratorPaneId = tmux.createPane(sessionName, config.projectRoot, { horizontal: true });

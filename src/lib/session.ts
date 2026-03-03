@@ -13,6 +13,7 @@ export interface WorktreeInfo {
   worktreePath: string;
 }
 
+/** Derive branch names and sibling-directory worktree paths from the task list. */
 export function planWorktrees(config: PawConfig, repoRoot: string): WorktreeInfo[] {
   const repoName = basename(repoRoot);
   const parentDir = dirname(repoRoot);
@@ -60,6 +61,7 @@ After verifying your changes:
 3. Create or update a PR using \`paw template pr-template\` for the body structure
 4. \`paw review\` to submit for review`;
 
+/** Build the markdown task assignment (focus, prompt, collaboration rules) for an agent. */
 export function generateTaskFile(config: PawConfig, worktreeInfo: WorktreeInfo): string {
   const { taskName } = worktreeInfo;
   const task = config.tasks[taskName];
@@ -159,6 +161,7 @@ export async function copyIncludes(
   return copied;
 }
 
+/** Write .paw/tasks/{name}.md into each worktree and ensure .paw/ is gitignored. */
 export function writeTaskFiles(
   config: PawConfig,
   worktrees: WorktreeInfo[],

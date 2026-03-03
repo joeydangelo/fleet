@@ -40,6 +40,7 @@ export function taskDisplayStatus(
   return task?.status ?? 'pending';
 }
 
+/** Map a TUI status to its display icon and color for the sidebar. */
 export function statusIcon(status: TuiStatus): { icon: string; color: string } {
   switch (status) {
     case 'in_progress':

@@ -27,14 +27,17 @@ const PawProjectConfigSchema = z.object({
   settings: SettingsSchema.default({}),
 });
 
+/** Tracked project configuration stored in `.paw/config.yml`. */
 export type PawProjectConfig = z.infer<typeof PawProjectConfigSchema>;
 
 const LocalStateSchema = z.object({
   last_doc_sync_at: z.string().optional(),
 });
 
+/** Transient per-machine state stored in `.paw/run/state.yml` (gitignored). */
 export type LocalState = z.infer<typeof LocalStateSchema>;
 
+/** Parse `.paw/config.yml`, applying schema defaults for missing fields. */
 export function readProjectConfig(repoRoot: string): PawProjectConfig {
   const configPath = resolve(repoRoot, '.paw', 'config.yml');
   if (!existsSync(configPath)) {
@@ -59,14 +62,15 @@ const CONFIG_HEADER = `\
 # Configure with settings.doc_auto_sync_hours (0 = disabled).
 `;
 
+/** Serialize config to `.paw/config.yml` with a human-readable comment header. */
 export function writeProjectConfig(repoRoot: string, config: PawProjectConfig): void {
   const configPath = resolve(repoRoot, '.paw', 'config.yml');
   const body = stringifyYaml(config, YAML_OPTIONS);
-  // Inject comment header before docs_cache key
   const output = body.replace(/^docs_cache:/m, CONFIG_HEADER + 'docs_cache:');
   writeFileSync(configPath, output, 'utf-8');
 }
 
+/** Parse transient local state from `.paw/run/state.yml`, defaulting if absent. */
 export function readLocalState(repoRoot: string): LocalState {
   const statePath = resolve(repoRoot, '.paw', 'run', 'state.yml');
   if (!existsSync(statePath)) {
@@ -77,6 +81,7 @@ export function readLocalState(repoRoot: string): LocalState {
   return LocalStateSchema.parse(parsed ?? {});
 }
 
+/** Persist transient local state to `.paw/run/state.yml`, creating the directory if needed. */
 export function writeLocalState(repoRoot: string, state: LocalState): void {
   const dir = resolve(repoRoot, '.paw', 'run');
   mkdirSync(dir, { recursive: true });

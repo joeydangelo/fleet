@@ -25,8 +25,10 @@ import { REVIEW_TIMEOUT_MS, REVIEW_NUDGE_MS, BEACON_FOLLOWUP_DELAYS } from './co
 /** Prefix for all reviewer tmux sessions. */
 const REVIEW_SESSION_PREFIX = 'paw-review-';
 
+/** Outcome of a PR review: pass, fail, or skip (timeout/error). */
 export type ReviewVerdict = 'pass' | 'fail' | 'skip';
 
+/** Structured review output: verdict plus categorized findings. */
 export interface ReviewResult {
   verdict: ReviewVerdict;
   strengths: string;
@@ -136,7 +138,6 @@ function buildReviewPrompt(
     );
   }
 
-  // Escape the path for embedding in a JSON string inside a node -e command
   const escapedPath = verdictPath.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
 
   steps.push(

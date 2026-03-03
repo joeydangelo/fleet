@@ -15,6 +15,7 @@ import {
 } from '../lib/tmux.js';
 import { error, skip, unknown, handleError, formatFocusAreas } from '../lib/output.js';
 
+/** CLI command: check progress of all task worktrees in the session. */
 export function statusCommand(): Command {
   return new Command('status')
     .description('Check progress of all task worktrees')
@@ -25,7 +26,6 @@ export function statusCommand(): Command {
         const worktrees = planWorktrees(config, repoRoot);
         const syncState = readSyncState(repoRoot);
 
-        // Check tmux liveness when panes.json exists
         let livenessMap = new Map<string, boolean>();
         const paneConfig = readPaneConfig(repoRoot);
         if (paneConfig) {
@@ -76,7 +76,6 @@ export function statusCommand(): Command {
           }
         }
 
-        // Show latest broadcast per agent
         const journalEntries = readJournal(repoRoot);
         const latestBroadcasts = new Map<string, string>();
         for (const entry of journalEntries) {

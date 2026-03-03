@@ -44,9 +44,7 @@ export function removePawFromRootGitignore(repoRoot: string): boolean {
   const filtered: string[] = [];
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i]!;
-    // Skip `.paw/` entry
     if (line.trim() === '.paw/' || line.trim() === '.paw') continue;
-    // Skip the comment line immediately before `.paw/`
     if (
       line.trim() === '# paw working state' &&
       i + 1 < lines.length &&
@@ -57,7 +55,6 @@ export function removePawFromRootGitignore(repoRoot: string): boolean {
     filtered.push(line);
   }
 
-  // Collapse excessive blank lines left behind
   const cleaned = filtered
     .join('\n')
     .replace(/\n{3,}/g, '\n\n')

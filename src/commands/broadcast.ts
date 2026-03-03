@@ -5,6 +5,7 @@ import { readSyncState } from '../lib/sync.js';
 import { appendJournalEntry } from '../lib/journal.js';
 import { requireSyncState, handleError, colors } from '../lib/output.js';
 
+/** CLI command: broadcast a message to all agents in the session. */
 export function broadcastCommand(): Command {
   return new Command('broadcast')
     .description('Broadcast a message to all agents')

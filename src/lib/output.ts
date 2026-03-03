@@ -38,26 +38,32 @@ const ICONS = {
   UNKNOWN: '?',
 } as const;
 
+/** Print a success status line for a task. */
 export function success(taskName: string, detail: string): void {
   console.log(`  ${colors.success(ICONS.SUCCESS)} ${pc.bold(taskName)} -- ${detail}`);
 }
 
+/** Print an error status line for a task. */
 export function error(taskName: string, detail: string): void {
   console.log(`  ${colors.error(ICONS.ERROR)} ${pc.bold(taskName)} -- ${detail}`);
 }
 
+/** Print a warning status line for a task. */
 export function warn(taskName: string, detail: string): void {
   console.log(`  ${colors.warn(ICONS.WARN)} ${pc.bold(taskName)} -- ${detail}`);
 }
 
+/** Print a pending status line for a task. */
 export function pending(taskName: string, detail: string): void {
   console.log(`  ${pc.dim(ICONS.PENDING)} ${pc.bold(taskName)} -- ${detail}`);
 }
 
+/** Print a skipped status line for a task. */
 export function skip(taskName: string, detail: string): void {
   console.log(`  ${pc.dim(ICONS.SKIP)} ${pc.bold(taskName)} -- ${detail}`);
 }
 
+/** Print an unknown-state status line for a task. */
 export function unknown(taskName: string, detail: string): void {
   console.log(`  ${colors.warn(ICONS.UNKNOWN)} ${pc.bold(taskName)} -- ${detail}`);
 }
@@ -70,11 +76,7 @@ export function requireSyncState<T>(state: T | null): asserts state is T {
   }
 }
 
-/**
- * Format focus areas for display. Shows up to 3 items.
- * If more than 3, shows the first 2 and "+N more".
- * Returns empty string if no focus areas.
- */
+/** Render focus areas as a compact parenthetical, truncated to keep status lines readable. */
 export function formatFocusAreas(focus: string[] | undefined): string {
   if (!focus || focus.length === 0) return '';
   if (focus.length <= 3) return `(${focus.join(', ')})`;

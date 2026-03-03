@@ -28,7 +28,6 @@ export function validateDocContent(content: string, name: string): void {
   }
 }
 
-/** Map doc type to its subdirectory name. */
 function getDocTypeSubdir(docType: DocType): string {
   switch (docType) {
     case 'guideline':

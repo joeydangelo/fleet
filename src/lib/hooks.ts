@@ -96,7 +96,7 @@ deny() {
 # Detect tool type from input
 tool_name=$(echo "$input" | grep -o '"tool_name"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"tool_name"[[:space:]]*:[[:space:]]*"\\(.*\\)"/\\1/')
 
-# --- Edit/Write guard: block file access to .paw/sync/ ---
+# Edit/Write guard
 if [ "$tool_name" = "Edit" ] || [ "$tool_name" = "Write" ]; then
   file_path=$(echo "$input" | grep -o '"file_path"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"file_path"[[:space:]]*:[[:space:]]*"\\(.*\\)"/\\1/')
   if echo "$file_path" | grep -qE '\\.paw/sync/|\\.paw\\\\\\\\sync\\\\\\\\'; then
@@ -105,7 +105,7 @@ if [ "$tool_name" = "Edit" ] || [ "$tool_name" = "Write" ]; then
   exit 0
 fi
 
-# --- Bash guard: block dangerous git commands and sync state access ---
+# Bash guard
 command=$(echo "$input" | grep -o '"command"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"command"[[:space:]]*:[[:space:]]*"\\(.*\\)"/\\1/')
 
 # Block git checkout / git switch (agents must stay on their task branch)
@@ -356,7 +356,6 @@ export function installHooks(repoRoot: string): void {
   writeFileSync(resolve(repoRoot, HEARTBEAT_RELATIVE), PAW_HEARTBEAT_SCRIPT, 'utf-8');
   writeFileSync(resolve(repoRoot, INBOX_RELATIVE), PAW_INBOX_SCRIPT, 'utf-8');
 
-  // Clean up renamed hooks from prior versions
   const oldReminderPath = resolve(hooksDir, 'paw-done-reminder.sh');
   try {
     rmSync(oldReminderPath);
@@ -487,12 +486,12 @@ function isPawHookEntry(entry: unknown): boolean {
   if (typeof entry !== 'object' || entry === null) return false;
   const obj = entry as Record<string, unknown>;
 
-  // Old flat format: { command: "paw prime --brief" }
+  /** Old flat format: `{ command: "paw prime --brief" }` */
   if ('command' in obj && typeof obj.command === 'string' && isPawCommand(obj.command)) {
     return true;
   }
 
-  // Correct matcher group format: { matcher: "", hooks: [{ command: "...paw..." }] }
+  /** Matcher group format: `{ matcher: "", hooks: [{ command: "...paw..." }] }` */
   if ('hooks' in obj && Array.isArray(obj.hooks)) {
     return obj.hooks.some((h: unknown) => {
       if (typeof h !== 'object' || h === null) return false;

@@ -23,6 +23,7 @@ const PawConfigSchema = z.object({
 /** Parsed paw.yaml configuration: target branch, task definitions, and file-copy patterns. */
 export type PawConfig = z.infer<typeof PawConfigSchema>;
 
+/** Parse and validate a paw.yaml file, including dependency-graph checks. */
 export function loadConfig(configPath: string): PawConfig {
   if (!existsSync(configPath)) {
     throw new Error(`Config file not found: ${configPath}`);
@@ -49,6 +50,7 @@ export function loadConfig(configPath: string): PawConfig {
   return result.data;
 }
 
+/** Coerce a scalar-or-array `depends_on` value into a uniform array. */
 export function normalizeDeps(deps: string | string[] | undefined): string[] {
   if (!deps) return [];
   return Array.isArray(deps) ? deps : [deps];
@@ -57,7 +59,6 @@ export function normalizeDeps(deps: string | string[] | undefined): string[] {
 function validateDependsOn(config: PawConfig): void {
   const taskNames = new Set(Object.keys(config.tasks));
 
-  // Reference integrity and self-reference checks
   for (const [name, task] of Object.entries(config.tasks)) {
     const deps = normalizeDeps(task.depends_on);
     for (const dep of deps) {
@@ -74,7 +75,6 @@ function validateDependsOn(config: PawConfig): void {
     }
   }
 
-  // Cycle detection using DFS
   const visited = new Set<string>();
   const inStack = new Set<string>();
 
@@ -125,7 +125,6 @@ export function topologicalSort(
     }
   }
 
-  // Seed queue with tasks that have no dependencies, in YAML order
   const queue: string[] = names.filter((n) => inDegree.get(n) === 0);
   const result: string[] = [];
 
@@ -133,7 +132,6 @@ export function topologicalSort(
     const current = queue.shift()!;
     result.push(current);
 
-    // Collect newly unblocked tasks, preserving YAML order
     const unblocked: string[] = [];
     for (const dep of dependents.get(current)!) {
       const newDegree = inDegree.get(dep)! - 1;
@@ -142,9 +140,7 @@ export function topologicalSort(
         unblocked.push(dep);
       }
     }
-    // Insert unblocked tasks in YAML order relative to existing queue
     for (const u of unblocked) {
-      // Find insertion point that maintains YAML order
       const uIndex = names.indexOf(u);
       let inserted = false;
       for (let i = 0; i < queue.length; i++) {
@@ -161,6 +157,7 @@ export function topologicalSort(
   return result;
 }
 
+/** Convenience wrapper: resolve repo root, find config, parse and return all three. */
 export function loadRepoConfig(configOpt?: string): {
   repoRoot: string;
   configPath: string;
@@ -172,6 +169,7 @@ export function loadRepoConfig(configOpt?: string): {
   return { repoRoot, configPath, config };
 }
 
+/** Find the first existing paw config file (.yaml or .yml) under `cwd`. */
 export function resolveConfigPath(cwd: string): string {
   const candidates = ['.paw/paw.yaml', '.paw/paw.yml'];
   for (const name of candidates) {

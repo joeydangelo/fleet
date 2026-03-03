@@ -22,6 +22,7 @@ import {
   colors,
 } from '../lib/output.js';
 
+/** CLI command: tear down a paw session (remove worktrees, kill agents, archive, reset config). */
 export function downCommand(): Command {
   return new Command('down')
     .description('Remove all task worktrees and clean up')
@@ -78,7 +79,6 @@ export function downCommand(): Command {
           process.exit(1);
         }
 
-        // Kill agent tmux panes, detached sessions, and orphaned reviewer sessions
         try {
           const tmux = createTmuxService();
           killPanes(tmux, repoRoot);
@@ -88,17 +88,14 @@ export function downCommand(): Command {
           // tmux may not be available (e.g. running outside WSL)
         }
 
-        // Remove backup refs
         cleanupBackupRefs(repoRoot);
 
-        // Clean transient runtime state
         const runDir = resolve(repoRoot, '.paw', 'run');
         try {
           rmSync(runDir, { recursive: true });
         } catch {
           /* already gone */
         }
-        // Remove legacy pre-refactor files that lived at .paw/ root
         try {
           const pawDir = resolve(repoRoot, '.paw');
           for (const f of readdirSync(pawDir)) {
@@ -113,7 +110,6 @@ export function downCommand(): Command {
               rmSync(resolve(pawDir, f), { force: true });
             }
           }
-          // Legacy dirs
           for (const d of ['heartbeats', 'nudges', 'triage']) {
             const p = resolve(pawDir, d);
             if (existsSync(p)) rmSync(p, { recursive: true });
@@ -122,7 +118,6 @@ export function downCommand(): Command {
           /* best-effort cleanup */
         }
 
-        // Archive session data before destroying it
         if (opts.archive) {
           try {
             const archivePath = archiveSession(repoRoot, config.target);
@@ -135,7 +130,6 @@ export function downCommand(): Command {
           }
         }
 
-        // Reset .paw/paw.yaml to template
         try {
           const doc = readDoc('templates', 'paw-yaml');
           if (doc) {
@@ -151,7 +145,6 @@ export function downCommand(): Command {
           // Non-critical -- skip silently
         }
 
-        // Remove sync worktree, then delete sync branch
         try {
           removeSyncWorktree(repoRoot);
         } catch {

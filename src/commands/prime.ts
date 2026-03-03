@@ -71,6 +71,7 @@ function loadAgentBriefContent(): string | null {
   return stripFrontmatter(doc.content);
 }
 
+/** Build the `paw prime` CLI command. */
 export function primeCommand(): Command {
   return new Command('prime')
     .description('Context management — orchestrator dashboard or worktree orientation')
@@ -82,7 +83,6 @@ export function primeCommand(): Command {
         const taskName = detectTaskName(repoRoot);
 
         if (!taskName) {
-          // Main repo — orchestrator dashboard
           if (opts.brief) {
             printOrchestratorBrief(repoRoot);
           } else {
@@ -91,7 +91,6 @@ export function primeCommand(): Command {
           return;
         }
 
-        // Worktree — existing behavior
         const taskFile = resolve(repoRoot, '.paw', 'tasks', `${taskName}.md`);
         const taskContent = existsSync(taskFile) ? readFileSync(taskFile, 'utf-8') : null;
 
@@ -115,7 +114,6 @@ function printOrchestratorDashboard(repoRoot: string): void {
   const version = getVersion();
   console.log(`paw v${version}\n`);
 
-  // Installation status
   console.log('=== INSTALLATION ===');
   success('paw installed', `v${version}`);
 
@@ -130,7 +128,6 @@ function printOrchestratorDashboard(repoRoot: string): void {
     success('Hooks installed', '');
   }
 
-  // Session status
   console.log('\n=== SESSION STATUS ===');
   const yamlPath = resolve(repoRoot, '.paw', 'paw.yaml');
   const state = readSyncState(repoRoot);
@@ -159,7 +156,6 @@ function printOrchestratorDashboard(repoRoot: string): void {
     console.log(pc.dim('  Run `paw shortcut generate-paw-yaml` to plan a session'));
   }
 
-  // Full skill content
   const skillContent = loadSkillContent();
   if (skillContent) {
     console.log('');
@@ -180,13 +176,11 @@ function printOrchestratorBrief(repoRoot: string): void {
     console.log('No active session');
   }
 
-  // Embed status snapshot when there's an active session with agents
   const paneConfig = readPaneConfig(repoRoot);
   if (paneConfig && state) {
     printStatusSnapshot(repoRoot, state, paneConfig);
   }
 
-  // Orchestrator brief content
   const briefContent = loadOrchestratorBriefContent();
   if (briefContent) {
     console.log('');
@@ -196,7 +190,6 @@ function printOrchestratorBrief(repoRoot: string): void {
 
 /** Print a compact status snapshot for the orchestrator brief (PreCompact). */
 function printStatusSnapshot(repoRoot: string, state: SyncState, paneConfig: PawPaneConfig): void {
-  // Check tmux liveness
   let livenessMap = new Map<string, boolean>();
   try {
     const tmux = createTmuxService();
@@ -226,7 +219,6 @@ function printStatusSnapshot(repoRoot: string, state: SyncState, paneConfig: Paw
       continue;
     }
 
-    // Try to get commit count
     let commitInfo = '';
     if (configObj) {
       try {
@@ -291,7 +283,7 @@ function printBrief(
     console.log(pc.dim('No sync state found. Run `paw up` first.\n'));
   }
 
-  // Show unanswered threads directed at this agent (actionable on compaction recovery)
+  // Unanswered threads must survive compaction — re-surface them here
   const allEntries = readJournal(repoRoot);
   const { open } = computeThreads(allEntries);
   const unanswered = open.filter((t) => t.send.to === taskName);
@@ -303,7 +295,6 @@ function printBrief(
     console.log();
   }
 
-  // Agent brief content
   const briefContent = loadAgentBriefContent();
   if (briefContent) {
     console.log('');
@@ -335,11 +326,9 @@ function printFull(
 
   const separator = pc.dim('────────────────────────────────────────');
 
-  // Team status
   console.log(separator);
   printTeamStatus(taskName, state);
 
-  // Recent broadcasts and directed messages
   const lastCheck = state.lastCheck?.[taskName];
   const entries = readJournalForTask(taskName, repoRoot, lastCheck);
   const broadcasts = entries.filter((e) => e.type === 'broadcast' && e.from !== taskName);
@@ -366,7 +355,6 @@ function printFull(
   const now = new Date().toISOString();
   writeSyncState({ ...state, lastCheck: { ...state.lastCheck, [taskName]: now } }, repoRoot);
 
-  // Active conflict brief
   if (state.merges) {
     const conflictEntries = Object.entries(state.merges).filter(
       ([, entry]) => entry.status === 'conflict' && entry.brief,
@@ -385,14 +373,12 @@ function printFull(
     }
   }
 
-  // Workflow footer
   console.log(pc.dim('── Workflow ──'));
   console.log(pc.dim('1. Follow `paw shortcut build-task` for Build/Verify/Publish workflow'));
   console.log(pc.dim('2. Run `paw broadcast "..."` when you change shared interfaces'));
   console.log(pc.dim('3. Run `paw inbox --all` to see open Q&A threads'));
   console.log(pc.dim('4. Push, create PR, then `paw review` when finished'));
 
-  // Full skill content
   const skillContent = loadSkillContent();
   if (skillContent) {
     console.log('');

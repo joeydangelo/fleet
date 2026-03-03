@@ -16,7 +16,7 @@ const DO_NOT_EDIT_MARKER =
 /** Generate a resource directory table from doc frontmatter. */
 function generateDirectoryTable(category: string, command: string): string {
   const docs = listDocs(category);
-  // Exclude internal templates (skill files and role-specific briefs used by prime)
+  // Skill files and role-specific briefs are internal; exclude from the public directory
   const filtered = docs.filter((d) => !d.name.startsWith('skill') && !d.name.endsWith('-brief'));
   const rows = filtered.map(
     (d) => `| \`paw ${command} ${d.name}\` | ${d.description || d.title} |`,
@@ -60,6 +60,7 @@ function injectDirectories(content: string): string {
   return result;
 }
 
+/** CLI command: initialize paw in a repository (sync docs, write skill, install hooks). */
 export function initCommand(): Command {
   return new Command('init').description('Initialize paw in a repo').action(() => {
     try {
@@ -67,7 +68,6 @@ export function initCommand(): Command {
 
       console.log(pc.bold('paw init\n'));
 
-      // Sync bundled docs to .paw/docs/ (must run before SKILL.md generation)
       try {
         const syncResult = syncDocs(repoRoot);
         if (syncResult.added.length > 0 || syncResult.updated.length > 0) {
@@ -83,7 +83,6 @@ export function initCommand(): Command {
         skip('docs', 'bundled docs not found (run pnpm build)');
       }
 
-      // Write skill file from bundled template
       const skillDir = resolve(repoRoot, '.claude', 'skills', 'paw');
       const skillPath = resolve(skillDir, 'SKILL.md');
       mkdirSync(skillDir, { recursive: true });
@@ -100,7 +99,6 @@ export function initCommand(): Command {
         success('skill', skillPath);
       }
 
-      // Migrate from root .gitignore (.paw/ entry) to .paw/.gitignore
       if (removePawFromRootGitignore(repoRoot)) {
         success('gitignore', 'migrated — removed .paw/ from root .gitignore');
       }
@@ -110,7 +108,6 @@ export function initCommand(): Command {
         skip('gitignore', '.paw/.gitignore up to date');
       }
 
-      // Write .paw/paw.yaml from bundled template (always refresh on setup)
       try {
         const pawYamlDoc = readDoc('templates', 'paw-yaml');
         if (pawYamlDoc) {
@@ -126,7 +123,6 @@ export function initCommand(): Command {
         skip('config', 'paw-yaml template not found (run pnpm build)');
       }
 
-      // Install Claude Code hooks and wrapper script
       installHooks(repoRoot);
 
       console.log(pc.dim('\nEdit .paw/paw.yaml and run `paw go` to start a session.'));

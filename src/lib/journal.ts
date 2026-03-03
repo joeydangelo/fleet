@@ -1,5 +1,6 @@
 import { readSyncFile, writeSyncFile, listSyncDir } from './sync.js';
 
+/** A single inter-agent message stored in the JSONL journal on the sync branch. */
 export interface JournalEntry {
   ts: string;
   from: string;

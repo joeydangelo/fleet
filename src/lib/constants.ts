@@ -1,3 +1,9 @@
+/**
+ * Shared constants for paw CLI: sync config, agent roles, health
+ * thresholds, beacon timing, and TUI layout values.
+ */
+
+/** Git branch used to persist session state across worktrees. */
 export const SYNC_BRANCH = 'paw-sync';
 
 /** Unit: seconds. */
@@ -24,10 +30,11 @@ export const BEACON_SESSION_READY_TIMEOUT_MS = 60_000;
 /** Delays (ms) for follow-up empty Enters after initial beacon send. */
 export const BEACON_FOLLOWUP_DELAYS: readonly number[] = [5_000, 10_000];
 
+/** Role identifier for the orchestrator process. */
 export const ORCHESTRATOR_ROLE = 'paw-orchestrator';
-export const TUI_ROLE = 'paw-tui';
 
-// --- Health monitoring thresholds ---
+/** Role identifier for the TUI process. */
+export const TUI_ROLE = 'paw-tui';
 
 /** Seconds with no heartbeat before an agent is considered stalled. */
 export const STALL_THRESHOLD_S = 300;

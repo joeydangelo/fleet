@@ -4,6 +4,7 @@ import { parse as parseYaml } from 'yaml';
 import { getRepoRoot } from './git.js';
 import { readProjectConfig } from './paw-config.js';
 
+/** Return the repo root or null when called outside a git repo. */
 function getRepoRootSafe(): string | null {
   try {
     return process.env.PAW_REPO_ROOT || getRepoRoot();
@@ -12,6 +13,7 @@ function getRepoRootSafe(): string | null {
   }
 }
 
+/** Metadata extracted from a doc file's YAML frontmatter. */
 interface DocInfo {
   name: string;
   title: string;
@@ -35,11 +37,9 @@ function getLookupPaths(repoRoot: string, category: string): string[] {
     return [join(repoRoot, '.paw', 'docs', category)];
   }
 
-  // Filter paths matching this category (ending in /{category})
   const matching = lookupPath
     .filter((p) => basename(p) === category)
     .map((p) => {
-      // Resolve relative paths against repoRoot
       if (!p.startsWith('/') && !p.match(/^[a-zA-Z]:/)) {
         return join(repoRoot, p);
       }

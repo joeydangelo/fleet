@@ -3,6 +3,7 @@ import { resolveMainRoot } from '../lib/git.js';
 import { detectTaskName } from '../lib/session.js';
 import { writeHeartbeat } from '../lib/health.js';
 
+/** Register the `heartbeat` CLI command, invoked by hooks to record agent activity. */
 export function heartbeatCommand(): Command {
   return new Command('heartbeat')
     .description('Record agent activity (called by hooks)')

@@ -5,6 +5,7 @@ import { readSyncState } from '../lib/sync.js';
 import { appendJournalEntry, generateThreadId } from '../lib/journal.js';
 import { requireSyncState, handleError, colors } from '../lib/output.js';
 
+/** Build the `paw send` CLI command. */
 export function sendCommand(): Command {
   return new Command('send')
     .description('Send a directed message to a specific agent')

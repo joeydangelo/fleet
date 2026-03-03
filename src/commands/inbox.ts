@@ -7,8 +7,6 @@ import { readJournal, readJournalForTask } from '../lib/journal.js';
 import type { JournalEntry } from '../lib/journal.js';
 import { handleError } from '../lib/output.js';
 
-// --- Thread computation (moved from threads.ts) ---
-
 /** Journal entry that carries a thread identifier. */
 type ThreadedEntry = JournalEntry & { thread: string };
 
@@ -16,15 +14,18 @@ function hasThread(e: JournalEntry): e is ThreadedEntry {
   return typeof (e as unknown as { thread?: unknown }).thread === 'string';
 }
 
+/** A directed message awaiting a reply. */
 export interface OpenThread {
   send: ThreadedEntry;
 }
 
+/** A directed message that has been answered. */
 export interface ResolvedThread {
   send: ThreadedEntry;
   reply: ThreadedEntry;
 }
 
+/** Categorised journal entries: open threads, resolved threads, and broadcasts. */
 export interface ThreadResult {
   open: OpenThread[];
   resolved: ResolvedThread[];
@@ -64,8 +65,6 @@ export function computeThreads(entries: JournalEntry[]): ThreadResult {
   return { open, resolved, broadcasts };
 }
 
-// --- Entry formatting ---
-
 function formatJournalEntry(entry: JournalEntry): string {
   if (entry.type === 'broadcast') {
     return `[${entry.from}] broadcast: ${entry.msg}`;
@@ -76,8 +75,7 @@ function formatJournalEntry(entry: JournalEntry): string {
   return `[${entry.from}] ${entry.msg}`;
 }
 
-// --- Command ---
-
+/** CLI command: show new messages, unanswered threads, and broadcasts for an agent. */
 export function inboxCommand(): Command {
   return new Command('inbox')
     .description('Check for messages, broadcasts, and open threads')
@@ -87,28 +85,24 @@ export function inboxCommand(): Command {
         const cwd = process.cwd();
         const taskName = detectTaskName(cwd);
 
-        // --all mode: full unfiltered view (replaces `paw threads`)
         if (opts.all) {
           showAllThreads();
           return;
         }
 
-        // Default hook mode: incremental per-task inbox
         if (!taskName) return;
         const mainRoot = resolveMainRoot(cwd);
 
-        // Read nudge file
         const nudge = readNudge(mainRoot, taskName);
         if (nudge) {
           console.log(`\n[paw] Message from orchestrator:\n${nudge}\n`);
           clearNudge(mainRoot, taskName);
         }
 
-        // Read journal entries since last cursor
         const cursor = readInboxCursor(mainRoot, taskName);
         const entries = readJournalForTask(taskName, cwd, cursor ?? undefined);
 
-        // Filter out own broadcasts (agent doesn't need to see its own messages)
+        // Exclude own messages so the agent only sees others' broadcasts
         const relevant = entries.filter((e) => e.from !== taskName);
 
         if (relevant.length > 0) {
@@ -119,7 +113,6 @@ export function inboxCommand(): Command {
           console.log();
         }
 
-        // Check for unanswered threads directed at this agent
         const allEntries = readJournal(cwd);
         const { open } = computeThreads(allEntries);
         const unanswered = open.filter((t) => t.send.to === taskName);
@@ -132,7 +125,6 @@ export function inboxCommand(): Command {
           console.log(`  Reply with: paw reply "your answer"\n`);
         }
 
-        // Update cursor to latest entry timestamp (use all entries, not just relevant)
         if (entries.length > 0) {
           const latestTs = entries[entries.length - 1]!.ts;
           writeInboxCursor(mainRoot, taskName, latestTs);
@@ -152,7 +144,6 @@ function showAllThreads(): void {
 
     const hasContent = broadcasts.length > 0 || open.length > 0;
 
-    // Broadcasts — informational, no reply needed
     if (broadcasts.length > 0) {
       console.log(pc.bold('Broadcasts'));
       for (const b of broadcasts) {
@@ -160,7 +151,6 @@ function showAllThreads(): void {
       }
     }
 
-    // Open threads — reply needed
     if (open.length > 0) {
       if (broadcasts.length > 0) console.log('');
       console.log(pc.bold('Open threads') + pc.dim(' (reply needed)'));

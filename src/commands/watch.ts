@@ -29,21 +29,18 @@ import {
 } from '../lib/health.js';
 import type { HealthState, HealthSnapshot } from '../lib/health.js';
 
-// --- Color palette for task names ---
-
 const COLOR_PALETTE: Formatter[] = [pc.blue, pc.green, pc.yellow, pc.magenta, pc.cyan, pc.red];
 
 function assignColor(index: number): Formatter {
   return COLOR_PALETTE[index % COLOR_PALETTE.length]!;
 }
 
-// --- Diff logic (pure, testable functions) ---
-
 interface JournalDiff {
   newEntries: JournalEntry[];
   lastSeenTs: string | undefined;
 }
 
+/** Return new journal entries since `lastSeenTs` and the updated cursor. */
 export function diffJournal(entries: JournalEntry[], lastSeenTs: string | undefined): JournalDiff {
   if (entries.length === 0) {
     return { newEntries: [], lastSeenTs };
@@ -69,6 +66,7 @@ interface StatusDiff {
   currentStatuses: Record<string, TaskState['status']>;
 }
 
+/** Detect task status transitions between two poll cycles. */
 export function diffStatuses(
   prev: Record<string, TaskState['status']>,
   curr: Record<string, TaskState>,
@@ -98,6 +96,7 @@ interface CommitCountDiff {
   currentCounts: Record<string, number>;
 }
 
+/** Detect per-task commit count changes between two poll cycles. */
 export function diffCommitCounts(
   prev: Record<string, number>,
   curr: Record<string, number>,
@@ -120,8 +119,6 @@ function isAllDone(tasks: Record<string, TaskState>): boolean {
   if (entries.length === 0) return false;
   return entries.every((t) => isTerminalStatus(t.status));
 }
-
-// --- Output formatting ---
 
 function timestamp(): string {
   const now = new Date();
@@ -209,8 +206,6 @@ function printHealthTransition(
   }
 }
 
-// --- Poll loop ---
-
 /** Polls sync state, journal, commit counts, and agent health on an interval. */
 export async function runWatchLoop(opts: {
   repoRoot: string;
@@ -263,7 +258,6 @@ export async function runWatchLoop(opts: {
         continue;
       }
 
-      // Diff journal
       const journal = readJournal(repoRoot);
       const journalDiff = diffJournal(journal, lastSeenTs);
       lastSeenTs = journalDiff.lastSeenTs;
@@ -272,7 +266,6 @@ export async function runWatchLoop(opts: {
         printJournalEntry(entry, taskIndex);
       }
 
-      // Diff statuses (single pass — reviews run agent-side, not here)
       const statusDiff = diffStatuses(prevStatuses, syncState.tasks);
       prevStatuses = statusDiff.currentStatuses;
 
@@ -280,7 +273,6 @@ export async function runWatchLoop(opts: {
         printStatusTransition(t, taskIndex);
       }
 
-      // Diff commit counts
       const currentCommitCounts: Record<string, number> = {};
       for (const wt of worktrees) {
         try {
@@ -306,8 +298,7 @@ export async function runWatchLoop(opts: {
         printCommitDelta(d, taskIndex, fileCount);
       }
 
-      // Evaluate agent health (ZFC) — runs after review refresh so health
-      // sees up-to-date sync state (in_review/done from inline reviews).
+      // Runs after review refresh so health sees up-to-date sync state
       let livenessMap = new Map<string, boolean>();
       const paneConfig = readPaneConfig(repoRoot);
       let tmux: TmuxServiceApi | null = null;
@@ -347,7 +338,6 @@ export async function runWatchLoop(opts: {
         if (health.state === 'stalled' && currLevel > prevLevel) {
           switch (currLevel) {
             case 1: {
-              // Level 1: nudge — file + send-keys
               console.log(
                 `${timestamp()} ${colors.warn('📩')} ${colorTask(taskName, taskIndex)} nudging stalled agent...`,
               );
@@ -374,7 +364,6 @@ export async function runWatchLoop(opts: {
             }
 
             case 2: {
-              // Level 2: triage — AI classification
               if (paneConfig && tmux) {
                 const target = resolvePaneTarget(paneConfig, taskName);
                 if (target) {
@@ -415,7 +404,6 @@ export async function runWatchLoop(opts: {
             }
 
             default: {
-              // Level 3+: terminate — mark zombie
               console.log(
                 `${timestamp()} ${colors.error('☠')} ${colorTask(taskName, taskIndex)} escalation reached terminal level — marking zombie`,
               );
@@ -434,7 +422,6 @@ export async function runWatchLoop(opts: {
 
       writeHealthSnapshot(repoRoot, healthSnapshot);
 
-      // Check terminal conditions
       if (isAllDone(syncState.tasks)) {
         printSummary();
         if (!noExit) break;
@@ -464,8 +451,7 @@ export async function runWatchLoop(opts: {
   }
 }
 
-// --- Command registration ---
-
+/** Build the `paw watch` CLI command. */
 export function watchCommand(): Command {
   return new Command('watch')
     .description('Continuously monitor agent progress')

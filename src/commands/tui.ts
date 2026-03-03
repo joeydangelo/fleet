@@ -25,7 +25,6 @@ function createAddProject(
   sessionName: string,
 ): (projectRoot: string) => void {
   return (projectRoot: string) => {
-    // Check for duplicate: scan panes for @paw_project matching this root.
     const panes = tmux.listPanesDetailed(sessionName);
     const existing = panes.find((p) => p.project === projectRoot);
     if (existing) {
@@ -33,18 +32,15 @@ function createAddProject(
       return;
     }
 
-    // Auto-init: ensure .paw/ exists in the target project.
     const pawDir = resolve(projectRoot, '.paw');
     if (!existsSync(pawDir)) {
       mkdirSync(pawDir, { recursive: true });
     }
 
-    // Create orchestrator pane in current session, cd'd to the project root.
     const paneId = tmux.createPane(sessionName, projectRoot);
     labelOrchestrator(tmux, paneId);
     tmux.setPaneProject(paneId, projectRoot);
 
-    // Write the new project's own panes.json.
     const config: PawPaneConfig = {
       sessionName,
       projectRoot,
@@ -54,10 +50,9 @@ function createAddProject(
     };
     writePaneConfig(projectRoot, config);
 
-    // Send agent command to the new pane.
     tmux.sendKeys(paneId, 'claude');
 
-    // Re-pin sidebar layout so the new pane stacks correctly.
+    // New pane won't stack correctly until the sidebar layout is re-pinned.
     try {
       tmux.pinSidebarLayout(sessionName, SIDEBAR_WIDTH);
     } catch {
@@ -74,7 +69,6 @@ function runTuiSidebar(
   panes: PawPane[],
   controlPaneId: string,
 ): void {
-  // Check if a TUI is already running in this session.
   const existingPanes = tmux.listPanesDetailed(sessionName);
   const existingTui = existingPanes.find((p) => p.role === TUI_ROLE && p.paneId !== controlPaneId);
   if (existingTui) {
@@ -90,7 +84,6 @@ function runTuiSidebar(
   tmux.resizePane(controlPaneId, SIDEBAR_WIDTH);
   tmux.pinSidebarLayout(sessionName, SIDEBAR_WIDTH);
 
-  // Mark this pane as the TUI control pane.
   try {
     tmux.setPaneRole(controlPaneId, TUI_ROLE);
     tmux.setPaneProject(controlPaneId, repoRoot);
@@ -99,7 +92,6 @@ function runTuiSidebar(
   }
 
   const onQuit = () => {
-    // Clear screen and print reattach hint
     process.stdout.write('\x1b[2J\x1b[H');
     console.log(colors.info(`\n  Run \`paw\` to resume. Session: ${sessionName}\n`));
     process.exit(0);
@@ -148,34 +140,28 @@ export function runTui(): void {
     if (isInsideTmux()) {
       const currentSession = tmux.getCurrentSessionName();
       if (currentSession === sessionName) {
-        // Already in the paw session — render TUI in the current pane.
         // Use $TMUX_PANE (set per-pane by tmux) rather than display-message -p
         // which returns the *active* pane — after layout operations that may be
         // the orchestrator, not the TUI.
         const controlPaneId = process.env['TMUX_PANE'] ?? tmux.getCurrentPaneId();
         runTuiSidebar(tmux, sessionName, repoRoot, panes, controlPaneId);
       } else {
-        // Different session — switch over; TUI was bootstrapped by `paw launch`.
+        // TUI was already bootstrapped by `paw launch`.
         tmux.switchClient(sessionName);
       }
     } else {
       if (isNewSession) {
-        // New session: pane 0 is the TUI control pane; create pane 1 as the
-        // orchestrator shell where the user will type their AI agent command.
-        // Use horizontal split (-h) so the orchestrator appears to the RIGHT,
-        // keeping the TUI sidebar on the LEFT (same approach as dmux).
+        // Horizontal split places orchestrator RIGHT, TUI sidebar LEFT.
         const controlPaneId = tmux.listPanes(sessionName)[0] ?? '';
         const orchestratorPaneId = tmux.createPane(sessionName, repoRoot, { horizontal: true });
         labelOrchestrator(tmux, orchestratorPaneId);
         tmux.setPaneProject(orchestratorPaneId, repoRoot);
         savePanes(repoRoot, sessionName, panes, orchestratorPaneId);
-        // Lock sidebar width from the external process before attaching so the
-        // user sees the correct layout immediately on attach.
+        // Lock sidebar width before attaching so the user sees correct layout immediately.
         tmux.resizePane(controlPaneId, SIDEBAR_WIDTH);
-        // Bootstrap TUI in the control pane (pane 0) so it's ready on attach.
         tmux.sendKeys(controlPaneId, 'paw');
       } else if (!existingOrchestratorId) {
-        // Existing session without an orchestrator pane (pre-feature sessions).
+        // Handle pre-feature sessions that lack an orchestrator pane.
         const orchestratorPaneId = tmux.createPane(sessionName, repoRoot, { horizontal: true });
         labelOrchestrator(tmux, orchestratorPaneId);
         tmux.setPaneProject(orchestratorPaneId, repoRoot);

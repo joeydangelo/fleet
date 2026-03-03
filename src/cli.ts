@@ -30,7 +30,6 @@ function lazy(
   placeholder.action(async () => {
     const realCommand = await loader();
 
-    // Re-parse: real command sees [node, cmd, ...rest]
     const argv = ['node', name, ...process.argv.slice(3)];
     await realCommand.parseAsync(argv);
   });
@@ -38,6 +37,7 @@ function lazy(
   program.addCommand(placeholder);
 }
 
+/** Build the top-level CLI program with all subcommands registered lazily. */
 export function createCli(): Command {
   const program = new Command();
 
@@ -66,7 +66,6 @@ Getting Started:
   npm install -g get-paw@latest && paw init`,
   );
 
-  // All commands are lazily loaded via dynamic import().
   lazy(program, 'init', 'Initialize paw in a repo', async () => {
     const m = await import('./commands/init.js');
     return m.initCommand();
@@ -153,7 +152,6 @@ Getting Started:
     return m.nudgeCommand();
   });
 
-  // Default action: `paw` (bare command) opens the TUI
   program.action(async () => {
     const { runTui } = await import('./commands/tui.js');
     runTui();

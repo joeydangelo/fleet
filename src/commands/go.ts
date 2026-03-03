@@ -47,8 +47,6 @@ export function runPawCommand(args: string[]): { exitCode: number } {
   }
 }
 
-// --- State detection ---
-
 export type SessionState =
   | 'no-session'
   | 'agents-running'
@@ -100,8 +98,7 @@ export function detectSessionState(repoRoot: string): SessionState {
   return resolveSessionState(syncState, paneConfig, liveness);
 }
 
-// --- Go command ---
-
+/** Options for the `paw go` lifecycle command. */
 export interface GoOpts {
   config?: string;
   pollInterval: string;
@@ -113,6 +110,7 @@ export interface GoOpts {
   dryRun?: boolean;
 }
 
+/** Execute the full paw lifecycle: up, launch, watch, merge, down. */
 export async function runGo(opts: GoOpts): Promise<void> {
   const repoRoot = getRepoRoot();
   const configPath = opts.config ?? resolveConfigPath(repoRoot);
@@ -125,7 +123,6 @@ export async function runGo(opts: GoOpts): Promise<void> {
 
   const config = loadConfig(configPath);
 
-  // --- Dry run: preview what would happen ---
   if (opts.dryRun) {
     printDryRun(repoRoot, config, opts);
     return;
@@ -148,7 +145,6 @@ export async function runGo(opts: GoOpts): Promise<void> {
 
   const configArgs = opts.config ? ['-c', opts.config] : [];
 
-  // --- Phase: up + launch (only for fresh sessions) ---
   if (state === 'no-session') {
     console.log(pc.bold('Step 1: paw up\n'));
     let phaseStart = Date.now();
@@ -161,7 +157,6 @@ export async function runGo(opts: GoOpts): Promise<void> {
     if (verbose) console.log(colors.info(`⏰ launch: ${formatElapsed(Date.now() - phaseStart)}`));
   }
 
-  // --- Phase: write --no-review flag to sync state ---
   if (opts.noReview) {
     const syncState = readSyncState(repoRoot);
     if (syncState && !syncState.skipReview) {
@@ -169,7 +164,6 @@ export async function runGo(opts: GoOpts): Promise<void> {
     }
   }
 
-  // --- Phase: watch ---
   if (state === 'no-session' || state === 'agents-running' || state === 'has-dead-agents') {
     console.log();
     await runWatchLoop({
@@ -188,7 +182,6 @@ export async function runGo(opts: GoOpts): Promise<void> {
     if (verbose) console.log(colors.info(`⏰ watch: ${formatElapsed(Date.now() - totalStart)}`));
   }
 
-  // --- Phase: merge ---
   if (opts.noMerge) {
     console.log(pc.dim('\n--no-merge: stopping before merge. Run `paw merge` when ready.'));
     return;
@@ -197,8 +190,7 @@ export async function runGo(opts: GoOpts): Promise<void> {
   console.log(pc.bold('\npaw merge\n'));
   let phaseStart = Date.now();
 
-  // Clean all transient runtime state before checkout to avoid conflicts.
-  // Everything under .paw/run/ is session-scoped and disposable.
+  // Remove before checkout to avoid "untracked files would be overwritten"
   const runDir = resolve(repoRoot, '.paw', 'run');
   try {
     rmSync(runDir, { recursive: true });
@@ -220,7 +212,6 @@ export async function runGo(opts: GoOpts): Promise<void> {
   }
   if (verbose) console.log(colors.info(`⏰ merge: ${formatElapsed(Date.now() - phaseStart)}`));
 
-  // --- Phase: down ---
   if (opts.noTeardown) {
     console.log(pc.dim('\n--no-teardown: worktrees left intact. Run `paw down` when ready.'));
     if (verbose) console.log(colors.info(`⏰ total: ${formatElapsed(Date.now() - totalStart)}`));
@@ -309,6 +300,7 @@ function printDryRun(repoRoot: string, config: PawConfig, opts: GoOpts): void {
   console.log(pc.dim('\nDry run -- no changes made.'));
 }
 
+/** Build the `paw go` CLI command. */
 export function goCommand(): Command {
   return new Command('go')
     .description('Run the full workflow: up → launch → watch → merge → down')

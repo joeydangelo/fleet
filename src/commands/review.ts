@@ -16,6 +16,7 @@ import { reviewTask } from '../lib/reviewer.js';
 import { REVIEW_MAX_RETRIES } from '../lib/constants.js';
 import { requireSyncState, handleError, colors } from '../lib/output.js';
 
+/** Build the `paw review` CLI command. */
 export function reviewCommand(): Command {
   return new Command('review')
     .description('Submit task for review — blocks until verdict, exits 0 on PASS/SKIP, 1 on FAIL')
@@ -29,6 +30,7 @@ export function reviewCommand(): Command {
     });
 }
 
+/** Submit the current task for review — returns 0 on PASS/SKIP, 1 on FAIL. */
 export async function runReview(): Promise<number> {
   const repoRoot = getRepoRoot();
   const taskName = detectTaskName(repoRoot);
@@ -48,7 +50,6 @@ export async function runReview(): Promise<number> {
     return 1;
   }
 
-  // --no-review: auto-complete without spawning a reviewer
   if (state.skipReview) {
     state = completeTask(state, taskName);
     writeSyncState(state, repoRoot);
@@ -56,7 +57,6 @@ export async function runReview(): Promise<number> {
     return 0;
   }
 
-  // Check cycle limit before submitting
   const nextCycle = (task.reviewCycle ?? 0) + 1;
   if (nextCycle > REVIEW_MAX_RETRIES) {
     state = completeTask(state, taskName);
@@ -65,12 +65,10 @@ export async function runReview(): Promise<number> {
     return 0;
   }
 
-  // Mark in_review and increment cycle
   state = submitForReview(state, taskName);
   writeSyncState(state, repoRoot);
   console.log(pc.dim(`  ${taskName} -- submitted for review (cycle ${nextCycle})`));
 
-  // Spawn reviewer via tmux
   let tmux;
   try {
     tmux = createTmuxService();
@@ -102,7 +100,6 @@ export async function runReview(): Promise<number> {
     taskFilePath,
   );
 
-  // Persist findings to sync branch
   const safeBranch = taskBranch.replace(/[^a-zA-Z0-9-]/g, '-');
   const findingsPath = `review/${safeBranch}-cycle-${nextCycle}.md`;
   const findingsSections = [
@@ -130,7 +127,7 @@ export async function runReview(): Promise<number> {
     console.log(pc.dim(`  warning: failed to persist findings: ${String(err)}`));
   }
 
-  // Re-read sync state (may have changed during review)
+  // Sync state may have changed during the async review
   state = readSyncState(repoRoot)!;
 
   if (result.verdict === 'pass' || result.verdict === 'skip') {
@@ -144,7 +141,6 @@ export async function runReview(): Promise<number> {
     return 0;
   }
 
-  // FAIL — reopen task and print findings
   state = reopenTask(state, taskName);
   writeSyncState(state, repoRoot);
 

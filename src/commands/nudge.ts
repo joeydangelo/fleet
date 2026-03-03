@@ -3,6 +3,7 @@ import { getRepoRoot } from '../lib/git.js';
 import { writeNudge } from '../lib/health.js';
 import { handleError, success } from '../lib/output.js';
 
+/** Build the `paw nudge` CLI command. */
 export function nudgeCommand(): Command {
   return new Command('nudge')
     .description('Send a message to an agent via file-based delivery')

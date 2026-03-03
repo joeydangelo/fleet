@@ -36,6 +36,7 @@ export function parsePathInput(raw: string): { parentDir: string; prefix: string
   return { parentDir: dirname(expanded), prefix: basename(expanded) };
 }
 
+/** Check whether `dirPath` contains a `.git` directory. */
 export function isGitRepo(dirPath: string): boolean {
   try {
     return existsSync(join(dirPath, '.git'));

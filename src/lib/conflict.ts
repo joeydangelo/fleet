@@ -14,7 +14,7 @@ interface ConflictBriefOpts {
   cwd: string;
 }
 
-/** Try to fetch a PR body for a branch via gh CLI. Returns null on failure. */
+/** Returns null if gh CLI fails or no PR exists. */
 function getPrBody(branch: string, cwd: string): string | null {
   try {
     const raw = execFileSync('gh', ['pr', 'view', branch, '--json', 'body', '-q', '.body'], {
@@ -38,11 +38,9 @@ export function generateConflictBrief(opts: ConflictBriefOpts): string {
 
   const lines: string[] = [];
 
-  // Header
   lines.push(`# Merge Conflict: ${conflictingTask} into ${target}`);
   lines.push('');
 
-  // Conflicting files
   const conflictFiles = getConflictingFiles(cwd);
   if (conflictFiles.length > 0) {
     lines.push('## Conflicting files');
@@ -52,14 +50,12 @@ export function generateConflictBrief(opts: ConflictBriefOpts): string {
     lines.push('');
   }
 
-  // Compute merged tasks once
   const mergedTasks = state.merges
     ? Object.entries(state.merges).filter(
         ([name, entry]) => name !== conflictingTask && entry.status === 'merged',
       )
     : [];
 
-  // Already merged tasks
   if (mergedTasks.length > 0) {
     lines.push('## Already merged (in target)');
     for (const [name, entry] of mergedTasks) {
@@ -68,7 +64,6 @@ export function generateConflictBrief(opts: ConflictBriefOpts): string {
     lines.push('');
   }
 
-  // PR description for the conflicting task
   const conflictBranch = `${target}-${conflictingTask}`;
   const conflictPr = getPrBody(conflictBranch, cwd);
   lines.push(`## Task being merged: ${conflictingTask}`);
@@ -79,7 +74,6 @@ export function generateConflictBrief(opts: ConflictBriefOpts): string {
   }
   lines.push('');
 
-  // PR descriptions for already-merged tasks
   for (const [name] of mergedTasks) {
     const branch = `${target}-${name}`;
     const prBody = getPrBody(branch, cwd);
@@ -90,7 +84,6 @@ export function generateConflictBrief(opts: ConflictBriefOpts): string {
     }
   }
 
-  // The conflict diff
   const diffOutput = getDiffOutput(cwd);
   if (diffOutput) {
     lines.push('## The conflict diff');
@@ -100,7 +93,6 @@ export function generateConflictBrief(opts: ConflictBriefOpts): string {
     lines.push('');
   }
 
-  // Relevant journal entries
   const journal = readJournal(cwd);
   const relevantTasks = new Set<string>([conflictingTask]);
   if (state.merges) {

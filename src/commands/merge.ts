@@ -27,6 +27,7 @@ import type { SyncState } from '../lib/sync.js';
 import { generateConflictBrief } from '../lib/conflict.js';
 import { success, warn, skip, requireSyncState, handleError, colors } from '../lib/output.js';
 
+/** Build the `paw merge` CLI command. */
 export function mergeCommand(): Command {
   return new Command('merge')
     .description('Merge done task branches into the target branch')
@@ -64,7 +65,6 @@ export function mergeCommand(): Command {
           return;
         }
 
-        // Initialize merge state if not present
         if (!state.merges) {
           state = {
             ...state,
@@ -116,7 +116,6 @@ function handleMergeContinue(
     process.exit(1);
   }
 
-  // Verify the branch's commits are actually in HEAD (paw-0yqg)
   if (!isAncestor(conflictTask.branch, 'HEAD', repoRoot)) {
     console.error(
       colors.error(
@@ -183,10 +182,9 @@ function runMergeLoop(
     }
 
     // Stage untracked files to prevent "untracked working tree files would be
-    // overwritten" errors during merge (paw-gbu0).
+    // overwritten" errors during merge.
     commitUntrackedFiles(repoRoot, wt.taskName);
 
-    // Save backup ref before merge
     const headBefore = getHeadRef(repoRoot);
     createBackupRef(wt.taskName, headBefore, repoRoot);
 
@@ -204,7 +202,6 @@ function runMergeLoop(
       });
       writeSyncState(state, repoRoot);
     } else {
-      // Generate conflict brief
       const briefPath = `conflicts/${wt.taskName}-into-target.md`;
       const brief = generateConflictBrief({
         conflictingTask: wt.taskName,

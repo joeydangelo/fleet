@@ -14,8 +14,6 @@ import {
 } from './constants.js';
 import type { TmuxServiceApi } from './tmux.js';
 
-// --- Types ---
-
 export type HealthState = 'booting' | 'working' | 'stalled' | 'zombie' | 'completed';
 
 interface AgentHealth {
@@ -36,13 +34,9 @@ export interface HealthSnapshot {
   agents: Record<string, AgentHealth>;
 }
 
-// --- Pure state evaluation (no I/O) ---
-
 /**
- * Resolve the health state for a single agent. Pure function — no I/O.
- *
- * A launch heartbeat is written at spawn time, so lastActivity always exists.
- * The 'booting' state is handled by evaluateAllAgents(), not here.
+ * A launch heartbeat is written at spawn time, so `lastActivity` always exists.
+ * The 'booting' state is handled by `evaluateAllAgents`, not here.
  */
 export function resolveHealthState(opts: {
   taskDone: boolean;
@@ -151,8 +145,7 @@ export function evaluateAllAgents(opts: {
   return { timestamp: now.toISOString(), agents };
 }
 
-// --- Heartbeat I/O ---
-
+/** Read the ISO timestamp from a task's heartbeat file, or null if missing. */
 export function readHeartbeat(repoRoot: string, taskName: string): string | null {
   try {
     const filePath = resolve(repoRoot, '.paw', 'run', 'heartbeats', taskName);
@@ -162,14 +155,14 @@ export function readHeartbeat(repoRoot: string, taskName: string): string | null
   }
 }
 
+/** Write the current time as the task's heartbeat (called by the hook on each tool invocation). */
 export function writeHeartbeat(repoRoot: string, taskName: string): void {
   const dir = resolve(repoRoot, '.paw', 'run', 'heartbeats');
   mkdirSync(dir, { recursive: true });
   writeFileSync(resolve(dir, taskName), new Date().toISOString(), 'utf-8');
 }
 
-// --- Health snapshot I/O ---
-
+/** Load the last persisted health snapshot, or null if none exists. */
 export function readHealthSnapshot(repoRoot: string): HealthSnapshot | null {
   try {
     const filePath = resolve(repoRoot, '.paw', 'run', 'health.json');
@@ -186,14 +179,14 @@ export function writeHealthSnapshot(repoRoot: string, snapshot: HealthSnapshot):
   writeFileSync(resolve(dir, 'health.json'), JSON.stringify(snapshot, null, 2) + '\n', 'utf-8');
 }
 
-// --- Nudge I/O ---
-
+/** Persist a nudge message for a task (consumed by the agent on next heartbeat). */
 export function writeNudge(repoRoot: string, taskName: string, message: string): void {
   const dir = resolve(repoRoot, '.paw', 'run', 'nudges');
   mkdirSync(dir, { recursive: true });
   writeFileSync(resolve(dir, `${taskName}.md`), message, 'utf-8');
 }
 
+/** Read a pending nudge message, or null if none exists. */
 export function readNudge(repoRoot: string, taskName: string): string | null {
   try {
     const filePath = resolve(repoRoot, '.paw', 'run', 'nudges', `${taskName}.md`);
@@ -203,6 +196,7 @@ export function readNudge(repoRoot: string, taskName: string): string | null {
   }
 }
 
+/** Delete a task's nudge file after delivery (idempotent). */
 export function clearNudge(repoRoot: string, taskName: string): void {
   try {
     rmSync(resolve(repoRoot, '.paw', 'run', 'nudges', `${taskName}.md`));
@@ -211,8 +205,7 @@ export function clearNudge(repoRoot: string, taskName: string): void {
   }
 }
 
-// --- Inbox cursor I/O ---
-
+/** Read the last-seen inbox cursor for a task, used to skip already-delivered messages. */
 export function readInboxCursor(repoRoot: string, taskName: string): string | null {
   try {
     const filePath = resolve(repoRoot, '.paw', 'run', `.inbox-cursor-${taskName}`);
@@ -222,13 +215,12 @@ export function readInboxCursor(repoRoot: string, taskName: string): string | nu
   }
 }
 
+/** Persist the inbox cursor so future reads skip already-delivered messages. */
 export function writeInboxCursor(repoRoot: string, taskName: string, cursor: string): void {
   const dir = resolve(repoRoot, '.paw', 'run');
   mkdirSync(dir, { recursive: true });
   writeFileSync(resolve(dir, `.inbox-cursor-${taskName}`), cursor, 'utf-8');
 }
-
-// --- Triage ---
 
 /**
  * Triage a stalled agent by capturing terminal output and classifying
@@ -264,7 +256,7 @@ export function triageAgent(
     const upper = result.toUpperCase();
     if (upper.includes('TERMINATE')) return { verdict: 'terminate', captured };
     if (upper.includes('RETRY')) return { verdict: 'retry', captured };
-    // Default to 'extend' on any other response (safe default)
+    // safe default
     return { verdict: 'extend', captured };
   } catch {
     // On failure (timeout, claude not found, etc.), default to extend (safe)

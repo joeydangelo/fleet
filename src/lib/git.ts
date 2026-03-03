@@ -18,6 +18,7 @@ export function git(args: string[], options?: ExecFileSyncOptions): string {
   return trimmed;
 }
 
+/** Resolve the root of the git repository containing `cwd`. */
 export function getRepoRoot(cwd?: string): string {
   return git(['rev-parse', '--show-toplevel'], { cwd });
 }
@@ -33,10 +34,12 @@ export function resolveMainRoot(cwd?: string): string {
   return resolve(dir, gitCommonDir, '..');
 }
 
+/** Returns the current branch name, or empty string if HEAD is detached. */
 export function getCurrentBranch(cwd?: string): string {
   return git(['branch', '--show-current'], { cwd });
 }
 
+/** Check whether a local branch or ref exists. */
 export function branchExists(branch: string, cwd?: string): boolean {
   try {
     git(['rev-parse', '--verify', branch], { cwd, stdio: 'pipe' });
@@ -46,10 +49,12 @@ export function branchExists(branch: string, cwd?: string): boolean {
   }
 }
 
+/** Create a new local branch pointing at `from`. */
 export function createBranch(branch: string, from: string, cwd?: string): void {
   git(['branch', branch, from], { cwd });
 }
 
+/** Create a git worktree at `path` checked out to `branch`. */
 export function createWorktree(path: string, branch: string, cwd?: string): void {
   git(['worktree', 'add', path, branch], { cwd });
 }
@@ -59,13 +64,12 @@ export function removeWorktree(path: string, cwd?: string): void {
   try {
     git(['worktree', 'remove', '--force', path], { cwd });
   } catch {
-    // Fallback: manually remove directory and prune worktree list.
-    // git worktree remove can fail on Windows due to permission/symlink issues.
     rmSync(path, { recursive: true, force: true });
     git(['worktree', 'prune'], { cwd });
   }
 }
 
+/** Count commits on `branch` that are not reachable from `base`. */
 export function getCommitCount(branch: string, base: string, cwd?: string): number {
   const output = git(['rev-list', '--count', `${base}..${branch}`], {
     cwd,
@@ -74,6 +78,7 @@ export function getCommitCount(branch: string, base: string, cwd?: string): numb
   return parseInt(output, 10);
 }
 
+/** Count files changed between `base` and `branch`. */
 export function getChangedFileCount(branch: string, base: string, cwd?: string): number {
   const output = git(['diff', '--name-only', base, branch], {
     cwd,
@@ -83,6 +88,7 @@ export function getChangedFileCount(branch: string, base: string, cwd?: string):
   return output.split('\n').length;
 }
 
+/** Attempt a no-edit merge of `branch` into HEAD. Returns success status and git output. */
 export function mergeBranch(branch: string, cwd?: string): { success: boolean; message: string } {
   try {
     const output = git(['merge', branch, '--no-edit'], { cwd });
@@ -93,6 +99,7 @@ export function mergeBranch(branch: string, cwd?: string): { success: boolean; m
   }
 }
 
+/** Force-delete a local branch (`-D`). */
 export function deleteBranch(branch: string, cwd?: string): void {
   git(['branch', '-D', branch], { cwd, stdio: 'pipe' });
 }
@@ -106,6 +113,7 @@ export function getDiffOutput(cwd?: string): string {
   }
 }
 
+/** List files with unresolved merge conflicts (diff filter=U). */
 export function getConflictingFiles(cwd?: string): string[] {
   try {
     const output = git(['diff', '--name-only', '--diff-filter=U'], {
@@ -119,6 +127,7 @@ export function getConflictingFiles(cwd?: string): string[] {
   }
 }
 
+/** Return the full SHA of the current HEAD commit. */
 export function getHeadRef(cwd?: string): string {
   return git(['rev-parse', 'HEAD'], { cwd, stdio: 'pipe' });
 }
@@ -128,6 +137,7 @@ export function createBackupRef(taskName: string, commit: string, cwd?: string):
   git(['update-ref', `refs/paw-backup/${taskName}`, commit], { cwd });
 }
 
+/** Remove all `refs/paw-backup/*` refs created during merge. Best-effort. */
 export function cleanupBackupRefs(cwd?: string): void {
   try {
     const output = git(['for-each-ref', '--format=%(refname)', 'refs/paw-backup/'], {
@@ -139,7 +149,7 @@ export function cleanupBackupRefs(cwd?: string): void {
       git(['update-ref', '-d', ref], { cwd });
     }
   } catch {
-    // No backup refs to clean up
+    /* empty — no refs to clean */
   }
 }
 

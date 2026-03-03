@@ -114,9 +114,7 @@ export interface TmuxServiceApi {
   capturePaneContent(sessionOrPane: string, lines?: number): string | null;
 }
 
-/**
- * Execute a tmux command via execFileSync. Centralizes all tmux CLI calls.
- */
+/** Centralizes all tmux CLI calls. */
 function execTmux(
   args: string[],
   opts?: { encoding?: BufferEncoding; stdio?: 'pipe' | 'ignore' },
@@ -126,10 +124,7 @@ function execTmux(
   return execFileSync('tmux', args, { encoding, stdio }).trim();
 }
 
-/**
- * TmuxService: all tmux CLI operations go through this class.
- * No platform detection, no WSL bridge. Assumes tmux is available.
- */
+/** Assumes tmux is available — no platform detection or WSL bridge. */
 export class TmuxService implements TmuxServiceApi {
   private readonly exec: typeof execTmux;
 
@@ -246,17 +241,14 @@ export class TmuxService implements TmuxServiceApi {
     this.exec(['select-pane', '-t', paneId]);
   }
 
-  /** Returns the tmux pane ID of the currently active (selected) pane. */
   getCurrentPaneId(): string {
     return this.exec(['display-message', '-p', '#{pane_id}']);
   }
 
-  /** Returns the tmux session name of the session running this process. */
   getCurrentSessionName(): string {
     return this.exec(['display-message', '-p', '#{session_name}']);
   }
 
-  /** Returns the name of the command currently running in a pane (e.g. bash, zsh, claude). */
   getPaneCurrentCommand(paneId: string): string {
     try {
       return this.exec(['display-message', '-t', paneId, '-p', '#{pane_current_command}']);
@@ -265,7 +257,6 @@ export class TmuxService implements TmuxServiceApi {
     }
   }
 
-  /** Resizes a pane to the given column width. */
   resizePane(paneId: string, width: number): void {
     this.exec(['resize-pane', '-t', paneId, '-x', String(width)]);
   }
@@ -387,7 +378,6 @@ function printWindowsTmuxError(): void {
   const wslTmux = tryExec('wsl', ['-e', 'tmux', '-V']);
 
   if (wslTmux) {
-    // Best case: tmux is in WSL, user just needs to switch shells
     const wslPath = tryExec('wsl', ['-e', 'wslpath', process.cwd()]);
     const cdPath = wslPath ?? '/mnt/c/.../' + basename(process.cwd());
     const msg = [
@@ -405,7 +395,6 @@ function printWindowsTmuxError(): void {
   const wslCheck = tryExec('wsl', ['--status']);
 
   if (wslCheck !== null) {
-    // WSL exists but no tmux
     const msg = [
       'paw requires tmux.\n',
       '  WSL detected but tmux is not installed. Inside a WSL terminal:',
@@ -417,7 +406,6 @@ function printWindowsTmuxError(): void {
     ];
     console.error(msg.join('\n'));
   } else {
-    // No WSL
     const msg = [
       'paw requires tmux.\n',
       '  On Windows, paw runs inside WSL. Install WSL2 first:\n',
@@ -509,7 +497,7 @@ export async function sendNudgeKeys(
   return false;
 }
 
-/** Agent name for pane metadata. Currently only 'claude' is supported. */
+/** Currently only 'claude' is supported. */
 function parseAgentName(): AgentName {
   return 'claude';
 }
@@ -534,7 +522,6 @@ export async function launchTmux(
     tmux.createSession(sessionName, repoRoot);
   }
 
-  // Query tmux once for all live pane IDs, then index existing panes.
   const livePaneIds = new Set(tmux.listPanes(sessionName));
   const liveByTask = new Map<string, PawPane>();
   for (const ep of existingPanes) {
@@ -572,6 +559,7 @@ export async function launchTmux(
   return panes;
 }
 
+/** Factory that creates a real `TmuxService` wired to the local tmux binary. */
 export function createTmuxService(): TmuxService {
   return new TmuxService();
 }
@@ -702,6 +690,7 @@ export function checkAgentLiveness(
   }));
 }
 
+/** Index liveness results by task name for O(1) lookup. */
 export function buildLivenessMap(results: AgentLivenessResult[]): Map<string, boolean> {
   const map = new Map<string, boolean>();
   for (const r of results) {
@@ -710,6 +699,7 @@ export function buildLivenessMap(results: AgentLivenessResult[]): Map<string, bo
   return map;
 }
 
+/** Return a colored status dot: green ● alive, red ○ dead, space if unknown. */
 export function livenessMarker(alive: boolean | undefined): string {
   if (alive === undefined) return ' ';
   return alive ? pc.green('●') : pc.red('○');
@@ -728,6 +718,7 @@ export async function createDetachedSession(
   await sendBeacon(tmux, sessionName, beaconOpts);
 }
 
+/** Tear down a detached session if it still exists (idempotent). */
 export function killDetachedSession(tmux: TmuxServiceApi, sessionName: string): void {
   if (tmux.sessionExists(sessionName)) {
     tmux.killSession(sessionName);

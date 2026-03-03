@@ -6,6 +6,7 @@ import { appendJournalEntry, readJournal } from '../lib/journal.js';
 import type { JournalEntry } from '../lib/journal.js';
 import { requireSyncState, handleError, colors } from '../lib/output.js';
 
+/** CLI command: reply to the most recent or a specific directed message. */
 export function replyCommand(): Command {
   return new Command('reply')
     .description('Reply to the most recent directed message')
@@ -23,12 +24,10 @@ export function replyCommand(): Command {
         let resolvedSend: JournalEntry;
 
         if (opts.to) {
-          // Find message by thread ID directed at this task
           const matches = all.filter(
             (e) => e.type === 'send' && e.to === taskName && e.thread === opts.to,
           );
           if (matches.length === 0) {
-            // Check if thread exists but is directed at a different task
             const wrongTask = all.find(
               (e) => e.type === 'send' && e.thread === opts.to && e.to !== taskName,
             );
@@ -45,7 +44,6 @@ export function replyCommand(): Command {
           }
           resolvedSend = matches[matches.length - 1]!;
         } else {
-          // Find most recent message directed at this task
           const sends = all.filter((e) => e.type === 'send' && e.to === taskName);
           if (sends.length === 0) {
             console.error(colors.warn('No messages to reply to.'));

@@ -38,7 +38,6 @@ export function createDocCommand(name: string, category: string, description: st
         opts: { list?: boolean; add?: string; name?: string },
       ) => {
         try {
-          // Auto-refresh stale docs before any read/list operation
           try {
             const { getRepoRoot } = await import('../lib/git.js');
             await ensureDocsFresh(getRepoRoot()).catch(() => {});
