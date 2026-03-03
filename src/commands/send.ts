@@ -5,8 +5,8 @@ import { readSyncState } from '../lib/sync.js';
 import { appendJournalEntry, generateThreadId } from '../lib/journal.js';
 import { requireSyncState, handleError, colors } from '../lib/output.js';
 
-export function askCommand(): Command {
-  return new Command('ask')
+export function sendCommand(): Command {
+  return new Command('send')
     .description('Send a directed message to a specific agent')
     .argument('<task>', 'Target task name')
     .argument('<message>', 'Message to send')
@@ -24,7 +24,7 @@ export function askCommand(): Command {
         }
 
         const thread = generateThreadId();
-        appendJournalEntry(taskName, { type: 'ask', to: task, msg: message, thread }, repoRoot);
+        appendJournalEntry(taskName, { type: 'send', to: task, msg: message, thread }, repoRoot);
 
         console.log(colors.success(`[${taskName} → ${task}] (${thread}) ${message}`));
       } catch (err) {

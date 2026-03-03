@@ -272,7 +272,7 @@ export async function runWatchLoop(opts: {
         printJournalEntry(entry, taskIndex);
       }
 
-      // Diff statuses
+      // Diff statuses (single pass — reviews run agent-side, not here)
       const statusDiff = diffStatuses(prevStatuses, syncState.tasks);
       prevStatuses = statusDiff.currentStatuses;
 
@@ -306,7 +306,8 @@ export async function runWatchLoop(opts: {
         printCommitDelta(d, taskIndex, fileCount);
       }
 
-      // Evaluate agent health (ZFC)
+      // Evaluate agent health (ZFC) — runs after review refresh so health
+      // sees up-to-date sync state (in_review/done from inline reviews).
       let livenessMap = new Map<string, boolean>();
       const paneConfig = readPaneConfig(repoRoot);
       let tmux: TmuxServiceApi | null = null;

@@ -29,7 +29,9 @@ export type ReviewVerdict = 'pass' | 'fail' | 'skip';
 
 export interface ReviewResult {
   verdict: ReviewVerdict;
-  findings: string;
+  strengths: string;
+  issues: string;
+  suggestions?: string;
 }
 
 /** Callback for the orchestrator to log reviewer state transitions. */
@@ -46,9 +48,6 @@ const REVIEW_POLL_MS = 3_000;
 /** Lines of pane content to capture when checking for verdict. */
 const REVIEW_CAPTURE_LINES = 200;
 
-/** @deprecated Kept for backward-compat in tests. No longer used for control flow. */
-export const REVIEW_DONE_MARKER = '--- PAW_REVIEW_COMPLETE ---';
-
 /** Time (ms) before logging a warning that the reviewer is still working. */
 const REVIEW_WARN_MS = 120_000;
 
@@ -63,10 +62,20 @@ export function readVerdictFile(filePath: string): ReviewResult | null {
   if (!existsSync(filePath)) return null;
   try {
     const raw = readFileSync(filePath, 'utf-8');
-    const data = JSON.parse(raw) as { verdict?: string; findings?: string };
+    const data = JSON.parse(raw) as {
+      verdict?: string;
+      strengths?: string;
+      issues?: string;
+      suggestions?: string;
+    };
     const v = String(data.verdict ?? '').toLowerCase();
     const verdict: ReviewVerdict = v === 'pass' ? 'pass' : v === 'fail' ? 'fail' : 'fail';
-    return { verdict, findings: String(data.findings ?? '') };
+    return {
+      verdict,
+      strengths: String(data.strengths ?? ''),
+      issues: String(data.issues ?? ''),
+      suggestions: data.suggestions ? String(data.suggestions) : undefined,
+    };
   } catch {
     return null;
   }
@@ -115,20 +124,16 @@ function buildReviewPrompt(
   taskBranch: string,
   targetBranch: string,
   verdictPath: string,
-  priorFindingsPaths?: string[],
+  taskFilePath?: string,
 ): string {
   const steps = [`You are reviewing task branch "${taskBranch}" against "${targetBranch}".`, ''];
 
-  if (priorFindingsPaths && priorFindingsPaths.length > 0) {
+  if (taskFilePath) {
     steps.push(
-      'STEP 0: Read the prior review findings files below using the Read tool. ' +
-        'Verify whether each finding was addressed in the current diff. ' +
-        'Note any unresolved findings in your review output.',
+      'TASK CONTEXT: Read the task assignment file to understand what this branch is supposed to do:',
+      `  - ${taskFilePath}`,
+      '',
     );
-    for (const p of priorFindingsPaths) {
-      steps.push(`  - ${p}`);
-    }
-    steps.push('');
   }
 
   // Escape the path for embedding in a JSON string inside a node -e command
@@ -136,13 +141,17 @@ function buildReviewPrompt(
 
   steps.push(
     'STEP 1: Run `paw shortcut review-pr` and read the review instructions.',
-    'STEP 2: Get the diff by running: git diff ' + targetBranch + '...' + taskBranch,
-    'STEP 3: Load relevant guidelines as instructed by the review-pr shortcut.',
-    'STEP 4: Perform the review and compile findings.',
-    'STEP 5: Determine your verdict (PASS or FAIL).',
-    'STEP 6: Write the verdict file by running this Bash command (replace VERDICT and FINDINGS):',
-    `node -e "require('fs').writeFileSync('${escapedPath}', JSON.stringify({verdict:'PASS_OR_FAIL', findings:'your findings text here'}))"`,
-    'Replace PASS_OR_FAIL with your actual verdict (PASS or FAIL) and put your full findings text in the findings field.',
+    'STEP 2: Read the PR by running: gh pr view ' + taskBranch + ' --json title,body,labels',
+    'STEP 3: Check CI by running: gh pr checks ' +
+      taskBranch +
+      ' — if checks are failing, skip the review and write a FAIL verdict immediately with the failing check as a CRITICAL/testing issue.',
+    'STEP 4: Get the diff by running: git diff ' + targetBranch + '...' + taskBranch,
+    'STEP 5: Load relevant guidelines as instructed by the review-pr shortcut.',
+    'STEP 6: Perform the review and compile findings.',
+    'STEP 7: Determine your verdict (PASS or FAIL).',
+    'STEP 8: Write the verdict file by running a Bash command like this:',
+    `node -e "require('fs').writeFileSync('${escapedPath}', JSON.stringify({ verdict: 'PASS_OR_FAIL', strengths: 'what was done well', issues: 'CRITICAL/MAJOR/MINOR findings', suggestions: 'optional non-blocking observations' }))"`,
+    'Replace the placeholder values with your actual review content. The JSON keys are: verdict (PASS or FAIL), strengths (brief), issues (all findings in severity/category file:line format), suggestions (optional, omit if none).',
     'This file write is MANDATORY — it signals completion to the orchestrator.',
   );
 
@@ -155,51 +164,9 @@ function buildNudgeMessage(verdictPath: string): string {
   return [
     'You have been reviewing for a while.',
     'Please wrap up your review and write the verdict file now.',
-    'Run this Bash command with your verdict (PASS or FAIL) and findings:',
-    `node -e "require('fs').writeFileSync('${escapedPath}', JSON.stringify({verdict:'PASS_OR_FAIL', findings:'your findings'}))"`,
+    'Run this Bash command with your verdict and review content:',
+    `node -e "require('fs').writeFileSync('${escapedPath}', JSON.stringify({ verdict: 'PASS_OR_FAIL', strengths: '...', issues: '...', suggestions: '...' }))"`,
   ].join(' ');
-}
-
-/**
- * Parse the reviewer's output to extract the verdict and findings.
- * Scans captured pane content for the done marker, then looks backward
- * from the marker for the last PASS/FAIL verdict line, avoiding
- * false-positive matches from analysis text earlier in the output.
- */
-export function parseReviewOutput(captured: string): ReviewResult | null {
-  if (!captured.includes(REVIEW_DONE_MARKER)) return null;
-
-  // Everything before the done marker is the review output
-  const beforeMarker = captured.split(REVIEW_DONE_MARKER)[0] ?? '';
-
-  // Scan backward from the marker so analysis text that mentions "PASS" or
-  // "FAIL" before the real verdict doesn't cause a false-positive match.
-  const lines = beforeMarker.split('\n');
-  let verdictLine = -1;
-  for (let i = lines.length - 1; i >= 0; i--) {
-    const trimmed = lines[i]!.trim().toUpperCase();
-    if (
-      trimmed === 'PASS' ||
-      trimmed === 'FAIL' ||
-      trimmed.startsWith('PASS') ||
-      trimmed.startsWith('FAIL')
-    ) {
-      verdictLine = i;
-      break;
-    }
-  }
-
-  if (verdictLine === -1) {
-    // No clear verdict found — treat as fail with the raw output
-    return { verdict: 'fail', findings: beforeMarker.trim() };
-  }
-
-  const firstLine = lines[verdictLine]!.trim().toUpperCase();
-  const verdict: ReviewVerdict = firstLine.startsWith('PASS') ? 'pass' : 'fail';
-
-  // Everything from the verdict line onward is the findings
-  const findings = lines.slice(verdictLine).join('\n').trim();
-  return { verdict, findings };
 }
 
 /** Format elapsed milliseconds as "Xm Ys". */
@@ -267,7 +234,7 @@ export async function reviewTask(
   targetBranch: string,
   repoRoot: string,
   callbacks?: ReviewCallbacks,
-  priorFindingsPaths?: string[],
+  taskFilePath?: string,
 ): Promise<ReviewResult> {
   const sessionName = `${REVIEW_SESSION_PREFIX}${taskBranch.replace(/[^a-zA-Z0-9-]/g, '-')}`;
   const vPath = verdictFilePath(repoRoot, taskBranch);
@@ -295,17 +262,18 @@ export async function reviewTask(
     // Wait for Claude TUI to be ready
     const ready = await waitForTuiReady(tmux, sessionName, 30_000, 1_000);
     if (!ready) {
-      return { verdict: 'skip', findings: 'Reviewer session failed to start — skipping review.' };
+      return {
+        verdict: 'skip',
+        strengths: '',
+        issues: 'Reviewer session failed to start — skipping review.',
+      };
     }
 
     // Small delay for TUI to fully initialize
     await new Promise((r) => setTimeout(r, 2_000));
 
     // Send the review prompt
-    tmux.sendKeys(
-      sessionName,
-      buildReviewPrompt(taskBranch, targetBranch, vPath, priorFindingsPaths),
-    );
+    tmux.sendKeys(sessionName, buildReviewPrompt(taskBranch, targetBranch, vPath, taskFilePath));
 
     // Follow-up empty Enters to dismiss trust/permission dialogs (same as sendBeacon)
     for (const delay of BEACON_FOLLOWUP_DELAYS) {
@@ -328,7 +296,8 @@ export async function reviewTask(
         if (fileResult) return fileResult;
         return {
           verdict: 'skip',
-          findings: 'Reviewer session exited unexpectedly — skipping review.',
+          strengths: '',
+          issues: 'Reviewer session exited unexpectedly — skipping review.',
         };
       }
 
@@ -371,7 +340,7 @@ export async function reviewTask(
       callbacks?.onTimeout?.(formatElapsed(REVIEW_TIMEOUT_MS));
     }
 
-    return { verdict: 'skip', findings: 'Review timed out — skipping review.' };
+    return { verdict: 'skip', strengths: '', issues: 'Review timed out — skipping review.' };
   } finally {
     // Always clean up the reviewer session and verdict file
     killDetachedSession(tmux, sessionName);

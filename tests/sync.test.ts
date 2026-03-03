@@ -8,6 +8,7 @@ import {
   completeTask,
   submitForReview,
   reopenTask,
+  isTerminalStatus,
   writeSyncState,
   readSyncState,
   writeSyncFile,
@@ -100,6 +101,44 @@ describe('submitForReview', () => {
   });
 });
 
+describe('isTerminalStatus', () => {
+  it('returns true for done', () => {
+    expect(isTerminalStatus('done')).toBe(true);
+  });
+
+  it('returns false for in_review', () => {
+    expect(isTerminalStatus('in_review')).toBe(false);
+  });
+
+  it('returns false for in_progress', () => {
+    expect(isTerminalStatus('in_progress')).toBe(false);
+  });
+
+  it('returns false for pending', () => {
+    expect(isTerminalStatus('pending')).toBe(false);
+  });
+});
+
+describe('submitForReview reviewCycle', () => {
+  it('increments reviewCycle from 0 to 1', () => {
+    const state = initSyncState('feature/dash', ['auth'], 'paw.yaml');
+    const claimed = claimTask(state, 'auth');
+    const reviewed = submitForReview(claimed, 'auth');
+
+    expect(reviewed.tasks['auth']?.reviewCycle).toBe(1);
+  });
+
+  it('increments reviewCycle from 1 to 2', () => {
+    const state = initSyncState('feature/dash', ['auth'], 'paw.yaml');
+    const claimed = claimTask(state, 'auth');
+    const cycle1 = submitForReview(claimed, 'auth');
+    const reopened = reopenTask(cycle1, 'auth');
+    const cycle2 = submitForReview(reopened, 'auth');
+
+    expect(cycle2.tasks['auth']?.reviewCycle).toBe(2);
+  });
+});
+
 describe('reopenTask', () => {
   it('transitions in_review back to in_progress', () => {
     const state = initSyncState('feature/dash', ['auth'], 'paw.yaml');
@@ -107,6 +146,15 @@ describe('reopenTask', () => {
     const reopened = reopenTask(reviewed, 'auth');
 
     expect(reopened.tasks['auth']?.status).toBe('in_progress');
+  });
+
+  it('preserves reviewCycle on reopen', () => {
+    const state = initSyncState('feature/dash', ['auth'], 'paw.yaml');
+    const claimed = claimTask(state, 'auth');
+    const reviewed = submitForReview(claimed, 'auth');
+    const reopened = reopenTask(reviewed, 'auth');
+
+    expect(reopened.tasks['auth']?.reviewCycle).toBe(1);
   });
 
   it('throws on unknown task', () => {

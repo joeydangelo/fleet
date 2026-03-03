@@ -158,7 +158,7 @@ progress, merge results, handle conflicts, and clean up.
 
 | Command | Purpose |
 |---|---|
-| `paw ask <task> "..."` | Send a directed message to an agent |
+| `paw send <task> "..."` | Send a directed message to an agent |
 | `paw inbox --all` | See all broadcasts, open threads, and resolved threads |
 
 ### Orchestrator informational commands
@@ -197,7 +197,7 @@ Follow `paw shortcut build-task` for the full workflow:
 | Command | Purpose |
 |---|---|
 | `paw broadcast "..."` | Announce a change to all agents |
-| `paw ask <task> "..."` | Send a directed message to another agent |
+| `paw send <task> "..."` | Send a directed message to another agent |
 | `paw reply "..."` | Reply to the most recent message |
 | `paw reply --to <thread> "..."` | Reply to a specific thread |
 | `paw status` | Check progress across all tasks |
@@ -235,7 +235,7 @@ Follow `paw shortcut build-task` for the full workflow:
 | `paw shortcut getting-started` | Install paw and run your first parallel agent session |
 | `paw shortcut new-plan-spec` | Create a new feature planning specification document |
 | `paw shortcut resolve-merge-conflict` | Read a conflict brief, resolve the merge conflict, and continue merging |
-| `paw shortcut review-pr` | Review a task PR for design, testing, code quality, and security — return PASS or FAIL |
+| `paw shortcut review-pr` | Review a task PR — step-by-step workflow returning PASS or FAIL with structured findings |
 | `paw shortcut setup-github-cli` | Ensure GitHub CLI (gh) is installed and authenticated |
 | `paw shortcut setup-tmux` | Ensure tmux is installed for paw's terminal management |
 | `paw shortcut to-pr` | Combine agent PR descriptions into a final PR with issue references |
@@ -246,11 +246,17 @@ Follow `paw shortcut build-task` for the full workflow:
 <!-- BEGIN GUIDELINES DIRECTORY -->
 | Command | Purpose |
 |---|---|
+| `paw guidelines code-comments` | Language-agnostic rules for writing clean, maintainable comments |
+| `paw guidelines code-quality` | Rules for clean, maintainable code — duplication, dead code, types, and structure |
 | `paw guidelines commit-conventions` | Conventional Commits format with extensions for multi-agent workflows |
-| `paw guidelines general-tdd-guidelines` | Test-Driven Development methodology — Red, Green, Refactor in small slices |
-| `paw guidelines general-testing-rules` | Rules for writing minimal, effective tests with maximum coverage |
+| `paw guidelines error-handling` | Rules for handling errors, failures, and exceptional conditions |
 | `paw guidelines paw-task-decomposition` | How to split work into independent parallel tasks that minimize conflicts |
-| `paw guidelines typescript-testing-guidelines` | Integration testing patterns for TypeScript — test behavior and data flow, not mock existence |
+| `paw guidelines security-patterns` | Concrete security patterns to flag during code review |
+| `paw guidelines test-driven-development` | Use when implementing any feature or bugfix, before writing implementation code |
+| `paw guidelines test-quality` | Rules for writing minimal, effective tests with maximum coverage |
+| `paw guidelines testing-anti-patterns` | Common testing mistakes — mock misuse, test-only production methods, and incomplete test doubles |
+| `paw guidelines typescript-testing` | Integration testing patterns for TypeScript — test behavior and data flow, not mock existence |
+| `paw guidelines verify-completion` | Use when about to claim work is complete, fixed, or passing, before committing or creating PRs - requires running verification commands and confirming output before making any success claims; evidence before assertions always |
 <!-- END GUIDELINES DIRECTORY -->
 
 ### Available templates

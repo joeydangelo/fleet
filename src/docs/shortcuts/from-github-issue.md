@@ -1,5 +1,5 @@
 ---
-title: Generate paw.yaml from GitHub Issues
+title: From GitHub Issue
 description: Fetch GitHub issues, decompose them into tasks, and generate paw.yaml
 category: orchestrator
 ---

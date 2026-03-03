@@ -3,7 +3,7 @@ import { readSyncFile, writeSyncFile, listSyncDir } from './sync.js';
 export interface JournalEntry {
   ts: string;
   from: string;
-  type: 'broadcast' | 'ask' | 'reply';
+  type: 'broadcast' | 'send' | 'reply';
   to?: string;
   msg: string;
   thread?: string;

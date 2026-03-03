@@ -41,21 +41,19 @@ vi.mock('../src/lib/session.js', () => ({
   copyIncludes: vi.fn(() => Promise.resolve([])),
 }));
 
-vi.mock('../src/lib/sync.js', async (importOriginal) => {
-  const actual = (await importOriginal());
-  return {
-    readSyncState: vi.fn(() => null),
-    initSyncWorktree: vi.fn(),
-    initSyncState: vi.fn(() => ({
-      session: 'test',
-      config: '/fake/config',
-      target: 'feature/x',
-      tasks: {},
-    })),
-    writeSyncStateAndFiles: vi.fn(),
-    isTerminalStatus: actual.isTerminalStatus,
-  };
-});
+vi.mock('../src/lib/sync.js', () => ({
+  isTerminalStatus: (status: string) => status === 'done',
+  readSyncState: vi.fn(() => null),
+  writeSyncState: vi.fn(),
+  initSyncWorktree: vi.fn(),
+  initSyncState: vi.fn(() => ({
+    session: 'test',
+    config: '/fake/config',
+    target: 'feature/x',
+    tasks: {},
+  })),
+  writeSyncStateAndFiles: vi.fn(),
+}));
 
 vi.mock('../src/lib/pane-state.js', () => ({
   readPaneConfig: vi.fn(() => null),
@@ -453,7 +451,7 @@ describe('resolveSessionState', () => {
     expect(resolveSessionState(state, basePaneConfig, null)).toBe('no-session');
   });
 
-  it('returns all-done when all tasks are in_review', () => {
+  it('returns agents-running when all tasks are in_review (agents still active)', () => {
     const state: SyncState = {
       ...baseSyncState,
       tasks: {
@@ -461,10 +459,14 @@ describe('resolveSessionState', () => {
         api: { status: 'in_review' },
       },
     };
-    expect(resolveSessionState(state, basePaneConfig, [])).toBe('all-done');
+    const liveness: AgentLivenessResult[] = [
+      { taskName: 'auth', alive: true },
+      { taskName: 'api', alive: true },
+    ];
+    expect(resolveSessionState(state, basePaneConfig, liveness)).toBe('agents-running');
   });
 
-  it('returns all-done when tasks are a mix of done and in_review', () => {
+  it('returns agents-running when tasks are a mix of done and in_review with alive agents', () => {
     const state: SyncState = {
       ...baseSyncState,
       tasks: {
@@ -472,10 +474,14 @@ describe('resolveSessionState', () => {
         api: { status: 'in_review' },
       },
     };
-    expect(resolveSessionState(state, basePaneConfig, [])).toBe('all-done');
+    const liveness: AgentLivenessResult[] = [
+      { taskName: 'auth', alive: false },
+      { taskName: 'api', alive: true },
+    ];
+    expect(resolveSessionState(state, basePaneConfig, liveness)).toBe('agents-running');
   });
 
-  it('excludes in_review tasks from liveness checks', () => {
+  it('includes in_review tasks in liveness checks (agents are active during review)', () => {
     const state: SyncState = {
       ...baseSyncState,
       tasks: {
@@ -484,7 +490,7 @@ describe('resolveSessionState', () => {
       },
     };
     const liveness: AgentLivenessResult[] = [
-      { taskName: 'auth', alive: false },
+      { taskName: 'auth', alive: true },
       { taskName: 'api', alive: true },
     ];
     expect(resolveSessionState(state, basePaneConfig, liveness)).toBe('agents-running');

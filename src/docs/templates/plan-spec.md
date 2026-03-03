@@ -1,5 +1,5 @@
 ---
-title: Plan Spec Template
+title: Plan Spec
 description: Template for feature planning specification documents
 ---
 # Feature: [Feature Name]

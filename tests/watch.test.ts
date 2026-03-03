@@ -8,7 +8,7 @@ describe('diffJournal', () => {
     const entries: JournalEntry[] = [
       { ts: '2026-02-14T10:00:00.000Z', from: 'auth', type: 'broadcast', msg: 'old' },
       { ts: '2026-02-14T10:01:00.000Z', from: 'api', type: 'broadcast', msg: 'new' },
-      { ts: '2026-02-14T10:02:00.000Z', from: 'auth', type: 'ask', to: 'api', msg: 'newer' },
+      { ts: '2026-02-14T10:02:00.000Z', from: 'auth', type: 'send', to: 'api', msg: 'newer' },
     ];
 
     const result = diffJournal(entries, '2026-02-14T10:00:00.000Z');

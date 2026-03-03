@@ -1,5 +1,5 @@
 ---
-title: Generate paw.yaml from Issues
+title: From Issues
 description: Detect the repo's issue tracker, read open issues, and generate paw.yaml
 category: orchestrator
 ---

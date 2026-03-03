@@ -12,7 +12,7 @@ Run `paw prime` to restore full session context.
 
 ```bash
 paw broadcast "..."        # Announce a change to all agents
-paw ask <task> "..."       # Send a directed message to another agent
+paw send <task> "..."      # Send a directed message to another agent
 paw reply "..."            # Reply to the most recent message
 paw review                 # Submit task for review (push + PR first)
 ```

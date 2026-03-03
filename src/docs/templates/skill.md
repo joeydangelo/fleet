@@ -158,7 +158,7 @@ progress, merge results, handle conflicts, and clean up.
 
 | Command | Purpose |
 |---|---|
-| `paw ask <task> "..."` | Send a directed message to an agent |
+| `paw send <task> "..."` | Send a directed message to an agent |
 | `paw inbox --all` | See all broadcasts, open threads, and resolved threads |
 
 ### Orchestrator informational commands
@@ -197,7 +197,7 @@ Follow `paw shortcut build-task` for the full workflow:
 | Command | Purpose |
 |---|---|
 | `paw broadcast "..."` | Announce a change to all agents |
-| `paw ask <task> "..."` | Send a directed message to another agent |
+| `paw send <task> "..."` | Send a directed message to another agent |
 | `paw reply "..."` | Reply to the most recent message |
 | `paw reply --to <thread> "..."` | Reply to a specific thread |
 | `paw status` | Check progress across all tasks |
@@ -248,8 +248,7 @@ Follow `paw shortcut build-task` for the full workflow:
 |---|---|
 | `paw guidelines paw-task-decomposition` | How to split work into independent parallel tasks |
 | `paw guidelines general-tdd-guidelines` | Test-Driven Development methodology |
-| `paw guidelines general-testing-rules` | Rules for minimal, effective tests |
-| `paw guidelines typescript-testing-guidelines` | TypeScript integration testing patterns |
+| `paw guidelines test-quality` | Rules for minimal, effective tests |
 | `paw guidelines commit-conventions` | Conventional Commits for multi-agent workflows |
 <!-- END GUIDELINES DIRECTORY -->
 

@@ -294,11 +294,11 @@ function printBrief(
   // Show unanswered threads directed at this agent (actionable on compaction recovery)
   const allEntries = readJournal(repoRoot);
   const { open } = computeThreads(allEntries);
-  const unanswered = open.filter((t) => t.ask.to === taskName);
+  const unanswered = open.filter((t) => t.send.to === taskName);
   if (unanswered.length > 0) {
     console.log(pc.bold('Unanswered Messages'));
-    for (const { ask } of unanswered) {
-      console.log(`  ${colors.info(`[${ask.from} → ${taskName}]`)} ${ask.msg}`);
+    for (const { send } of unanswered) {
+      console.log(`  ${colors.info(`[${send.from} → ${taskName}]`)} ${send.msg}`);
     }
     console.log();
   }

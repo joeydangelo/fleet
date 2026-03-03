@@ -1,5 +1,5 @@
 ---
-title: Create PR from Merged Results
+title: To PR
 description: Combine agent PR descriptions into a final PR with issue references
 category: orchestrator
 ---

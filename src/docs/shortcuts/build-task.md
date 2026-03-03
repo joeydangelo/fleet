@@ -3,43 +3,66 @@ title: Build Task
 description: Build, verify, and publish your paw task — the full worktree agent workflow
 category: worktree agent
 ---
-A three-phase workflow for implementing your paw task assignment: **Build → Verify → Publish**.
+Three-phase workflow: **Build → Verify → Publish**.
+
+If you received reviewer findings from a prior cycle, read them first. They are
+your starting point — address every finding before anything else.
 
 ## Phase 1: Build
 
-1. **Broadcast your intent.** Before writing code, announce your plan so other
-   agents can adapt: `paw broadcast "Starting auth task. Will define AuthConfig
-   type at src/auth/types.ts"`.
+1. **Broadcast your intent.** Announce your plan so other agents can adapt:
 
-2. **Plan the work.** Break your task into small, testable increments. Bugs first,
-   then features.
+   ```
+   paw broadcast "Starting auth task. Will define AuthConfig type at src/auth/types.ts"
+   ```
 
-3. **Implement with TDD.** For each increment:
-   - Write a failing test first (Red)
-   - Write the minimum code to pass (Green)
-   - Refactor (still Green)
-   - Follow `paw guidelines general-tdd-guidelines` for the methodology
-   - Follow `paw guidelines general-testing-rules` for test quality
-   - For TypeScript projects, also see `paw guidelines typescript-testing-guidelines`
-   - Find the existing test directory (`tests/`, `__tests__/`, etc.) or create one
-   - Run the full test suite after each change
+2. **Plan the work.** Break your task into small, testable increments. Bugs
+   first, then features.
+
+3. **Implement with TDD.** For each increment, follow the Red-Green-Refactor
+   cycle strictly:
+   - Write a failing test (Red)
+   - Write minimal code to pass (Green)
+   - Refactor while staying Green
+
+   Load these guidelines before writing any code:
+   - `paw guidelines general-tdd-guidelines` — the TDD methodology
+   - `paw guidelines testing-anti-patterns` — mistakes to avoid (mock misuse,
+     test-only production methods, incomplete doubles)
+
+   Find the existing test directory (`tests/`, `__tests__/`, etc.) or create
+   one. Run the full test suite after each change.
 
 ## Phase 2: Verify
 
-Review and validate before publishing. Retry up to 3 times if anything fails.
+An inner loop. Run checks, fix failures, repeat until clean.
 
-1. **Review your diff.** Check for:
+**Load `paw guidelines verify-completion` before starting this phase.** The
+core rule: no completion claims without fresh verification evidence.
+
+### The loop
+
+```
+┌─→ 2a. Run checks
+│       ↓
+│   Pass? ──yes──→ exit loop → Phase 3
+│       ↓ no
+└── 2b. Fix ─────→ back to 2a
+```
+
+### 2a. Run checks
+
+1. **Review your diff.** Look for:
    - Leftover debug code, TODOs, commented-out blocks
-   - Files outside your focus area that you didn't mean to touch
-   - Conflicts with anything another agent just broadcast
+   - Files outside your focus area you didn't mean to touch
+   - Conflicts with anything another agent broadcast
 
-2. **Format, lint, and test.** Run the project's validation commands. Look for
-   these in the project's README, package.json scripts, Makefile, or pyproject.toml:
+2. **Format, lint, and test.** Run the project's validation commands. Find them
+   in README, package.json scripts, Makefile, or pyproject.toml:
 
    ```bash
    # TypeScript / JavaScript
    pnpm format && pnpm lint && pnpm test    # or npm run, yarn, bun
-   npx prettier --write . && npx eslint --fix . && npx vitest run
 
    # Python
    uv run ruff format . && uv run ruff check --fix . && uv run pytest
@@ -53,22 +76,35 @@ Review and validate before publishing. Retry up to 3 times if anything fails.
 
    Use whatever the project already has. Don't guess — check the config files.
 
-3. **Broadcast interface changes.** If your changes affect anything other agents
-   might depend on (types, exports, API endpoints, shared config), broadcast
-   before committing:
+3. **Confirm.** Read the full output. Check exit codes. Count failures. Only
+   claim "pass" with evidence on screen — never "should work" or "looks good."
 
-   ```
-   paw broadcast "Changed UserProfile.email to optional, added UserProfile.emailVerified"
-   ```
+### 2b. Fix
 
-4. **If anything fails**, fix the issue and re-run the full Verify phase. After
-   3 failed attempts, broadcast the problem so the orchestrator is aware.
+Read what failed. Fix the root cause, not the symptom. Go back to 2a.
+
+If you're stuck after several cycles, broadcast the problem so the orchestrator
+knows:
+
+```
+paw broadcast "Stuck on flaky test in auth module — intermittent timeout in login.test.ts"
+```
+
+### After the loop passes
+
+**Broadcast interface changes.** If your changes affect types, exports, API
+endpoints, or shared config that other agents depend on, broadcast before
+committing:
+
+```
+paw broadcast "Changed UserProfile.email to optional, added UserProfile.emailVerified"
+```
 
 ## Phase 3: Publish
 
-1. **Commit with a clear message.** Use conventional commit format
-   (see `paw guidelines commit-conventions`). Each commit should be a single
-   logical unit with passing tests.
+1. **Commit.** Use conventional commit format (see `paw guidelines
+   commit-conventions`). Each commit should be a single logical unit with
+   passing tests.
 
 2. **Push your branch.**
 
@@ -76,10 +112,9 @@ Review and validate before publishing. Retry up to 3 times if anything fails.
    git push -u origin HEAD
    ```
 
-3. **Create or update a PR.** Use `paw template pr-template` for the body structure.
-   Fill in issue references from your task's `issue:` field and specs from `spec:`.
-
-   Check if a PR already exists for this branch (e.g., from a prior review cycle):
+3. **Create or update a PR.** Use `paw template pr-template` for the body.
+   Fill in issue references from your task's `issue:` field and specs from
+   `spec:`.
 
    ```bash
    BRANCH=$(git branch --show-current)
@@ -107,15 +142,51 @@ Review and validate before publishing. Retry up to 3 times if anything fails.
    fi
    ```
 
-4. **Signal completion.** Run `paw review` to submit your task for review.
+4. **Reply to review findings (review issues ONLY).** If you're addressing
+   reviewer findings, read the reviewer's PR comment to see what was raised:
+
+   ```bash
+   BRANCH=$(git branch --show-current)
+   gh pr view "$BRANCH" --comments
+   ```
+
+   After fixing, reply on the PR addressing each finding so the next reviewer
+   can see what was done:
+
+   ```bash
+   gh pr comment "$BRANCH" --body "$(cat <<'EOF'
+   ## Review Response
+
+   | Finding | Resolution |
+   |---------|------------|
+   | CRITICAL/security src/api/users.ts:12 — SQL injection | Fixed: switched to parameterized query |
+   | MAJOR/testing src/auth/login.ts:45 — no expired-token test | Fixed: added test in login.test.ts:89 |
+   | MINOR/quality src/utils/helpers.ts:78 — console.log in prod | Fixed: removed |
+
+   ---
+   *Generated by paw builder agent*
+   EOF
+   )"
+   ```
+
+   List every finding. For each one:
+   - **Fixed:** describe the fix and where
+   - **Not applicable:** explain why
+
+   Don't skip findings. If the reviewer raised it, address it.
+
+5. **Signal completion.** Run `paw review` to submit your task for review.
+   This command blocks until the reviewer finishes. On PASS, your task is
+   marked done and the command exits 0. On FAIL, findings are printed to
+   stdout and the command exits 1 — fix the issues and start again from
+   the top with those findings.
 
 ## Principles
 
-- **Broadcast interface changes.** If you change a type, export, or API another task
-  depends on, `paw broadcast` before committing. This is the most important
+- **Broadcast interface changes.** If you change a type, export, or API another
+  task depends on, `paw broadcast` before committing. Most important
   coordination action.
-- **Ask when blocked.** If you need something from another task — a type definition,
-  an interface shape, a decision — don't guess. Use `paw ask <task> "..."` to direct
-  a question, then `paw inbox --all` to check when the answer arrives.
-- **Stay in your focus area.** Your task file lists which files you own. Edits outside
-  your focus cause merge conflicts.
+- **Send when blocked.** Need something from another task? Don't guess. Use
+  `paw send <task> "..."` and check `paw inbox --all` for the answer.
+- **Stay in your focus area.** Your task file lists which files you own. Edits
+  outside your focus cause merge conflicts.

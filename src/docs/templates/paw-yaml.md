@@ -1,5 +1,5 @@
 ---
-title: paw.yaml Template
+title: Paw YAML
 description: Annotated config structure for .paw/paw.yaml
 ---
 ```yaml

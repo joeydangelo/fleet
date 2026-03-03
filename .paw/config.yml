@@ -11,11 +11,16 @@
 # Configure with settings.doc_auto_sync_hours (0 = disabled).
 docs_cache:
   files:
+    guidelines/code-comments.md: internal:guidelines/code-comments.md
+    guidelines/code-quality.md: internal:guidelines/code-quality.md
     guidelines/commit-conventions.md: internal:guidelines/commit-conventions.md
-    guidelines/general-tdd-guidelines.md: internal:guidelines/general-tdd-guidelines.md
-    guidelines/general-testing-rules.md: internal:guidelines/general-testing-rules.md
+    guidelines/error-handling.md: internal:guidelines/error-handling.md
     guidelines/paw-task-decomposition.md: internal:guidelines/paw-task-decomposition.md
-    guidelines/typescript-testing-guidelines.md: internal:guidelines/typescript-testing-guidelines.md
+    guidelines/security-patterns.md: internal:guidelines/security-patterns.md
+    guidelines/test-driven-development.md: internal:guidelines/test-driven-development.md
+    guidelines/test-quality.md: internal:guidelines/test-quality.md
+    guidelines/testing-anti-patterns.md: internal:guidelines/testing-anti-patterns.md
+    guidelines/verify-completion.md: internal:guidelines/verify-completion.md
     shortcuts/build-task.md: internal:shortcuts/build-task.md
     shortcuts/from-github-issue.md: internal:shortcuts/from-github-issue.md
     shortcuts/from-issues.md: internal:shortcuts/from-issues.md

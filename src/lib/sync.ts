@@ -20,16 +20,17 @@ export interface TaskState {
   claimed?: string;
   doneAt?: string;
   focus?: string[];
+  reviewCycle?: number;
 }
 
-/** Exhaustive check: returns true for statuses where the task is complete or awaiting review. */
+/** Exhaustive check: returns true only for statuses where the task is fully complete. */
 export function isTerminalStatus(status: TaskState['status']): boolean {
   switch (status) {
     case 'done':
-    case 'in_review':
       return true;
     case 'pending':
     case 'in_progress':
+    case 'in_review':
       return false;
     default: {
       const exhaustive: never = status;
@@ -58,6 +59,8 @@ export interface SyncState {
   merges?: Record<string, MergeEntry>;
   /** Per-task timestamp of last message read, written by `paw prime`. */
   lastCheck?: Record<string, string>;
+  /** When true, `paw review` auto-completes without spawning a reviewer. Set by `paw go --no-review`. */
+  skipReview?: boolean;
 }
 
 function syncBranchExists(cwd?: string): boolean {
@@ -280,6 +283,7 @@ export function submitForReview(state: SyncState, taskName: string): SyncState {
       [taskName]: {
         ...task,
         status: 'in_review',
+        reviewCycle: (task.reviewCycle ?? 0) + 1,
       },
     },
   };

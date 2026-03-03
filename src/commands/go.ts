@@ -8,33 +8,22 @@ import { loadConfig, resolveConfigPath } from '../lib/config.js';
 import type { PawConfig } from '../lib/config.js';
 import { planWorktrees } from '../lib/session.js';
 import type { SyncState } from '../lib/sync.js';
-import {
-  readSyncState,
-  writeSyncState,
-  completeTask,
-  reopenTask,
-  writeSyncFile,
-  listSyncDir,
-  resolveSyncDir,
-  isTerminalStatus,
-} from '../lib/sync.js';
-import type { PawPaneConfig, AgentLivenessResult, TmuxServiceApi } from '../lib/tmux.js';
+import { readSyncState, writeSyncState } from '../lib/sync.js';
+import type { PawPaneConfig, AgentLivenessResult } from '../lib/tmux.js';
 import {
   createTmuxService,
   checkAgentLiveness,
   ensureTmuxInstalled,
   isInsideTmux,
   tmuxSessionName,
-  sendNudgeKeys,
 } from '../lib/tmux.js';
-import { readPaneConfig, resolvePaneTarget } from '../lib/pane-state.js';
-import { DEFAULT_POLL_INTERVAL, REVIEW_MAX_RETRIES } from '../lib/constants.js';
+import { readPaneConfig } from '../lib/pane-state.js';
+import { DEFAULT_POLL_INTERVAL } from '../lib/constants.js';
 import { isVerbose } from '../lib/context.js';
 import { handleError, colors, pending, skip } from '../lib/output.js';
 import { runWatchLoop } from './watch.js';
 import { runUp } from './up.js';
 import { runLaunch, printLaunchPreview } from './launch.js';
-import { reviewTask } from '../lib/reviewer.js';
 
 function formatElapsed(ms: number): string {
   const seconds = ms / 1000;
@@ -77,14 +66,14 @@ export function resolveSessionState(
 
   const tasks = Object.values(syncState.tasks);
   if (tasks.length === 0) return 'clean';
-  if (tasks.every((t) => isTerminalStatus(t.status))) return 'all-done';
+  if (tasks.every((t) => t.status === 'done')) return 'all-done';
 
   if (!paneConfig) return 'no-session';
   if (!liveness) return 'no-session';
 
   const notDone = liveness.filter((l) => {
     const status = syncState.tasks[l.taskName]?.status;
-    return !status || !isTerminalStatus(status);
+    return status !== 'done';
   });
   if (notDone.length === 0) return 'all-done';
   if (notDone.every((l) => l.alive)) return 'agents-running';
@@ -172,7 +161,15 @@ export async function runGo(opts: GoOpts): Promise<void> {
     if (verbose) console.log(colors.info(`⏰ launch: ${formatElapsed(Date.now() - phaseStart)}`));
   }
 
-  // --- Phase: watch (for no-session, agents-running, has-dead-agents) ---
+  // --- Phase: write --no-review flag to sync state ---
+  if (opts.noReview) {
+    const syncState = readSyncState(repoRoot);
+    if (syncState && !syncState.skipReview) {
+      writeSyncState({ ...syncState, skipReview: true }, repoRoot);
+    }
+  }
+
+  // --- Phase: watch ---
   if (state === 'no-session' || state === 'agents-running' || state === 'has-dead-agents') {
     console.log();
     await runWatchLoop({
@@ -189,167 +186,6 @@ export async function runGo(opts: GoOpts): Promise<void> {
       },
     });
     if (verbose) console.log(colors.info(`⏰ watch: ${formatElapsed(Date.now() - totalStart)}`));
-  }
-
-  // Phase: review
-  if (!opts.noReview) {
-    const worktrees = planWorktrees(config, repoRoot);
-    const paneConfig = readPaneConfig(repoRoot);
-    let tmux: TmuxServiceApi | null = null;
-    try {
-      tmux = createTmuxService();
-    } catch {
-      // tmux not available — skip review
-      console.log(pc.dim('tmux not available — skipping review phase.'));
-    }
-
-    if (tmux) {
-      for (let cycle = 0; cycle < REVIEW_MAX_RETRIES; cycle++) {
-        let syncState = readSyncState(repoRoot);
-        if (!syncState) break;
-
-        const reviewTasks = Object.entries(syncState.tasks).filter(
-          ([, t]) => t.status === 'in_review',
-        );
-        if (reviewTasks.length === 0) break;
-
-        console.log(pc.bold(`\npaw review (cycle ${cycle + 1})\n`));
-        let allPassed = true;
-
-        for (const [taskName] of reviewTasks) {
-          const wt = worktrees.find((w) => w.taskName === taskName);
-          if (!wt) continue;
-
-          // Resolve prior findings from sync branch
-          const safeBranch = wt.branch.replace(/[^a-zA-Z0-9-]/g, '-');
-          const priorFiles = listSyncDir('review', repoRoot).filter((f) =>
-            f.startsWith(`review/${safeBranch}-cycle-`),
-          );
-          let priorFindingsPaths: string[] | undefined;
-          if (priorFiles.length > 0) {
-            const syncDir = resolveSyncDir(repoRoot);
-            priorFindingsPaths = priorFiles.map((f) => resolve(syncDir, f));
-          }
-
-          console.log(pc.dim(`  Reviewing ${taskName}...`));
-          const result = await reviewTask(
-            tmux,
-            wt.branch,
-            config.target,
-            repoRoot,
-            {
-              onWarning: (elapsed) =>
-                console.log(pc.yellow(`  ⚠ ${taskName} reviewer still working (${elapsed})`)),
-              onNudge: (elapsed) =>
-                console.log(pc.yellow(`  📩 ${taskName} nudging reviewer to wrap up (${elapsed})`)),
-              onCapture: (_elapsed, path) =>
-                console.log(pc.dim(`  📋 ${taskName} reviewer capture saved: ${path}`)),
-              onTimeout: (elapsed) =>
-                console.log(pc.red(`  ⏱ ${taskName} reviewer timed out (${elapsed}) — skipping`)),
-            },
-            priorFindingsPaths,
-          );
-
-          // Persist findings to sync branch
-          const findingsPath = `review/${safeBranch}-cycle-${cycle + 1}.md`;
-          const findingsContent = [
-            `# Review: ${taskName} — cycle ${cycle + 1}`,
-            ``,
-            `**Verdict:** ${result.verdict.toUpperCase()}`,
-            `**Branch:** ${wt.branch}`,
-            `**Date:** ${new Date().toISOString()}`,
-            ``,
-            `## Findings`,
-            ``,
-            result.findings,
-            ``,
-          ].join('\n');
-          try {
-            writeSyncFile(findingsPath, findingsContent, repoRoot);
-          } catch (err: unknown) {
-            console.log(pc.dim(`  warning: failed to persist findings: ${String(err)}`));
-          }
-
-          if (result.verdict === 'pass' || result.verdict === 'skip') {
-            if (result.verdict === 'skip') {
-              skip(taskName, 'SKIP (review timed out)');
-            } else {
-              console.log(colors.success(`  ${taskName} -- PASS`));
-            }
-            syncState = completeTask(syncState, taskName);
-            writeSyncState(syncState, repoRoot);
-          } else {
-            console.log(colors.warn(`  ${taskName} -- FAIL`));
-            console.log(
-              pc.dim(
-                result.findings
-                  .split('\n')
-                  .map((l) => `    ${l}`)
-                  .join('\n'),
-              ),
-            );
-
-            syncState = reopenTask(syncState, taskName);
-            writeSyncState(syncState, repoRoot);
-            allPassed = false;
-
-            // Send findings back to builder agent via tmux
-            if (paneConfig) {
-              const target = resolvePaneTarget(paneConfig, taskName);
-              if (target) {
-                const msg =
-                  `Review FAIL for "${taskName}". Fix these findings, then run paw review again:\n` +
-                  result.findings;
-                sendNudgeKeys(tmux, target, msg).catch((err) => {
-                  if (isVerbose()) console.log(pc.dim(`  nudge delivery failed: ${err}`));
-                });
-              }
-            }
-          }
-        }
-
-        if (allPassed) break;
-
-        // Re-enter watch loop for agents to fix findings
-        console.log(pc.dim('\nWaiting for agents to address review findings...'));
-        await runWatchLoop({
-          repoRoot,
-          configPath,
-          interval: pollInterval,
-          noExit: false,
-          header: pc.dim('Watching for agents to re-submit after review...'),
-          onAbort: () => {
-            console.log(pc.dim('\nAborted.'));
-            process.exit(130);
-          },
-        });
-      }
-
-      // Mark any remaining in_review tasks as done (max retries exceeded)
-      const finalState = readSyncState(repoRoot);
-      if (finalState) {
-        let updated = finalState;
-        for (const [taskName, task] of Object.entries(finalState.tasks)) {
-          if (task.status === 'in_review') {
-            console.log(colors.warn(`  ${taskName} -- max review cycles reached, proceeding`));
-            updated = completeTask(updated, taskName);
-          }
-        }
-        if (updated !== finalState) writeSyncState(updated, repoRoot);
-      }
-    }
-  } else {
-    // --no-review: mark all in_review tasks as done immediately
-    const syncState = readSyncState(repoRoot);
-    if (syncState) {
-      let updated = syncState;
-      for (const [taskName, task] of Object.entries(syncState.tasks)) {
-        if (task.status === 'in_review') {
-          updated = completeTask(updated, taskName);
-        }
-      }
-      if (updated !== syncState) writeSyncState(updated, repoRoot);
-    }
   }
 
   // --- Phase: merge ---
@@ -454,8 +290,8 @@ function printDryRun(repoRoot: string, config: PawConfig, opts: GoOpts): void {
     console.log('Would relaunch dead agents and watch for completion.');
     for (const wt of targets) {
       const taskState = syncState?.tasks[wt.taskName];
-      if (taskState?.status === 'done' || taskState?.status === 'in_review') {
-        skip(wt.taskName, taskState.status === 'in_review' ? 'in review' : 'done');
+      if (taskState?.status === 'done') {
+        skip(wt.taskName, 'done');
       } else {
         pending(wt.taskName, 'would check liveness / relaunch if dead');
       }
@@ -463,19 +299,19 @@ function printDryRun(repoRoot: string, config: PawConfig, opts: GoOpts): void {
   }
 
   if (state === 'all-done') {
-    console.log('All agents done. Would proceed to review and merge.');
+    console.log('All agents done. Would proceed to merge.');
   }
 
   console.log();
-  if (!opts.noReview) console.log(pc.dim('→ Would review submitted PRs'));
   if (!opts.noMerge) console.log(pc.dim('→ Would merge completed branches'));
   if (!opts.noMerge && !opts.noTeardown) console.log(pc.dim('→ Would tear down worktrees'));
+  console.log(pc.dim(`\nLifecycle: up → launch → watch → merge → down`));
   console.log(pc.dim('\nDry run -- no changes made.'));
 }
 
 export function goCommand(): Command {
   return new Command('go')
-    .description('Run the full workflow: up → launch → watch → review → merge → down')
+    .description('Run the full workflow: up → launch → watch → merge → down')
     .option('-c, --config <path>', 'Path to .paw/paw.yaml')
     .option(
       '--poll-interval <seconds>',
@@ -484,7 +320,7 @@ export function goCommand(): Command {
     )
     .option('--detached', 'Force detached mode (background tmux sessions)')
     .option('-t, --task <name>', 'Spawn and watch a single task only')
-    .option('--no-review', 'Skip PR review phase')
+    .option('--no-review', 'Skip PR review phase (agents auto-complete on paw review)')
     .option('--no-merge', 'Stop after all agents done (inspect before merging)')
     .option('--no-teardown', 'Merge but keep worktrees (inspect after merging)')
     .option('--dry-run', 'Preview what would happen without executing')

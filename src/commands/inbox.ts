@@ -17,11 +17,11 @@ function hasThread(e: JournalEntry): e is ThreadedEntry {
 }
 
 export interface OpenThread {
-  ask: ThreadedEntry;
+  send: ThreadedEntry;
 }
 
 export interface ResolvedThread {
-  ask: ThreadedEntry;
+  send: ThreadedEntry;
   reply: ThreadedEntry;
 }
 
@@ -33,13 +33,13 @@ export interface ThreadResult {
 
 /**
  * Compute open threads, resolved threads, and broadcasts from journal entries.
- * Open: ask entries with a thread value that have no matching reply.
- * Resolved: ask entries with a matching reply (same thread value).
+ * Open: send entries with a thread value that have no matching reply.
+ * Resolved: send entries with a matching reply (same thread value).
  * Broadcasts: entries with type === 'broadcast'.
  * Entries without a thread field (other than broadcasts) are skipped.
  */
 export function computeThreads(entries: JournalEntry[]): ThreadResult {
-  const asks = entries.filter((e): e is ThreadedEntry => e.type === 'ask' && hasThread(e));
+  const sends = entries.filter((e): e is ThreadedEntry => e.type === 'send' && hasThread(e));
   const replyByThread = new Map<string, ThreadedEntry>();
   const broadcasts = entries.filter((e) => e.type === 'broadcast');
 
@@ -52,12 +52,12 @@ export function computeThreads(entries: JournalEntry[]): ThreadResult {
   const open: OpenThread[] = [];
   const resolved: ResolvedThread[] = [];
 
-  for (const ask of asks) {
-    const reply = replyByThread.get(ask.thread);
+  for (const send of sends) {
+    const reply = replyByThread.get(send.thread);
     if (reply) {
-      resolved.push({ ask, reply });
+      resolved.push({ send, reply });
     } else {
-      open.push({ ask });
+      open.push({ send });
     }
   }
 
@@ -122,12 +122,12 @@ export function inboxCommand(): Command {
         // Check for unanswered threads directed at this agent
         const allEntries = readJournal(cwd);
         const { open } = computeThreads(allEntries);
-        const unanswered = open.filter((t) => t.ask.to === taskName);
+        const unanswered = open.filter((t) => t.send.to === taskName);
         if (unanswered.length > 0) {
-          console.log(`[paw] ${unanswered.length} unanswered question(s):`);
-          for (const { ask } of unanswered) {
-            const id = ask.thread.slice(0, 4);
-            console.log(`  (${id}) ${ask.from} → ${ask.to}: "${ask.msg}"`);
+          console.log(`[paw] ${unanswered.length} unanswered message(s):`);
+          for (const { send } of unanswered) {
+            const id = send.thread.slice(0, 4);
+            console.log(`  (${id}) ${send.from} → ${send.to}: "${send.msg}"`);
           }
           console.log(`  Reply with: paw reply "your answer"\n`);
         }
@@ -164,9 +164,9 @@ function showAllThreads(): void {
     if (open.length > 0) {
       if (broadcasts.length > 0) console.log('');
       console.log(pc.bold('Open threads') + pc.dim(' (reply needed)'));
-      for (const { ask } of open) {
-        const id = ask.thread.slice(0, 4);
-        console.log(`  ${pc.dim(`(${id})`)} ${ask.from} → ${ask.to}  "${ask.msg}"`);
+      for (const { send } of open) {
+        const id = send.thread.slice(0, 4);
+        console.log(`  ${pc.dim(`(${id})`)} ${send.from} → ${send.to}  "${send.msg}"`);
       }
     }
 
@@ -176,9 +176,9 @@ function showAllThreads(): void {
     if (resolved.length > 0) {
       if (hasContent) console.log('');
       console.log(pc.bold('Resolved threads'));
-      for (const { ask, reply } of resolved) {
-        const id = ask.thread.slice(0, 4);
-        console.log(`  ${pc.dim(`(${id})`)} ${ask.from} → ${ask.to}  "${ask.msg}"`);
+      for (const { send, reply } of resolved) {
+        const id = send.thread.slice(0, 4);
+        console.log(`  ${pc.dim(`(${id})`)} ${send.from} → ${send.to}  "${send.msg}"`);
         console.log(`       └─ ${reply.from}: "${reply.msg}"`);
       }
     }

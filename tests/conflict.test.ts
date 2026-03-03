@@ -146,7 +146,7 @@ describe('generateConflictBrief', () => {
 
     // Write journal entries
     appendJournalEntry('auth', { type: 'broadcast', msg: 'Changed auth interface' }, repoDir);
-    appendJournalEntry('api', { type: 'ask', to: 'auth', msg: 'What token type?' }, repoDir);
+    appendJournalEntry('api', { type: 'send', to: 'auth', msg: 'What token type?' }, repoDir);
 
     // Create conflicting changes
     checkout(repoDir, config.target);

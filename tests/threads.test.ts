@@ -13,50 +13,50 @@ function entry(overrides: Partial<JournalEntry> & { thread?: string }): JournalE
 }
 
 describe('computeThreads', () => {
-  it('ask with no reply is open', () => {
+  it('send with no reply is open', () => {
     const entries = [
-      entry({ type: 'ask', from: 'orchestrator', to: 'api', msg: 'Ready?', thread: 'abc123' }),
+      entry({ type: 'send', from: 'orchestrator', to: 'api', msg: 'Ready?', thread: 'abc123' }),
     ];
     const { open, resolved, broadcasts } = computeThreads(entries);
 
     expect(open).toHaveLength(1);
-    expect(open[0]!.ask.msg).toBe('Ready?');
+    expect(open[0]!.send.msg).toBe('Ready?');
     expect(resolved).toHaveLength(0);
     expect(broadcasts).toHaveLength(0);
   });
 
-  it('ask with matching reply thread is resolved', () => {
+  it('send with matching reply thread is resolved', () => {
     const entries = [
-      entry({ type: 'ask', from: 'orchestrator', to: 'api', msg: 'Ready?', thread: 'abc123' }),
+      entry({ type: 'send', from: 'orchestrator', to: 'api', msg: 'Ready?', thread: 'abc123' }),
       entry({ type: 'reply', from: 'api', to: 'orchestrator', msg: 'Yes', thread: 'abc123' }),
     ];
     const { open, resolved } = computeThreads(entries);
 
     expect(open).toHaveLength(0);
     expect(resolved).toHaveLength(1);
-    expect(resolved[0]!.ask.msg).toBe('Ready?');
+    expect(resolved[0]!.send.msg).toBe('Ready?');
     expect(resolved[0]!.reply.msg).toBe('Yes');
   });
 
   it('--all scenario: includes both open and resolved', () => {
     const entries = [
-      entry({ type: 'ask', from: 'orchestrator', to: 'api', msg: 'Auth changed?', thread: 'th1' }),
+      entry({ type: 'send', from: 'orchestrator', to: 'api', msg: 'Auth changed?', thread: 'th1' }),
       entry({ type: 'reply', from: 'api', to: 'orchestrator', msg: 'Yes', thread: 'th1' }),
-      entry({ type: 'ask', from: 'orchestrator', to: 'db', msg: 'Schema ready?', thread: 'th2' }),
+      entry({ type: 'send', from: 'orchestrator', to: 'db', msg: 'Schema ready?', thread: 'th2' }),
     ];
     const { open, resolved } = computeThreads(entries);
 
     expect(open).toHaveLength(1);
-    expect(open[0]!.ask.to).toBe('db');
+    expect(open[0]!.send.to).toBe('db');
     expect(resolved).toHaveLength(1);
-    expect(resolved[0]!.ask.to).toBe('api');
+    expect(resolved[0]!.send.to).toBe('api');
   });
 
   it('broadcasts are collected separately from threads', () => {
     const entries = [
       entry({ type: 'broadcast', from: 'auth', msg: 'Changed AuthConfig interface' }),
       entry({ type: 'broadcast', from: 'api', msg: 'Added 3 new endpoints' }),
-      entry({ type: 'ask', from: 'orchestrator', to: 'api', msg: 'Ready?', thread: 'abc123' }),
+      entry({ type: 'send', from: 'orchestrator', to: 'api', msg: 'Ready?', thread: 'abc123' }),
     ];
     const { open, resolved, broadcasts } = computeThreads(entries);
 
@@ -69,7 +69,7 @@ describe('computeThreads', () => {
 
   it('entries without thread field are not shown as threads', () => {
     const entries = [
-      entry({ type: 'ask', from: 'orchestrator', to: 'api', msg: 'No thread field' }),
+      entry({ type: 'send', from: 'orchestrator', to: 'api', msg: 'No thread field' }),
       entry({ type: 'broadcast', from: 'api', msg: 'Some broadcast' }),
       entry({ type: 'reply', from: 'api', to: 'orchestrator', msg: 'No thread reply' }),
     ];

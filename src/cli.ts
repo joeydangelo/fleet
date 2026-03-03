@@ -104,9 +104,9 @@ Getting Started:
     const m = await import('./commands/broadcast.js');
     return m.broadcastCommand();
   });
-  lazy(program, 'ask', 'Send a directed message to a specific agent', async () => {
-    const m = await import('./commands/ask.js');
-    return m.askCommand();
+  lazy(program, 'send', 'Send a directed message to a specific agent', async () => {
+    const m = await import('./commands/send.js');
+    return m.sendCommand();
   });
   lazy(program, 'reply', 'Reply to the most recent directed message', async () => {
     const m = await import('./commands/reply.js');
@@ -132,7 +132,7 @@ Getting Started:
     const m = await import('./commands/watch.js');
     return m.watchCommand();
   });
-  lazy(program, 'go', 'Run the full workflow: up → launch → watch → merge → down', async () => {
+  lazy(program, 'go', 'Run the full lifecycle: up → launch → watch → merge → down', async () => {
     const m = await import('./commands/go.js');
     return m.goCommand();
   });

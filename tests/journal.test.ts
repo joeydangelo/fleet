@@ -52,13 +52,13 @@ describe('appendJournalEntry / readJournal', () => {
     expect(entries[0]!.to).toBeUndefined();
   });
 
-  it('round-trips a directed ask entry', () => {
-    appendJournalEntry('api', { type: 'ask', to: 'auth', msg: 'What token type?' }, repoDir);
+  it('round-trips a directed send entry', () => {
+    appendJournalEntry('api', { type: 'send', to: 'auth', msg: 'What token type?' }, repoDir);
 
     const entries = readJournal(repoDir);
     expect(entries).toHaveLength(1);
     expect(entries[0]!.from).toBe('api');
-    expect(entries[0]!.type).toBe('ask');
+    expect(entries[0]!.type).toBe('send');
     expect(entries[0]!.to).toBe('auth');
     expect(entries[0]!.msg).toBe('What token type?');
   });
@@ -161,7 +161,7 @@ describe('JournalEntry thread field', () => {
     const threadId = generateThreadId();
     appendJournalEntry(
       'api',
-      { type: 'ask', to: 'auth', msg: 'What type?', thread: threadId },
+      { type: 'send', to: 'auth', msg: 'What type?', thread: threadId },
       repoDir,
     );
 
@@ -198,8 +198,8 @@ describe('readJournalForTask', () => {
 
   it('returns broadcasts and messages directed at the task', () => {
     appendJournalEntry('auth', { type: 'broadcast', msg: 'Changed interface' }, repoDir);
-    appendJournalEntry('api', { type: 'ask', to: 'auth', msg: 'What type?' }, repoDir);
-    appendJournalEntry('dashboard', { type: 'ask', to: 'api', msg: 'Endpoint ready?' }, repoDir);
+    appendJournalEntry('api', { type: 'send', to: 'auth', msg: 'What type?' }, repoDir);
+    appendJournalEntry('dashboard', { type: 'send', to: 'api', msg: 'Endpoint ready?' }, repoDir);
 
     // auth should see: the broadcast (it's own but all broadcasts are shown),
     // and the ask directed at it
