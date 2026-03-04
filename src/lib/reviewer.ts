@@ -14,7 +14,6 @@
  * time-based rather than heartbeat-based.
  */
 
-import { execFileSync } from 'node:child_process';
 import { resolve } from 'node:path';
 import { mkdirSync, existsSync, readFileSync, rmSync } from 'node:fs';
 import { writeFileSync } from 'atomically';
@@ -99,7 +98,7 @@ function buildReviewerCommand(): string {
     'Bash(paw template*)',
     'Bash(git diff*)',
     'Bash(git log*)',
-    'Bash(gh pr *)',
+    'Bash(git show paw-sync:*)',
     'Bash(node -e *)',
   ].join(',');
 
@@ -127,6 +126,7 @@ function buildReviewPrompt(
   targetBranch: string,
   verdictPath: string,
   taskFilePath?: string,
+  reviewFilePath?: string,
 ): string {
   const steps = [`You are reviewing task branch "${taskBranch}" against "${targetBranch}".`, ''];
 
@@ -142,15 +142,14 @@ function buildReviewPrompt(
 
   steps.push(
     'STEP 1: Run `paw shortcut review-pr` and read the review instructions.',
-    'STEP 2: Read the PR by running: gh pr view ' + taskBranch + ' --json title,body,labels',
-    'STEP 3: Check CI by running: gh pr checks ' +
-      taskBranch +
-      ' — if checks are failing, skip the review and write a FAIL verdict immediately with the failing check as a CRITICAL/testing issue.',
-    'STEP 4: Get the diff by running: git diff ' + targetBranch + '...' + taskBranch,
-    'STEP 5: Load relevant guidelines as instructed by the review-pr shortcut.',
-    'STEP 6: Perform the review and compile findings.',
-    'STEP 7: Determine your verdict (PASS or FAIL).',
-    'STEP 8: Write the verdict file by running a Bash command like this:',
+    'STEP 2: Read the review file: git show paw-sync:' +
+      (reviewFilePath ?? `review/${taskBranch.replace(/[^a-zA-Z0-9-]/g, '-')}.md`) +
+      ' — this contains the builder summary, and on cycle 2+ also contains prior findings and fixes.',
+    'STEP 3: Get the diff by running: git diff ' + targetBranch + '...' + taskBranch,
+    'STEP 4: Load relevant guidelines as instructed by the review-pr shortcut.',
+    'STEP 5: Perform the review and compile findings.',
+    'STEP 6: Determine your verdict (PASS or FAIL).',
+    'STEP 7: Write the verdict file by running a Bash command like this:',
     `node -e "require('fs').writeFileSync('${escapedPath}', JSON.stringify({ verdict: 'PASS_OR_FAIL', strengths: 'what was done well', issues: 'CRITICAL/MAJOR/MINOR findings', suggestions: 'optional non-blocking observations' }))"`,
     'Replace the placeholder values with your actual review content. The JSON keys are: verdict (PASS or FAIL), strengths (brief), issues (all findings in severity/category file:line format), suggestions (optional, omit if none).',
     'This file write is MANDATORY — it signals completion to the orchestrator.',
@@ -193,17 +192,7 @@ function saveCapture(repoRoot: string, taskBranch: string, content: string): str
 
 /** Kill any orphaned reviewer tmux sessions (paw-review-*). Used by paw down. */
 export function killReviewerSessions(tmux: TmuxServiceApi): void {
-  let sessions: string[];
-  try {
-    const raw = execFileSync('tmux', ['list-sessions', '-F', '#{session_name}'], {
-      encoding: 'utf-8',
-      timeout: 5_000,
-    });
-    sessions = raw.trim().split('\n').filter(Boolean);
-  } catch {
-    // tmux not running — no sessions to clean up
-    return;
-  }
+  const sessions = tmux.listSessions();
 
   for (const name of sessions) {
     if (name.startsWith(REVIEW_SESSION_PREFIX)) {
@@ -236,6 +225,7 @@ export async function reviewTask(
   repoRoot: string,
   callbacks?: ReviewCallbacks,
   taskFilePath?: string,
+  reviewFilePath?: string,
 ): Promise<ReviewResult> {
   const sessionName = `${REVIEW_SESSION_PREFIX}${taskBranch.replace(/[^a-zA-Z0-9-]/g, '-')}`;
   const vPath = verdictFilePath(repoRoot, taskBranch);
@@ -274,7 +264,10 @@ export async function reviewTask(
     await new Promise((r) => setTimeout(r, 2_000));
 
     // Send the review prompt
-    tmux.sendKeys(sessionName, buildReviewPrompt(taskBranch, targetBranch, vPath, taskFilePath));
+    tmux.sendKeys(
+      sessionName,
+      buildReviewPrompt(taskBranch, targetBranch, vPath, taskFilePath, reviewFilePath),
+    );
 
     // Follow-up empty Enters to dismiss trust/permission dialogs (same as sendBeacon)
     for (const delay of BEACON_FOLLOWUP_DELAYS) {

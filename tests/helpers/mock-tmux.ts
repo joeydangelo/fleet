@@ -126,5 +126,9 @@ export function createMockTmux(opts: MockTmuxOptions = {}): MockTmuxService {
     attachSession(sessionName: string) {
       calls.push({ method: 'attachSession', args: [sessionName] });
     },
+    listSessions() {
+      calls.push({ method: 'listSessions', args: [] });
+      return [...sessions];
+    },
   };
 }

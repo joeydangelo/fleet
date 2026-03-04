@@ -110,6 +110,8 @@ export interface TmuxServiceApi {
   hasAttachedClient(sessionName: string): boolean;
   switchClient(sessionName: string): void;
   attachSession(sessionName: string): void;
+  /** List all tmux session names. Returns empty array if tmux is not running. */
+  listSessions(): string[];
   /** Capture visible pane content. Returns null if capture fails or content is empty. */
   capturePaneContent(sessionOrPane: string, lines?: number): string | null;
 }
@@ -321,6 +323,15 @@ export class TmuxService implements TmuxServiceApi {
     execFileSync('tmux', ['attach-session', '-t', sessionName], {
       stdio: 'inherit',
     });
+  }
+
+  listSessions(): string[] {
+    try {
+      const output = this.exec(['list-sessions', '-F', '#{session_name}']);
+      return output.split('\n').filter(Boolean);
+    } catch {
+      return [];
+    }
   }
 
   capturePaneContent(sessionOrPane: string, lines = 50): string | null {

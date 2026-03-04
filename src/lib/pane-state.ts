@@ -1,7 +1,8 @@
 import { existsSync, readFileSync, mkdirSync } from 'node:fs';
-import { resolve, dirname } from 'node:path';
+import { resolve, dirname, basename } from 'node:path';
 import { writeFileSync } from 'atomically';
 import type { PawPaneConfig, PawPane, DetachedAgent, TmuxServiceApi } from './tmux.js';
+import { tmuxSessionName } from './tmux.js';
 import { ORCHESTRATOR_ROLE } from './constants.js';
 
 const PANES_FILE = 'panes.json';
@@ -115,6 +116,32 @@ export function killDetachedAgents(tmux: TmuxServiceApi, repoRoot: string): void
     detached: [],
     lastUpdated: new Date().toISOString(),
   });
+}
+
+/**
+ * Kill tmux sessions matching this repo's prefix that aren't tracked in panes.json.
+ * Catches orphans left behind when paw.yaml tasks change between runs.
+ */
+export function killOrphanedAgentSessions(tmux: TmuxServiceApi, repoRoot: string): void {
+  const prefix = tmuxSessionName(basename(repoRoot));
+  const agentPrefix = `${prefix}-`;
+
+  const allSessions = tmux.listSessions();
+  if (allSessions.length === 0) return;
+
+  const config = readPaneConfig(repoRoot);
+  const tracked = new Set<string>();
+  if (config?.detached) {
+    for (const agent of config.detached) {
+      tracked.add(agent.sessionName);
+    }
+  }
+
+  for (const name of allSessions) {
+    if (name.startsWith(agentPrefix) && !tracked.has(name)) {
+      tmux.killSession(name);
+    }
+  }
 }
 
 /**

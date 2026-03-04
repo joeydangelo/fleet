@@ -10,7 +10,7 @@ import { removeSyncWorktree, archiveSession } from '../lib/sync.js';
 import { SYNC_BRANCH } from '../lib/constants.js';
 import { readDoc } from '../lib/docs.js';
 import { createTmuxService } from '../lib/tmux.js';
-import { killPanes, killDetachedAgents } from '../lib/pane-state.js';
+import { killPanes, killDetachedAgents, killOrphanedAgentSessions } from '../lib/pane-state.js';
 import { killReviewerSessions } from '../lib/reviewer.js';
 import {
   success,
@@ -83,6 +83,7 @@ export function downCommand(): Command {
           const tmux = createTmuxService();
           killPanes(tmux, repoRoot);
           killDetachedAgents(tmux, repoRoot);
+          killOrphanedAgentSessions(tmux, repoRoot);
           killReviewerSessions(tmux);
         } catch {
           // tmux may not be available (e.g. running outside WSL)

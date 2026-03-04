@@ -8,8 +8,11 @@ import {
   restorePanes,
   killPanes,
   killDetachedAgents,
+  killOrphanedAgentSessions,
 } from '../src/lib/pane-state.js';
 import type { PawPane, PawPaneConfig, DetachedAgent } from '../src/lib/tmux.js';
+import { basename } from 'node:path';
+import { tmuxSessionName } from '../src/lib/tmux.js';
 import { makeTempDir } from './helpers/temp.js';
 import { createMockTmux } from './helpers/mock-tmux.js';
 
@@ -438,6 +441,80 @@ describe('pane-state: killDetachedAgents', () => {
   it('does nothing when no panes.json exists', () => {
     const mock = createMockTmux();
     killDetachedAgents(mock, tempDir);
+
+    const killCalls = mock.calls.filter((c) => c.method === 'killSession');
+    expect(killCalls).toHaveLength(0);
+  });
+});
+
+describe('pane-state: killOrphanedAgentSessions', () => {
+  let tempDir: string;
+  let sessionPrefix: string;
+
+  beforeEach(() => {
+    tempDir = makeTempDir({ withPawDir: true });
+    sessionPrefix = tmuxSessionName(basename(tempDir));
+  });
+
+  afterEach(() => {
+    rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  it('kills untracked sessions matching the repo prefix but preserves tracked ones', () => {
+    const tracked: DetachedAgent[] = [
+      {
+        id: 'paw-1',
+        sessionName: `${sessionPrefix}-auth`,
+        taskName: 'auth',
+        worktreePath: '/tmp/wt-auth',
+        agent: 'claude',
+        branchName: '',
+      },
+    ];
+    saveDetachedAgents(tempDir, sessionPrefix, tracked);
+
+    const mock = createMockTmux();
+    mock.createSession(`${sessionPrefix}-auth`, '/tmp');
+    mock.createSession(`${sessionPrefix}-old-task`, '/tmp');
+    mock.createSession(`${sessionPrefix}-removed`, '/tmp');
+    mock.createSession('unrelated-session', '/tmp');
+    mock.calls.length = 0;
+
+    killOrphanedAgentSessions(mock, tempDir);
+
+    const killed = mock.calls.filter((c) => c.method === 'killSession').map((c) => c.args[0]);
+    expect(killed).toContain(`${sessionPrefix}-old-task`);
+    expect(killed).toContain(`${sessionPrefix}-removed`);
+    expect(killed).not.toContain(`${sessionPrefix}-auth`);
+    expect(killed).not.toContain('unrelated-session');
+  });
+
+  it('does not kill the base session itself (requires dash separator)', () => {
+    const mock = createMockTmux();
+    mock.createSession(sessionPrefix, '/tmp');
+    mock.calls.length = 0;
+
+    killOrphanedAgentSessions(mock, tempDir);
+
+    const killCalls = mock.calls.filter((c) => c.method === 'killSession');
+    expect(killCalls).toHaveLength(0);
+  });
+
+  it('kills all matching sessions when no panes.json exists', () => {
+    const mock = createMockTmux();
+    mock.createSession(`${sessionPrefix}-orphan1`, '/tmp');
+    mock.createSession(`${sessionPrefix}-orphan2`, '/tmp');
+    mock.calls.length = 0;
+
+    killOrphanedAgentSessions(mock, tempDir);
+
+    const killCalls = mock.calls.filter((c) => c.method === 'killSession');
+    expect(killCalls).toHaveLength(2);
+  });
+
+  it('handles empty tmux session list gracefully', () => {
+    const mock = createMockTmux();
+    killOrphanedAgentSessions(mock, tempDir);
 
     const killCalls = mock.calls.filter((c) => c.method === 'killSession');
     expect(killCalls).toHaveLength(0);
