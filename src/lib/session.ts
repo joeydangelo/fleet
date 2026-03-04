@@ -62,7 +62,7 @@ export function generateTaskFile(config: PawConfig, worktreeInfo: WorktreeInfo):
     `**Target:** ${config.target}`,
     `**Worktree:** ${worktreeInfo.worktreePath}`,
     ...(task.issue ? [`**Issue:** ${task.issue}`] : []),
-    ...(task.spec ? [`**Spec:** ${task.spec}`] : []),
+    ...(config.spec ? [`**Spec:** ${config.spec}`] : []),
     ...(task.depends_on ? [`**Depends on:** ${normalizeDeps(task.depends_on).join(', ')}`] : []),
     ``,
     `## Focus`,

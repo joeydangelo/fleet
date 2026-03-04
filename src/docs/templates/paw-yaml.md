@@ -18,6 +18,9 @@ target: feature/my-feature
 # The agent command to run in each worktree terminal. Required for `paw launch`.
 agent: claude
 
+# Path to the planning spec for this session.
+# spec: .paw/specs/spec-2026-03-04-my-feature.md
+
 # Files to copy from the main repo into each worktree during `paw up`.
 # Useful for gitignored files like .env, local configs, and credentials that
 # git worktree add doesn't bring along. Supports glob patterns.
@@ -45,12 +48,6 @@ tasks:
     # Bridge shortcuts like from-issues and from-github-issue populate this.
     # to-pr uses it to reference issues in the PR body.
     issue: GH#123                      # any tracker ID format works
-
-    # Optional: link this task to a planning spec.
-    # from-github-issue and generate-paw-yaml populate this when working from specs.
-    # When set, the spec path appears in the agent's task file header so the agent
-    # knows where to find it.
-    spec: <path>
 
     # Optional: declare merge-order dependencies. When this task depends_on
     # another, `paw merge` processes the dependency first so shared interfaces

@@ -8,7 +8,6 @@ const TaskSchema = z.object({
   focus: z.union([z.string(), z.array(z.string())]),
   prompt: z.string().optional(),
   issue: z.string().optional(),
-  spec: z.string().optional(),
   depends_on: z.union([z.string(), z.array(z.string())]).optional(),
 });
 
@@ -16,6 +15,7 @@ const PawConfigSchema = z.object({
   base: z.string().default('main'),
   target: z.string(),
   agent: z.string().optional(),
+  spec: z.string().optional(),
   include: z.array(z.string()).optional(),
   tasks: z.record(z.string(), TaskSchema),
 });

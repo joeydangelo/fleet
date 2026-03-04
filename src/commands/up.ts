@@ -1,6 +1,6 @@
 import { Command } from 'commander';
-import { cpSync, existsSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { cpSync, existsSync, readFileSync } from 'node:fs';
+import { resolve, basename } from 'node:path';
 import pc from 'picocolors';
 import { loadRepoConfig } from '../lib/config.js';
 import type { PawConfig } from '../lib/config.js';
@@ -47,7 +47,19 @@ export async function runUp(
     focusMap[name] = Array.isArray(task.focus) ? task.focus : [task.focus];
   }
   const syncState = initSyncState(config.target, taskNames, configPath, focusMap);
-  writeSyncStateAndFiles(syncState, [{ path: 'inbox/.gitkeep', content: '' }], repoRoot);
+  const syncFiles: Array<{ path: string; content: string }> = [
+    { path: 'inbox/.gitkeep', content: '' },
+  ];
+
+  if (config.spec) {
+    const specPath = resolve(repoRoot, config.spec);
+    if (existsSync(specPath)) {
+      const content = readFileSync(specPath, 'utf-8');
+      syncFiles.push({ path: `specs/${basename(specPath)}`, content });
+    }
+  }
+
+  writeSyncStateAndFiles(syncState, syncFiles, repoRoot);
 
   for (const wt of worktrees) {
     success(wt.taskName, wt.worktreePath);

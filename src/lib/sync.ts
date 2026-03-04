@@ -375,7 +375,7 @@ export function archiveSession(repoRoot: string, target: string): string | null 
 
   copyFileSync(stateFile, resolve(archiveDir, 'state.json'));
 
-  for (const dir of ['inbox', 'review', 'conflicts']) {
+  for (const dir of ['inbox', 'review', 'conflicts', 'specs']) {
     const src = resolve(syncDir, dir);
     if (existsSync(src)) {
       cpSync(src, resolve(archiveDir, dir), { recursive: true });

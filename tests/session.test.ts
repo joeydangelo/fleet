@@ -136,12 +136,10 @@ describe('generateTaskFile', () => {
     expect(result).not.toContain('**Issue:**');
   });
 
-  it('includes spec path in header when spec field is set', () => {
+  it('includes spec path in header when top-level spec is set', () => {
     const config: PawConfig = {
       ...baseConfig,
-      tasks: {
-        auth: { focus: 'src/auth/', spec: 'docs/project/specs/active/plan-auth.md' },
-      },
+      spec: '.paw/specs/spec-2026-03-04-auth.md',
     };
     const worktree = {
       taskName: 'auth',
@@ -151,10 +149,10 @@ describe('generateTaskFile', () => {
 
     const result = generateTaskFile(config, worktree);
 
-    expect(result).toContain('**Spec:** docs/project/specs/active/plan-auth.md');
+    expect(result).toContain('**Spec:** .paw/specs/spec-2026-03-04-auth.md');
   });
 
-  it('omits spec line when spec field is not set', () => {
+  it('omits spec line when no spec is set', () => {
     const worktree = {
       taskName: 'auth',
       branch: 'feature/dashboard-auth',

@@ -12,11 +12,11 @@ Ask these questions first — before analyzing the codebase or writing the yaml.
 
 Ask only what you can't infer from context:
 
-**1. Spec or issue link** (if not provided)
-> Is there a spec file or issue IDs to link to these tasks?
-> If yes, what's the path or ID? Goes into the `spec:` and `issue:` fields.
+**1. Issue link** (if not provided)
+> Are there issue IDs to link to these tasks?
+> If yes, what's the ID? Goes into the `issue:` field on each task.
 
-Skip if: already in the user's message.
+Skip if: already in the user's message, or if working from a spec.
 
 Use the `AskUserQuestion` tool to ask.
 
@@ -58,13 +58,13 @@ From the request, codebase, and `paw guidelines paw-task-decomposition`:
      This ensures shared types and interfaces exist on the target branch
      before dependent code merges in, reducing avoidable merge conflicts.
 
-5. **Link tasks to sources.** If tasks originate from issues or specs, set the
-   optional `issue` and `spec` fields on each task:
+5. **Link tasks to sources.** If tasks originate from issues, set the optional
+   `issue` field on each task:
    - `issue`: the tracker ID (e.g., `GH#123`). Any tracker ID format works. Set this
      when generating from `paw shortcut from-issues` or `from-github-issue`.
-   - `spec`: path to the planning spec (e.g.,
-     `docs/project/specs/active/plan-auth.md`). Set this when generating from a
-     spec or feature plan.
+
+   If a spec exists in `.paw/specs/`, set the top-level `spec:` field on the
+   config to the spec path.
 
    These fields are optional. When present, `paw shortcut to-pr` uses them to
    reference issues in the PR body.
@@ -84,6 +84,7 @@ From the request, codebase, and `paw guidelines paw-task-decomposition`:
    target: feature/branch-name
    # base: main                  # branch to create target from (default: main)
    agent: claude
+   # spec: .paw/specs/spec-YYYY-MM-DD-feature-name.md  # path to planning spec
 
    # include:                     # gitignored files to copy into each worktree
    #   - .env
@@ -95,7 +96,6 @@ From the request, codebase, and `paw guidelines paw-task-decomposition`:
          - src/relevant/directory/
        depends_on: other-task      # optional: merge after this task
        issue: GH#123              # optional: source issue ID
-       spec: docs/specs/plan.md   # optional: source spec path
        prompt: |
          What to build. Be specific.
          Mention interfaces shared with other tasks.
