@@ -53,12 +53,6 @@ function getVersion(): string {
   }
 }
 
-function loadSkillContent(): string | null {
-  const doc = readDoc('templates', 'skill');
-  if (!doc) return null;
-  return stripFrontmatter(doc.content);
-}
-
 function loadOrchestratorBriefContent(): string | null {
   const doc = readDoc('templates', 'orchestrator-brief');
   if (!doc) return null;
@@ -149,17 +143,11 @@ function printOrchestratorDashboard(repoRoot: string): void {
       console.log('No active session');
       console.log(pc.dim('  Run `paw shortcut generate-paw-yaml` to plan a session'));
     } else {
-      console.log('Session configured (.paw/paw.yaml found) — run `paw up` to start');
+      console.log('Session configured (.paw/paw.yaml found) — run `paw go` to start');
     }
   } else {
     console.log('No active session (.paw/paw.yaml not found)');
     console.log(pc.dim('  Run `paw shortcut generate-paw-yaml` to plan a session'));
-  }
-
-  const skillContent = loadSkillContent();
-  if (skillContent) {
-    console.log('');
-    console.log(skillContent);
   }
 }
 
@@ -373,15 +361,6 @@ function printFull(
     }
   }
 
-  console.log(pc.dim('── Workflow ──'));
-  console.log(pc.dim('1. Follow `paw shortcut build-task` for Build/Verify/Publish workflow'));
-  console.log(pc.dim('2. Run `paw broadcast "..."` when you change shared interfaces'));
-  console.log(pc.dim('3. Run `paw inbox --all` to see open Q&A threads'));
-  console.log(pc.dim('4. Push, create PR, then `paw review` when finished'));
-
-  const skillContent = loadSkillContent();
-  if (skillContent) {
-    console.log('');
-    console.log(skillContent);
-  }
+  console.log('');
+  console.log(pc.bold('→ Run `paw shortcut build-task` to start.'));
 }

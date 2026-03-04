@@ -217,7 +217,7 @@ describe('generateTaskFile', () => {
     expect(result).not.toContain('**Depends on:**');
   });
 
-  it('includes collaboration rules section', () => {
+  it('includes workflow directive pointing to build-task shortcut', () => {
     const worktree = {
       taskName: 'auth',
       branch: 'feature/dashboard-auth',
@@ -226,29 +226,24 @@ describe('generateTaskFile', () => {
 
     const result = generateTaskFile(baseConfig, worktree);
 
-    expect(result).toContain('## Collaboration Rules');
-    expect(result).toContain('paw broadcast');
-    expect(result).toContain('paw inbox --all');
-    expect(result).toContain('Stay within your focus areas');
-  });
-
-  it('includes publish instructions section', () => {
-    const worktree = {
-      taskName: 'auth',
-      branch: 'feature/dashboard-auth',
-      worktreePath: '/projects/acme-app-paw-auth',
-    };
-
-    const result = generateTaskFile(baseConfig, worktree);
-
-    expect(result).toContain("## When You're Done");
+    expect(result).toContain('## Workflow');
     expect(result).toContain('paw shortcut build-task');
-    expect(result).toContain('git push -u origin HEAD');
-    expect(result).toContain('Create or update a PR');
-    expect(result).toContain('paw review');
   });
 
-  it('places collaboration rules and publish instructions after instructions', () => {
+  it('does not include inline collaboration or publish rules', () => {
+    const worktree = {
+      taskName: 'auth',
+      branch: 'feature/dashboard-auth',
+      worktreePath: '/projects/acme-app-paw-auth',
+    };
+
+    const result = generateTaskFile(baseConfig, worktree);
+
+    expect(result).not.toContain('## Collaboration Rules');
+    expect(result).not.toContain("## When You're Done");
+  });
+
+  it('places workflow directive after instructions', () => {
     const config: PawConfig = {
       ...baseConfig,
       tasks: {
@@ -264,11 +259,9 @@ describe('generateTaskFile', () => {
     const result = generateTaskFile(config, worktree);
 
     const instructionsPos = result.indexOf('## Instructions');
-    const collabPos = result.indexOf('## Collaboration Rules');
-    const summaryPos = result.indexOf("## When You're Done");
+    const workflowPos = result.indexOf('## Workflow');
 
-    expect(instructionsPos).toBeLessThan(collabPos);
-    expect(collabPos).toBeLessThan(summaryPos);
+    expect(instructionsPos).toBeLessThan(workflowPos);
   });
 
   it('throws on unknown task name', () => {

@@ -118,8 +118,8 @@ function buildReviewerCommand(): string {
 
 /**
  * Build the review prompt sent via send-keys after the session starts.
- * Tells the reviewer to load `paw shortcut review-pr`, follow its instructions,
- * and write a verdict JSON file when finished (out-of-band signaling).
+ * Three concerns only: context, workflow pointer, verdict signaling.
+ * The actual review process is defined in `paw shortcut review-pr`.
  */
 function buildReviewPrompt(
   taskBranch: string,
@@ -128,34 +128,28 @@ function buildReviewPrompt(
   taskFilePath?: string,
   reviewFilePath?: string,
 ): string {
-  const steps = [`You are reviewing task branch "${taskBranch}" against "${targetBranch}".`, ''];
+  const escapedPath = verdictPath.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+  const reviewFile = reviewFilePath ?? `review/${taskBranch.replace(/[^a-zA-Z0-9-]/g, '-')}.md`;
+
+  const lines = [`You are reviewing task branch "${taskBranch}" against "${targetBranch}".`, ''];
 
   if (taskFilePath) {
-    steps.push(
-      'TASK CONTEXT: Read the task assignment file to understand what this branch is supposed to do:',
-      `  - ${taskFilePath}`,
-      '',
-    );
+    lines.push(`TASK FILE: ${taskFilePath}`);
   }
-
-  const escapedPath = verdictPath.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-
-  steps.push(
-    'STEP 1: Run `paw shortcut review-pr` and read the review instructions.',
-    'STEP 2: Read the review file: git show paw-sync:' +
-      (reviewFilePath ?? `review/${taskBranch.replace(/[^a-zA-Z0-9-]/g, '-')}.md`) +
-      ' — this contains the builder summary, and on cycle 2+ also contains prior findings and fixes.',
-    'STEP 3: Get the diff by running: git diff ' + targetBranch + '...' + taskBranch,
-    'STEP 4: Load relevant guidelines as instructed by the review-pr shortcut.',
-    'STEP 5: Perform the review and compile findings.',
-    'STEP 6: Determine your verdict (PASS or FAIL).',
-    'STEP 7: Write the verdict file by running a Bash command like this:',
+  lines.push(`REVIEW FILE: git show paw-sync:${reviewFile}`);
+  lines.push(`DIFF: git diff ${targetBranch}...${taskBranch}`);
+  lines.push('');
+  lines.push('Run `paw shortcut review-pr` and follow its instructions.');
+  lines.push('');
+  lines.push('WHEN DONE: Write the verdict file — this is MANDATORY and must be your last action:');
+  lines.push(
     `node -e "require('fs').writeFileSync('${escapedPath}', JSON.stringify({ verdict: 'PASS_OR_FAIL', strengths: 'what was done well', issues: 'CRITICAL/MAJOR/MINOR findings', suggestions: 'optional non-blocking observations' }))"`,
-    'Replace the placeholder values with your actual review content. The JSON keys are: verdict (PASS or FAIL), strengths (brief), issues (all findings in severity/category file:line format), suggestions (optional, omit if none).',
-    'This file write is MANDATORY — it signals completion to the orchestrator.',
+  );
+  lines.push(
+    'Replace placeholders with your actual review. Keys: verdict (PASS or FAIL), strengths (brief), issues (all findings), suggestions (optional).',
   );
 
-  return steps.join(' ');
+  return lines.join(' ');
 }
 
 /** Build the nudge message sent when the reviewer is taking too long. */

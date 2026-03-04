@@ -43,23 +43,9 @@ export function createSession(config: PawConfig, repoRoot: string): WorktreeInfo
   return worktrees;
 }
 
-const COLLABORATION_RULES = `## Collaboration Rules
+const WORKFLOW_DIRECTIVE = `## Workflow
 
-- Run \`paw broadcast "..."\` when you make significant changes, especially
-  interface changes that affect other agents.
-- Run \`paw inbox --all\` to see open Q&A threads and answer directed questions.
-- Stay within your focus areas. If you need to modify files outside your
-  focus, broadcast first.`;
-
-const PUBLISH_INSTRUCTIONS = `## When You're Done
-
-Follow \`paw shortcut build-task\` for the full Build/Verify/Publish workflow.
-After verifying your changes:
-
-1. Commit with conventional format (\`paw guidelines commit-conventions\`)
-2. \`git push -u origin HEAD\`
-3. Create or update a PR using \`paw template pr-template\` for the body structure
-4. \`paw review\` to submit for review`;
+Run \`paw shortcut build-task\` — it covers the full Build → Verify → Publish cycle.`;
 
 /** Build the markdown task assignment (focus, prompt, collaboration rules) for an agent. */
 export function generateTaskFile(config: PawConfig, worktreeInfo: WorktreeInfo): string {
@@ -88,7 +74,7 @@ export function generateTaskFile(config: PawConfig, worktreeInfo: WorktreeInfo):
     lines.push(``, `## Instructions`, ``, task.prompt.trimEnd());
   }
 
-  lines.push(``, COLLABORATION_RULES, ``, PUBLISH_INSTRUCTIONS);
+  lines.push(``, WORKFLOW_DIRECTIVE);
 
   return lines.join('\n') + '\n';
 }

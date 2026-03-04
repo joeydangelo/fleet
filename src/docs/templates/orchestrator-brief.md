@@ -11,16 +11,10 @@ Run `paw prime` to restore full session context.
 ## Commands
 
 ```bash
-paw go                     # Full lifecycle: up → launch → watch → review → merge → down
-paw status                 # Check progress across all tasks
-paw merge                  # Merge completed branches (--continue after conflict)
-paw down                   # Archive session, remove worktrees
+paw shortcut generate-paw-yaml  # Plan parallel work, then paw go
+paw go                          # Full lifecycle: up → launch → watch → review → merge → down
+paw status                      # Check progress across all tasks
+paw merge --continue            # Resume after conflict resolution
+paw shortcut to-pr              # Create PR from merged work
+paw down                        # Archive session, remove worktrees
 ```
-
-## Quick Actions
-
-| Situation | Action |
-|---|---|
-| Need to plan parallel work | `paw shortcut generate-paw-yaml` then `paw go` |
-| Merge conflict occurred | `paw shortcut resolve-merge-conflict` |
-| Work done, want a PR | `paw shortcut to-pr` |

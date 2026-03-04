@@ -11,16 +11,9 @@ Run `paw prime` to restore full session context.
 ## Commands
 
 ```bash
+paw shortcut build-task    # Full Build → Verify → Publish workflow
 paw broadcast "..."        # Announce a change to all agents
 paw send <task> "..."      # Send a directed message to another agent
 paw reply "..."            # Reply to the most recent message
-paw review                 # Submit task for review (push + PR first)
+paw review                 # Submit task for review (commit + summary first)
 ```
-
-## Quick Actions
-
-| Situation | Action |
-|---|---|
-| Starting implementation | `paw shortcut build-task` |
-| Changed shared interfaces | `paw broadcast "..."` |
-| Task is complete | Push, create PR, then `paw review` |
