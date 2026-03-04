@@ -5,7 +5,7 @@ import { getCommitCount, getChangedFileCount } from '../lib/git.js';
 import { loadRepoConfig } from '../lib/config.js';
 import { planWorktrees } from '../lib/session.js';
 import { readSyncState } from '../lib/sync.js';
-import { readJournal } from '../lib/journal.js';
+import { readMessages } from '../lib/messages.js';
 import { readPaneConfig } from '../lib/pane-state.js';
 import {
   checkAgentLiveness,
@@ -76,9 +76,9 @@ export function statusCommand(): Command {
           }
         }
 
-        const journalEntries = readJournal(repoRoot);
+        const messageEntries = readMessages(repoRoot);
         const latestBroadcasts = new Map<string, string>();
-        for (const entry of journalEntries) {
+        for (const entry of messageEntries) {
           if (entry.type === 'broadcast') {
             latestBroadcasts.set(entry.from, entry.msg);
           }

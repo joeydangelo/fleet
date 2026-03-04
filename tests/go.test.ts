@@ -98,8 +98,8 @@ vi.mock('../src/lib/tmux.js', async () => {
   };
 });
 
-vi.mock('../src/lib/journal.js', () => ({
-  readJournal: vi.fn(() => []),
+vi.mock('../src/lib/messages.js', () => ({
+  readMessages: vi.fn(() => []),
 }));
 
 import { execFileSync } from 'node:child_process';

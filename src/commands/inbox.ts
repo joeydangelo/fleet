@@ -3,14 +3,14 @@ import pc from 'picocolors';
 import { getRepoRoot, resolveMainRoot } from '../lib/git.js';
 import { detectTaskName } from '../lib/session.js';
 import { readNudge, clearNudge, readInboxCursor, writeInboxCursor } from '../lib/health.js';
-import { readJournal, readJournalForTask } from '../lib/journal.js';
-import type { JournalEntry } from '../lib/journal.js';
+import { readMessages, readMessagesForTask } from '../lib/messages.js';
+import type { Message } from '../lib/messages.js';
 import { handleError } from '../lib/output.js';
 
-/** Journal entry that carries a thread identifier. */
-type ThreadedEntry = JournalEntry & { thread: string };
+/** Message that carries a thread identifier. */
+type ThreadedEntry = Message & { thread: string };
 
-function hasThread(e: JournalEntry): e is ThreadedEntry {
+function hasThread(e: Message): e is ThreadedEntry {
   return typeof (e as unknown as { thread?: unknown }).thread === 'string';
 }
 
@@ -25,21 +25,21 @@ export interface ResolvedThread {
   reply: ThreadedEntry;
 }
 
-/** Categorised journal entries: open threads, resolved threads, and broadcasts. */
+/** Categorised inbox entries: open threads, resolved threads, and broadcasts. */
 export interface ThreadResult {
   open: OpenThread[];
   resolved: ResolvedThread[];
-  broadcasts: JournalEntry[];
+  broadcasts: Message[];
 }
 
 /**
- * Compute open threads, resolved threads, and broadcasts from journal entries.
+ * Compute open threads, resolved threads, and broadcasts from inbox entries.
  * Open: send entries with a thread value that have no matching reply.
  * Resolved: send entries with a matching reply (same thread value).
  * Broadcasts: entries with type === 'broadcast'.
  * Entries without a thread field (other than broadcasts) are skipped.
  */
-export function computeThreads(entries: JournalEntry[]): ThreadResult {
+export function computeThreads(entries: Message[]): ThreadResult {
   const sends = entries.filter((e): e is ThreadedEntry => e.type === 'send' && hasThread(e));
   const replyByThread = new Map<string, ThreadedEntry>();
   const broadcasts = entries.filter((e) => e.type === 'broadcast');
@@ -65,7 +65,7 @@ export function computeThreads(entries: JournalEntry[]): ThreadResult {
   return { open, resolved, broadcasts };
 }
 
-function formatJournalEntry(entry: JournalEntry): string {
+function formatMessage(entry: Message): string {
   if (entry.type === 'broadcast') {
     return `[${entry.from}] broadcast: ${entry.msg}`;
   }
@@ -100,7 +100,7 @@ export function inboxCommand(): Command {
         }
 
         const cursor = readInboxCursor(mainRoot, taskName);
-        const entries = readJournalForTask(taskName, cwd, cursor ?? undefined);
+        const entries = readMessagesForTask(taskName, cwd, cursor ?? undefined);
 
         // Exclude own messages so the agent only sees others' broadcasts
         const relevant = entries.filter((e) => e.from !== taskName);
@@ -108,12 +108,12 @@ export function inboxCommand(): Command {
         if (relevant.length > 0) {
           console.log(`\n[paw] ${relevant.length} new message(s) from other agents:`);
           for (const entry of relevant) {
-            console.log(`  ${formatJournalEntry(entry)}`);
+            console.log(`  ${formatMessage(entry)}`);
           }
           console.log();
         }
 
-        const allEntries = readJournal(cwd);
+        const allEntries = readMessages(cwd);
         const { open } = computeThreads(allEntries);
         const unanswered = open.filter((t) => t.send.to === taskName);
         if (unanswered.length > 0) {
@@ -139,7 +139,7 @@ export function inboxCommand(): Command {
 function showAllThreads(): void {
   try {
     const repoRoot = getRepoRoot();
-    const entries = readJournal(repoRoot);
+    const entries = readMessages(repoRoot);
     const { open, resolved, broadcasts } = computeThreads(entries);
 
     const hasContent = broadcasts.length > 0 || open.length > 0;

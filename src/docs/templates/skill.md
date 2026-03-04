@@ -16,7 +16,7 @@ name: paw
 2. **Agent Coordination**: Broadcasts, directed messages, and Q&A threads
    keep agents aligned without blocking each other.
 3. **Conflict Resolution**: When merges conflict, paw generates context-rich
-   briefs built from PR descriptions and journal entries so the resolver
+   briefs built from builder summaries and inbox entries so the resolver
    has full intent — not just raw diff markers.
 4. **Automated Workflow**: `paw go` handles the full loop (up → spawn → watch →
    merge → down), or run each step manually for fine-grained control.
@@ -67,7 +67,7 @@ There are two roles. You are one of them:
 - **Orchestrator** — runs in the main repo. Decomposes work, sets up worktrees,
   monitors agents, merges results, handles conflicts, cleans up.
 - **Worktree agent** — runs inside an isolated worktree. Reads its task, works
-  autonomously, broadcasts changes, commits work, creates a PR, and submits for review.
+  autonomously, broadcasts changes, commits work, writes a summary, and submits for review.
 
 Read the section for your role.
 
@@ -189,7 +189,7 @@ Follow `paw shortcut build-task` for the full workflow:
 
 1. **Build** — Broadcast intent, plan work, implement with TDD.
 2. **Verify** — Review diff, format/lint/test, broadcast interface changes.
-3. **Publish** — Commit, push branch, create PR (`paw template pr-template`),
+3. **Publish** — Commit, write summary (`paw template summary-template`),
    then `paw review` to submit for review.
 
 ### Agent action commands
@@ -201,14 +201,14 @@ Follow `paw shortcut build-task` for the full workflow:
 | `paw reply "..."` | Reply to the most recent message |
 | `paw reply --to <thread> "..."` | Reply to a specific thread |
 | `paw status` | Check progress across all tasks |
-| `paw review` | Submit task for review (push + PR first) |
+| `paw review` | Submit task for review (commit + summary first) |
 
 ### Agent informational commands
 
 | Command | Purpose |
 |---|---|
 | `paw shortcut build-task` | Build/Verify/Publish workflow from task assignment to review |
-| `paw shortcut review-pr` | Review a task PR — return PASS or FAIL with findings |
+| `paw shortcut review-pr` | Review a task branch — return PASS or FAIL with findings |
 
 ---
 
@@ -238,7 +238,7 @@ Follow `paw shortcut build-task` for the full workflow:
 | `paw shortcut getting-started` | Install paw and run your first parallel agent session |
 | `paw shortcut setup-tmux` | Ensure tmux is installed for paw's terminal management |
 | `paw shortcut build-task` | Build/Verify/Publish workflow from task assignment to review |
-| `paw shortcut review-pr` | Review a task PR — return PASS or FAIL with findings |
+| `paw shortcut review-pr` | Review a task branch — return PASS or FAIL with findings |
 <!-- END SHORTCUT DIRECTORY -->
 
 ### Available guidelines
@@ -259,7 +259,7 @@ Follow `paw shortcut build-task` for the full workflow:
 |---|---|
 | `paw template plan-spec` | Template for feature planning specification documents |
 | `paw template paw-yaml` | Annotated config structure for .paw/paw.yaml |
-| `paw template pr-template` | Pull request body template for agents |
+| `paw template summary-template` | Task summary template for agents |
 <!-- END TEMPLATE DIRECTORY -->
 
 ---

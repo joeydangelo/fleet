@@ -19,12 +19,12 @@ the conflict brief to understand what happened and fix it.
    Read the brief at that path — no searching needed. It contains:
    - Which files conflict
    - Both agents' PR descriptions (what they intended)
-   - Relevant journal entries (what they said during the session)
+   - Relevant inbox entries (what they said during the session)
    - The conflict diff
    - A suggested resolution approach
 
 2. **Understand the intent, not just the diff.** The raw conflict markers show *what*
-   two lines differ. The PR descriptions and journal entries show *why* they differ.
+   two lines differ. The PR descriptions and inbox entries show *why* they differ.
    The agent whose work is already in the target branch has the canonical changes —
    the conflicting agent's code usually needs to adapt.
 

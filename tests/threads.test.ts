@@ -1,15 +1,15 @@
 import { describe, it, expect } from 'vitest';
 import { computeThreads } from '../src/commands/inbox.js';
-import type { JournalEntry } from '../src/lib/journal.js';
+import type { Message } from '../src/lib/messages.js';
 
-function entry(overrides: Partial<JournalEntry> & { thread?: string }): JournalEntry {
+function entry(overrides: Partial<Message> & { thread?: string }): Message {
   return {
     ts: new Date().toISOString(),
     from: 'orchestrator',
     type: 'broadcast',
     msg: 'test',
     ...overrides,
-  } as JournalEntry;
+  } as Message;
 }
 
 describe('computeThreads', () => {

@@ -10,7 +10,7 @@ import {
   initSyncWorktree,
   removeSyncWorktree,
 } from '../src/lib/sync.js';
-import { appendJournalEntry } from '../src/lib/journal.js';
+import { appendMessage } from '../src/lib/messages.js';
 import { generateConflictBrief } from '../src/lib/conflict.js';
 import {
   mergeBranch,
@@ -132,7 +132,7 @@ describe('generateConflictBrief', () => {
     rmSync(repoDir, { recursive: true, force: true });
   });
 
-  it('generates brief with journal and diff', () => {
+  it('generates brief with messages and diff', () => {
     const worktrees = createSession(config, repoDir);
     worktreePaths = worktrees.map((w) => w.worktreePath);
 
@@ -144,9 +144,9 @@ describe('generateConflictBrief', () => {
     };
     writeSyncState(withMerges, repoDir);
 
-    // Write journal entries
-    appendJournalEntry('auth', { type: 'broadcast', msg: 'Changed auth interface' }, repoDir);
-    appendJournalEntry('api', { type: 'send', to: 'auth', msg: 'What token type?' }, repoDir);
+    // Write messages
+    appendMessage('auth', { type: 'broadcast', msg: 'Changed auth interface' }, repoDir);
+    appendMessage('api', { type: 'send', to: 'auth', msg: 'What token type?' }, repoDir);
 
     // Create conflicting changes
     checkout(repoDir, config.target);
@@ -175,7 +175,7 @@ describe('generateConflictBrief', () => {
     });
 
     // Verify brief content — PR descriptions come from gh pr view (unavailable
-    // in tests), so only check structural sections, journal, and diff.
+    // in tests), so only check structural sections, messages, and diff.
     expect(brief).toContain('# Merge Conflict: auth into feature/dash');
     expect(brief).toContain('shared.txt');
     expect(brief).toContain('Task being merged: auth');

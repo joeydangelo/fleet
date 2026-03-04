@@ -2,8 +2,8 @@ import { Command } from 'commander';
 import { getRepoRoot } from '../lib/git.js';
 import { getTaskIdentity } from '../lib/session.js';
 import { readSyncState } from '../lib/sync.js';
-import { appendJournalEntry, readJournal } from '../lib/journal.js';
-import type { JournalEntry } from '../lib/journal.js';
+import { appendMessage, readMessages } from '../lib/messages.js';
+import type { Message } from '../lib/messages.js';
 import { requireSyncState, handleError, colors } from '../lib/output.js';
 
 /** CLI command: reply to the most recent or a specific directed message. */
@@ -20,8 +20,8 @@ export function replyCommand(): Command {
         const state = readSyncState(repoRoot);
         requireSyncState(state);
 
-        const all = readJournal(repoRoot);
-        let resolvedSend: JournalEntry;
+        const all = readMessages(repoRoot);
+        let resolvedSend: Message;
 
         if (opts.to) {
           const matches = all.filter(
@@ -53,7 +53,7 @@ export function replyCommand(): Command {
         }
 
         const thread = resolvedSend.thread;
-        appendJournalEntry(
+        appendMessage(
           taskName,
           {
             type: 'reply',

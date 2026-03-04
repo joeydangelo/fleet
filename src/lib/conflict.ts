@@ -1,7 +1,7 @@
-import { execFileSync } from 'node:child_process';
-import { readJournal } from './journal.js';
+import { readMessages } from './messages.js';
 import { getDiffOutput, getConflictingFiles } from './git.js';
 import type { SyncState } from './sync.js';
+import { readSyncFile } from './sync.js';
 
 interface ConflictBriefOpts {
   /** The task being merged that caused the conflict. */
@@ -14,23 +14,14 @@ interface ConflictBriefOpts {
   cwd: string;
 }
 
-/** Returns null if gh CLI fails or no PR exists. */
-function getPrBody(branch: string, cwd: string): string | null {
-  try {
-    const raw = execFileSync('gh', ['pr', 'view', branch, '--json', 'body', '-q', '.body'], {
-      cwd,
-      encoding: 'utf-8',
-      timeout: 10_000,
-    });
-    const body = raw.trim();
-    return body || null;
-  } catch {
-    return null;
-  }
+/** Read the builder's summary from the sync branch. Returns null if not found. */
+function getTaskSummary(branch: string, cwd: string): string | null {
+  const safeBranch = branch.replace(/[^a-zA-Z0-9-]/g, '-');
+  return readSyncFile(`review/${safeBranch}.md`, cwd);
 }
 
 /**
- * Generate a conflict brief assembling context from PR descriptions, journal, and diff.
+ * Generate a conflict brief assembling context from PR descriptions, inbox, and diff.
  * Written to conflicts/{taskName}-into-target.md on the sync branch.
  */
 export function generateConflictBrief(opts: ConflictBriefOpts): string {
@@ -65,21 +56,21 @@ export function generateConflictBrief(opts: ConflictBriefOpts): string {
   }
 
   const conflictBranch = `${target}-${conflictingTask}`;
-  const conflictPr = getPrBody(conflictBranch, cwd);
+  const conflictSummary = getTaskSummary(conflictBranch, cwd);
   lines.push(`## Task being merged: ${conflictingTask}`);
-  if (conflictPr) {
-    lines.push(conflictPr);
+  if (conflictSummary) {
+    lines.push(conflictSummary);
   } else {
-    lines.push('*No PR description available.*');
+    lines.push('*No builder summary available.*');
   }
   lines.push('');
 
   for (const [name] of mergedTasks) {
     const branch = `${target}-${name}`;
-    const prBody = getPrBody(branch, cwd);
-    if (prBody) {
+    const summary = getTaskSummary(branch, cwd);
+    if (summary) {
       lines.push(`## Task already in target: ${name}`);
-      lines.push(prBody);
+      lines.push(summary);
       lines.push('');
     }
   }
@@ -93,7 +84,7 @@ export function generateConflictBrief(opts: ConflictBriefOpts): string {
     lines.push('');
   }
 
-  const journal = readJournal(cwd);
+  const messages = readMessages(cwd);
   const relevantTasks = new Set<string>([conflictingTask]);
   if (state.merges) {
     for (const [name, entry] of Object.entries(state.merges)) {
@@ -103,12 +94,12 @@ export function generateConflictBrief(opts: ConflictBriefOpts): string {
     }
   }
 
-  const relevantEntries = journal.filter(
+  const relevantEntries = messages.filter(
     (e) => relevantTasks.has(e.from) || (e.to && relevantTasks.has(e.to)),
   );
 
   if (relevantEntries.length > 0) {
-    lines.push('## Relevant journal entries');
+    lines.push('## Relevant inbox entries');
     for (const entry of relevantEntries) {
       const recipient = entry.to ? ` → ${entry.to}` : ' → all';
       lines.push(`- [${entry.from}${recipient}] ${entry.msg}`);

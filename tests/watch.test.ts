@@ -1,17 +1,17 @@
 import { describe, it, expect } from 'vitest';
-import type { JournalEntry } from '../src/lib/journal.js';
+import type { Message } from '../src/lib/messages.js';
 import type { TaskState } from '../src/lib/sync.js';
-import { diffJournal, diffStatuses, diffCommitCounts } from '../src/commands/watch.js';
+import { diffMessages, diffStatuses, diffCommitCounts } from '../src/commands/watch.js';
 
-describe('diffJournal', () => {
+describe('diffMessages', () => {
   it('returns entries after lastSeenTs', () => {
-    const entries: JournalEntry[] = [
+    const entries: Message[] = [
       { ts: '2026-02-14T10:00:00.000Z', from: 'auth', type: 'broadcast', msg: 'old' },
       { ts: '2026-02-14T10:01:00.000Z', from: 'api', type: 'broadcast', msg: 'new' },
       { ts: '2026-02-14T10:02:00.000Z', from: 'auth', type: 'send', to: 'api', msg: 'newer' },
     ];
 
-    const result = diffJournal(entries, '2026-02-14T10:00:00.000Z');
+    const result = diffMessages(entries, '2026-02-14T10:00:00.000Z');
     expect(result.newEntries).toHaveLength(2);
     expect(result.newEntries[0]!.msg).toBe('new');
     expect(result.newEntries[1]!.msg).toBe('newer');
@@ -19,34 +19,34 @@ describe('diffJournal', () => {
   });
 
   it('returns all entries when lastSeenTs is undefined', () => {
-    const entries: JournalEntry[] = [
+    const entries: Message[] = [
       { ts: '2026-02-14T10:00:00.000Z', from: 'auth', type: 'broadcast', msg: 'first' },
       { ts: '2026-02-14T10:01:00.000Z', from: 'api', type: 'broadcast', msg: 'second' },
     ];
 
-    const result = diffJournal(entries, undefined);
+    const result = diffMessages(entries, undefined);
     expect(result.newEntries).toHaveLength(2);
     expect(result.lastSeenTs).toBe('2026-02-14T10:01:00.000Z');
   });
 
   it('returns empty when no new entries', () => {
-    const entries: JournalEntry[] = [
+    const entries: Message[] = [
       { ts: '2026-02-14T10:00:00.000Z', from: 'auth', type: 'broadcast', msg: 'old' },
     ];
 
-    const result = diffJournal(entries, '2026-02-14T10:01:00.000Z');
+    const result = diffMessages(entries, '2026-02-14T10:01:00.000Z');
     expect(result.newEntries).toHaveLength(0);
     expect(result.lastSeenTs).toBe('2026-02-14T10:01:00.000Z');
   });
 
-  it('preserves lastSeenTs when journal is empty', () => {
-    const result = diffJournal([], '2026-02-14T10:00:00.000Z');
+  it('preserves lastSeenTs when messages is empty', () => {
+    const result = diffMessages([], '2026-02-14T10:00:00.000Z');
     expect(result.newEntries).toHaveLength(0);
     expect(result.lastSeenTs).toBe('2026-02-14T10:00:00.000Z');
   });
 
-  it('returns undefined lastSeenTs when journal is empty and no previous ts', () => {
-    const result = diffJournal([], undefined);
+  it('returns undefined lastSeenTs when messages is empty and no previous ts', () => {
+    const result = diffMessages([], undefined);
     expect(result.newEntries).toHaveLength(0);
     expect(result.lastSeenTs).toBeUndefined();
   });

@@ -7,11 +7,11 @@ import {
   initSyncWorktree,
   removeSyncWorktree,
 } from '../src/lib/sync.js';
-import { appendJournalEntry, readJournal } from '../src/lib/journal.js';
-import type { JournalEntry } from '../src/lib/journal.js';
+import { appendMessage, readMessages } from '../src/lib/messages.js';
+import type { Message } from '../src/lib/messages.js';
 
-/** Entry with optional thread (schema task adds this to JournalEntry). */
-type ThreadedEntry = JournalEntry & { thread?: string };
+/** Entry with optional thread (schema task adds this to Message). */
+type ThreadedEntry = Message & { thread?: string };
 
 /** Local thread ID generator matching generateThreadId contract. */
 function makeThreadId(): string {
@@ -46,13 +46,13 @@ describe('send command threading', () => {
 
   it('send entry has thread field', () => {
     const thread = makeThreadId();
-    appendJournalEntry(
+    appendMessage(
       'orchestrator',
       { type: 'send', to: 'api', msg: 'What endpoint?', thread } as ThreadedEntry,
       repoDir,
     );
 
-    const entries = readJournal(repoDir) as ThreadedEntry[];
+    const entries = readMessages(repoDir) as ThreadedEntry[];
     expect(entries).toHaveLength(1);
     expect(entries[0]!.thread).toBe(thread);
     expect(entries[0]!.type).toBe('send');
@@ -78,19 +78,19 @@ describe('reply command threading', () => {
 
   it('reply default: copies thread from lastSend when present', () => {
     const thread = makeThreadId();
-    appendJournalEntry(
+    appendMessage(
       'orchestrator',
       { type: 'send', to: 'api', msg: 'What endpoint?', thread } as ThreadedEntry,
       repoDir,
     );
 
     // Simulate reply logic: find last send directed at 'api', copy thread
-    const all = readJournal(repoDir) as ThreadedEntry[];
+    const all = readMessages(repoDir) as ThreadedEntry[];
     const sends = all.filter((e) => e.type === 'send' && e.to === 'api');
     const lastSend = sends[sends.length - 1]!;
     expect(lastSend.thread).toBe(thread);
 
-    appendJournalEntry(
+    appendMessage(
       'api',
       {
         type: 'reply',
@@ -101,7 +101,7 @@ describe('reply command threading', () => {
       repoDir,
     );
 
-    const entries = readJournal(repoDir) as ThreadedEntry[];
+    const entries = readMessages(repoDir) as ThreadedEntry[];
     const replies = entries.filter((e) => e.type === 'reply');
     expect(replies).toHaveLength(1);
     expect(replies[0]!.thread).toBe(thread);
@@ -112,24 +112,24 @@ describe('reply command threading', () => {
     const thread1 = makeThreadId();
     const thread2 = makeThreadId();
 
-    appendJournalEntry(
+    appendMessage(
       'orchestrator',
       { type: 'send', to: 'api', msg: 'First question?', thread: thread1 } as ThreadedEntry,
       repoDir,
     );
-    appendJournalEntry(
+    appendMessage(
       'orchestrator',
       { type: 'send', to: 'api', msg: 'Second question?', thread: thread2 } as ThreadedEntry,
       repoDir,
     );
 
     // Simulate --to thread1: find send with matching thread directed at 'api'
-    const all = readJournal(repoDir) as ThreadedEntry[];
+    const all = readMessages(repoDir) as ThreadedEntry[];
     const matches = all.filter((e) => e.type === 'send' && e.to === 'api' && e.thread === thread1);
     expect(matches).toHaveLength(1);
     expect(matches[0]!.msg).toBe('First question?');
 
-    appendJournalEntry(
+    appendMessage(
       'api',
       {
         type: 'reply',
@@ -140,28 +140,28 @@ describe('reply command threading', () => {
       repoDir,
     );
 
-    const entries = readJournal(repoDir) as ThreadedEntry[];
+    const entries = readMessages(repoDir) as ThreadedEntry[];
     const replies = entries.filter((e) => e.type === 'reply');
     expect(replies).toHaveLength(1);
     expect(replies[0]!.thread).toBe(thread1);
   });
 
   it('reply --to: errors when thread not found', () => {
-    const all = readJournal(repoDir) as ThreadedEntry[];
+    const all = readMessages(repoDir) as ThreadedEntry[];
     const matches = all.filter((e) => e.type === 'send' && e.to === 'api' && e.thread === 'zzzz');
     expect(matches).toHaveLength(0);
   });
 
   it('reply --to: errors when message directed at wrong task', () => {
     const thread = makeThreadId();
-    appendJournalEntry(
+    appendMessage(
       'orchestrator',
       { type: 'send', to: 'auth', msg: 'Auth question?', thread } as ThreadedEntry,
       repoDir,
     );
 
     // 'api' tries to reply to a thread directed at 'auth'
-    const all = readJournal(repoDir) as ThreadedEntry[];
+    const all = readMessages(repoDir) as ThreadedEntry[];
     const matches = all.filter((e) => e.type === 'send' && e.to === 'api' && e.thread === thread);
     expect(matches).toHaveLength(0);
 
@@ -173,25 +173,17 @@ describe('reply command threading', () => {
 
   it('reply to send without thread omits thread from reply entry', () => {
     // Legacy send without thread field
-    appendJournalEntry(
-      'orchestrator',
-      { type: 'send', to: 'api', msg: 'Old style question' },
-      repoDir,
-    );
+    appendMessage('orchestrator', { type: 'send', to: 'api', msg: 'Old style question' }, repoDir);
 
-    const all = readJournal(repoDir) as ThreadedEntry[];
+    const all = readMessages(repoDir) as ThreadedEntry[];
     const sends = all.filter((e) => e.type === 'send' && e.to === 'api');
     const lastSend = sends[sends.length - 1]!;
     expect(lastSend.thread).toBeUndefined();
 
     // Reply without thread
-    appendJournalEntry(
-      'api',
-      { type: 'reply', to: lastSend.from, msg: 'Old style answer' },
-      repoDir,
-    );
+    appendMessage('api', { type: 'reply', to: lastSend.from, msg: 'Old style answer' }, repoDir);
 
-    const entries = readJournal(repoDir) as ThreadedEntry[];
+    const entries = readMessages(repoDir) as ThreadedEntry[];
     const replies = entries.filter((e) => e.type === 'reply');
     expect(replies).toHaveLength(1);
     expect(replies[0]!.thread).toBeUndefined();

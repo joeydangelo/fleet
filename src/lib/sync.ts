@@ -51,7 +51,7 @@ export interface MergeEntry {
   brief?: string;
 }
 
-/** Session coordination state on the paw-sync branch. Tracks task statuses, merge progress, and journal cursors. */
+/** Session coordination state on the paw-sync branch. Tracks task statuses, merge progress, and inbox cursors. */
 export interface SyncState {
   session: string;
   config: string;
@@ -351,7 +351,7 @@ export function updateMergeEntry(state: SyncState, taskName: string, entry: Merg
 
 /**
  * Archive the sync worktree contents to .paw/sessions/<date>-<target>/.
- * Copies state.json, journal/, conflicts/, and paw.yaml.
+ * Copies state.json, inbox/, conflicts/, and paw.yaml.
  * Returns the archive path, or null if nothing to archive.
  */
 export function archiveSession(repoRoot: string, target: string): string | null {
@@ -375,7 +375,7 @@ export function archiveSession(repoRoot: string, target: string): string | null 
 
   copyFileSync(stateFile, resolve(archiveDir, 'state.json'));
 
-  for (const dir of ['journal', 'review', 'conflicts']) {
+  for (const dir of ['inbox', 'review', 'conflicts']) {
     const src = resolve(syncDir, dir);
     if (existsSync(src)) {
       cpSync(src, resolve(archiveDir, dir), { recursive: true });

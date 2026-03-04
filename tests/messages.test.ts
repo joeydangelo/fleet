@@ -9,11 +9,11 @@ import {
   removeSyncWorktree,
 } from '../src/lib/sync.js';
 import {
-  appendJournalEntry,
-  readJournal,
-  readJournalForTask,
+  appendMessage,
+  readMessages,
+  readMessagesForTask,
   generateThreadId,
-} from '../src/lib/journal.js';
+} from '../src/lib/messages.js';
 import { makeTempDir } from './helpers/temp.js';
 
 function gitInit(dir: string): void {
@@ -24,7 +24,7 @@ function gitInit(dir: string): void {
   });
 }
 
-describe('appendJournalEntry / readJournal', () => {
+describe('appendMessage / readMessages', () => {
   let repoDir: string;
 
   beforeEach(() => {
@@ -41,9 +41,9 @@ describe('appendJournalEntry / readJournal', () => {
   });
 
   it('round-trips a broadcast entry', () => {
-    appendJournalEntry('auth', { type: 'broadcast', msg: 'Changed auth interface' }, repoDir);
+    appendMessage('auth', { type: 'broadcast', msg: 'Changed auth interface' }, repoDir);
 
-    const entries = readJournal(repoDir);
+    const entries = readMessages(repoDir);
     expect(entries).toHaveLength(1);
     expect(entries[0]!.from).toBe('auth');
     expect(entries[0]!.type).toBe('broadcast');
@@ -53,9 +53,9 @@ describe('appendJournalEntry / readJournal', () => {
   });
 
   it('round-trips a directed send entry', () => {
-    appendJournalEntry('api', { type: 'send', to: 'auth', msg: 'What token type?' }, repoDir);
+    appendMessage('api', { type: 'send', to: 'auth', msg: 'What token type?' }, repoDir);
 
-    const entries = readJournal(repoDir);
+    const entries = readMessages(repoDir);
     expect(entries).toHaveLength(1);
     expect(entries[0]!.from).toBe('api');
     expect(entries[0]!.type).toBe('send');
@@ -64,30 +64,30 @@ describe('appendJournalEntry / readJournal', () => {
   });
 
   it('round-trips a reply entry', () => {
-    appendJournalEntry('auth', { type: 'reply', to: 'api', msg: 'Union type' }, repoDir);
+    appendMessage('auth', { type: 'reply', to: 'api', msg: 'Union type' }, repoDir);
 
-    const entries = readJournal(repoDir);
+    const entries = readMessages(repoDir);
     expect(entries).toHaveLength(1);
     expect(entries[0]!.type).toBe('reply');
     expect(entries[0]!.to).toBe('api');
   });
 
   it('appends multiple entries to the same agent file', () => {
-    appendJournalEntry('auth', { type: 'broadcast', msg: 'First change' }, repoDir);
-    appendJournalEntry('auth', { type: 'broadcast', msg: 'Second change' }, repoDir);
+    appendMessage('auth', { type: 'broadcast', msg: 'First change' }, repoDir);
+    appendMessage('auth', { type: 'broadcast', msg: 'Second change' }, repoDir);
 
-    const entries = readJournal(repoDir);
+    const entries = readMessages(repoDir);
     expect(entries).toHaveLength(2);
     expect(entries[0]!.msg).toBe('First change');
     expect(entries[1]!.msg).toBe('Second change');
   });
 
   it('merges entries from multiple agents chronologically', () => {
-    appendJournalEntry('auth', { type: 'broadcast', msg: 'Auth change' }, repoDir);
-    appendJournalEntry('api', { type: 'broadcast', msg: 'API change' }, repoDir);
-    appendJournalEntry('auth', { type: 'broadcast', msg: 'Auth update' }, repoDir);
+    appendMessage('auth', { type: 'broadcast', msg: 'Auth change' }, repoDir);
+    appendMessage('api', { type: 'broadcast', msg: 'API change' }, repoDir);
+    appendMessage('auth', { type: 'broadcast', msg: 'Auth update' }, repoDir);
 
-    const entries = readJournal(repoDir);
+    const entries = readMessages(repoDir);
     expect(entries).toHaveLength(3);
     // Should be sorted chronologically
     for (let i = 1; i < entries.length; i++) {
@@ -103,17 +103,17 @@ describe('appendJournalEntry / readJournal', () => {
       JSON.stringify({ ts, from: 'zebra', type: 'broadcast', msg: 'Z first?' }),
       JSON.stringify({ ts, from: 'alpha', type: 'broadcast', msg: 'A first?' }),
     ].join('\n');
-    writeSyncFile('journal/mixed.jsonl', lines, repoDir);
+    writeSyncFile('inbox/mixed.jsonl', lines, repoDir);
 
-    const entries = readJournal(repoDir);
+    const entries = readMessages(repoDir);
     expect(entries).toHaveLength(2);
     // With deterministic sort, alpha should come before zebra at same timestamp
     expect(entries[0]!.from).toBe('alpha');
     expect(entries[1]!.from).toBe('zebra');
   });
 
-  it('returns empty array when no journal entries exist', () => {
-    const entries = readJournal(repoDir);
+  it('returns empty array when no messages exist', () => {
+    const entries = readMessages(repoDir);
     expect(entries).toEqual([]);
   });
 });
@@ -141,7 +141,7 @@ describe('generateThreadId', () => {
   });
 });
 
-describe('JournalEntry thread field', () => {
+describe('Message thread field', () => {
   let repoDir: string;
 
   beforeEach(() => {
@@ -157,30 +157,30 @@ describe('JournalEntry thread field', () => {
     rmSync(repoDir, { recursive: true, force: true });
   });
 
-  it('round-trips a journal entry with thread', () => {
+  it('round-trips a message with thread', () => {
     const threadId = generateThreadId();
-    appendJournalEntry(
+    appendMessage(
       'api',
       { type: 'send', to: 'auth', msg: 'What type?', thread: threadId },
       repoDir,
     );
 
-    const entries = readJournal(repoDir);
+    const entries = readMessages(repoDir);
     expect(entries).toHaveLength(1);
     expect(entries[0]!.thread).toBe(threadId);
   });
 
   it('parses old entries without thread field cleanly', () => {
-    appendJournalEntry('auth', { type: 'broadcast', msg: 'No thread here' }, repoDir);
+    appendMessage('auth', { type: 'broadcast', msg: 'No thread here' }, repoDir);
 
-    const entries = readJournal(repoDir);
+    const entries = readMessages(repoDir);
     expect(entries).toHaveLength(1);
     expect(entries[0]!.thread).toBeUndefined();
     expect(entries[0]!.msg).toBe('No thread here');
   });
 });
 
-describe('readJournalForTask', () => {
+describe('readMessagesForTask', () => {
   let repoDir: string;
 
   beforeEach(() => {
@@ -197,44 +197,44 @@ describe('readJournalForTask', () => {
   });
 
   it('returns broadcasts and messages directed at the task', () => {
-    appendJournalEntry('auth', { type: 'broadcast', msg: 'Changed interface' }, repoDir);
-    appendJournalEntry('api', { type: 'send', to: 'auth', msg: 'What type?' }, repoDir);
-    appendJournalEntry('dashboard', { type: 'send', to: 'api', msg: 'Endpoint ready?' }, repoDir);
+    appendMessage('auth', { type: 'broadcast', msg: 'Changed interface' }, repoDir);
+    appendMessage('api', { type: 'send', to: 'auth', msg: 'What type?' }, repoDir);
+    appendMessage('dashboard', { type: 'send', to: 'api', msg: 'Endpoint ready?' }, repoDir);
 
     // auth should see: the broadcast (it's own but all broadcasts are shown),
     // and the ask directed at it
-    const forAuth = readJournalForTask('auth', repoDir);
+    const forAuth = readMessagesForTask('auth', repoDir);
     const directed = forAuth.filter((e) => e.to === 'auth');
     expect(directed).toHaveLength(1);
     expect(directed[0]!.from).toBe('api');
 
     // api should see the message directed at it
-    const forApi = readJournalForTask('api', repoDir);
+    const forApi = readMessagesForTask('api', repoDir);
     const directedToApi = forApi.filter((e) => e.to === 'api');
     expect(directedToApi).toHaveLength(1);
     expect(directedToApi[0]!.from).toBe('dashboard');
   });
 
   it('filters by since timestamp', () => {
-    appendJournalEntry('auth', { type: 'broadcast', msg: 'Old message' }, repoDir);
-    appendJournalEntry('api', { type: 'broadcast', msg: 'New message' }, repoDir);
+    appendMessage('auth', { type: 'broadcast', msg: 'Old message' }, repoDir);
+    appendMessage('api', { type: 'broadcast', msg: 'New message' }, repoDir);
 
-    const allEntries = readJournal(repoDir);
+    const allEntries = readMessages(repoDir);
     expect(allEntries).toHaveLength(2);
 
     // Use a timestamp far in the past -- both entries should be included
     const ancient = '2020-01-01T00:00:00.000Z';
-    const afterAncient = readJournalForTask('dashboard', repoDir, ancient);
+    const afterAncient = readMessagesForTask('dashboard', repoDir, ancient);
     expect(afterAncient).toHaveLength(2);
 
     // Use a timestamp far in the future -- no entries should be included
     const future = '2099-01-01T00:00:00.000Z';
-    const afterFuture = readJournalForTask('dashboard', repoDir, future);
+    const afterFuture = readMessagesForTask('dashboard', repoDir, future);
     expect(afterFuture).toHaveLength(0);
 
     // Use the first entry's timestamp -- should exclude it
     const since = allEntries[0]!.ts;
-    const afterFirst = readJournalForTask('dashboard', repoDir, since);
+    const afterFirst = readMessagesForTask('dashboard', repoDir, since);
     // The old entry (at or before `since`) is excluded
     const msgs = afterFirst.map((e) => e.msg);
     expect(msgs).not.toContain('Old message');

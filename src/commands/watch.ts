@@ -6,8 +6,8 @@ import { loadConfig, resolveConfigPath } from '../lib/config.js';
 import { planWorktrees } from '../lib/session.js';
 import { readSyncState, isTerminalStatus } from '../lib/sync.js';
 import type { TaskState } from '../lib/sync.js';
-import { readJournal } from '../lib/journal.js';
-import type { JournalEntry } from '../lib/journal.js';
+import { readMessages } from '../lib/messages.js';
+import type { Message } from '../lib/messages.js';
 import { readPaneConfig, resolvePaneTarget } from '../lib/pane-state.js';
 import {
   checkAgentLiveness,
@@ -35,13 +35,13 @@ function assignColor(index: number): Formatter {
   return COLOR_PALETTE[index % COLOR_PALETTE.length]!;
 }
 
-interface JournalDiff {
-  newEntries: JournalEntry[];
+interface MessageDiff {
+  newEntries: Message[];
   lastSeenTs: string | undefined;
 }
 
-/** Return new journal entries since `lastSeenTs` and the updated cursor. */
-export function diffJournal(entries: JournalEntry[], lastSeenTs: string | undefined): JournalDiff {
+/** Return new messages since `lastSeenTs` and the updated cursor. */
+export function diffMessages(entries: Message[], lastSeenTs: string | undefined): MessageDiff {
   if (entries.length === 0) {
     return { newEntries: [], lastSeenTs };
   }
@@ -132,7 +132,7 @@ function colorTask(name: string, taskIndex: Map<string, number>): string {
   return assignColor(idx)(name);
 }
 
-function printJournalEntry(entry: JournalEntry, taskIndex: Map<string, number>): void {
+function printMessage(entry: Message, taskIndex: Map<string, number>): void {
   const from = colorTask(entry.from, taskIndex);
 
   if (entry.type === 'broadcast') {
@@ -206,7 +206,7 @@ function printHealthTransition(
   }
 }
 
-/** Polls sync state, journal, commit counts, and agent health on an interval. */
+/** Polls sync state, messages, commit counts, and agent health on an interval. */
 export async function runWatchLoop(opts: {
   repoRoot: string;
   configPath: string;
@@ -258,12 +258,12 @@ export async function runWatchLoop(opts: {
         continue;
       }
 
-      const journal = readJournal(repoRoot);
-      const journalDiff = diffJournal(journal, lastSeenTs);
-      lastSeenTs = journalDiff.lastSeenTs;
+      const messages = readMessages(repoRoot);
+      const messageDiff = diffMessages(messages, lastSeenTs);
+      lastSeenTs = messageDiff.lastSeenTs;
 
-      for (const entry of journalDiff.newEntries) {
-        printJournalEntry(entry, taskIndex);
+      for (const entry of messageDiff.newEntries) {
+        printMessage(entry, taskIndex);
       }
 
       const statusDiff = diffStatuses(prevStatuses, syncState.tasks);
@@ -426,10 +426,14 @@ export async function runWatchLoop(opts: {
         printSummary();
         if (!noExit) break;
       } else {
-        const allTerminal = Object.values(healthSnapshot.agents).every(
-          (h) => h.state === 'zombie' || h.state === 'completed',
-        );
-        if (allTerminal) {
+        // Only exit when every non-done task is a genuine zombie.
+        // Tasks in_review have health 'completed' (no escalation needed)
+        // but will resolve on their own — don't treat them as terminal.
+        const nonDoneNames = taskNames.filter((n) => syncState.tasks[n]?.status !== 'done');
+        const allNonDoneZombie =
+          nonDoneNames.length > 0 &&
+          nonDoneNames.every((n) => healthSnapshot.agents[n]?.state === 'zombie');
+        if (allNonDoneZombie) {
           console.log(colors.error('All remaining agents are zombies. Manual review required.'));
           if (!noExit) break;
         }

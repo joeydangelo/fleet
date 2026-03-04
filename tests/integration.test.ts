@@ -163,7 +163,7 @@ describe('paw session lifecycle', () => {
 
     const taskNames = Object.keys(config.tasks);
     const syncState = initSyncState(config.target, taskNames, 'paw.yaml');
-    writeSyncStateAndFiles(syncState, [{ path: 'journal/.gitkeep', content: '' }], repoDir);
+    writeSyncStateAndFiles(syncState, [{ path: 'inbox/.gitkeep', content: '' }], repoDir);
 
     expect(branchExists('paw-sync', repoDir)).toBe(true);
 
@@ -179,7 +179,7 @@ describe('paw session lifecycle', () => {
     initSyncWorktree(repoDir);
     const worktrees2 = createSession(config, repoDir);
     const syncState2 = initSyncState(config.target, taskNames, 'paw.yaml');
-    writeSyncStateAndFiles(syncState2, [{ path: 'journal/.gitkeep', content: '' }], repoDir);
+    writeSyncStateAndFiles(syncState2, [{ path: 'inbox/.gitkeep', content: '' }], repoDir);
 
     expect(branchExists('paw-sync', repoDir)).toBe(true);
     const read = readSyncState(repoDir);

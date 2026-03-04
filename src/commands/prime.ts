@@ -9,7 +9,7 @@ import { detectTaskName, planWorktrees } from '../lib/session.js';
 import { loadConfig, resolveConfigPath } from '../lib/config.js';
 import type { SyncState } from '../lib/sync.js';
 import { readSyncState, claimTask, writeSyncState, readSyncFile } from '../lib/sync.js';
-import { readJournal, readJournalForTask } from '../lib/journal.js';
+import { readMessages, readMessagesForTask } from '../lib/messages.js';
 import { readPaneConfig } from '../lib/pane-state.js';
 import {
   checkAgentLiveness,
@@ -284,7 +284,7 @@ function printBrief(
   }
 
   // Unanswered threads must survive compaction — re-surface them here
-  const allEntries = readJournal(repoRoot);
+  const allEntries = readMessages(repoRoot);
   const { open } = computeThreads(allEntries);
   const unanswered = open.filter((t) => t.send.to === taskName);
   if (unanswered.length > 0) {
@@ -330,7 +330,7 @@ function printFull(
   printTeamStatus(taskName, state);
 
   const lastCheck = state.lastCheck?.[taskName];
-  const entries = readJournalForTask(taskName, repoRoot, lastCheck);
+  const entries = readMessagesForTask(taskName, repoRoot, lastCheck);
   const broadcasts = entries.filter((e) => e.type === 'broadcast' && e.from !== taskName);
   const directed = entries.filter((e) => e.to === taskName);
 

@@ -47,7 +47,7 @@ export async function runUp(
     focusMap[name] = Array.isArray(task.focus) ? task.focus : [task.focus];
   }
   const syncState = initSyncState(config.target, taskNames, configPath, focusMap);
-  writeSyncStateAndFiles(syncState, [{ path: 'journal/.gitkeep', content: '' }], repoRoot);
+  writeSyncStateAndFiles(syncState, [{ path: 'inbox/.gitkeep', content: '' }], repoRoot);
 
   for (const wt of worktrees) {
     success(wt.taskName, wt.worktreePath);

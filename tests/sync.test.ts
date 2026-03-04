@@ -315,29 +315,29 @@ describe('session leak (paw-pm8q)', () => {
     rmSync(repoDir, { recursive: true, force: true });
   });
 
-  it('does not carry journal entries across remove + re-init', () => {
+  it('does not carry inbox entries across remove + re-init', () => {
     initSyncWorktree(repoDir);
     const state1 = initSyncState('feature/dash', ['auth', 'api'], 'paw.yaml');
     writeSyncStateAndFiles(
       state1,
       [
-        { path: 'journal/.gitkeep', content: '' },
-        { path: 'journal/auth.jsonl', content: '{"msg":"old entry"}' },
+        { path: 'inbox/.gitkeep', content: '' },
+        { path: 'inbox/auth.jsonl', content: '{"msg":"old entry"}' },
       ],
       repoDir,
     );
 
-    expect(readSyncFile('journal/auth.jsonl', repoDir)).toBe('{"msg":"old entry"}');
+    expect(readSyncFile('inbox/auth.jsonl', repoDir)).toBe('{"msg":"old entry"}');
 
     removeSyncWorktree(repoDir);
     deleteBranch('paw-sync', repoDir);
 
     initSyncWorktree(repoDir);
     const state2 = initSyncState('feature/dash', ['auth', 'api'], 'paw.yaml');
-    writeSyncStateAndFiles(state2, [{ path: 'journal/.gitkeep', content: '' }], repoDir);
+    writeSyncStateAndFiles(state2, [{ path: 'inbox/.gitkeep', content: '' }], repoDir);
 
-    expect(readSyncFile('journal/auth.jsonl', repoDir)).toBeNull();
-    expect(listSyncDir('journal', repoDir)).toEqual(['journal/.gitkeep']);
+    expect(readSyncFile('inbox/auth.jsonl', repoDir)).toBeNull();
+    expect(listSyncDir('inbox', repoDir)).toEqual(['inbox/.gitkeep']);
 
     const read = readSyncState(repoDir);
     expect(read).not.toBeNull();
@@ -456,20 +456,20 @@ describe('archiveSession', () => {
     expect(archiveSession(repoDir, 'feature/foo')).toBeNull();
   });
 
-  it('archives state.json, journal, and review findings', () => {
+  it('archives state.json, inbox, and review findings', () => {
     initSyncWorktree(repoDir);
     const state = initSyncState('feature/dash', ['auth', 'api'], 'paw.yaml');
     writeSyncState(state, repoDir);
-    writeSyncFile('journal/auth.jsonl', '{"type":"broadcast"}\n', repoDir);
-    writeSyncFile('review/auth-cycle-1.md', '# Review findings\n', repoDir);
+    writeSyncFile('inbox/auth.jsonl', '{"type":"broadcast"}\n', repoDir);
+    writeSyncFile('review/auth.md', '# Review findings\n', repoDir);
 
     const archivePath = archiveSession(repoDir, 'feature/dash');
 
     expect(archivePath).not.toBeNull();
     expect(archivePath!).toContain('feature-dash');
     expect(existsSync(resolve(archivePath!, 'state.json'))).toBe(true);
-    expect(existsSync(resolve(archivePath!, 'journal', 'auth.jsonl'))).toBe(true);
-    expect(existsSync(resolve(archivePath!, 'review', 'auth-cycle-1.md'))).toBe(true);
+    expect(existsSync(resolve(archivePath!, 'inbox', 'auth.jsonl'))).toBe(true);
+    expect(existsSync(resolve(archivePath!, 'review', 'auth.md'))).toBe(true);
   });
 
   it('copies paw.yaml from .paw/ into archive', () => {

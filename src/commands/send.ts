@@ -2,7 +2,7 @@ import { Command } from 'commander';
 import { getRepoRoot } from '../lib/git.js';
 import { getTaskIdentity } from '../lib/session.js';
 import { readSyncState } from '../lib/sync.js';
-import { appendJournalEntry, generateThreadId } from '../lib/journal.js';
+import { appendMessage, generateThreadId } from '../lib/messages.js';
 import { requireSyncState, handleError, colors } from '../lib/output.js';
 
 /** Build the `paw send` CLI command. */
@@ -25,7 +25,7 @@ export function sendCommand(): Command {
         }
 
         const thread = generateThreadId();
-        appendJournalEntry(taskName, { type: 'send', to: task, msg: message, thread }, repoRoot);
+        appendMessage(taskName, { type: 'send', to: task, msg: message, thread }, repoRoot);
 
         console.log(colors.success(`[${taskName} → ${task}] (${thread}) ${message}`));
       } catch (err) {

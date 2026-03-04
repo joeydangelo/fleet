@@ -9,7 +9,7 @@ import {
   initSyncWorktree,
   removeSyncWorktree,
 } from '../src/lib/sync.js';
-import { appendJournalEntry, readJournalForTask } from '../src/lib/journal.js';
+import { appendMessage, readMessagesForTask } from '../src/lib/messages.js';
 import { makeTempDir } from './helpers/temp.js';
 
 function gitInit(dir: string): void {
@@ -40,12 +40,12 @@ describe('prime cursor write', () => {
     const taskName = 'auth';
 
     // Add a broadcast from another agent
-    appendJournalEntry('api', { type: 'broadcast', msg: 'Changed API interface' }, repoDir);
+    appendMessage('api', { type: 'broadcast', msg: 'Changed API interface' }, repoDir);
 
     // Simulate what printFull does: read entries then write lastCheck
     const state = readSyncState(repoDir)!;
     const lastCheck = state.lastCheck?.[taskName];
-    const entries = readJournalForTask(taskName, repoDir, lastCheck);
+    const entries = readMessagesForTask(taskName, repoDir, lastCheck);
     expect(entries.length).toBeGreaterThan(0);
 
     // Write lastCheck cursor (same logic as prime.ts printFull)
@@ -61,11 +61,11 @@ describe('prime cursor write', () => {
     const taskName = 'auth';
 
     // Add a broadcast
-    appendJournalEntry('api', { type: 'broadcast', msg: 'First change' }, repoDir);
+    appendMessage('api', { type: 'broadcast', msg: 'First change' }, repoDir);
 
     // First prime: read entries and set cursor
     const state1 = readSyncState(repoDir)!;
-    const entries1 = readJournalForTask(taskName, repoDir, state1.lastCheck?.[taskName]);
+    const entries1 = readMessagesForTask(taskName, repoDir, state1.lastCheck?.[taskName]);
     expect(entries1).toHaveLength(1);
 
     const now1 = new Date().toISOString();
@@ -73,7 +73,7 @@ describe('prime cursor write', () => {
 
     // Second prime: read entries with updated cursor — should get nothing
     const state2 = readSyncState(repoDir)!;
-    const entries2 = readJournalForTask(taskName, repoDir, state2.lastCheck?.[taskName]);
+    const entries2 = readMessagesForTask(taskName, repoDir, state2.lastCheck?.[taskName]);
     expect(entries2).toHaveLength(0);
   });
 });
