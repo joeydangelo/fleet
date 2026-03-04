@@ -1,7 +1,6 @@
 ---
-title: To PR
+name: to-pr
 description: Combine agent PR descriptions into a final PR with issue references
-category: orchestrator
 ---
 After `paw merge`, create a pull request whose description combines context
 from the individual agent PRs.

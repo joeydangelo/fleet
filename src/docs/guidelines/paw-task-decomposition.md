@@ -1,6 +1,6 @@
 ---
-title: Task Decomposition for Parallel Agents
-description: How to split work into independent parallel tasks that minimize conflicts
+name: paw-task-decomposition
+description: Split work into independent parallel tasks that minimize merge conflicts
 ---
 # Task Decomposition for Parallel Agents
 

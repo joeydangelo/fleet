@@ -122,7 +122,7 @@ export function parseFrontmatter(content: string): {
   try {
     const data = parseYaml(match[1]!) as Record<string, unknown>;
     return {
-      title: typeof data.title === 'string' ? data.title : undefined,
+      title: typeof data.name === 'string' ? data.name : undefined,
       description: typeof data.description === 'string' ? data.description : undefined,
     };
   } catch {

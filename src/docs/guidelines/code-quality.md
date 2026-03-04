@@ -1,6 +1,6 @@
 ---
-title: Code Quality Rules
-description: Rules for clean, maintainable code — duplication, dead code, types, and structure
+name: code-quality
+description: Flag duplication, dead code, type discipline issues, and structural debt
 ---
 # Code Quality Rules
 

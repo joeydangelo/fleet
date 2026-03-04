@@ -1,7 +1,6 @@
 ---
-title: From Issues
+name: from-issues
 description: Detect the repo's issue tracker, read open issues, and generate paw.yaml
-category: orchestrator
 ---
 Read open issues from whatever CLI issue tracker this repo uses and feed them into
 `paw shortcut generate-paw-yaml` to produce a `.paw/paw.yaml`.

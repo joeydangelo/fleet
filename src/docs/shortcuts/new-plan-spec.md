@@ -1,7 +1,6 @@
 ---
-title: New Plan Spec
+name: new-plan-spec
 description: Create a new feature planning specification document
-category: planning
 ---
 Instructions:
 

@@ -1,6 +1,6 @@
 ---
-title: Security Patterns
-description: Concrete security patterns to flag during code review
+name: security-patterns
+description: Flag injection, arbitrary execution, broken auth, hardcoded secrets, and supply chain risks
 ---
 # Security Patterns
 

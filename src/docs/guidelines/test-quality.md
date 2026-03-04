@@ -1,6 +1,6 @@
 ---
-title: Test Quality
-description: Rules for writing minimal, effective tests with maximum coverage
+name: test-quality
+description: Write the fewest tests that cover the most behavior — no trivial or duplicate tests
 ---
 # Test Quality
 

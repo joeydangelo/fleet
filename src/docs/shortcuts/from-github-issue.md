@@ -1,7 +1,6 @@
 ---
-title: From GitHub Issue
+name: from-github-issue
 description: Fetch GitHub issues, decompose them into tasks, and generate paw.yaml
-category: orchestrator
 ---
 Fetch GitHub issues — by number, or by listing what's open — and decompose them
 into parallel agent tasks for `.paw/paw.yaml`.

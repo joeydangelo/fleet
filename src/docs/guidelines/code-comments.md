@@ -1,6 +1,6 @@
 ---
-title: Code Comments
-description: Language-agnostic rules for writing clean, maintainable comments
+name: code-comments
+description: Rules for when to comment, what to avoid, and keeping comments maintainable
 ---
 # Code Comments
 

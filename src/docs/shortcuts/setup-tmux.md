@@ -1,7 +1,6 @@
 ---
-title: Setup tmux
+name: setup-tmux
 description: Ensure tmux is installed for paw's terminal management
-category: orchestrator
 ---
 paw requires tmux for `paw`, `paw launch`, and `paw go`.
 

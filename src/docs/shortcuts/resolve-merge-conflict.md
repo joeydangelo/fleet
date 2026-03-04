@@ -1,7 +1,6 @@
 ---
-title: Resolve Merge Conflict
+name: resolve-merge-conflict
 description: Read a conflict brief, resolve the merge conflict, and continue merging
-category: orchestrator
 ---
 A `paw go` or `paw merge` run exited with a conflict. You're the resolver — use
 the conflict brief to understand what happened and fix it.

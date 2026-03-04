@@ -1,5 +1,5 @@
 ---
-title: Orchestrator Brief
+name: orchestrator-brief
 description: Orchestrator context recovery after compaction
 ---
 

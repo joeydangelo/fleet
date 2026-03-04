@@ -179,7 +179,7 @@ describe('runReview', () => {
     expect(logs.some((l) => typeof l === 'string' && l.includes('SQL injection'))).toBe(true);
   });
 
-  it('persists findings to sync branch', async () => {
+  it('persists findings to sync branch as single review file', async () => {
     const state = baseSyncState();
     mockReadSyncState.mockReturnValue(state);
     mockReviewTask.mockResolvedValue(passResult());
@@ -187,9 +187,11 @@ describe('runReview', () => {
 
     await runReview();
 
-    expect(mockWriteSyncFile).toHaveBeenCalledTimes(1);
-    const [path, content] = mockWriteSyncFile.mock.calls[0]!;
-    expect(path).toMatch(/^review\/feature-x-auth-cycle-1\.md$/);
+    // Last writeSyncFile call is the post-verdict relay with appended findings
+    const lastCall = mockWriteSyncFile.mock.calls[mockWriteSyncFile.mock.calls.length - 1]!;
+    const [path, content] = lastCall;
+    expect(path).toBe('review/feature-x-auth.md');
+    expect(content).toContain('## Review — Cycle 1');
     expect(content).toContain('PASS');
   });
 

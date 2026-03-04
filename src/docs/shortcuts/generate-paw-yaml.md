@@ -1,7 +1,6 @@
 ---
-title: Generate paw.yaml
+name: generate-paw-yaml
 description: Analyze a codebase and generate .paw/paw.yaml with well-decomposed parallel tasks
-category: orchestrator
 ---
 Generate `.paw/paw.yaml` to split the user's feature request into parallel agent tasks.
 

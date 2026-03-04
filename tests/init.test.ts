@@ -218,10 +218,10 @@ describe('SKILL.md bundling (paw-m5d5)', () => {
 });
 
 describe('parseFrontmatter', () => {
-  it('extracts title and description from YAML frontmatter', () => {
-    const content = '---\ntitle: My Title\ndescription: My description\n---\n# Body';
+  it('extracts name and description from YAML frontmatter', () => {
+    const content = '---\nname: my-skill\ndescription: My description\n---\n# Body';
     const result = parseFrontmatter(content);
-    expect(result.title).toBe('My Title');
+    expect(result.title).toBe('my-skill');
     expect(result.description).toBe('My description');
   });
 
@@ -232,17 +232,17 @@ describe('parseFrontmatter', () => {
     expect(result.description).toBeUndefined();
   });
 
-  it('handles frontmatter with only title', () => {
-    const content = '---\ntitle: Only Title\n---\n# Body';
+  it('handles frontmatter with only name', () => {
+    const content = '---\nname: only-name\n---\n# Body';
     const result = parseFrontmatter(content);
-    expect(result.title).toBe('Only Title');
+    expect(result.title).toBe('only-name');
     expect(result.description).toBeUndefined();
   });
 
   it('handles values with colons and special characters', () => {
-    const content = '---\ntitle: "Rules: A Guide"\ndescription: Use @clack/prompts for UI\n---\n';
+    const content = '---\nname: "rules-guide"\ndescription: Use @clack/prompts for UI\n---\n';
     const result = parseFrontmatter(content);
-    expect(result.title).toBe('Rules: A Guide');
+    expect(result.title).toBe('rules-guide');
     expect(result.description).toBe('Use @clack/prompts for UI');
   });
 });

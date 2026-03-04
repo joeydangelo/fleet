@@ -1,7 +1,6 @@
 ---
-title: Getting Started
+name: getting-started
 description: Install paw and run your first parallel agent session
-category: orchestrator
 ---
 
 ## What is paw?

@@ -1,5 +1,5 @@
 ---
-title: Agent Brief
+name: agent-brief
 description: Worktree agent context recovery after compaction
 ---
 

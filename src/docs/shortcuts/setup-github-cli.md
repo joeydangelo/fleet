@@ -1,7 +1,6 @@
 ---
-title: Setup GitHub CLI
+name: setup-github-cli
 description: Ensure GitHub CLI (gh) is installed and authenticated
-category: orchestrator
 ---
 The `from-github-issue` and `to-pr` shortcuts require the GitHub CLI (`gh`).
 
