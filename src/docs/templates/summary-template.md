@@ -1,16 +1,20 @@
 ---
-title: PR Template
-description: Pull request body template for paw worktree agents
+name: summary-template
+description: Task summary template for paw worktree agents
 ---
-Use this template when creating a pull request in the Publish phase.
-Copy the structure below into your `gh pr create --body` argument.
+Use this template when writing your task summary in the Publish phase.
+Write the filled-in structure to `.paw/summary.md`.
 Fill in issue references from your task's `issue:` field and specs from `spec:`.
 
 ```markdown
+---
+branch: {your task branch}
+task: {your task name}
+---
+
 ## Summary
 
-<!-- What changed and why. Link issues from your task's issue: field.
-     Use closing keywords: Closes #123, Resolves PROJ-456 -->
+<!-- What changed and why. Reference issues from your task's issue: field. -->
 
 ## Changes
 

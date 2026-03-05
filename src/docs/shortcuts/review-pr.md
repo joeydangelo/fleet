@@ -1,11 +1,10 @@
 ---
-title: Review PR
-description: Review a task PR — step-by-step workflow returning PASS or FAIL with structured findings
-category: reviewer
+name: review-pr
+description: Review a task branch — step-by-step workflow returning PASS or FAIL with structured findings
 ---
-You are reviewing a paw task PR. This is a **read-only** review — do not edit or
-write files. Your job is to evaluate the diff, find real issues, and return a
-clear verdict.
+You are reviewing a paw task branch. This is a **read-only** review — do not
+edit or write files. Your job is to evaluate the diff, find real issues, and
+return a clear verdict.
 
 ## Step 1: Understand the task
 
@@ -25,32 +24,20 @@ Load these before reading any code. They calibrate what "good" looks like:
 - `paw guidelines security-patterns` — when code handles user input, shell
   commands, or external data
 
-## Step 3: Read the PR
+## Step 3: Read the review file
 
-Run `gh pr view <task-branch> --json title,body,labels` to get the builder's
-own summary — what they changed, how they tested it, and any references.
+Your review prompt includes a `git show paw-sync:...` command for the review
+file. Run it. This file contains the builder's summary of what changed and how
+they tested it. If prior reviews have happened, it also contains those findings
+and the builder's fixes — read everything before proceeding.
 
-Also run `gh pr view <task-branch> --comments` to check for PR comments. A
-prior reviewer may have posted findings there, and the builder may have replied
-describing what was fixed. If these comments exist, read them — they tell you
-what the prior reviewer found and what the builder claims to have addressed.
-You'll use this in Step 9.
-
-## Step 4: Check CI
-
-Run `gh pr checks <task-branch>` to see if CI is passing. If checks are still
-running, wait briefly with `gh pr checks <task-branch> --watch`. If CI is
-failing, stop the review and write a FAIL verdict immediately with a
-CRITICAL/testing issue: the specific failing check and its output. There is no
-point reviewing code that doesn't build or pass tests.
-
-## Step 5: Get and read the diff
+## Step 4: Get and read the diff
 
 Run the diff command provided in your review prompt (typically
 `git diff <target>...<task-branch>`). Read the full diff. Understand what changed
 and why before evaluating anything.
 
-## Step 6: Trace the code
+## Step 5: Trace the code
 
 Before judging anything, understand what the diff actually does:
 
@@ -60,7 +47,7 @@ Before judging anything, understand what the diff actually does:
   code, grep for usage) before filing a finding. Reviewing code you don't
   understand produces bad findings.
 
-## Step 7: Evaluate each review area
+## Step 6: Evaluate each review area
 
 Work through each area below. **Skip areas the diff doesn't touch** — don't
 force findings where none exist.
@@ -111,7 +98,7 @@ external data, dependencies, or CI workflows)*
 - Supply chain: unpinned deps, lockfile-only changes.
 - Security misconfiguration: debug mode in production, permissive CORS.
 
-## Step 8: Compile findings
+## Step 7: Compile findings
 
 For each issue, write a finding in this format:
 
@@ -150,18 +137,16 @@ MAJOR/testing src/auth/login.ts:45 -- No test for expired-token rejection — si
 MINOR/quality src/utils/helpers.ts:78 -- console.log left in production code — noisy logs
 ```
 
-## Step 9: Verify prior review findings
+## Step 8: Verify prior findings
 
-Skip this step if no PR comments exist from Step 3.
+Skip this step if the review file from Step 3 contains only the builder's
+summary (no prior review sections).
 
-If a prior reviewer posted findings as a PR comment, and the builder replied
-with a review response describing fixes, verify the builder's claims against
-the diff:
+If the review file contains prior findings and a `## Fixed` section from the
+builder, verify their claims against the diff:
 
-1. Read the prior reviewer's findings comment to get the original list of
-   issues.
-2. Read the builder's response comment to see what they claim to have fixed
-   and how.
+1. Read the prior findings from the review file.
+2. Read the builder's Fixed section to see what they claim to have resolved.
 3. For each finding, check the diff:
    - **Fixed** — the diff resolves the finding and matches the builder's
      claim. Don't re-file it.
@@ -174,54 +159,21 @@ the diff:
      their argument. If they're right, drop it. If they're wrong, re-file
      with your reasoning.
 
-## Step 10: Post findings as a PR comment
-
-If the verdict is **FAIL**, post your findings as a PR comment so the builder
-and any future reviewer can see them directly on the PR. Run:
-
-```bash
-BRANCH="<task-branch>"
-gh pr comment "$BRANCH" --body "$(cat <<'EOF'
-## Review Findings
-
-**Verdict: FAIL**
-
-### Strengths
-- [what was done well]
-
-### Issues
-[all findings from Step 8, grouped by severity — CRITICAL first, then MAJOR, then MINOR]
-
-### Suggestions
-[optional non-blocking observations, omit section if none]
-
----
-*Generated by paw review agent*
-EOF
-)"
-```
-
-Replace the placeholder content with your actual review. The builder will reply
-to this comment describing what they fixed, creating a thread that the next
-reviewer can follow.
-
-If the verdict is **PASS**, skip this step — no comment needed.
-
-## Step 11: Write the verdict file
+## Step 9: Write the verdict file
 
 The verdict file is how you signal completion. The review runner (`paw review`)
 polls for this JSON file, reads it, and routes findings to the builder on FAIL.
 Write it using the `node -e` command from your review prompt.
 
 **IMPORTANT:** This must be the last step. The review runner kills the review
-session as soon as it detects this file, so any work after writing it
-(like posting PR comments) will not execute.
+session as soon as it detects this file, so any work after writing it will not
+execute.
 
 The JSON has four keys:
 
 - **`verdict`** — `"PASS"` or `"FAIL"`.
 - **`strengths`** — What was done well. Brief, specific. One to three bullets.
-- **`issues`** — All findings from Step 8. Grouped by severity (CRITICAL first,
+- **`issues`** — All findings from Step 7. Grouped by severity (CRITICAL first,
   then MAJOR, then MINOR). This is what the builder must fix.
 - **`suggestions`** — Optional. Non-blocking observations or alternative
   approaches worth considering. Omit if you have none.

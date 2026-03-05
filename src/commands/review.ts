@@ -1,4 +1,5 @@
 import { resolve } from 'node:path';
+import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { Command } from 'commander';
 import pc from 'picocolors';
 import { getRepoRoot, getCurrentBranch } from '../lib/git.js';
@@ -84,6 +85,19 @@ export async function runReview(): Promise<number> {
   const taskBranch = getCurrentBranch(repoRoot);
   const targetBranch = state.target;
   const taskFilePath = resolve(repoRoot, '.paw', 'tasks', `${taskName}.md`);
+  const safeBranch = taskBranch.replace(/[^a-zA-Z0-9-]/g, '-');
+  const reviewFilePath = `review/${safeBranch}.md`;
+  const summaryLocalPath = resolve(repoRoot, '.paw', 'summary.md');
+
+  // Relay the full local summary to the sync branch — it's the single source of truth
+  if (existsSync(summaryLocalPath)) {
+    try {
+      const summaryContent = readFileSync(summaryLocalPath, 'utf-8');
+      writeSyncFile(reviewFilePath, summaryContent, repoRoot);
+    } catch (err: unknown) {
+      console.log(pc.dim(`  warning: failed to relay summary: ${String(err)}`));
+    }
+  }
 
   console.log(pc.dim(`  Reviewing ${taskName}...`));
   const result = await reviewTask(
@@ -98,31 +112,33 @@ export async function runReview(): Promise<number> {
       onTimeout: (elapsed) => console.log(pc.red(`  ⏱ reviewer timed out (${elapsed}) — skipping`)),
     },
     taskFilePath,
+    reviewFilePath,
   );
 
-  const safeBranch = taskBranch.replace(/[^a-zA-Z0-9-]/g, '-');
-  const findingsPath = `review/${safeBranch}-cycle-${nextCycle}.md`;
-  const findingsSections = [
-    `# Review: ${taskName} — cycle ${nextCycle}`,
+  // Build the "## Review — Cycle N" section from the verdict
+  const findingsSection = [
     ``,
+    `---`,
+    ``,
+    `## Review — Cycle ${nextCycle}`,
     `**Verdict:** ${result.verdict.toUpperCase()}`,
-    `**Branch:** ${taskBranch}`,
-    `**Date:** ${new Date().toISOString()}`,
     ``,
-    `## Strengths`,
-    ``,
+    `### Strengths`,
     result.strengths || '(none)',
     ``,
-    `## Issues`,
-    ``,
+    `### Issues`,
     result.issues || '(none)',
-    ``,
   ];
   if (result.suggestions) {
-    findingsSections.push(`## Suggestions`, ``, result.suggestions, ``);
+    findingsSection.push(``, `### Suggestions`, result.suggestions);
   }
+  const findingsText = findingsSection.join('\n') + '\n';
+
+  // Append findings to local .paw/summary.md, then relay updated file to sync branch
   try {
-    writeSyncFile(findingsPath, findingsSections.join('\n'), repoRoot);
+    const existing = existsSync(summaryLocalPath) ? readFileSync(summaryLocalPath, 'utf-8') : '';
+    writeFileSync(summaryLocalPath, existing + findingsText);
+    writeSyncFile(reviewFilePath, existing + findingsText, repoRoot);
   } catch (err: unknown) {
     console.log(pc.dim(`  warning: failed to persist findings: ${String(err)}`));
   }
