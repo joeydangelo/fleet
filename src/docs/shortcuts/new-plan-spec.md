@@ -2,47 +2,69 @@
 name: new-plan-spec
 description: Create a new feature planning specification document
 ---
-Create a feature spec that captures requirements, design decisions, and
-implementation approach — before decomposing into parallel tasks.
+Create a feature spec that defines the end state before any code is written.
+
+Load the spec planning guideline first:
+
+```
+paw guidelines spec-planning
+```
+
+Follow its principles throughout this workflow.
 
 ## Step 1: Understand the request
 
-Gather enough context to write a useful spec.
+1. **Read the user's request.** Identify the feature name, goals, and constraints.
 
-1. **Read the user's request.** Identify the feature name, goals, and any
-   constraints they mentioned.
-
-2. **Ask clarifications** — only what you can't infer. Use `AskUserQuestion`:
-   - What problem does this solve? (if not obvious)
-   - Are there existing patterns or prior art to follow?
-   - Any hard constraints (performance, compatibility, API stability)?
-
-   Don't ask about implementation details — you'll figure those out in Step 2.
+2. **Ask clarifications** — only what you can't infer from the request and
+   codebase. Use `AskUserQuestion` for genuine ambiguity, not low-stakes details.
 
 ## Step 2: Research the codebase
 
-Explore before writing. Load relevant guidelines first:
+Explore autonomously. Don't ask permission to read files or investigate.
 
-```
-paw guidelines general-tdd-guidelines
-```
+Launch 2-3 Explore agents in parallel to cover independent areas of the codebase
+simultaneously. Each agent should target a specific research question:
 
-Then investigate:
+- **Structure and patterns.** Module boundaries, directory layout, existing
+  conventions, and where new code would naturally live.
+- **Related code.** Similar features, shared types, utilities, and interfaces
+  the new feature should follow or extend.
+- **Dependencies and boundaries.** What the feature would import, what other
+  modules depend on, and where data enters and leaves the system.
 
-1. **Directory structure.** Identify module boundaries, existing patterns, and
-   where new code would naturally live.
+Use `medium` thoroughness for most research. Use `very thorough` when the feature
+touches unfamiliar or sprawling parts of the codebase.
 
-2. **Related code.** Search for similar features, shared types, utilities, and
-   conventions the new feature should follow.
+After the Explore agents report back, synthesize their findings and form an opinion.
+If multiple viable approaches exist, compare their tradeoffs against codebase
+patterns and the feature's goals.
 
-3. **Dependencies.** Check what the feature would import or extend. Note
-   interfaces that other modules depend on — these become integration points
-   in the spec.
+## Step 3: Clarify gaps from research
 
-4. **Existing specs.** Check `.paw/specs/` for prior specs. Review any that
-   overlap with the new feature for context and consistency.
+Research typically reveals things the original request didn't cover —
+underspecified behavior, edge cases, scope boundaries, design choices, or
+conflicts with existing patterns. Resolve these before writing the spec.
 
-## Step 3: Write the spec
+Use `AskUserQuestion` to present the user with specific, research-informed
+questions. For each question, include your recommendation with reasoning. The
+user may agree, redirect, or defer to your judgment — but the agent should
+always have an opinion ready.
+
+Common gaps to check:
+- **Approach.** If multiple viable approaches exist, present a brief tradeoff
+  comparison and your recommendation.
+- **Scope boundaries.** What's in vs. what's deferred — especially when research
+  shows the work is larger than the request implied.
+- **Edge cases.** Specific inputs or states where the intended behavior isn't
+  obvious from the request.
+- **Design preferences.** Where the codebase has multiple established patterns
+  and the choice isn't clear-cut.
+
+Skip this step if research confirmed the request is straightforward and
+unambiguous. Don't manufacture questions for the sake of asking.
+
+## Step 4: Write the spec
 
 1. **Create the spec file:**
 
@@ -56,36 +78,24 @@ Then investigate:
    .paw/specs/spec-YYYY-MM-DD-feature-name.md
    ```
 
-   Fill in the date and a descriptive feature name (kebab-case).
+2. **Fill in the template** based on your research:
 
-2. **Fill in the template** based on your research. Follow these rules:
+   - Reference concrete file paths from your research, not hypothetical ones.
+   - Show data shapes as actual types or schemas, not prose descriptions.
+   - Match expression format to content: prose for intent, pseudocode for
+     branching logic, diagrams for state machines, tables for edge cases.
+     See the `spec-planning` guideline for details.
+   - No time estimates. Work ships in one session.
 
-   - **Phases:** Use as few as possible. One phase is ideal for straightforward
-     features. Only split into phases when incremental testing requires it.
-
-   - **No time estimates.** Never include timeframes like "4-6 hours" or
-     "1 week". Work will be done in one session.
-
-   - **Diagrams:** Use Mermaid diagrams in the Design section when they clarify
-     multi-component flows, state transitions, or dependency relationships that
-     are hard to follow in prose alone. Skip diagrams when a bullet list says
-     the same thing.
-
-   - **Concrete file paths.** Reference actual files and directories from your
-     research, not hypothetical ones.
-
-   - **Testing strategy.** Be specific about what to test (unit, integration,
-     edge cases) based on the project's existing test patterns.
-
-## Step 4: Review with the user
+## Step 5: Review with the user
 
 Present the spec for feedback. Iterate until approved:
 
-- Walk through the key design decisions and trade-offs
+- Walk through key design decisions
 - Highlight anything you're uncertain about
-- Call out scope boundaries (what this spec covers vs. what it doesn't)
+- Call out scope boundaries (what's in vs. what's out)
 
-## Step 5: Transition to task decomposition
+## Step 6: Transition to task decomposition
 
 After the spec is approved, suggest decomposing into parallel tasks:
 

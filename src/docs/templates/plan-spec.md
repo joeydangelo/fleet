@@ -4,15 +4,12 @@ description: Template for feature planning specification documents
 ---
 # Feature: [Feature Name]
 
-**Date:** YYYY-MM-DD (last updated YYYY-MM-DD)
-
-**Author:** [Name]
-
-**Status:** Draft | In Review | Approved | Implemented
+**Date:** YYYY-MM-DD | **Status:** Draft | In Review | Approved | Implemented
 
 ## Overview
 
-Brief description of the feature and its purpose.
+What this feature does and why it exists. Include enough context for an agent to
+understand the motivation without external references.
 
 ## Goals
 
@@ -23,50 +20,29 @@ Brief description of the feature and its purpose.
 
 - What this feature explicitly does NOT cover
 
-## Background
-
-Context and motivation for this feature.
-
 ## Design
 
-### Approach
+### Target Experience
 
-High-level approach to implementing this feature.
+What the user (or consuming system) sees: commands, output, UI flow, error messages,
+the core interaction loop. Lead with behavior, not internals.
 
-### Components
+### Data Shapes
 
-Key components or modules involved.
+Core types, schemas, and data models. Show the actual structure — TypeScript
+interfaces, YAML examples, or database schemas — not prose descriptions of them.
 
-### API Changes
+### System Boundaries
 
-Any API additions or modifications.
+Where data enters and leaves the system (CLI args, API endpoints, config files,
+external services). Validation and error handling live here; internal code trusts
+its inputs.
 
-## Implementation Plan
+## Verification
 
-### Phase 1: [Name]
-
-- [ ] Task 1
-- [ ] Task 2
-
-### Phase 2: [Name] (if needed)
-
-- [ ] Task 3
-- [ ] Task 4
-
-## Testing Strategy
-
-How will this feature be tested?
-
-## Rollout Plan
-
-How will this feature be deployed?
+How to prove this works. Not "it compiles" — describe how to exercise the real
+feature path end-to-end and confirm the intended behavior.
 
 ## Open Questions
 
-- Question 1?
-- Question 2?
-
-## References
-
-- Link to related docs
-- Link to related issues
+- Unresolved decisions or unknowns that need answers before implementation
