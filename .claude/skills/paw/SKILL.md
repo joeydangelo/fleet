@@ -16,7 +16,7 @@ name: paw
 2. **Agent Coordination**: Broadcasts, directed messages, and Q&A threads
    keep agents aligned without blocking each other.
 3. **Conflict Resolution**: When merges conflict, paw generates context-rich
-   briefs built from PR descriptions and journal entries so the resolver
+   briefs built from builder summaries and inbox entries so the resolver
    has full intent — not just raw diff markers.
 4. **Automated Workflow**: `paw go` handles the full loop (up → spawn → watch →
    merge → down), or run each step manually for fine-grained control.
@@ -67,7 +67,7 @@ There are two roles. You are one of them:
 - **Orchestrator** — runs in the main repo. Decomposes work, sets up worktrees,
   monitors agents, merges results, handles conflicts, cleans up.
 - **Worktree agent** — runs inside an isolated worktree. Reads its task, works
-  autonomously, broadcasts changes, commits work, creates a PR, and submits for review.
+  autonomously, broadcasts changes, commits work, writes a summary, and submits for review.
 
 Read the section for your role.
 
@@ -189,7 +189,7 @@ Follow `paw shortcut build-task` for the full workflow:
 
 1. **Build** — Broadcast intent, plan work, implement with TDD.
 2. **Verify** — Review diff, format/lint/test, broadcast interface changes.
-3. **Publish** — Commit, push branch, create PR (`paw template pr-template`),
+3. **Publish** — Commit, write summary (`paw template summary-template`),
    then `paw review` to submit for review.
 
 ### Agent action commands
@@ -201,14 +201,14 @@ Follow `paw shortcut build-task` for the full workflow:
 | `paw reply "..."` | Reply to the most recent message |
 | `paw reply --to <thread> "..."` | Reply to a specific thread |
 | `paw status` | Check progress across all tasks |
-| `paw review` | Submit task for review (push + PR first) |
+| `paw review` | Submit task for review (commit + summary first) |
 
 ### Agent informational commands
 
 | Command | Purpose |
 |---|---|
 | `paw shortcut build-task` | Build/Verify/Publish workflow from task assignment to review |
-| `paw shortcut review-pr` | Review a task PR — return PASS or FAIL with findings |
+| `paw shortcut review-pr` | Review a task branch — return PASS or FAIL with findings |
 
 ---
 
@@ -235,7 +235,7 @@ Follow `paw shortcut build-task` for the full workflow:
 | `paw shortcut getting-started` | Install paw and run your first parallel agent session |
 | `paw shortcut new-plan-spec` | Create a new feature planning specification document |
 | `paw shortcut resolve-merge-conflict` | Read a conflict brief, resolve the merge conflict, and continue merging |
-| `paw shortcut review-pr` | Review a task PR — step-by-step workflow returning PASS or FAIL with structured findings |
+| `paw shortcut review-pr` | Review a task branch — step-by-step workflow returning PASS or FAIL with structured findings |
 | `paw shortcut setup-github-cli` | Ensure GitHub CLI (gh) is installed and authenticated |
 | `paw shortcut setup-tmux` | Ensure tmux is installed for paw's terminal management |
 | `paw shortcut to-pr` | Combine agent PR descriptions into a final PR with issue references |
@@ -246,17 +246,18 @@ Follow `paw shortcut build-task` for the full workflow:
 <!-- BEGIN GUIDELINES DIRECTORY -->
 | Command | Purpose |
 |---|---|
-| `paw guidelines code-comments` | Language-agnostic rules for writing clean, maintainable comments |
-| `paw guidelines code-quality` | Rules for clean, maintainable code — duplication, dead code, types, and structure |
-| `paw guidelines commit-conventions` | Conventional Commits format with extensions for multi-agent workflows |
-| `paw guidelines error-handling` | Rules for handling errors, failures, and exceptional conditions |
-| `paw guidelines paw-task-decomposition` | How to split work into independent parallel tasks that minimize conflicts |
-| `paw guidelines security-patterns` | Concrete security patterns to flag during code review |
-| `paw guidelines test-driven-development` | Use when implementing any feature or bugfix, before writing implementation code |
-| `paw guidelines test-quality` | Rules for writing minimal, effective tests with maximum coverage |
-| `paw guidelines testing-anti-patterns` | Common testing mistakes — mock misuse, test-only production methods, and incomplete test doubles |
+| `paw guidelines code-comments` | Rules for when to comment, what to avoid, and keeping comments maintainable |
+| `paw guidelines code-quality` | Flag duplication, dead code, type discipline issues, and structural debt |
+| `paw guidelines commit-conventions` | Conventional Commits format with scope, body, and multi-agent extensions |
+| `paw guidelines error-handling` | Flag empty catches, lost context, optimistic messages, and swallowed failures |
+| `paw guidelines paw-task-decomposition` | Split work into independent parallel tasks that minimize merge conflicts |
+| `paw guidelines security-patterns` | Flag injection, arbitrary execution, broken auth, hardcoded secrets, and supply chain risks |
+| `paw guidelines spec-planning` | Principles for designing specs that explore alternatives, define end states, and prevent bolt-on complexity |
+| `paw guidelines test-driven-development` | Red-Green-Refactor cycle, test-first methodology, and TDD workflow rules |
+| `paw guidelines test-quality` | Write the fewest tests that cover the most behavior — no trivial or duplicate tests |
+| `paw guidelines testing-anti-patterns` | Avoid mock misuse, test-only production methods, and incomplete test doubles |
 | `paw guidelines typescript-testing` | Integration testing patterns for TypeScript — test behavior and data flow, not mock existence |
-| `paw guidelines verify-completion` | Use when about to claim work is complete, fixed, or passing, before committing or creating PRs - requires running verification commands and confirming output before making any success claims; evidence before assertions always |
+| `paw guidelines verify-completion` | Run verification commands and confirm output before claiming done — evidence before assertions |
 <!-- END GUIDELINES DIRECTORY -->
 
 ### Available templates
@@ -266,7 +267,7 @@ Follow `paw shortcut build-task` for the full workflow:
 |---|---|
 | `paw template paw-yaml` | Annotated config structure for .paw/paw.yaml |
 | `paw template plan-spec` | Template for feature planning specification documents |
-| `paw template pr-template` | Pull request body template for paw worktree agents |
+| `paw template summary-template` | Task summary template for paw worktree agents |
 <!-- END TEMPLATE DIRECTORY -->
 
 ---

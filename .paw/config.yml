@@ -17,6 +17,7 @@ docs_cache:
     guidelines/error-handling.md: internal:guidelines/error-handling.md
     guidelines/paw-task-decomposition.md: internal:guidelines/paw-task-decomposition.md
     guidelines/security-patterns.md: internal:guidelines/security-patterns.md
+    guidelines/spec-planning.md: internal:guidelines/spec-planning.md
     guidelines/test-driven-development.md: internal:guidelines/test-driven-development.md
     guidelines/test-quality.md: internal:guidelines/test-quality.md
     guidelines/testing-anti-patterns.md: internal:guidelines/testing-anti-patterns.md
@@ -36,8 +37,8 @@ docs_cache:
     templates/orchestrator-brief.md: internal:templates/orchestrator-brief.md
     templates/paw-yaml.md: internal:templates/paw-yaml.md
     templates/plan-spec.md: internal:templates/plan-spec.md
-    templates/pr-template.md: internal:templates/pr-template.md
     templates/skill.md: internal:templates/skill.md
+    templates/summary-template.md: internal:templates/summary-template.md
   lookup_path:
     - .paw/docs/shortcuts
     - .paw/docs/guidelines

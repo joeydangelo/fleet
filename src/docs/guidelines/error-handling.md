@@ -1,6 +1,6 @@
 ---
-title: Error Handling Rules
-description: Rules for handling errors, failures, and exceptional conditions
+name: error-handling
+description: Flag empty catches, lost context, optimistic messages, and swallowed failures
 ---
 # Error Handling Rules
 
@@ -21,34 +21,8 @@ without reading source code?
 ### Verify success before claiming it
 
 Result types, status codes, and partial failures don't throw — they silently
-continue. Always check before reporting success:
-
-```typescript
-const result = await operation();
-if (!result.success) {
-  console.error(`Failed: ${result.error}`);
-  return;
-}
-console.log('Done!');  // Only reached after verified success
-```
-
-"Done" means "I checked, and it worked."
-
-### Track state explicitly
-
-Don't infer success from the absence of failure. Track outcomes with explicit
-variables — more verbose, but the compiler forces you to handle both states:
-
-```typescript
-pullSucceeded = await pull();
-pushSucceeded = await push();
-
-if (pullSucceeded && pushSucceeded) {
-  console.log('Sync complete');
-} else {
-  console.log('Sync incomplete');
-}
-```
+continue. Always check before reporting success. See the "Optimistic success
+messages" anti-pattern below for code examples.
 
 ### Choose throw vs Result by recoverability
 
@@ -62,12 +36,6 @@ Pick based on what the caller can do:
 
 For CLI tools, most failures should throw or exit.
 Result types are better for library code where the caller has recovery options.
-
-### Logging is not handling
-
-After any error log, there must be a control flow change (`throw`, `return`,
-`exit`) or explicit user notification. If execution continues past a
-`logger.warn(error)`, the error is swallowed.
 
 ### Exit codes are contracts
 
@@ -198,12 +166,6 @@ try {
 await notifyUser('Save complete!');
 ```
 
-### Inferring success from side effects
-
-Deriving success from whether a message was built, a variable was set, or
-some other indirect signal. Any code path that forgets to update the side
-effect falsely indicates success. Track outcomes with explicit booleans.
-
 ### Ignored Result types
 
 Function returns `{ success: boolean }` but the caller discards it.
@@ -259,6 +221,32 @@ Individual catch blocks should not replace errors unless adding genuinely
 useful context. The central error handler is the right place for stack traces
 and debug info.
 
+### Silent fallbacks
+
+Error caught and replaced with a default value. The operation "works" but
+the user never learns the primary path failed — a broken config file, a
+missing service, a permission error all silently degrade.
+
+```typescript
+// BAD — user never knows the real config failed to load
+try {
+  config = await loadConfig(path);
+} catch {
+  config = DEFAULT_CONFIG;
+}
+
+// GOOD — fall back, but tell the user
+try {
+  config = await loadConfig(path);
+} catch (e) {
+  console.warn(`Failed to load ${path}, using defaults: ${e.message}`);
+  config = DEFAULT_CONFIG;
+}
+```
+
+Fallbacks are fine when the user is informed. Silent fallbacks mask real
+problems.
+
 ### Optional chaining hiding failures
 
 A `result?.data?.items` chain silently produces `undefined` when something
@@ -301,8 +289,3 @@ For any operation that can fail, verify:
 | Catch-and-continue | Audit catch blocks that log but don't throw/return |
 | Lost exception context | Grep for `new Error.*\.message` (wrapping without cause) |
 | Catch-and-replace | Grep for `} catch {` followed by `throw new` (bare catch discards error) |
-
-A bare `} catch {` (no error variable) followed by `throw new` means the
-original error is discarded. Acceptable when transforming to a semantic error
-(`NotFoundError`, `NotInitializedError`). Problematic when replacing with a
-generic message that loses the root cause.
