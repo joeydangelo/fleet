@@ -176,21 +176,6 @@ export function isAncestor(commit: string, target: string, cwd?: string): boolea
   }
 }
 
-/** Close the GitHub PR associated with a branch. Best-effort — returns false on failure. */
-export function closePrForBranch(branch: string, comment: string, cwd?: string): boolean {
-  try {
-    execFileSync('gh', ['pr', 'close', branch, '--comment', comment], {
-      cwd,
-      stdio: 'pipe',
-      encoding: 'utf-8',
-      timeout: 15_000,
-    });
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 /** Read a file from a specific branch. Returns null if the file doesn't exist on that branch. */
 export function getFileFromBranch(branch: string, filepath: string, cwd?: string): string | null {
   try {
