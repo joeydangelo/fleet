@@ -118,6 +118,11 @@ if echo "$command" | grep -qE '\\bgit\\s+merge\\b'; then
   deny "Do not merge branches in a paw worktree. The orchestrator handles merging after all tasks are done."
 fi
 
+# Block git push (all work stays local until orchestrator merges)
+if echo "$command" | grep -qE '\\bgit\\s+push\\b'; then
+  deny "Do not push from a paw worktree. All work stays local until the orchestrator merges."
+fi
+
 # Block orchestrator commands from worktrees
 if echo "$command" | grep -qE '\\bpaw\\s+(up|down|merge|go|launch)\\b'; then
   deny "Do not run orchestrator commands from a paw worktree. These commands are for the orchestrator in the main repo."
@@ -155,18 +160,11 @@ if [[ "$input" == *"git commit"* ]]; then
     # Check if task is already in_review or done on sync branch
     task_status=$(git show "paw-sync:state.json" 2>/dev/null | grep -A2 "\\"$task_name\\"" | grep -o '"status"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"\\([^"]*\\)"/\\1/')
     if [ "$task_status" != "in_review" ] && [ "$task_status" != "done" ]; then
-      BRANCH=$(git branch --show-current)
       echo ""
       echo "PAW REMINDER: You have not submitted for review yet."
       echo "  After committing, follow the Publish phase:"
-      echo "    1. git push -u origin HEAD"
-      PR_NUM=$(gh pr view "$BRANCH" --json number -q '.number' 2>/dev/null)
-      if [ -n "$PR_NUM" ]; then
-        echo "    2. gh pr edit $BRANCH --title '...' --body '...'  (PR #$PR_NUM exists)"
-      else
-        echo "    2. gh pr create --title '...' --body '...'"
-      fi
-      echo "    3. paw review"
+      echo "    1. Write a summary to .paw/summary.md (paw template summary-template)"
+      echo "    2. paw review"
       echo ""
     fi
   fi

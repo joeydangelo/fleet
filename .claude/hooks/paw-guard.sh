@@ -18,7 +18,7 @@ deny() {
 # Detect tool type from input
 tool_name=$(echo "$input" | grep -o '"tool_name"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"tool_name"[[:space:]]*:[[:space:]]*"\(.*\)"/\1/')
 
-# --- Edit/Write guard: block file access to .paw/sync/ ---
+# Edit/Write guard
 if [ "$tool_name" = "Edit" ] || [ "$tool_name" = "Write" ]; then
   file_path=$(echo "$input" | grep -o '"file_path"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"file_path"[[:space:]]*:[[:space:]]*"\(.*\)"/\1/')
   if echo "$file_path" | grep -qE '\.paw/sync/|\.paw\\\\sync\\\\'; then
@@ -27,7 +27,7 @@ if [ "$tool_name" = "Edit" ] || [ "$tool_name" = "Write" ]; then
   exit 0
 fi
 
-# --- Bash guard: block dangerous git commands and sync state access ---
+# Bash guard
 command=$(echo "$input" | grep -o '"command"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"command"[[:space:]]*:[[:space:]]*"\(.*\)"/\1/')
 
 # Block git checkout / git switch (agents must stay on their task branch)
@@ -38,6 +38,11 @@ fi
 # Block git merge (orchestrator's job)
 if echo "$command" | grep -qE '\bgit\s+merge\b'; then
   deny "Do not merge branches in a paw worktree. The orchestrator handles merging after all tasks are done."
+fi
+
+# Block git push (all work stays local until orchestrator merges)
+if echo "$command" | grep -qE '\bgit\s+push\b'; then
+  deny "Do not push from a paw worktree. All work stays local until the orchestrator merges."
 fi
 
 # Block orchestrator commands from worktrees
