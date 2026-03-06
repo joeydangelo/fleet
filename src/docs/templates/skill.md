@@ -85,7 +85,7 @@ Read the section for your role.
 | Wants open tracker issues done | Load `paw shortcut from-issues`, follow it, then `paw go` |
 | Wants to see progress | `paw status` |
 | Merge conflict happened | Load `paw shortcut resolve-merge-conflict` and follow it |
-| Work is done, wants a PR | Load `paw shortcut to-pr` and follow it |
+| Work is done | Load `paw shortcut finish-branch` and follow it |
 | Wants session cleaned up | `paw down` |
 | Needs GitHub CLI set up | Load `paw shortcut setup-github-cli` and follow it |
 | Needs paw installed/upgraded | `npm install -g get-paw@latest && paw init` |
@@ -172,7 +172,7 @@ These load workflow guidance — read the output and follow the instructions.
 | `paw shortcut from-issues` | How to generate paw.yaml from CLI issue tracker |
 | `paw shortcut from-github-issue` | How to generate paw.yaml from GitHub issue(s) |
 | `paw shortcut resolve-merge-conflict` | How to read conflict brief, resolve files, `paw merge --continue` |
-| `paw shortcut to-pr` | How to create PR from merged agent work |
+| `paw shortcut finish-branch` | Verify merged work, then merge/PR/keep/discard |
 | `paw shortcut setup-github-cli` | How to ensure gh CLI is installed and authenticated |
 
 ---
@@ -233,7 +233,7 @@ Follow `paw shortcut build-task` for the full workflow:
 | `paw shortcut from-issues` | Generate paw.yaml from CLI issue tracker |
 | `paw shortcut from-github-issue` | Fetch GitHub issues, decompose into tasks, generate paw.yaml |
 | `paw shortcut resolve-merge-conflict` | Read conflict brief, resolve files, `paw merge --continue` |
-| `paw shortcut to-pr` | Create PR from merged agent work |
+| `paw shortcut finish-branch` | Verify merged work, then merge/PR/keep/discard |
 | `paw shortcut setup-github-cli` | Ensure GitHub CLI (gh) is installed and authenticated |
 | `paw shortcut getting-started` | Install paw and run your first parallel agent session |
 | `paw shortcut setup-tmux` | Ensure tmux is installed for paw's terminal management |

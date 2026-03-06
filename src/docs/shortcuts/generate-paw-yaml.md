@@ -66,9 +66,6 @@ From the request, codebase, and `paw guidelines paw-task-decomposition`:
    If a spec exists in `.paw/specs/`, set the top-level `spec:` field on the
    config to the spec path.
 
-   These fields are optional. When present, `paw shortcut to-pr` uses them to
-   reference issues in the PR body.
-
 6. **Check for gitignored files that need copying.** Git worktrees only contain
    tracked files. If the project has gitignored files that agents need (`.env`,
    `.env.local`, local configs, credentials), list them under `include:`. Supports

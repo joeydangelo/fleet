@@ -2,7 +2,7 @@
 name: setup-github-cli
 description: Ensure GitHub CLI (gh) is installed and authenticated
 ---
-The `from-github-issue` and `to-pr` shortcuts require the GitHub CLI (`gh`).
+The `from-github-issue` and `finish-branch` shortcuts require the GitHub CLI (`gh`).
 
 ## Verify First
 

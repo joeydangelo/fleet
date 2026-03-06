@@ -46,7 +46,6 @@ tasks:
 
     # Optional: link this task to its source issue (any tracker ID format).
     # Bridge shortcuts like from-issues and from-github-issue populate this.
-    # to-pr uses it to reference issues in the PR body.
     issue: GH#123                      # any tracker ID format works
 
     # Optional: declare merge-order dependencies. When this task depends_on

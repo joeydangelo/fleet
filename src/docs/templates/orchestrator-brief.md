@@ -15,6 +15,6 @@ paw shortcut generate-paw-yaml  # Plan parallel work, then paw go
 paw go                          # Full lifecycle: up → launch → watch → review → merge → down
 paw status                      # Check progress across all tasks
 paw merge --continue            # Resume after conflict resolution
-paw shortcut to-pr              # Create PR from merged work
+paw shortcut finish-branch       # Verify, then merge/PR/keep/discard
 paw down                        # Archive session, remove worktrees
 ```
