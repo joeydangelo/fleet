@@ -45,7 +45,6 @@ tasks:
       - src/middleware/auth.ts
 
     # Optional: link this task to its source issue (any tracker ID format).
-    # Bridge shortcuts like from-issues and from-github-issue populate this.
     issue: GH#123                      # any tracker ID format works
 
     # Optional: declare merge-order dependencies. When this task depends_on

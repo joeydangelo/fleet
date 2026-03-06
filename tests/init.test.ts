@@ -30,7 +30,7 @@ describe('installHooks', () => {
     expect(sessionStart[0].hooks[0]).toEqual({
       type: 'command',
       command: 'bash .claude/scripts/confirm-gh-cli.sh',
-      timeout: 120,
+      timeout: 10,
     });
     expect(sessionStart[1]).toHaveProperty('matcher', '');
     expect(sessionStart[1].hooks[0]).toEqual({

@@ -5,6 +5,7 @@ description: Template for feature planning specification documents
 # Feature: [Feature Name]
 
 **Date:** YYYY-MM-DD | **Status:** Draft | In Review | Approved | Implemented
+**Issues:** GH#123, GH#456 <!-- linked issue IDs from any tracker -->
 
 ## Overview
 

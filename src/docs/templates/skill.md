@@ -81,15 +81,12 @@ Read the section for your role.
 |---|---|
 | Wants to plan a feature | Load `paw shortcut new-plan-spec`, follow it to create a spec, then decompose with `paw shortcut generate-paw-yaml` |
 | Wants work parallelized | Load `paw shortcut generate-paw-yaml`, follow it to write `.paw/paw.yaml`, then `paw go` |
-| Wants GitHub issues worked on | Load `paw shortcut from-github-issue`, follow it, then `paw go` |
-| Wants open tracker issues done | Load `paw shortcut from-issues`, follow it, then `paw go` |
 | Wants to see progress | `paw status` |
 | Merge conflict happened | Load `paw shortcut resolve-merge-conflict` and follow it |
 | Work is done | Load `paw shortcut finish-branch` and follow it |
 | Wants session cleaned up | `paw down` |
-| Needs GitHub CLI set up | Load `paw shortcut setup-github-cli` and follow it |
+
 | Needs paw installed/upgraded | `npm install -g get-paw@latest && paw init` |
-| New to paw / getting started | Load `paw shortcut getting-started` and follow it |
 
 Worktree agents use a different set — see the Worktree Agent section below.
 
@@ -169,11 +166,8 @@ These load workflow guidance — read the output and follow the instructions.
 |---|---|
 | `paw shortcut new-plan-spec` | How to create a feature spec before decomposing into tasks |
 | `paw shortcut generate-paw-yaml` | How to analyze a codebase and create .paw/paw.yaml |
-| `paw shortcut from-issues` | How to generate paw.yaml from CLI issue tracker |
-| `paw shortcut from-github-issue` | How to generate paw.yaml from GitHub issue(s) |
 | `paw shortcut resolve-merge-conflict` | How to read conflict brief, resolve files, `paw merge --continue` |
 | `paw shortcut finish-branch` | Verify merged work, then merge/PR/keep/discard |
-| `paw shortcut setup-github-cli` | How to ensure gh CLI is installed and authenticated |
 
 ---
 
@@ -230,13 +224,9 @@ Follow `paw shortcut build-task` for the full workflow:
 |---|---|
 | `paw shortcut new-plan-spec` | Create a feature planning specification document |
 | `paw shortcut generate-paw-yaml` | Analyze a codebase and generate .paw/paw.yaml with parallel tasks |
-| `paw shortcut from-issues` | Generate paw.yaml from CLI issue tracker |
-| `paw shortcut from-github-issue` | Fetch GitHub issues, decompose into tasks, generate paw.yaml |
 | `paw shortcut resolve-merge-conflict` | Read conflict brief, resolve files, `paw merge --continue` |
 | `paw shortcut finish-branch` | Verify merged work, then merge/PR/keep/discard |
-| `paw shortcut setup-github-cli` | Ensure GitHub CLI (gh) is installed and authenticated |
-| `paw shortcut getting-started` | Install paw and run your first parallel agent session |
-| `paw shortcut setup-tmux` | Ensure tmux is installed for paw's terminal management |
+
 | `paw shortcut build-task` | Build/Verify/Publish workflow from task assignment to review |
 | `paw shortcut review-pr` | Review a task branch — return PASS or FAIL with findings |
 <!-- END SHORTCUT DIRECTORY -->

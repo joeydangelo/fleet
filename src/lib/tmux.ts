@@ -413,7 +413,6 @@ function printWindowsTmuxError(): void {
       '  Then run paw from WSL.',
       '',
       '  More info: https://tmux.info/docs/installation',
-      '             paw shortcut setup-tmux',
     ];
     console.error(msg.join('\n'));
   } else {
@@ -424,7 +423,6 @@ function printWindowsTmuxError(): void {
       '  Then inside WSL:',
       '    sudo apt install tmux\n',
       '  More info: https://tmux.info/docs/installation',
-      '             paw shortcut setup-tmux',
     ];
     console.error(msg.join('\n'));
   }
@@ -472,7 +470,6 @@ function printUnixTmuxError(): void {
 
   lines.push('');
   lines.push('  More info: https://tmux.info/docs/installation');
-  lines.push('             paw shortcut setup-tmux');
   console.error(lines.join('\n'));
 }
 

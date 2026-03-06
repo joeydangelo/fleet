@@ -60,8 +60,7 @@ From the request, codebase, and `paw guidelines paw-task-decomposition`:
 
 5. **Link tasks to sources.** If tasks originate from issues, set the optional
    `issue` field on each task:
-   - `issue`: the tracker ID (e.g., `GH#123`). Any tracker ID format works. Set this
-     when generating from `paw shortcut from-issues` or `from-github-issue`.
+   - `issue`: the tracker ID (e.g., `GH#123`). Any tracker ID format works.
 
    If a spec exists in `.paw/specs/`, set the top-level `spec:` field on the
    config to the spec path.
