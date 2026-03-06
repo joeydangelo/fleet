@@ -21,7 +21,6 @@ docs_cache:
     guidelines/test-driven-development.md: internal:guidelines/test-driven-development.md
     guidelines/test-quality.md: internal:guidelines/test-quality.md
     guidelines/testing-anti-patterns.md: internal:guidelines/testing-anti-patterns.md
-    guidelines/verify-completion.md: internal:guidelines/verify-completion.md
     shortcuts/build-task.md: internal:shortcuts/build-task.md
     shortcuts/finish-branch.md: internal:shortcuts/finish-branch.md
     shortcuts/generate-paw-yaml.md: internal:shortcuts/generate-paw-yaml.md

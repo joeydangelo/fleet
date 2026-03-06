@@ -2,8 +2,8 @@
 name: finish-branch
 description: After paw merge, decide what to do with the target branch — merge to main, create a PR, or keep as-is
 ---
-After `paw merge` (or `paw go`), the target branch has all agent work merged
-into it. Verify the result, then decide how to integrate it.
+All agent work is merged into the target branch. Verify the result, then
+decide how to integrate it.
 
 ## Step 1: Verify the merged result
 

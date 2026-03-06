@@ -44,8 +44,8 @@ Three-phase workflow: **Build → Verify → Publish**.
 
 An inner loop. Run checks, fix failures, repeat until clean.
 
-**Load `paw guidelines verify-completion` before starting this phase.** The
-core rule: no completion claims without fresh verification evidence.
+Every step in 2a follows one rule: run the check, read the output, then
+state the result. No claims without fresh evidence.
 
 ### The loop
 
