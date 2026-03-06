@@ -11,7 +11,7 @@ Run `paw prime` to restore full session context.
 ## Commands
 
 ```bash
-paw shortcut generate-paw-yaml  # Plan parallel work, then paw go
+paw shortcut decompose-work  # Plan parallel work, then paw go
 paw go                          # Full lifecycle: up → launch → watch → review → merge → down
 paw status                      # Check progress across all tasks
 paw merge --continue            # Resume after conflict resolution

@@ -11,6 +11,7 @@ paw.yaml
 tasks/
 sync/
 sessions/
+specs/
 *.tmp
 `;
 

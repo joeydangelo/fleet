@@ -79,8 +79,8 @@ Read the section for your role.
 
 | User Intent | What You Do |
 |---|---|
-| Wants to plan a feature | Load `paw shortcut new-plan-spec`, follow it to create a spec, then decompose with `paw shortcut generate-paw-yaml` |
-| Wants work parallelized | Load `paw shortcut generate-paw-yaml`, follow it to write `.paw/paw.yaml`, then `paw go` |
+| Wants to plan a feature | Load `paw shortcut write-spec`, follow it to create a spec, then decompose with `paw shortcut decompose-work` |
+| Wants work parallelized | Load `paw shortcut decompose-work`, follow it to write `.paw/paw.yaml`, then `paw go` |
 | Wants to see progress | `paw status` |
 | Merge conflict happened | Load `paw shortcut resolve-merge-conflict` and follow it |
 | Work is done | Load `paw shortcut finish-branch` and follow it |
@@ -100,9 +100,9 @@ progress, merge results, handle conflicts, and clean up.
 ### Orchestrator workflow
 
 1. **(Optional) Plan first.** For complex features, load
-   `paw shortcut new-plan-spec` to create a feature spec in
+   `paw shortcut write-spec` to create a feature spec in
    `docs/project/specs/active/` before decomposing.
-2. **Decompose work.** Load `paw shortcut generate-paw-yaml` and follow it to
+2. **Decompose work.** Load `paw shortcut decompose-work` and follow it to
    write `.paw/paw.yaml`. If a spec exists, reference it in task `spec:` fields.
    Review and approve the yaml before continuing.
 3. **Run the session.**
@@ -164,8 +164,8 @@ These load workflow guidance — read the output and follow the instructions.
 
 | Command | Purpose |
 |---|---|
-| `paw shortcut new-plan-spec` | How to create a feature spec before decomposing into tasks |
-| `paw shortcut generate-paw-yaml` | How to analyze a codebase and create .paw/paw.yaml |
+| `paw shortcut write-spec` | How to create a feature spec before decomposing into tasks |
+| `paw shortcut decompose-work` | How to analyze a codebase and create .paw/paw.yaml |
 | `paw shortcut resolve-merge-conflict` | How to read conflict brief, resolve files, `paw merge --continue` |
 | `paw shortcut finish-branch` | Verify merged work, then merge/PR/keep/discard |
 
@@ -222,12 +222,13 @@ Follow `paw shortcut build-task` for the full workflow:
 <!-- BEGIN SHORTCUT DIRECTORY -->
 | Command | Purpose |
 |---|---|
+| `paw shortcut assess-work` | Assess task complexity and route to the right workflow — direct implementation, task decomposition, or spec-first planning |
 | `paw shortcut build-task` | Build, verify, and publish your paw task — the full worktree agent workflow |
+| `paw shortcut decompose-work` | Analyze a codebase and generate .paw/paw.yaml with well-decomposed parallel tasks |
 | `paw shortcut finish-branch` | After paw merge, decide what to do with the target branch — merge to main, create a PR, or keep as-is |
-| `paw shortcut generate-paw-yaml` | Analyze a codebase and generate .paw/paw.yaml with well-decomposed parallel tasks |
-| `paw shortcut new-plan-spec` | Create a new feature planning specification document |
 | `paw shortcut resolve-merge-conflict` | Read a conflict brief, resolve the merge conflict, and continue merging |
 | `paw shortcut review-pr` | Review a task branch — step-by-step workflow returning PASS or FAIL with structured findings |
+| `paw shortcut write-spec` | Create a new feature planning specification document |
 <!-- END SHORTCUT DIRECTORY -->
 
 ### Available guidelines
@@ -239,9 +240,9 @@ Follow `paw shortcut build-task` for the full workflow:
 | `paw guidelines code-quality` | Flag duplication, dead code, type discipline issues, and structural debt |
 | `paw guidelines commit-conventions` | Conventional Commits format with scope, body, and multi-agent extensions |
 | `paw guidelines error-handling` | Flag empty catches, lost context, optimistic messages, and swallowed failures |
-| `paw guidelines paw-task-decomposition` | Split work into independent parallel tasks that minimize merge conflicts |
 | `paw guidelines security-patterns` | Flag injection, arbitrary execution, broken auth, hardcoded secrets, and supply chain risks |
 | `paw guidelines spec-planning` | Principles for designing specs that explore alternatives, define end states, and prevent bolt-on complexity |
+| `paw guidelines task-decomposition` | Split work into independent parallel tasks that minimize merge conflicts |
 | `paw guidelines test-driven-development` | Red-Green-Refactor cycle, test-first methodology, and TDD workflow rules |
 | `paw guidelines test-quality` | Write the fewest tests that cover the most behavior — no trivial or duplicate tests |
 | `paw guidelines testing-anti-patterns` | Avoid mock misuse, test-only production methods, and incomplete test doubles |

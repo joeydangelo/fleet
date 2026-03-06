@@ -4,84 +4,58 @@ description: Annotated config structure for .paw/paw.yaml
 ---
 ```yaml
 # .paw/paw.yaml — defines parallel agent tasks for a paw session
-#
-# Run `paw up` to create worktrees and branches from this file.
-# Run `paw guidelines paw-task-decomposition` for guidance on splitting work.
 
-# The branch all task branches merge into. paw creates this from base if needed.
 target: feature/my-feature
-
-# Base branch to create target from (default: main). Usually you leave this alone.
-# base: main
-
-# The command to run in each worktree terminal. Required for `paw launch`.
-# The agent command to run in each worktree terminal. Required for `paw launch`.
+# base: main                              # default: main
 agent: claude
-
-# Path to the planning spec for this session.
 # spec: .paw/specs/spec-2026-03-04-my-feature.md
 
-# Files to copy from the main repo into each worktree during `paw up`.
-# Useful for gitignored files like .env, local configs, and credentials that
-# git worktree add doesn't bring along. Supports glob patterns.
-# Skips files that already exist in the worktree.
-# include:
+# include:                                # gitignored files to copy into each worktree
 #   - .env
 #   - .env.local
 #   - "config/local.json"
 
 tasks:
-  # Each key is the task name. It becomes the branch name suffix, worktree directory
-  # name, and the agent's identity for broadcasts and coordination.
-  #
-  # Branch:    {target}-{taskName}     (e.g., feature/my-feature-auth)
-  # Worktree:  {repoName}-paw-{taskName}  (e.g., myapp-paw-auth)
+  # Each key is the task name → branch suffix and worktree directory.
+  #   Branch:    {target}-{taskName}
+  #   Worktree:  {repoName}-paw-{taskName}
 
   auth:
-    # Focus areas — directories and files this agent owns. Helps the agent
-    # stay in scope and helps you verify tasks don't overlap.
     focus:
       - src/auth/
       - src/middleware/auth.ts
 
-    # Optional: link this task to its source issue (any tracker ID format).
-    issue: GH#123                      # any tracker ID format works
+    issue: GH#123
 
-    # Optional: declare merge-order dependencies. When this task depends_on
-    # another, `paw merge` processes the dependency first so shared interfaces
-    # exist on the target branch before dependent code merges in.
-    # Accepts a single task name or a list. All names must exist in tasks.
-    # depends_on: other-task
-    # depends_on:
+    # depends_on: other-task              # merge after this task
+    # depends_on:                         # or a list
     #   - task-a
     #   - task-b
-
-    # Instructions for the agent. Be specific: what to build, what interfaces
-    # are shared, what to broadcast. Optional but strongly recommended.
     prompt: |
-      Add OAuth2 login flow with Google and GitHub providers.
-      Define AuthConfig type at src/auth/types.ts — the api task depends on this.
-      Broadcast any changes to AuthConfig or the middleware signature.
+      Add OAuth2 login with Google and GitHub providers.
+      Define an AuthConfig type with provider, clientId, and callbackUrl
+      fields — the api task imports this type. Support login, logout,
+      and token refresh flows. Return 401 with a JSON error body on
+      expired tokens.
 
   api:
     focus:
       - src/api/
       - src/routes/
-    depends_on: auth                   # merged after auth
+    depends_on: auth
     issue: GH#42
     prompt: |
-      Build REST endpoints for user profiles.
-      Import AuthConfig from src/auth/types.ts (owned by the auth task).
-      If auth broadcasts interface changes, adapt accordingly.
+      Build REST endpoints for user profiles. Endpoints: GET, PATCH,
+      and DELETE on /users/:id. Require authentication on all endpoints.
+      Import the AuthConfig type from the auth task. Return 404 for
+      missing users.
 
-  tests:
+  dashboard:
     focus:
-      - tests/
-    depends_on:                        # merged after both auth and api
-      - auth
-      - api
+      - src/dashboard/
+      - src/components/
     prompt: |
-      Write integration tests for the auth and api tasks.
-      Read their PRs and broadcasts via `paw prime` to understand what to test.
-      Wait for broadcasts about interface shapes before writing assertions.
+      Build the user dashboard page showing profile data from the API.
+      Fetch from GET /users/:id. Show name, email, and provider. Handle
+      loading and error states. Follow existing component patterns.
 ```

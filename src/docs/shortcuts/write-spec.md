@@ -1,5 +1,5 @@
 ---
-name: new-plan-spec
+name: write-spec
 description: Create a new feature planning specification document
 ---
 Create a feature spec that defines the end state before any code is written.
@@ -84,7 +84,6 @@ unambiguous. Don't manufacture questions for the sake of asking.
    - Show data shapes as actual types or schemas, not prose descriptions.
    - Match expression format to content: prose for intent, pseudocode for
      branching logic, diagrams for state machines, tables for edge cases.
-     See the `spec-planning` guideline for details.
    - No time estimates. Work ships in one session.
 
 ## Step 5: Review with the user
@@ -97,14 +96,12 @@ Present the spec for feedback. Iterate until approved:
 
 ## Step 6: Transition to task decomposition
 
-After the spec is approved, suggest decomposing into parallel tasks:
+After the spec is approved, decompose into parallel tasks:
 
-```
-paw shortcut generate-paw-yaml
-```
+1. Run `paw shortcut decompose-work`
+2. The shortcut uses your spec as its primary input
+3. Set the top-level `spec:` field in paw.yaml:
 
-Set the top-level `spec:` field in `.paw/paw.yaml` to point to your spec:
-
-```yaml
-spec: .paw/specs/spec-YYYY-MM-DD-feature-name.md
-```
+   ```yaml
+   spec: .paw/specs/spec-YYYY-MM-DD-feature-name.md
+   ```

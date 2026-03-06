@@ -26,6 +26,16 @@ import { handleError, formatFocusAreas, colors, success } from '../lib/output.js
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
+function printWorkflowRouting(): void {
+  console.log(pc.dim('  Assess complexity before starting:'));
+  console.log(pc.dim('    Simple   (1-3 files, well-understood, no parallelism needed)'));
+  console.log(pc.dim('             → Implement directly in this session'));
+  console.log(pc.dim('    Moderate (multi-file, parallelizable, clear scope)'));
+  console.log(pc.dim('             → paw shortcut decompose-work'));
+  console.log(pc.dim('    Complex  (new feature, design decisions, multi-subsystem)'));
+  console.log(pc.dim('             → paw shortcut assess-work'));
+}
+
 function statusColor(status: string): (text: string) => string {
   if (status === 'done') return colors.success;
   if (status === 'in_review') return colors.info;
@@ -141,13 +151,13 @@ function printOrchestratorDashboard(repoRoot: string): void {
     if (yamlContent.includes('target: feature/my-feature')) {
       // Template default — not a real config
       console.log('No active session');
-      console.log(pc.dim('  Run `paw shortcut generate-paw-yaml` to plan a session'));
+      printWorkflowRouting();
     } else {
       console.log('Session configured (.paw/paw.yaml found) — run `paw go` to start');
     }
   } else {
     console.log('No active session (.paw/paw.yaml not found)');
-    console.log(pc.dim('  Run `paw shortcut generate-paw-yaml` to plan a session'));
+    printWorkflowRouting();
   }
 }
 

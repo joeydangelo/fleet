@@ -10,7 +10,7 @@ unbounded scope. Good specs explore alternatives, commit to a clear target, and 
 agents enough context to implement faithfully without constant clarification.
 
 This guideline covers what makes a spec good. Task decomposition (splitting spec work
-into parallel agent tasks) is covered separately in the `paw-task-decomposition`
+into parallel agent tasks) is covered separately in the `task-decomposition`
 guideline.
 
 ## Explore Before You Write
