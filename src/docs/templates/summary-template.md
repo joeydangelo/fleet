@@ -4,7 +4,7 @@ description: Task summary template for paw worktree agents
 ---
 Use this template when writing your task summary in the Publish phase.
 Write the filled-in structure to `.paw/summary.md`.
-Fill in issue references from your task's `issue:` field and specs from `spec:`.
+Fill in any issue references from your task's `issue:` field and specs from `spec:`.
 
 ```markdown
 ---

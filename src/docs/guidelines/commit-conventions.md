@@ -52,19 +52,6 @@ The type reflects the *category of artifact* being changed. Fixing a typo in doc
 `plan` and `research` are internal — specs, design docs, and investigation
 notes that guide development but aren't shipped to users.
 
-## Scope in Multi-Agent Sessions
-
-In paw sessions, **scope is mandatory** — use your task name so reviewers and
-resolver agents can trace which task produced which change:
-
-```
-feat(auth): Add OAuth2 login flow with Google and GitHub
-feat(api): Add user profile REST endpoints
-fix(dashboard): Handle missing profile gracefully
-```
-
-Outside multi-agent sessions, scope is optional — skip it for unambiguous changes.
-
 ## Examples
 
 ```

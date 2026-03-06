@@ -12,10 +12,21 @@ Three-phase workflow: **Build → Verify → Publish**.
    paw broadcast "Starting auth task. Will define AuthConfig type at src/auth/types.ts"
    ```
 
-2. **Plan the work.** Break your task into small, testable increments. Bugs
+2. **Reach out to dependencies.** If your task depends on another task's
+   output — a type definition, an API endpoint, a config shape — send a
+   message early asking for the interface:
+
+   ```
+   paw send <task> "I need the SessionStore interface shape to build the auth middleware. What fields and methods are you exposing?"
+   ```
+
+   Don't wait until you're blocked. The earlier you ask, the more time the
+   other agent has to respond while you work on independent parts.
+
+3. **Plan the work.** Break your task into small, testable increments. Bugs
    first, then features.
 
-3. **Implement with TDD.** For each increment, follow the Red-Green-Refactor
+4. **Implement with TDD.** For each increment, follow the Red-Green-Refactor
    cycle strictly:
    - Write a failing test (Red)
    - Write minimal code to pass (Green)
@@ -56,15 +67,13 @@ core rule: no completion claims without fresh verification evidence.
 
    This is your working set for the checks below.
 
-2. **Confirm spec is in sync.** If your task has a `spec:` or `issue:` field,
-   open the spec and your task prompt side by side with your diff. Verify:
+2. **Confirm the work matches the assignment.** Open your task prompt, any
+   linked spec or issue, and your diff side by side. Verify:
    - Every requirement assigned to your task is addressed in the changed files
-   - Nothing you built contradicts or deviates from the spec
-   - Edge cases and constraints called out in the spec are handled
+   - Nothing you built contradicts or deviates from the assignment
+   - Edge cases and constraints called out are handled
 
-   Don't modify the spec file itself — it's a shared document.
-
-   Skip this step if your task has no linked spec.
+   If a spec file exists, don't modify it — it's a shared document.
 
 3. **Review your diff.** Look for:
    - Leftover debug code, TODOs, commented-out blocks
@@ -76,53 +85,14 @@ core rule: no completion claims without fresh verification evidence.
    - Files outside your focus area you didn't mean to touch
    - Conflicts with anything another agent broadcast
 
-4. **Lint, format, typecheck, and test.** Run all four. Find the project's
-   specific commands in `package.json` scripts, `Makefile`, `pyproject.toml`,
-   `Cargo.toml`, or the README — use what the project already has, not
-   these defaults:
-
-   ```bash
-   # TypeScript / JavaScript
-   eslint .              # lint
-   prettier --write .    # format
-   tsc --noEmit          # typecheck
-   vitest                # test (or jest — check package.json)
-
-   # Python
-   ruff check .          # lint (legacy: flake8)
-   ruff format .         # format (legacy: black)
-   mypy .                # typecheck
-   pytest                # test
-
-   # Go
-   golangci-lint run     # lint
-   gofmt -w .            # format
-   go vet ./...          # typecheck / static analysis
-   go test ./...         # test
-
-   # Rust
-   cargo clippy          # lint
-   cargo fmt             # format
-   cargo check           # typecheck (faster than cargo build)
-   cargo test            # test
-
-   # C++
-   clang-tidy <files>    # lint (needs compile_commands.json)
-   clang-format -i <files>  # format
-   cmake --build .       # typecheck + compile (or make, bazel)
-   ctest                 # test
-   ```
-
-   **Don't guess the tooling.** Check config files first — different projects
-   use different runners, formatters, and linters even within the same
-   language.
-
-5. **Confirm.** Read the full output. Check exit codes. Count failures. Only
-   claim "pass" with evidence on screen — never "should work" or "looks good."
+4. **Format, lint, typecheck, and test.** Run in this order. Check
+   `package.json`, `Makefile`, `pyproject.toml`, or similar for the project's
+   specific commands. Fix any failures before proceeding.
 
 ### 2b. Fix
 
-Read what failed. Fix the root cause, not the symptom. Go back to 2a.
+Fix any issue found in 2a — missing requirements, diff problems, or check
+failures. Fix the root cause, not the symptom. Go back to 2a.
 
 If you're stuck after several cycles, tell the right audience:
 
@@ -136,7 +106,6 @@ paw send <task> "Need the AuthConfig type shape — what fields are required?"
 
 Use `paw broadcast` for announcements that affect everyone. Use
 `paw send <task>` for questions or requests directed at a specific agent.
-Replies arrive automatically — no need to poll your inbox.
 
 ### After the loop passes
 

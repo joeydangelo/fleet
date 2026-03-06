@@ -8,14 +8,19 @@ return a clear verdict.
 
 ## Step 1: Understand the task
 
-Read the task assignment file provided in your review prompt. This tells you
-what the builder was asked to do — the scope, focus files, and instructions.
-You need this context to judge whether the diff accomplishes the goal and
-whether changes fall inside or outside the intended scope.
+Your review prompt includes a `TASK FILE: <path>` pointing to the builder's
+assignment. Read it to understand what was built and the intended scope.
 
-## Step 2: Load guidelines
+## Step 2: Read the review file
 
-Load these before reading any code. They calibrate what "good" looks like:
+Your review prompt includes `REVIEW FILE: git show paw-sync:review/<branch>.md`.
+Run it. This contains the builder's summary of what changed and how they tested
+it. If prior reviews have happened, it also contains those findings and the
+builder's fixes — read everything before proceeding.
+
+## Step 3: Load guidelines
+
+Load these before reading code. They calibrate what "good" looks like:
 
 - `paw guidelines test-quality` — always
 - `paw guidelines code-comments` — always
@@ -24,17 +29,10 @@ Load these before reading any code. They calibrate what "good" looks like:
 - `paw guidelines security-patterns` — when code handles user input, shell
   commands, or external data
 
-## Step 3: Read the review file
-
-Your review prompt includes a `git show paw-sync:...` command for the review
-file. Run it. This file contains the builder's summary of what changed and how
-they tested it. If prior reviews have happened, it also contains those findings
-and the builder's fixes — read everything before proceeding.
-
 ## Step 4: Get and read the diff
 
-Run the diff command provided in your review prompt (typically
-`git diff <target>...<task-branch>`). Read the full diff. Understand what changed
+Run the diff command provided in your review prompt
+(`git diff <target>...<task-branch>`). Read the full diff. Understand what changed
 and why before evaluating anything.
 
 ## Step 5: Trace the code

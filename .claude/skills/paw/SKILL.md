@@ -85,7 +85,7 @@ Read the section for your role.
 | Wants open tracker issues done | Load `paw shortcut from-issues`, follow it, then `paw go` |
 | Wants to see progress | `paw status` |
 | Merge conflict happened | Load `paw shortcut resolve-merge-conflict` and follow it |
-| Work is done, wants a PR | Load `paw shortcut to-pr` and follow it |
+| Work is done | Load `paw shortcut finish-branch` and follow it |
 | Wants session cleaned up | `paw down` |
 | Needs GitHub CLI set up | Load `paw shortcut setup-github-cli` and follow it |
 | Needs paw installed/upgraded | `npm install -g get-paw@latest && paw init` |
@@ -172,7 +172,7 @@ These load workflow guidance — read the output and follow the instructions.
 | `paw shortcut from-issues` | How to generate paw.yaml from CLI issue tracker |
 | `paw shortcut from-github-issue` | How to generate paw.yaml from GitHub issue(s) |
 | `paw shortcut resolve-merge-conflict` | How to read conflict brief, resolve files, `paw merge --continue` |
-| `paw shortcut to-pr` | How to create PR from merged agent work |
+| `paw shortcut finish-branch` | Verify merged work, then merge/PR/keep/discard |
 | `paw shortcut setup-github-cli` | How to ensure gh CLI is installed and authenticated |
 
 ---
@@ -229,6 +229,7 @@ Follow `paw shortcut build-task` for the full workflow:
 | Command | Purpose |
 |---|---|
 | `paw shortcut build-task` | Build, verify, and publish your paw task — the full worktree agent workflow |
+| `paw shortcut finish-branch` | After paw merge, decide what to do with the target branch — merge to main, create a PR, or keep as-is |
 | `paw shortcut from-github-issue` | Fetch GitHub issues, decompose them into tasks, and generate paw.yaml |
 | `paw shortcut from-issues` | Detect the repo's issue tracker, read open issues, and generate paw.yaml |
 | `paw shortcut generate-paw-yaml` | Analyze a codebase and generate .paw/paw.yaml with well-decomposed parallel tasks |
@@ -238,7 +239,6 @@ Follow `paw shortcut build-task` for the full workflow:
 | `paw shortcut review-pr` | Review a task branch — step-by-step workflow returning PASS or FAIL with structured findings |
 | `paw shortcut setup-github-cli` | Ensure GitHub CLI (gh) is installed and authenticated |
 | `paw shortcut setup-tmux` | Ensure tmux is installed for paw's terminal management |
-| `paw shortcut to-pr` | Combine agent PR descriptions into a final PR with issue references |
 <!-- END SHORTCUT DIRECTORY -->
 
 ### Available guidelines

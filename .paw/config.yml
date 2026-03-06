@@ -23,6 +23,7 @@ docs_cache:
     guidelines/testing-anti-patterns.md: internal:guidelines/testing-anti-patterns.md
     guidelines/verify-completion.md: internal:guidelines/verify-completion.md
     shortcuts/build-task.md: internal:shortcuts/build-task.md
+    shortcuts/finish-branch.md: internal:shortcuts/finish-branch.md
     shortcuts/from-github-issue.md: internal:shortcuts/from-github-issue.md
     shortcuts/from-issues.md: internal:shortcuts/from-issues.md
     shortcuts/generate-paw-yaml.md: internal:shortcuts/generate-paw-yaml.md
@@ -32,7 +33,6 @@ docs_cache:
     shortcuts/review-pr.md: internal:shortcuts/review-pr.md
     shortcuts/setup-github-cli.md: internal:shortcuts/setup-github-cli.md
     shortcuts/setup-tmux.md: internal:shortcuts/setup-tmux.md
-    shortcuts/to-pr.md: internal:shortcuts/to-pr.md
     templates/agent-brief.md: internal:templates/agent-brief.md
     templates/orchestrator-brief.md: internal:templates/orchestrator-brief.md
     templates/paw-yaml.md: internal:templates/paw-yaml.md
