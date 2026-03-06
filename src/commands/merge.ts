@@ -163,7 +163,7 @@ function runMergeLoop(
     }
     if (mergeEntry?.status === 'conflict') {
       warn(wt.taskName, 'unresolved conflict');
-      console.log(colors.warn('\nResolve the conflict, commit, then run: paw merge --continue'));
+      console.log(pc.dim(`\nNext: paw shortcut resolve-merge-conflict`));
       process.exit(1);
     }
     const commits = getCommitCount(wt.branch, target, repoRoot);
@@ -208,7 +208,7 @@ function runMergeLoop(
       warn(wt.taskName, 'conflicts');
       console.log(pc.dim(`    ${result.message.split('\n')[0]}`));
       console.log(pc.dim(`    Brief written to ${briefPath} on sync branch`));
-      console.log(colors.warn('\nResolve the conflict, commit, then run: paw merge --continue'));
+      console.log(pc.dim(`\nNext: paw shortcut resolve-merge-conflict`));
       process.exit(1);
     }
   }

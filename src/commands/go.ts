@@ -230,6 +230,7 @@ export async function runGo(opts: GoOpts): Promise<void> {
 
   if (verbose) console.log(colors.info(`⏰ total: ${formatElapsed(Date.now() - totalStart)}`));
   console.log(colors.success(`\nDone. Work merged to ${config.target}.`));
+  console.log(pc.dim(`Next: paw shortcut finish-branch`));
 }
 
 function printDryRun(repoRoot: string, config: PawConfig, opts: GoOpts): void {
