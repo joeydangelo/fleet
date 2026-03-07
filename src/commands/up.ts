@@ -1,6 +1,6 @@
 import { Command } from 'commander';
-import { cpSync, existsSync, readFileSync } from 'node:fs';
-import { resolve, basename } from 'node:path';
+import { cpSync, existsSync, mkdirSync, readFileSync } from 'node:fs';
+import { resolve, basename, dirname } from 'node:path';
 import pc from 'picocolors';
 import { loadRepoConfig } from '../lib/config.js';
 import type { PawConfig } from '../lib/config.js';
@@ -25,6 +25,19 @@ export async function runUp(
       if (!existsSync(dest)) {
         cpSync(claudeDir, dest, { recursive: true });
         success(wt.taskName, '.claude/ → worktree');
+      }
+    }
+  }
+
+  if (config.spec) {
+    const specPath = resolve(repoRoot, config.spec);
+    if (existsSync(specPath)) {
+      for (const wt of worktrees) {
+        const dest = resolve(wt.worktreePath, config.spec);
+        if (!existsSync(dest)) {
+          mkdirSync(dirname(dest), { recursive: true });
+          cpSync(specPath, dest);
+        }
       }
     }
   }
