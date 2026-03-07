@@ -46,7 +46,7 @@ if echo "$command" | grep -qE '\bgit\s+push\b'; then
 fi
 
 # Block orchestrator commands from worktrees
-if echo "$command" | grep -qE '\bpaw\s+(up|down|merge|go|launch)\b'; then
+if echo "$command" | grep -qE '\bpaw\s+(up|down|merge|go|launch|init|watch|nudge)\b'; then
   deny "Do not run orchestrator commands from a paw worktree. These commands are for the orchestrator in the main repo."
 fi
 
