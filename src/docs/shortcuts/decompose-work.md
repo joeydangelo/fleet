@@ -7,10 +7,18 @@ Generate `.paw/paw.yaml` to split the user's feature request into parallel agent
 ## Instructions
 
 1. **Understand the work and find the seams.** Use whatever context is available —
-   spec, user request, linked issues, codebase. Explore the directory structure,
-   module boundaries, and existing patterns. Identify natural seams where work can
-   be parallelized without agents stepping on each other. Only ask the user
-   questions when there's genuine ambiguity you can't resolve yourself.
+   spec, user request, linked issues, codebase. Launch 2-3 Explore agents in
+   parallel at `medium` thoroughness:
+   - **Structure and seams** — module boundaries, directory layout, natural split
+     points where work can be parallelized without overlap.
+   - **Affected code** — files the work touches, dependencies, and shared
+     interfaces between them.
+   - **Patterns** — how similar work is structured, test conventions, existing
+     abstractions to build on.
+
+   Bias toward action — don't ask permission to explore or make straightforward
+   decisions. Use `AskUserQuestion` for genuine ambiguity: scope surprises,
+   conflicting requirements, or missing context only the user has.
 
 2. **Decompose into tasks.** Load `paw guidelines task-decomposition` for
    the full decomposition framework — file ownership, sizing, interface contracts,

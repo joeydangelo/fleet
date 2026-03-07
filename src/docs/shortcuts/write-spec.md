@@ -23,7 +23,7 @@ Follow its principles throughout this workflow.
 
 Explore autonomously. Don't ask permission to read files or investigate.
 
-Launch 2-3 Explore agents in parallel to cover independent areas of the codebase
+Launch 3-4 Explore agents in parallel to cover independent areas of the codebase
 simultaneously. Each agent should target a specific research question:
 
 - **Structure and patterns.** Module boundaries, directory layout, existing

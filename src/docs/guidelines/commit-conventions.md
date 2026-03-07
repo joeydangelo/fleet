@@ -38,19 +38,8 @@ Software development:
 - `docs`: User-facing documentation (README, API docs, help text)
 - `resolve`: Merge conflict resolution (from `paw merge` conflicts)
 
-Agentic project work:
-
-- `plan`: Internal design docs, specs, architecture decisions
-- `research`: Internal investigation, notes, comparison reports
-- `ops`: Operational tasks (issue tracking, publishing, maintenance)
-- `process`: Methodology, conventions, workflow changes
-
 The type reflects the *category of artifact* being changed. Fixing a typo in docs is
 `docs:`, not `fix:`.
-
-**Key distinction:** `docs` is user-facing (README, API reference, help text).
-`plan` and `research` are internal — specs, design docs, and investigation
-notes that guide development but aren't shipped to users.
 
 ## Examples
 

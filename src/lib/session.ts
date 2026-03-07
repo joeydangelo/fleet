@@ -43,10 +43,6 @@ export function createSession(config: PawConfig, repoRoot: string): WorktreeInfo
   return worktrees;
 }
 
-const WORKFLOW_DIRECTIVE = `## Workflow
-
-Run \`paw shortcut build-task\` — it covers the full Build → Verify → Publish cycle.`;
-
 /** Build the markdown task assignment (focus, prompt, collaboration rules) for an agent. */
 export function generateTaskFile(config: PawConfig, worktreeInfo: WorktreeInfo): string {
   const { taskName } = worktreeInfo;
@@ -73,8 +69,6 @@ export function generateTaskFile(config: PawConfig, worktreeInfo: WorktreeInfo):
   if (task.prompt) {
     lines.push(``, `## Instructions`, ``, task.prompt.trimEnd());
   }
-
-  lines.push(``, WORKFLOW_DIRECTIVE);
 
   return lines.join('\n') + '\n';
 }

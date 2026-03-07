@@ -27,13 +27,8 @@ import { handleError, formatFocusAreas, colors, success } from '../lib/output.js
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 function printWorkflowRouting(): void {
-  console.log(pc.dim('  Assess complexity before starting:'));
-  console.log(pc.dim('    Simple   (1-3 files, well-understood, no parallelism needed)'));
-  console.log(pc.dim('             → Implement directly in this session'));
-  console.log(pc.dim('    Moderate (multi-file, parallelizable, clear scope)'));
-  console.log(pc.dim('             → paw shortcut decompose-work'));
-  console.log(pc.dim('    Complex  (new feature, design decisions, multi-subsystem)'));
-  console.log(pc.dim('             → paw shortcut assess-work'));
+  console.log(pc.dim('  When the user gives a request, assess complexity and route:'));
+  console.log(pc.dim('    → paw shortcut assess-work'));
 }
 
 function statusColor(status: string): (text: string) => string {
@@ -320,7 +315,8 @@ function printFull(
     return;
   }
 
-  console.log(colors.success(`Claimed task: ${taskName}\n`));
+  console.log(colors.success(`Claimed task: ${taskName}`));
+  console.log(pc.bold('→ Run `paw shortcut build-task` to start.\n'));
 
   const separator = pc.dim('────────────────────────────────────────');
 
@@ -370,7 +366,4 @@ function printFull(
       }
     }
   }
-
-  console.log('');
-  console.log(pc.bold('→ Run `paw shortcut build-task` to start.'));
 }

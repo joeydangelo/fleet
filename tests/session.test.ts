@@ -215,7 +215,7 @@ describe('generateTaskFile', () => {
     expect(result).not.toContain('**Depends on:**');
   });
 
-  it('includes workflow directive pointing to build-task shortcut', () => {
+  it('does not include workflow directive or inline collaboration rules', () => {
     const worktree = {
       taskName: 'auth',
       branch: 'feature/dashboard-auth',
@@ -224,42 +224,9 @@ describe('generateTaskFile', () => {
 
     const result = generateTaskFile(baseConfig, worktree);
 
-    expect(result).toContain('## Workflow');
-    expect(result).toContain('paw shortcut build-task');
-  });
-
-  it('does not include inline collaboration or publish rules', () => {
-    const worktree = {
-      taskName: 'auth',
-      branch: 'feature/dashboard-auth',
-      worktreePath: '/projects/acme-app-paw-auth',
-    };
-
-    const result = generateTaskFile(baseConfig, worktree);
-
+    expect(result).not.toContain('## Workflow');
     expect(result).not.toContain('## Collaboration Rules');
     expect(result).not.toContain("## When You're Done");
-  });
-
-  it('places workflow directive after instructions', () => {
-    const config: PawConfig = {
-      ...baseConfig,
-      tasks: {
-        auth: { focus: 'src/auth/', prompt: 'Implement OAuth2 login.' },
-      },
-    };
-    const worktree = {
-      taskName: 'auth',
-      branch: 'feature/dashboard-auth',
-      worktreePath: '/projects/acme-app-paw-auth',
-    };
-
-    const result = generateTaskFile(config, worktree);
-
-    const instructionsPos = result.indexOf('## Instructions');
-    const workflowPos = result.indexOf('## Workflow');
-
-    expect(instructionsPos).toBeLessThan(workflowPos);
   });
 
   it('throws on unknown task name', () => {
