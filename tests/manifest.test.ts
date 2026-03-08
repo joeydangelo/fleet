@@ -4,15 +4,15 @@ import { writeFileSync } from 'atomically';
 import { resolve } from 'node:path';
 
 import {
-  readProjectConfig,
-  writeProjectConfig,
+  readManifest,
+  writeManifest,
   readLocalState,
   writeLocalState,
-} from '../src/lib/paw-config.js';
-import type { PawProjectConfig, LocalState } from '../src/lib/paw-config.js';
+} from '../src/lib/manifest.js';
+import type { PawManifest, LocalState } from '../src/lib/manifest.js';
 import { makeTempDir } from './helpers/temp.js';
 
-describe('readProjectConfig', () => {
+describe('readManifest', () => {
   let repoRoot: string;
 
   beforeEach(() => {
@@ -24,41 +24,41 @@ describe('readProjectConfig', () => {
     rmSync(repoRoot, { recursive: true, force: true });
   });
 
-  it('returns defaults when config.yml is missing', () => {
-    const config = readProjectConfig(repoRoot);
-    expect(config.docs_cache.files).toEqual({});
-    expect(config.docs_cache.lookup_path).toEqual([
+  it('returns defaults when manifest.yml is missing', () => {
+    const manifest = readManifest(repoRoot);
+    expect(manifest.docs_cache.files).toEqual({});
+    expect(manifest.docs_cache.lookup_path).toEqual([
       '.paw/docs/shortcuts',
       '.paw/docs/guidelines',
       '.paw/docs/templates',
     ]);
-    expect(config.settings.doc_auto_sync_hours).toBe(24);
+    expect(manifest.settings.doc_auto_sync_hours).toBe(24);
   });
 
-  it('reads existing config.yml', () => {
+  it('reads existing manifest.yml', () => {
     writeFileSync(
-      resolve(repoRoot, '.paw', 'config.yml'),
+      resolve(repoRoot, '.paw', 'manifest.yml'),
       'docs_cache:\n  files:\n    shortcuts/foo.md: "https://example.com/foo.md"\nsettings:\n  doc_auto_sync_hours: 12\n',
       'utf-8',
     );
-    const config = readProjectConfig(repoRoot);
-    expect(config.docs_cache.files['shortcuts/foo.md']).toBe('https://example.com/foo.md');
-    expect(config.settings.doc_auto_sync_hours).toBe(12);
+    const manifest = readManifest(repoRoot);
+    expect(manifest.docs_cache.files['shortcuts/foo.md']).toBe('https://example.com/foo.md');
+    expect(manifest.settings.doc_auto_sync_hours).toBe(12);
   });
 
-  it('fills in defaults for partial config', () => {
+  it('fills in defaults for partial manifest', () => {
     writeFileSync(
-      resolve(repoRoot, '.paw', 'config.yml'),
+      resolve(repoRoot, '.paw', 'manifest.yml'),
       'docs_cache:\n  files:\n    a.md: internal:a.md\n',
       'utf-8',
     );
-    const config = readProjectConfig(repoRoot);
-    expect(config.docs_cache.files['a.md']).toBe('internal:a.md');
-    expect(config.settings.doc_auto_sync_hours).toBe(24);
+    const manifest = readManifest(repoRoot);
+    expect(manifest.docs_cache.files['a.md']).toBe('internal:a.md');
+    expect(manifest.settings.doc_auto_sync_hours).toBe(24);
   });
 });
 
-describe('writeProjectConfig + readProjectConfig round-trip', () => {
+describe('writeManifest + readManifest round-trip', () => {
   let repoRoot: string;
 
   beforeEach(() => {
@@ -71,7 +71,7 @@ describe('writeProjectConfig + readProjectConfig round-trip', () => {
   });
 
   it('round-trips correctly', () => {
-    const config: PawProjectConfig = {
+    const manifest: PawManifest = {
       docs_cache: {
         files: {
           'shortcuts/build-task.md': 'internal:shortcuts/build-task.md',
@@ -81,25 +81,25 @@ describe('writeProjectConfig + readProjectConfig round-trip', () => {
       },
       settings: { doc_auto_sync_hours: 48 },
     };
-    writeProjectConfig(repoRoot, config);
+    writeManifest(repoRoot, manifest);
 
-    const read = readProjectConfig(repoRoot);
-    expect(read.docs_cache.files).toEqual(config.docs_cache.files);
-    expect(read.docs_cache.lookup_path).toEqual(config.docs_cache.lookup_path);
+    const read = readManifest(repoRoot);
+    expect(read.docs_cache.files).toEqual(manifest.docs_cache.files);
+    expect(read.docs_cache.lookup_path).toEqual(manifest.docs_cache.lookup_path);
     expect(read.settings.doc_auto_sync_hours).toBe(48);
   });
 
-  it('writes valid YAML', () => {
-    const config: PawProjectConfig = {
+  it('writes valid YAML to manifest.yml', () => {
+    const manifest: PawManifest = {
       docs_cache: {
         files: { 'a.md': 'internal:a.md' },
         lookup_path: ['.paw/docs/shortcuts'],
       },
       settings: { doc_auto_sync_hours: 24 },
     };
-    writeProjectConfig(repoRoot, config);
+    writeManifest(repoRoot, manifest);
 
-    const raw = readFileSync(resolve(repoRoot, '.paw', 'config.yml'), 'utf-8');
+    const raw = readFileSync(resolve(repoRoot, '.paw', 'manifest.yml'), 'utf-8');
     expect(raw).toContain('docs_cache');
     expect(raw).toContain('a.md');
   });

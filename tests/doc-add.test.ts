@@ -2,8 +2,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { existsSync, mkdirSync, rmSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-import { validateDocContent, addDoc } from '../src/lib/doc-add.js';
-import { readProjectConfig, writeProjectConfig } from '../src/lib/paw-config.js';
+import { validateDocContent, addDoc, injectRolesFrontmatter } from '../src/lib/doc-add.js';
+import { readManifest, writeManifest } from '../src/lib/manifest.js';
 
 // Mock github-fetch so no network calls
 vi.mock('../src/lib/github-fetch.js', () => ({
@@ -74,7 +74,7 @@ describe('addDoc', () => {
     expect(existsSync(filePath)).toBe(true);
   });
 
-  it('updates config.yml with source URL', async () => {
+  it('updates manifest.yml with source URL', async () => {
     mockedFetch.mockResolvedValue({ content: '# Doc\nContent here.', usedGhCli: false });
 
     await addDoc(repoRoot, {
@@ -83,7 +83,7 @@ describe('addDoc', () => {
       docType: 'shortcut',
     });
 
-    const config = readProjectConfig(repoRoot);
+    const config = readManifest(repoRoot);
     expect(config.docs_cache.files['shortcuts/my-shortcut.md']).toBe(
       'https://example.com/shortcut.md',
     );
@@ -123,7 +123,7 @@ describe('addDoc', () => {
 
   it('preserves existing config entries', async () => {
     // Write an existing config with an entry
-    writeProjectConfig(repoRoot, {
+    writeManifest(repoRoot, {
       docs_cache: {
         files: { 'guidelines/old.md': 'https://example.com/old.md' },
         lookup_path: ['.paw/docs/shortcuts', '.paw/docs/guidelines', '.paw/docs/templates'],
@@ -139,8 +139,74 @@ describe('addDoc', () => {
       docType: 'guideline',
     });
 
-    const config = readProjectConfig(repoRoot);
+    const config = readManifest(repoRoot);
     expect(config.docs_cache.files['guidelines/old.md']).toBe('https://example.com/old.md');
     expect(config.docs_cache.files['guidelines/new.md']).toBe('https://example.com/new.md');
+  });
+
+  it('injects roles into fetched doc frontmatter when --roles provided', async () => {
+    mockedFetch.mockResolvedValue({
+      content: '---\nname: security-audit\ndescription: Security checklist\n---\n# Audit',
+      usedGhCli: false,
+    });
+
+    await addDoc(repoRoot, {
+      url: 'https://example.com/audit.md',
+      name: 'security-audit',
+      docType: 'guideline',
+      roles: ['reviewer'],
+    });
+
+    const { readFileSync } = await import('node:fs');
+    const content = readFileSync(
+      resolve(repoRoot, '.paw', 'docs', 'guidelines', 'security-audit.md'),
+      'utf-8',
+    );
+    expect(content).toContain('roles: [reviewer]');
+  });
+
+  it('does not inject roles when --roles is omitted', async () => {
+    mockedFetch.mockResolvedValue({
+      content: '---\nname: general\n---\n# General',
+      usedGhCli: false,
+    });
+
+    await addDoc(repoRoot, {
+      url: 'https://example.com/general.md',
+      name: 'general',
+      docType: 'guideline',
+    });
+
+    const { readFileSync } = await import('node:fs');
+    const content = readFileSync(
+      resolve(repoRoot, '.paw', 'docs', 'guidelines', 'general.md'),
+      'utf-8',
+    );
+    expect(content).not.toContain('roles:');
+  });
+});
+
+describe('injectRolesFrontmatter', () => {
+  it('appends roles to existing frontmatter', () => {
+    const input = '---\nname: test\ndescription: A test\n---\n# Body';
+    const result = injectRolesFrontmatter(input, ['builder', 'reviewer']);
+    expect(result).toContain('roles: [builder, reviewer]');
+    expect(result).toContain('name: test');
+    expect(result).toContain('# Body');
+  });
+
+  it('replaces existing roles field', () => {
+    const input = '---\nname: test\nroles: [orchestrator]\n---\n# Body';
+    const result = injectRolesFrontmatter(input, ['builder']);
+    expect(result).toContain('roles: [builder]');
+    expect(result).not.toContain('orchestrator');
+  });
+
+  it('wraps content with frontmatter when none exists', () => {
+    const input = '# No frontmatter\nJust content.';
+    const result = injectRolesFrontmatter(input, ['reviewer']);
+    expect(result).toMatch(/^---\n/);
+    expect(result).toContain('roles: [reviewer]');
+    expect(result).toContain('# No frontmatter');
   });
 });

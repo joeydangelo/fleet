@@ -22,34 +22,30 @@ const SettingsSchema = z.object({
   doc_auto_sync_hours: z.number().default(24),
 });
 
-const PawProjectConfigSchema = z.object({
+const PawManifestSchema = z.object({
   docs_cache: DocsCacheSchema.default({}),
   settings: SettingsSchema.default({}),
 });
 
-/** Tracked project configuration stored in `.paw/config.yml`. */
-export type PawProjectConfig = z.infer<typeof PawProjectConfigSchema>;
+export type PawManifest = z.infer<typeof PawManifestSchema>;
 
 const LocalStateSchema = z.object({
   last_doc_sync_at: z.string().optional(),
 });
 
-/** Transient per-machine state stored in `.paw/run/state.yml` (gitignored). */
 export type LocalState = z.infer<typeof LocalStateSchema>;
 
-/** Parse `.paw/config.yml`, applying schema defaults for missing fields. */
-export function readProjectConfig(repoRoot: string): PawProjectConfig {
-  const configPath = resolve(repoRoot, '.paw', 'config.yml');
-  if (!existsSync(configPath)) {
-    return PawProjectConfigSchema.parse({});
+export function readManifest(repoRoot: string): PawManifest {
+  const manifestPath = resolve(repoRoot, '.paw', 'manifest.yml');
+  if (!existsSync(manifestPath)) {
+    return PawManifestSchema.parse({});
   }
-  const raw = readFileSync(configPath, 'utf-8');
-  const parsed = parseYaml(raw) as unknown;
-  return PawProjectConfigSchema.parse(parsed ?? {});
+  const raw = readFileSync(manifestPath, 'utf-8');
+  return PawManifestSchema.parse((parseYaml(raw) as unknown) ?? {});
 }
 
-const CONFIG_HEADER = `\
-# Documentation cache configuration.
+const MANIFEST_HEADER = `\
+# Doc manifest — tracks doc sources and sync settings.
 # files: Maps destination paths (relative to .paw/docs/) to source locations.
 #   Sources can be:
 #   - internal: prefix for bundled docs (e.g., "internal:shortcuts/build-task.md")
@@ -62,26 +58,22 @@ const CONFIG_HEADER = `\
 # Configure with settings.doc_auto_sync_hours (0 = disabled).
 `;
 
-/** Serialize config to `.paw/config.yml` with a human-readable comment header. */
-export function writeProjectConfig(repoRoot: string, config: PawProjectConfig): void {
-  const configPath = resolve(repoRoot, '.paw', 'config.yml');
-  const body = stringifyYaml(config, YAML_OPTIONS);
-  const output = body.replace(/^docs_cache:/m, CONFIG_HEADER + 'docs_cache:');
-  writeFileSync(configPath, output, 'utf-8');
+export function writeManifest(repoRoot: string, manifest: PawManifest): void {
+  const manifestPath = resolve(repoRoot, '.paw', 'manifest.yml');
+  const body = stringifyYaml(manifest, YAML_OPTIONS);
+  const output = body.replace(/^docs_cache:/m, MANIFEST_HEADER + 'docs_cache:');
+  writeFileSync(manifestPath, output, 'utf-8');
 }
 
-/** Parse transient local state from `.paw/run/state.yml`, defaulting if absent. */
 export function readLocalState(repoRoot: string): LocalState {
   const statePath = resolve(repoRoot, '.paw', 'run', 'state.yml');
   if (!existsSync(statePath)) {
     return LocalStateSchema.parse({});
   }
   const raw = readFileSync(statePath, 'utf-8');
-  const parsed = parseYaml(raw) as unknown;
-  return LocalStateSchema.parse(parsed ?? {});
+  return LocalStateSchema.parse((parseYaml(raw) as unknown) ?? {});
 }
 
-/** Persist transient local state to `.paw/run/state.yml`, creating the directory if needed. */
 export function writeLocalState(repoRoot: string, state: LocalState): void {
   const dir = resolve(repoRoot, '.paw', 'run');
   mkdirSync(dir, { recursive: true });

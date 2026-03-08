@@ -4,13 +4,13 @@ import { writeFileSync } from 'atomically';
 import { resolve } from 'node:path';
 
 import { readDoc, listDocs } from '../src/lib/docs.js';
-import { writeProjectConfig } from '../src/lib/paw-config.js';
-import type { PawProjectConfig } from '../src/lib/paw-config.js';
+import { writeManifest } from '../src/lib/manifest.js';
+import type { PawManifest } from '../src/lib/manifest.js';
 import { makeTempDir } from './helpers/temp.js';
 
-function writeConfig(repoRoot: string, config: PawProjectConfig): void {
+function writeConfig(repoRoot: string, config: PawManifest): void {
   mkdirSync(resolve(repoRoot, '.paw'), { recursive: true });
-  writeProjectConfig(repoRoot, config);
+  writeManifest(repoRoot, config);
 }
 
 describe('docs (single .paw/docs/ directory)', () => {
@@ -211,7 +211,7 @@ describe('docs (lookup_path)', () => {
     mkdirSync(docsDir, { recursive: true });
     writeFileSync(resolve(docsDir, 'test.md'), '# Test', 'utf-8');
 
-    // No config.yml at all
+    // No manifest.yml at all
     const doc = readDoc('shortcuts', 'test');
     expect(doc).not.toBeNull();
     expect(doc!.content).toBe('# Test');

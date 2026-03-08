@@ -2,7 +2,7 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join, basename } from 'node:path';
 import { parse as parseYaml } from 'yaml';
 import { getRepoRoot } from './git.js';
-import { readProjectConfig } from './paw-config.js';
+import { readManifest } from './manifest.js';
 
 /** Return the repo root or null when called outside a git repo. */
 function getRepoRootSafe(): string | null {
@@ -14,10 +14,11 @@ function getRepoRootSafe(): string | null {
 }
 
 /** Metadata extracted from a doc file's YAML frontmatter. */
-interface DocInfo {
+export interface DocInfo {
   name: string;
   title: string;
   description: string;
+  roles?: string[];
 }
 
 /**
@@ -27,8 +28,8 @@ interface DocInfo {
 function getLookupPaths(repoRoot: string, category: string): string[] {
   let lookupPath: string[];
   try {
-    const config = readProjectConfig(repoRoot);
-    lookupPath = config.docs_cache.lookup_path;
+    const manifest = readManifest(repoRoot);
+    lookupPath = manifest.docs_cache.lookup_path;
   } catch {
     lookupPath = [];
   }
@@ -79,8 +80,8 @@ function readDocsFromDir(dir: string): DocInfo[] {
     .map((f) => {
       const content = readFileSync(join(dir, f), 'utf-8');
       const name = f.replace(/\.md$/, '');
-      const { title, description } = parseFrontmatter(content);
-      return { name, title: title || name, description: description || '' };
+      const { title, description, roles } = parseFrontmatter(content);
+      return { name, title: title || name, description: description || '', roles };
     });
 }
 
@@ -112,18 +113,23 @@ export function stripFrontmatter(content: string): string {
   return content.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n/, '');
 }
 
-/** Extract title and description from a YAML frontmatter block (--- delimited). */
+/** Extract title, description, and roles from a YAML frontmatter block (--- delimited). */
 export function parseFrontmatter(content: string): {
   title?: string;
   description?: string;
+  roles?: string[];
 } {
   const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
   if (!match) return {};
   try {
     const data = parseYaml(match[1]!) as Record<string, unknown>;
+    const roles = Array.isArray(data.roles)
+      ? data.roles.filter((r): r is string => typeof r === 'string')
+      : undefined;
     return {
       title: typeof data.name === 'string' ? data.name : undefined,
       description: typeof data.description === 'string' ? data.description : undefined,
+      roles: roles && roles.length > 0 ? roles : undefined,
     };
   } catch {
     return {};

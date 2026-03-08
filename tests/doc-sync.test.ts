@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { existsSync, mkdirSync, rmSync } from 'node:fs';
+import { existsSync, rmSync } from 'node:fs';
 import { writeFileSync } from 'atomically';
-import { resolve, join } from 'node:path';
+import { resolve } from 'node:path';
 
 import {
   generateDefaultManifest,
@@ -10,7 +10,7 @@ import {
   syncDocs,
   isDocsStale,
 } from '../src/lib/doc-sync.js';
-import { readProjectConfig, writeProjectConfig, readLocalState } from '../src/lib/paw-config.js';
+import { readManifest, writeManifest, readLocalState } from '../src/lib/manifest.js';
 import { makeTempDir } from './helpers/temp.js';
 
 describe('generateDefaultManifest', () => {
@@ -91,14 +91,14 @@ describe('syncDocs', () => {
     rmSync(repoRoot, { recursive: true, force: true });
   });
 
-  it('fresh sync copies all bundled docs and writes config.yml', () => {
+  it('fresh sync copies all bundled docs and writes manifest.yml', () => {
     const result = syncDocs(repoRoot);
 
     expect(result.added.length).toBeGreaterThan(0);
     expect(result.updated).toHaveLength(0);
     expect(result.removed).toHaveLength(0);
 
-    const config = readProjectConfig(repoRoot);
+    const config = readManifest(repoRoot);
     expect(Object.keys(config.docs_cache.files).length).toBeGreaterThan(0);
 
     const firstKey = Object.keys(config.docs_cache.files)[0]!;
@@ -118,7 +118,7 @@ describe('syncDocs', () => {
   it('updates changed bundled docs', () => {
     syncDocs(repoRoot);
 
-    const config = readProjectConfig(repoRoot);
+    const config = readManifest(repoRoot);
     const internalKey = Object.keys(config.docs_cache.files).find((k) =>
       config.docs_cache.files[k]!.startsWith('internal:'),
     )!;
@@ -134,9 +134,9 @@ describe('syncDocs', () => {
 
     const userFile = resolve(repoRoot, '.paw', 'docs', 'shortcuts', 'user-doc.md');
     writeFileSync(userFile, '# User Doc\nContent here.', 'utf-8');
-    const config = readProjectConfig(repoRoot);
+    const config = readManifest(repoRoot);
     config.docs_cache.files['shortcuts/user-doc.md'] = 'https://example.com/user-doc.md';
-    writeProjectConfig(repoRoot, config);
+    writeManifest(repoRoot, config);
 
     const result = syncDocs(repoRoot);
     expect(existsSync(userFile)).toBe(true);
@@ -157,56 +157,15 @@ describe('syncDocs', () => {
   it('removes files for pruned internal entries', () => {
     syncDocs(repoRoot);
 
-    const config = readProjectConfig(repoRoot);
+    const config = readManifest(repoRoot);
     config.docs_cache.files['shortcuts/old-removed.md'] = 'internal:shortcuts/old-removed.md';
-    writeProjectConfig(repoRoot, config);
+    writeManifest(repoRoot, config);
     const fakeFile = resolve(repoRoot, '.paw', 'docs', 'shortcuts', 'old-removed.md');
     writeFileSync(fakeFile, '# Old doc', 'utf-8');
 
     const result = syncDocs(repoRoot);
     expect(result.removed).toContain('shortcuts/old-removed.md');
     expect(existsSync(fakeFile)).toBe(false);
-  });
-
-  it('migrates .paw/custom/ into .paw/docs/', () => {
-    const customDir = resolve(repoRoot, '.paw', 'custom', 'shortcuts');
-    mkdirSync(customDir, { recursive: true });
-    writeFileSync(join(customDir, 'legacy-doc.md'), '# Legacy\nFrom custom dir.', 'utf-8');
-    const customManifest = resolve(repoRoot, '.paw', 'custom', 'manifest.json');
-    writeFileSync(
-      customManifest,
-      JSON.stringify({ 'shortcuts/legacy-doc.md': 'https://example.com/legacy.md' }),
-      'utf-8',
-    );
-
-    syncDocs(repoRoot);
-
-    expect(existsSync(resolve(repoRoot, '.paw', 'docs', 'shortcuts', 'legacy-doc.md'))).toBe(true);
-    const config = readProjectConfig(repoRoot);
-    expect(config.docs_cache.files['shortcuts/legacy-doc.md']).toBe(
-      'https://example.com/legacy.md',
-    );
-    expect(existsSync(resolve(repoRoot, '.paw', 'custom'))).toBe(false);
-  });
-
-  it('migrates manifest.json to config.yml', () => {
-    const docsDir = resolve(repoRoot, '.paw', 'docs');
-    mkdirSync(docsDir, { recursive: true });
-    const manifest: Record<string, string> = {
-      'shortcuts/my-custom.md': 'https://example.com/my-custom.md',
-    };
-    writeFileSync(resolve(docsDir, 'manifest.json'), JSON.stringify(manifest, null, 2), 'utf-8');
-
-    mkdirSync(resolve(docsDir, 'shortcuts'), { recursive: true });
-    writeFileSync(resolve(docsDir, 'shortcuts', 'my-custom.md'), '# Custom Doc', 'utf-8');
-
-    syncDocs(repoRoot);
-
-    expect(existsSync(resolve(docsDir, 'manifest.json'))).toBe(false);
-    const config = readProjectConfig(repoRoot);
-    expect(config.docs_cache.files['shortcuts/my-custom.md']).toBe(
-      'https://example.com/my-custom.md',
-    );
   });
 
   it('updates state.yml with sync timestamp', () => {

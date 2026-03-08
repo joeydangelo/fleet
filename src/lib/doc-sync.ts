@@ -1,22 +1,9 @@
-import {
-  cpSync,
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  readdirSync,
-  rmSync,
-  unlinkSync,
-} from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, unlinkSync } from 'node:fs';
 import { writeFileSync } from 'atomically';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import {
-  readProjectConfig,
-  writeProjectConfig,
-  readLocalState,
-  writeLocalState,
-} from './paw-config.js';
+import { readManifest, writeManifest, readLocalState, writeLocalState } from './manifest.js';
 import { fetchWithGhFallback } from './github-fetch.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -101,77 +88,16 @@ export function pruneStaleInternals(manifest: Record<string, string>): Record<st
   return result;
 }
 
-/** One-time migration from legacy .paw/custom/ layout. */
-function migrateCustomDir(repoRoot: string, docsDir: string): Record<string, string> {
-  const customPath = join(repoRoot, '.paw', 'custom');
-  if (!existsSync(customPath)) return {};
-
-  let customManifest: Record<string, string> = {};
-  const customManifestPath = join(customPath, 'manifest.json');
-  if (existsSync(customManifestPath)) {
-    try {
-      customManifest = JSON.parse(readFileSync(customManifestPath, 'utf-8')) as Record<
-        string,
-        string
-      >;
-    } catch {
-      // Corrupted — skip
-    }
-  }
-
-  for (const category of ['shortcuts', 'guidelines', 'templates']) {
-    const srcDir = join(customPath, category);
-    if (!existsSync(srcDir)) continue;
-    const destDir = join(docsDir, category);
-    mkdirSync(destDir, { recursive: true });
-    for (const file of readdirSync(srcDir)) {
-      if (!file.endsWith('.md')) continue;
-      const src = join(srcDir, file);
-      const dest = join(destDir, file);
-      if (!existsSync(dest)) {
-        cpSync(src, dest);
-      }
-    }
-  }
-
-  rmSync(customPath, { recursive: true, force: true });
-  return customManifest;
-}
-
-/** One-time migration from legacy manifest.json to config.yml. */
-function migrateManifestJson(repoRoot: string): Record<string, string> {
-  const manifestPath = join(repoRoot, '.paw', 'docs', 'manifest.json');
-  if (!existsSync(manifestPath)) return {};
-
-  const config = readProjectConfig(repoRoot);
-  // Only migrate if config.yml has no files yet
-  if (Object.keys(config.docs_cache.files).length > 0) return {};
-
-  try {
-    const manifest = JSON.parse(readFileSync(manifestPath, 'utf-8')) as Record<string, string>;
-    unlinkSync(manifestPath);
-    return manifest;
-  } catch {
-    return {};
-  }
-}
-
 /**
  * Sync bundled docs to .paw/docs/, preserving user-added and dropped-in docs.
- * Writes doc entries to config.yml instead of manifest.json.
+ * Writes doc entries to manifest.yml.
  */
 export function syncDocs(repoRoot: string): SyncResult {
   const docsDir = join(repoRoot, '.paw', 'docs');
   mkdirSync(docsDir, { recursive: true });
 
-  const migratedEntries = migrateCustomDir(repoRoot, docsDir);
-
-  const manifestEntries = migrateManifestJson(repoRoot);
-
-  const config = readProjectConfig(repoRoot);
-  let existing: Record<string, string> = { ...config.docs_cache.files };
-
-  existing = { ...existing, ...migratedEntries, ...manifestEntries };
+  const manifest = readManifest(repoRoot);
+  const existing: Record<string, string> = { ...manifest.docs_cache.files };
 
   const defaults = generateDefaultManifest();
   const merged = mergeManifest(existing, defaults);
@@ -188,7 +114,7 @@ export function syncDocs(repoRoot: string): SyncResult {
   try {
     bundledDocsDir = getDocsBasePath();
   } catch {
-    writeProjectConfig(repoRoot, { ...config, docs_cache: { ...config.docs_cache, files: final } });
+    writeManifest(repoRoot, { ...manifest, docs_cache: { ...manifest.docs_cache, files: final } });
     return { added, updated, removed, skipped };
   }
 
@@ -232,7 +158,7 @@ export function syncDocs(repoRoot: string): SyncResult {
     }
   }
 
-  writeProjectConfig(repoRoot, { ...config, docs_cache: { ...config.docs_cache, files: final } });
+  writeManifest(repoRoot, { ...manifest, docs_cache: { ...manifest.docs_cache, files: final } });
 
   const state = readLocalState(repoRoot);
   writeLocalState(repoRoot, { ...state, last_doc_sync_at: new Date().toISOString() });
@@ -251,10 +177,10 @@ export function isDocsStale(lastSyncAt: string | undefined, autoSyncHours: numbe
 
 /** Re-fetch URL-sourced docs and update on-disk copies if changed. */
 async function refreshUrlDocs(repoRoot: string): Promise<void> {
-  const config = readProjectConfig(repoRoot);
+  const manifest = readManifest(repoRoot);
   const docsDir = join(repoRoot, '.paw', 'docs');
 
-  for (const [key, source] of Object.entries(config.docs_cache.files)) {
+  for (const [key, source] of Object.entries(manifest.docs_cache.files)) {
     if (source.startsWith(INTERNAL_PREFIX)) continue;
 
     try {
@@ -277,8 +203,8 @@ async function refreshUrlDocs(repoRoot: string): Promise<void> {
  */
 export async function ensureDocsFresh(repoRoot: string): Promise<void> {
   const state = readLocalState(repoRoot);
-  const config = readProjectConfig(repoRoot);
-  const hours = config.settings.doc_auto_sync_hours;
+  const manifest = readManifest(repoRoot);
+  const hours = manifest.settings.doc_auto_sync_hours;
 
   if (!isDocsStale(state.last_doc_sync_at, hours)) return;
 

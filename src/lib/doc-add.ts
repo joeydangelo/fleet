@@ -3,7 +3,7 @@ import { writeFileSync } from 'atomically';
 import { resolve, dirname } from 'node:path';
 
 import { fetchWithGhFallback } from './github-fetch.js';
-import { readProjectConfig, writeProjectConfig } from './paw-config.js';
+import { readManifest, writeManifest } from './manifest.js';
 
 export type DocType = 'shortcut' | 'guideline' | 'template';
 
@@ -39,30 +39,53 @@ function getDocTypeSubdir(docType: DocType): string {
   }
 }
 
+/** Inject or update a `roles` field in markdown frontmatter. */
+export function injectRolesFrontmatter(content: string, roles: string[]): string {
+  const fmMatch = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+  if (fmMatch) {
+    const rolesLine = `roles: [${roles.join(', ')}]`;
+    const body = fmMatch[1]!;
+    // Replace existing roles line or append before closing ---
+    if (/^roles:/m.test(body)) {
+      const updated = body.replace(/^roles:.*$/m, rolesLine);
+      return content.replace(fmMatch[0], `---\n${updated}\n---`);
+    }
+    return content.replace(fmMatch[0], `---\n${body}\n${rolesLine}\n---`);
+  }
+  // No frontmatter — wrap content with one
+  return `---\nroles: [${roles.join(', ')}]\n---\n${content}`;
+}
+
 /** Fetch a doc from a URL and save it to .paw/docs/{category}/. */
 export async function addDoc(
   repoRoot: string,
-  options: { url: string; name: string; docType: DocType },
+  options: { url: string; name: string; docType: DocType; roles?: string[] },
 ): Promise<AddDocResult> {
-  const { url, name, docType } = options;
+  const { url, name, docType, roles } = options;
 
   const cleanName = name.endsWith('.md') ? name.slice(0, -3) : name;
   const filename = `${cleanName}.md`;
   const subdir = getDocTypeSubdir(docType);
   const destPath = `${subdir}/${filename}`;
 
-  const { content, usedGhCli } = await fetchWithGhFallback(url);
+  const result = await fetchWithGhFallback(url);
+  let content = result.content;
+  const { usedGhCli } = result;
 
   validateDocContent(content, cleanName);
+
+  if (roles && roles.length > 0) {
+    content = injectRolesFrontmatter(content, roles);
+  }
 
   const fullPath = resolve(repoRoot, '.paw', 'docs', destPath);
   mkdirSync(dirname(fullPath), { recursive: true });
   writeFileSync(fullPath, content, 'utf-8');
 
-  // Update config.yml
-  const config = readProjectConfig(repoRoot);
-  config.docs_cache.files[destPath] = url;
-  writeProjectConfig(repoRoot, config);
+  // Update manifest.yml
+  const manifest = readManifest(repoRoot);
+  manifest.docs_cache.files[destPath] = url;
+  writeManifest(repoRoot, manifest);
 
   return { destPath, rawUrl: url, usedGhCli };
 }
