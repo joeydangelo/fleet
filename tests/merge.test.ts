@@ -384,7 +384,7 @@ describe('stashWorkingTree / unstashWorkingTree', () => {
     expect(log).not.toContain('paw: stage untracked');
   });
 
-  it('stash pops even when merge hits a conflict', () => {
+  it('unstash returns false during active merge conflict, stash preserved for later', () => {
     // Create conflicting branches
     execFileSync('git', ['checkout', '-b', 'feature'], {
       cwd: repoDir,
@@ -405,14 +405,22 @@ describe('stashWorkingTree / unstashWorkingTree', () => {
     expect(stashed).toBe(true);
     expect(existsSync(resolve(repoDir, 'local-wip.txt'))).toBe(false);
 
-    // Merge conflicts
+    // Merge conflicts — git is now in MERGING state
     const result = mergeBranch('feature', repoDir);
     expect(result.success).toBe(false);
 
-    // Abort the merge, then pop stash
-    execFileSync('git', ['merge', '--abort'], { cwd: repoDir, stdio: 'pipe' });
+    // unstash fails during active conflict (mirrors production behavior)
+    const popped = unstashWorkingTree(repoDir);
+    expect(popped).toBe(false);
 
-    unstashWorkingTree(repoDir);
+    // Stash is preserved — user can pop after resolving
+    const stashList = git(['stash', 'list'], { cwd: repoDir });
+    expect(stashList).toContain('paw: pre-merge stash');
+
+    // After aborting the merge, stash can be popped
+    execFileSync('git', ['merge', '--abort'], { cwd: repoDir, stdio: 'pipe' });
+    const poppedAfter = unstashWorkingTree(repoDir);
+    expect(poppedAfter).toBe(true);
     expect(readFileSync(resolve(repoDir, 'local-wip.txt'), 'utf-8')).toBe('work in progress');
   });
 });

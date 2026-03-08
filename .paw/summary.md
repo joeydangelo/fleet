@@ -32,9 +32,31 @@ Test scenarios covered:
 - Stash saves and restores untracked files around merge
 - Stash returns false when working tree is clean
 - Merge succeeds with unrelated untracked files (no junk commit)
-- Stash pops even when merge hits a conflict
+- Unstash returns false during active merge conflict; stash preserved for user to pop later
+- After aborting merge, stash can be popped successfully
 - Conflict brief only contains diffs for conflicting files, not unrelated changes
 
 ## References
 
 - Spec: `.paw/specs/spec-2026-03-08-clean-merge-working-tree.md`
+
+---
+
+## Review — Cycle 1
+**Verdict:** FAIL
+
+### Strengths
+Clean separation of concerns: stash replaces junk commit, scoped diff filter is correct (--diff-filter=U), old references fully removed, try/finally structure is right pattern, tests are thorough and cover real scenarios, git init -b main fix is a good bonus.
+
+### Issues
+CRITICAL: src/commands/merge.ts:207 -- unstashWorkingTree called with active merge conflict -- After a merge conflict, the finally block calls unstashWorkingTree(repoRoot) but git is in MERGING state with unmerged entries. git stash pop will fail with "Your index contains unmerged entries" because git refuses to pop stash when the index has conflicts. The test (merge.test.ts:393) masks this by calling git merge --abort before unstashWorkingTree, but the production code has no merge abort on the conflict path. Result: stash pop throws, user WIP stays trapped in stash, and the unhandled error crashes the process. Fix: either abort the merge before popping the stash on the conflict path, or catch the stash pop error and warn the user their changes are in git stash.
+
+### Suggestions
+MINOR: The conflict-path test should mirror production behavior (no manual merge --abort before unstash) to catch this kind of divergence. Consider adding error handling in unstashWorkingTree for robustness.
+
+## Fixed — Cycle 1
+
+| Finding | Resolution |
+|---------|------------|
+| CRITICAL/merge.ts:207 — unstashWorkingTree called with active merge conflict | Fixed: `unstashWorkingTree` now returns `boolean` (catches errors), and `runMergeLoop` warns user to `git stash pop` after resolving the conflict |
+| MINOR/testing — conflict-path test masks bug with manual merge --abort | Fixed: test now mirrors production behavior — verifies unstash returns false during active conflict, then verifies stash pop works after abort |

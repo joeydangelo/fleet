@@ -204,6 +204,12 @@ function runMergeLoop(
       }
     }
   } finally {
-    if (stashed) unstashWorkingTree(repoRoot);
+    if (stashed && !unstashWorkingTree(repoRoot)) {
+      console.log(
+        pc.yellow(
+          '    Your local changes are saved in git stash. Run `git stash pop` after resolving the conflict.',
+        ),
+      );
+    }
   }
 }

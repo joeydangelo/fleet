@@ -161,9 +161,14 @@ export function stashWorkingTree(cwd: string): boolean {
   return true;
 }
 
-/** Pop the most recent stash entry. */
-export function unstashWorkingTree(cwd: string): void {
-  git(['stash', 'pop'], { cwd });
+/** Pop the most recent stash entry. Returns false if pop fails (e.g. during active merge conflict). */
+export function unstashWorkingTree(cwd: string): boolean {
+  try {
+    git(['stash', 'pop'], { cwd });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /** Check if commit is an ancestor of target (i.e., target contains all commits from commit). */
