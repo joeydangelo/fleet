@@ -14,3 +14,11 @@ if (!existsSync(src)) {
 
 cpSync(src, dest, { recursive: true });
 console.log('Copied src/docs/ → dist/docs/');
+
+const skillsSrc = resolve(root, 'skills');
+const skillsDest = resolve(root, 'dist', 'skills');
+
+if (existsSync(skillsSrc)) {
+  cpSync(skillsSrc, skillsDest, { recursive: true });
+  console.log('Copied skills/ → dist/skills/');
+}
