@@ -104,10 +104,10 @@ export function deleteBranch(branch: string, cwd?: string): void {
   git(['branch', '-D', branch], { cwd, stdio: 'pipe' });
 }
 
-/** Returns the raw diff, which includes conflict markers during an in-progress merge. */
-export function getDiffOutput(cwd?: string): string {
+/** Returns the diff for unmerged (conflicting) files only during an active merge. */
+export function getMergeConflictDiff(cwd?: string): string {
   try {
-    return git(['diff'], { cwd, stdio: 'pipe' });
+    return git(['diff', '--diff-filter=U'], { cwd, stdio: 'pipe' });
   } catch {
     return '';
   }
@@ -153,17 +153,17 @@ export function cleanupBackupRefs(cwd?: string): void {
   }
 }
 
-/** Stage and commit untracked files. Returns true if files were committed, false if none existed. */
-export function commitUntrackedFiles(cwd: string, taskName: string): boolean {
-  const output = git(['ls-files', '--others', '--exclude-standard'], { cwd, stdio: 'pipe' });
-  if (!output) return false;
-
-  const files = output.split('\n').filter(Boolean);
-  if (files.length === 0) return false;
-
-  git(['add', ...files], { cwd });
-  git(['commit', '-m', `paw: stage untracked files for merge of ${taskName}`], { cwd });
+/** Stash all working tree changes (staged, unstaged, untracked). Returns true if anything was stashed. */
+export function stashWorkingTree(cwd: string): boolean {
+  const status = git(['status', '--porcelain'], { cwd, stdio: 'pipe' });
+  if (!status) return false;
+  git(['stash', 'push', '--include-untracked', '-m', 'paw: pre-merge stash'], { cwd });
   return true;
+}
+
+/** Pop the most recent stash entry. */
+export function unstashWorkingTree(cwd: string): void {
+  git(['stash', 'pop'], { cwd });
 }
 
 /** Check if commit is an ancestor of target (i.e., target contains all commits from commit). */

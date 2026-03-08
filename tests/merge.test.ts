@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { resolve } from 'node:path';
-import { writeFileSync, existsSync, rmSync } from 'node:fs';
+import { writeFileSync, existsSync, readFileSync, rmSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import {
   initSyncState,
@@ -16,7 +16,8 @@ import {
   mergeBranch,
   git,
   isAncestor,
-  commitUntrackedFiles,
+  stashWorkingTree,
+  unstashWorkingTree,
 } from '../src/lib/git.js';
 import { createSession } from '../src/lib/session.js';
 import { removeWorktree } from '../src/lib/git.js';
@@ -24,7 +25,7 @@ import type { PawConfig } from '../src/lib/config.js';
 import { makeTempDir } from './helpers/temp.js';
 
 function gitInit(dir: string): void {
-  execFileSync('git', ['init', dir], { stdio: 'pipe' });
+  execFileSync('git', ['init', '-b', 'main', dir], { stdio: 'pipe' });
   execFileSync('git', ['commit', '--allow-empty', '-m', 'init'], {
     cwd: dir,
     stdio: 'pipe',
@@ -320,7 +321,7 @@ describe('isAncestor (paw-0yqg)', () => {
   });
 });
 
-describe('commitUntrackedFiles (paw-gbu0)', () => {
+describe('stashWorkingTree / unstashWorkingTree', () => {
   let repoDir: string;
 
   beforeEach(() => {
@@ -332,44 +333,87 @@ describe('commitUntrackedFiles (paw-gbu0)', () => {
     rmSync(repoDir, { recursive: true, force: true });
   });
 
-  it('stages and commits untracked files', () => {
-    writeFileSync(resolve(repoDir, 'untracked.txt'), 'content');
+  it('stashes and restores untracked files', () => {
+    writeFileSync(resolve(repoDir, 'untracked.txt'), 'local work');
 
-    const committed = commitUntrackedFiles(repoDir, 'test-task');
-    expect(committed).toBe(true);
+    const stashed = stashWorkingTree(repoDir);
+    expect(stashed).toBe(true);
 
-    // File should now be tracked
-    const status = git(['status', '--porcelain'], { cwd: repoDir });
-    expect(status).toBe('');
+    // File should be gone after stash
+    expect(existsSync(resolve(repoDir, 'untracked.txt'))).toBe(false);
+
+    unstashWorkingTree(repoDir);
+
+    // File should be restored
+    expect(existsSync(resolve(repoDir, 'untracked.txt'))).toBe(true);
+    expect(readFileSync(resolve(repoDir, 'untracked.txt'), 'utf-8')).toBe('local work');
   });
 
-  it('returns false when no untracked files exist', () => {
-    const committed = commitUntrackedFiles(repoDir, 'test-task');
-    expect(committed).toBe(false);
+  it('returns false when working tree is clean', () => {
+    const stashed = stashWorkingTree(repoDir);
+    expect(stashed).toBe(false);
   });
 
-  it('allows merge that would otherwise fail due to untracked collision', () => {
+  it('allows merge with unrelated untracked files present', () => {
     // Create a branch with a file
     execFileSync('git', ['checkout', '-b', 'feature'], {
       cwd: repoDir,
       stdio: 'pipe',
     });
-    commitFile(repoDir, 'spec.md', 'feature version', 'add spec');
+    commitFile(repoDir, 'feature.txt', 'feature work', 'add feature');
 
-    // Go back to main, create the same file as untracked
+    // Go back to main, create an unrelated untracked file
     execFileSync('git', ['checkout', 'main'], {
       cwd: repoDir,
       stdio: 'pipe',
     });
-    writeFileSync(resolve(repoDir, 'spec.md'), 'main version');
+    writeFileSync(resolve(repoDir, 'local-notes.txt'), 'my notes');
 
-    // Without staging, merge would fail
-    commitUntrackedFiles(repoDir, 'feature');
+    // Stash, merge, unstash
+    const stashed = stashWorkingTree(repoDir);
+    expect(stashed).toBe(true);
 
-    // Now merge should succeed (three-way merge)
     const result = mergeBranch('feature', repoDir);
-    // May conflict or succeed, but shouldn't abort due to untracked files
-    expect(result.message).not.toContain('untracked working tree files');
+    expect(result.success).toBe(true);
+
+    unstashWorkingTree(repoDir);
+
+    // Untracked file should be restored, no junk commit in log
+    expect(readFileSync(resolve(repoDir, 'local-notes.txt'), 'utf-8')).toBe('my notes');
+    const log = git(['log', '--oneline'], { cwd: repoDir });
+    expect(log).not.toContain('paw: stage untracked');
+  });
+
+  it('stash pops even when merge hits a conflict', () => {
+    // Create conflicting branches
+    execFileSync('git', ['checkout', '-b', 'feature'], {
+      cwd: repoDir,
+      stdio: 'pipe',
+    });
+    commitFile(repoDir, 'shared.txt', 'feature-content', 'feature commit');
+
+    execFileSync('git', ['checkout', 'main'], {
+      cwd: repoDir,
+      stdio: 'pipe',
+    });
+    commitFile(repoDir, 'shared.txt', 'main-content', 'main commit');
+
+    // Create an untracked file
+    writeFileSync(resolve(repoDir, 'local-wip.txt'), 'work in progress');
+
+    const stashed = stashWorkingTree(repoDir);
+    expect(stashed).toBe(true);
+    expect(existsSync(resolve(repoDir, 'local-wip.txt'))).toBe(false);
+
+    // Merge conflicts
+    const result = mergeBranch('feature', repoDir);
+    expect(result.success).toBe(false);
+
+    // Abort the merge, then pop stash
+    execFileSync('git', ['merge', '--abort'], { cwd: repoDir, stdio: 'pipe' });
+
+    unstashWorkingTree(repoDir);
+    expect(readFileSync(resolve(repoDir, 'local-wip.txt'), 'utf-8')).toBe('work in progress');
   });
 });
 
