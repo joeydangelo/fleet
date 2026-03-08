@@ -478,31 +478,17 @@ export function isInsideTmux(): boolean {
 }
 
 /**
- * Send a nudge message via tmux send-keys to wake up an idle agent.
- * Flattens newlines to spaces, sends the message, waits 500ms, then sends
- * an empty Enter (first Enter may be consumed by TUI re-render).
- * Retries up to 3 times on failure. Returns true if successful.
+ * Send an empty Enter to wake an idle agent and trigger its hook cycle.
+ * No message content — just a poke. The actual nudge content is delivered
+ * via the inbox (appendMessage with type: 'nudge').
  */
-export async function sendNudgeKeys(
-  tmux: TmuxServiceApi,
-  target: string,
-  message: string,
-): Promise<boolean> {
-  const flattened = message.replace(/\n/g, ' ');
-  const maxRetries = 3;
-
-  for (let attempt = 0; attempt < maxRetries; attempt++) {
-    try {
-      tmux.sendKeys(target, flattened);
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      tmux.sendKeys(target, '');
-      return true;
-    } catch {
-      if (attempt === maxRetries - 1) return false;
-      await new Promise((resolve) => setTimeout(resolve, 500));
-    }
+export function sendWakeSignal(tmux: TmuxServiceApi, target: string): boolean {
+  try {
+    tmux.sendKeys(target, '');
+    return true;
+  } catch {
+    return false;
   }
-  return false;
 }
 
 /** Currently only 'claude' is supported. */
