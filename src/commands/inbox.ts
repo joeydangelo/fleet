@@ -1,11 +1,9 @@
 import { Command } from 'commander';
-import pc from 'picocolors';
-import { getRepoRoot, resolveMainRoot } from '../lib/git.js';
+import { resolveMainRoot } from '../lib/git.js';
 import { detectTaskName } from '../lib/session.js';
 import { readNudge, clearNudge, readInboxCursor, writeInboxCursor } from '../lib/health.js';
 import { readMessages, readMessagesForTask } from '../lib/messages.js';
 import type { Message } from '../lib/messages.js';
-import { handleError } from '../lib/output.js';
 
 /** Message that carries a thread identifier. */
 type ThreadedEntry = Message & { thread: string };
@@ -79,16 +77,10 @@ function formatMessage(entry: Message): string {
 export function inboxCommand(): Command {
   return new Command('inbox')
     .description('Check for messages, broadcasts, and open threads')
-    .option('-a, --all', 'Show all threads (open and resolved)')
-    .action((opts: { all?: boolean }) => {
+    .action(() => {
       try {
         const cwd = process.cwd();
         const taskName = detectTaskName(cwd);
-
-        if (opts.all) {
-          showAllThreads();
-          return;
-        }
 
         if (!taskName) return;
         const mainRoot = resolveMainRoot(cwd);
@@ -122,7 +114,7 @@ export function inboxCommand(): Command {
             const id = send.thread.slice(0, 4);
             console.log(`  (${id}) ${send.from} → ${send.to}: "${send.msg}"`);
           }
-          console.log(`  Reply with: paw reply "your answer"\n`);
+          console.log(`  Reply with: paw reply <task> "your answer"\n`);
         }
 
         if (entries.length > 0) {
@@ -133,46 +125,4 @@ export function inboxCommand(): Command {
         // Hooks must not crash the agent — swallow all errors
       }
     });
-}
-
-/** Full unfiltered view of all broadcasts, open threads, and resolved threads. */
-function showAllThreads(): void {
-  try {
-    const repoRoot = getRepoRoot();
-    const entries = readMessages(repoRoot);
-    const { open, resolved, broadcasts } = computeThreads(entries);
-
-    const hasContent = broadcasts.length > 0 || open.length > 0;
-
-    if (broadcasts.length > 0) {
-      console.log(pc.bold('Broadcasts'));
-      for (const b of broadcasts) {
-        console.log(`  ${pc.dim(b.from + ' →')} ${b.msg}`);
-      }
-    }
-
-    if (open.length > 0) {
-      if (broadcasts.length > 0) console.log('');
-      console.log(pc.bold('Open threads') + pc.dim(' (reply needed)'));
-      for (const { send } of open) {
-        const id = send.thread.slice(0, 4);
-        console.log(`  ${pc.dim(`(${id})`)} ${send.from} → ${send.to}  "${send.msg}"`);
-      }
-    }
-
-    if (broadcasts.length === 0 && open.length === 0) {
-      console.log('No broadcasts or open threads.');
-    }
-    if (resolved.length > 0) {
-      if (hasContent) console.log('');
-      console.log(pc.bold('Resolved threads'));
-      for (const { send, reply } of resolved) {
-        const id = send.thread.slice(0, 4);
-        console.log(`  ${pc.dim(`(${id})`)} ${send.from} → ${send.to}  "${send.msg}"`);
-        console.log(`       └─ ${reply.from}: "${reply.msg}"`);
-      }
-    }
-  } catch (err) {
-    handleError(err);
-  }
 }

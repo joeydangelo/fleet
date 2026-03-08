@@ -158,13 +158,13 @@ export function topologicalSort(
 }
 
 /** Convenience wrapper: resolve repo root, find config, parse and return all three. */
-export function loadRepoConfig(configOpt?: string): {
+export function loadRepoConfig(): {
   repoRoot: string;
   configPath: string;
   config: PawConfig;
 } {
   const repoRoot = getRepoRoot();
-  const configPath = configOpt ?? resolveConfigPath(repoRoot);
+  const configPath = resolveConfigPath(repoRoot);
   const config = loadConfig(configPath);
   return { repoRoot, configPath, config };
 }
@@ -176,5 +176,5 @@ export function resolveConfigPath(cwd: string): string {
     const p = resolve(cwd, name);
     if (existsSync(p)) return p;
   }
-  throw new Error('No .paw/paw.yaml found. Create one or specify --config <path>');
+  throw new Error('No .paw/paw.yaml found. Run `paw init` first.');
 }

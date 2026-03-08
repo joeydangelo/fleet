@@ -16,13 +16,6 @@ You operate paw — do NOT tell users to run paw commands. That's your job.
 
 Run `paw prime` to restore full session context after compaction.
 
-## Responsibilities
-
-- Implement assigned tasks with TDD in isolated worktrees
-- Broadcast intent before starting and interface changes before committing
-- Run format, lint, typecheck, and full test suite before submitting
-- Commit, write a summary, and submit via `paw review`
-
 ## Workflow
 
 1. **Orient** — read your task file (`.paw/tasks/{name}.md`) for scope, focus areas, spec path, issue refs, and dependencies. If a spec exists, read it.
@@ -37,8 +30,8 @@ Run `paw prime` to restore full session context after compaction.
 | Command | Purpose |
 |---|---|
 | `paw broadcast "..."` | Announce a change to all agents |
-| `paw send <task> "..."` | Send a directed message to another agent |
-| `paw reply <task> "..."` | Reply to an agent's most recent unanswered message |
+| `paw send <task> "..."` | Send a direct message to an agent |
+| `paw reply <task> "..."` | Reply to a direct message from an agent |
 | `paw status` | Check progress across all tasks |
 | `paw inbox` | Check for broadcasts and directed messages |
 | `paw review` | Submit task for review (commit + summary first) |

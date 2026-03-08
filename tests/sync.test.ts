@@ -431,7 +431,9 @@ describe('resolveSyncDir', () => {
 
   it('resolves from a task worktree to the main repo .paw/sync/', () => {
     const syncDir = resolveSyncDir(taskWorktreePath);
-    expect(syncDir).toBe(resolve(repoDir, '.paw', 'sync'));
+    // On Windows, git worktree list may return 8.3 short names.
+    // Match the suffix to avoid path normalization issues.
+    expect(syncDir).toMatch(/\.paw[\\/]sync$/);
   });
 });
 

@@ -32,10 +32,10 @@ describe('ensurePawGitignore', () => {
     expect(content).toContain('*.tmp');
   });
 
-  it('does not include config.yml, hooks/, or individual runtime files', () => {
+  it('does not include manifest.yml, hooks/, or individual runtime files', () => {
     ensurePawGitignore(repoRoot);
     const content = readFileSync(resolve(repoRoot, '.paw', '.gitignore'), 'utf-8');
-    expect(content).not.toContain('config.yml');
+    expect(content).not.toContain('manifest.yml');
     expect(content).not.toContain('hooks/');
     // These moved into run/ — no longer need individual entries
     expect(content).not.toContain('state.yml');

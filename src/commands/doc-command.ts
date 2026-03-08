@@ -32,10 +32,11 @@ export function createDocCommand(name: string, category: string, description: st
     .option('-l, --list', `List available ${category}`)
     .option('--add <url>', 'Add a custom doc from a URL')
     .option('--name <name>', 'Name for the added doc (default: derived from URL)')
+    .option('--roles <roles>', 'Comma-separated roles for the added doc (e.g. builder,reviewer)')
     .action(
       async (
         docName: string | undefined,
-        opts: { list?: boolean; add?: string; name?: string },
+        opts: { list?: boolean; add?: string; name?: string; roles?: string },
       ) => {
         try {
           try {
@@ -55,10 +56,18 @@ export function createDocCommand(name: string, category: string, description: st
             console.log(`Adding ${name}: ${docNameForAdd}`);
             console.log(`  URL: ${opts.add}`);
 
+            const roles = opts.roles
+              ? opts.roles
+                  .split(',')
+                  .map((r) => r.trim())
+                  .filter(Boolean)
+              : undefined;
+
             const result = await addDoc(repoRoot, {
               url: opts.add,
               name: docNameForAdd,
               docType: categoryToDocType(category),
+              roles,
             });
 
             if (result.usedGhCli) {

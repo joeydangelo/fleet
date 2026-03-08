@@ -51,13 +51,6 @@ export async function runReview(): Promise<number> {
     return 1;
   }
 
-  if (state.skipReview) {
-    state = completeTask(state, taskName);
-    writeSyncState(state, repoRoot);
-    console.log(colors.success(`+ ${taskName} -- review skipped, marked done`));
-    return 0;
-  }
-
   const nextCycle = (task.reviewCycle ?? 0) + 1;
   if (nextCycle > REVIEW_MAX_RETRIES) {
     state = completeTask(state, taskName);

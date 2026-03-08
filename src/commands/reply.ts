@@ -3,16 +3,15 @@ import { getRepoRoot } from '../lib/git.js';
 import { getTaskIdentity } from '../lib/session.js';
 import { readSyncState } from '../lib/sync.js';
 import { appendMessage, readMessages } from '../lib/messages.js';
-import type { Message } from '../lib/messages.js';
 import { requireSyncState, handleError, colors } from '../lib/output.js';
 
-/** CLI command: reply to the most recent or a specific directed message. */
+/** CLI command: reply to a direct message from an agent. */
 export function replyCommand(): Command {
   return new Command('reply')
-    .description('Reply to the most recent directed message')
+    .description('Reply to a direct message from an agent')
+    .argument('<task>', 'Target task to reply to')
     .argument('<message>', 'Reply message')
-    .option('--to <thread>', 'Reply to a specific message by thread ID')
-    .action((message: string, opts: { to?: string }) => {
+    .action((task: string, message: string) => {
       try {
         const repoRoot = getRepoRoot();
         const taskName = getTaskIdentity(repoRoot);
@@ -21,51 +20,42 @@ export function replyCommand(): Command {
         requireSyncState(state);
 
         const all = readMessages(repoRoot);
-        let resolvedSend: Message;
 
-        if (opts.to) {
-          const matches = all.filter(
-            (e) => e.type === 'send' && e.to === taskName && e.thread === opts.to,
-          );
-          if (matches.length === 0) {
-            const wrongTask = all.find(
-              (e) => e.type === 'send' && e.thread === opts.to && e.to !== taskName,
-            );
-            if (wrongTask) {
-              console.error(
-                colors.error(
-                  `Thread '${opts.to}' is directed at '${wrongTask.to}', not '${taskName}'.`,
-                ),
-              );
-            } else {
-              console.error(colors.error(`No message found with thread ID '${opts.to}'.`));
-            }
-            process.exit(1);
-          }
-          resolvedSend = matches[matches.length - 1]!;
-        } else {
-          const sends = all.filter((e) => e.type === 'send' && e.to === taskName);
-          if (sends.length === 0) {
-            console.error(colors.warn('No messages to reply to.'));
-            process.exit(1);
-          }
-          resolvedSend = sends[sends.length - 1]!;
+        // Thread IDs that already have a reply from this agent
+        const repliedThreads = new Set(
+          all
+            .filter((e) => e.type === 'reply' && e.from === taskName && e.thread)
+            .map((e) => e.thread!),
+        );
+
+        // Find unanswered sends from the target task directed at this agent
+        const unanswered = all.filter(
+          (e) =>
+            e.type === 'send' &&
+            e.from === task &&
+            e.to === taskName &&
+            (!e.thread || !repliedThreads.has(e.thread)),
+        );
+
+        if (unanswered.length === 0) {
+          console.error(colors.warn(`No unanswered messages from '${task}'.`));
+          process.exit(1);
         }
 
-        const thread = resolvedSend.thread;
+        const target = unanswered[0]!;
+
         appendMessage(
           taskName,
           {
             type: 'reply',
-            to: resolvedSend.from,
+            to: task,
             msg: message,
-            ...(thread ? { thread } : {}),
+            ...(target.thread ? { thread: target.thread } : {}),
           },
           repoRoot,
         );
 
-        const prefix = thread ? `(${thread}) ` : '';
-        console.log(colors.success(`[${taskName} → ${resolvedSend.from}] ${prefix}${message}`));
+        console.log(colors.success(`[${taskName} → ${task}] ${message}`));
       } catch (err) {
         handleError(err);
       }

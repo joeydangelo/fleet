@@ -60,8 +60,6 @@ export interface SyncState {
   merges?: Record<string, MergeEntry>;
   /** Per-task timestamp of last message read, written by `paw prime`. */
   lastCheck?: Record<string, string>;
-  /** When true, `paw review` auto-completes without spawning a reviewer. Set by `paw go --no-review`. */
-  skipReview?: boolean;
 }
 
 function syncBranchExists(cwd?: string): boolean {

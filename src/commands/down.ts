@@ -26,12 +26,10 @@ import {
 export function downCommand(): Command {
   return new Command('down')
     .description('Remove all task worktrees and clean up')
-    .option('-c, --config <path>', 'Path to .paw/paw.yaml')
     .option('--dry-run', 'Show what would be removed without making changes')
-    .option('--no-archive', 'Skip archiving session data to .paw/sessions/')
-    .action((opts: { config?: string; dryRun?: boolean; archive: boolean }) => {
+    .action((opts: { dryRun?: boolean }) => {
       try {
-        const { repoRoot, config } = loadRepoConfig(opts.config);
+        const { repoRoot, config } = loadRepoConfig();
         const worktrees = planWorktrees(config, repoRoot);
 
         console.log(pc.bold(`paw down${opts.dryRun ? ' (dry run)' : ''}\n`));
@@ -119,16 +117,14 @@ export function downCommand(): Command {
           /* best-effort cleanup */
         }
 
-        if (opts.archive) {
-          try {
-            const archivePath = archiveSession(repoRoot, config.target);
-            if (archivePath) {
-              success('archive', archivePath);
-            }
-          } catch (err) {
-            const message = toErrorMessage(err);
-            error('archive', `failed: ${message}`);
+        try {
+          const archivePath = archiveSession(repoRoot, config.target);
+          if (archivePath) {
+            success('archive', archivePath);
           }
+        } catch (err) {
+          const message = toErrorMessage(err);
+          error('archive', `failed: ${message}`);
         }
 
         try {

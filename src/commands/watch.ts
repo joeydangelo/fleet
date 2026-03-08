@@ -211,11 +211,10 @@ export async function runWatchLoop(opts: {
   repoRoot: string;
   configPath: string;
   interval: number;
-  noExit: boolean;
   header?: string;
   onAbort?: () => void;
 }): Promise<void> {
-  const { repoRoot, configPath, interval, noExit, onAbort } = opts;
+  const { repoRoot, configPath, interval, onAbort } = opts;
   const config = loadConfig(configPath);
   const worktrees = planWorktrees(config, repoRoot);
   const taskNames = worktrees.map((w) => w.taskName);
@@ -424,7 +423,7 @@ export async function runWatchLoop(opts: {
 
       if (isAllDone(syncState.tasks)) {
         printSummary();
-        if (!noExit) break;
+        break;
       } else {
         // Only exit when every non-done task is a genuine zombie.
         // Tasks in_review have health 'completed' (no escalation needed)
@@ -435,7 +434,7 @@ export async function runWatchLoop(opts: {
           nonDoneNames.every((n) => healthSnapshot.agents[n]?.state === 'zombie');
         if (allNonDoneZombie) {
           console.log(colors.error('All remaining agents are zombies. Manual review required.'));
-          if (!noExit) break;
+          break;
         }
       }
 
@@ -459,25 +458,16 @@ export async function runWatchLoop(opts: {
 export function watchCommand(): Command {
   return new Command('watch')
     .description('Continuously monitor agent progress')
-    .option('-c, --config <path>', 'Path to .paw/paw.yaml')
-    .option('--interval <seconds>', 'Poll interval in seconds', DEFAULT_POLL_INTERVAL)
-    .option('--no-exit', 'Keep running after all agents are done')
-    .action(async (opts: { config?: string; interval: string; exit: boolean }) => {
+    .action(async () => {
       try {
         const repoRoot = getRepoRoot();
-        const configPath = opts.config ?? resolveConfigPath(repoRoot);
-        const interval = parseInt(opts.interval, 10);
-
-        if (isNaN(interval) || interval < 1) {
-          console.error(colors.error('Interval must be a positive integer (seconds).'));
-          process.exit(1);
-        }
+        const configPath = resolveConfigPath(repoRoot);
+        const interval = parseInt(DEFAULT_POLL_INTERVAL, 10);
 
         await runWatchLoop({
           repoRoot,
           configPath,
           interval,
-          noExit: !opts.exit,
         });
       } catch (err) {
         handleError(err);

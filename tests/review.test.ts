@@ -100,19 +100,6 @@ afterEach(() => {
 });
 
 describe('runReview', () => {
-  it('auto-completes when skipReview is true', async () => {
-    const state = baseSyncState({ skipReview: true });
-    mockReadSyncState.mockReturnValue(state);
-
-    const exitCode = await runReview();
-
-    expect(exitCode).toBe(0);
-    expect(mockWriteSyncState).toHaveBeenCalledTimes(1);
-    const written = mockWriteSyncState.mock.calls[0]![0];
-    expect(written.tasks['auth']?.status).toBe('done');
-    expect(mockReviewTask).not.toHaveBeenCalled();
-  });
-
   it('auto-completes when cycle exceeds max retries', async () => {
     const state = baseSyncState();
     state.tasks['auth']!.reviewCycle = 2; // REVIEW_MAX_RETRIES is 2

@@ -85,11 +85,10 @@ export async function runUp(
 export function upCommand(): Command {
   return new Command('up')
     .description('Create worktrees and branches for all tasks')
-    .option('-c, --config <path>', 'Path to .paw/paw.yaml')
     .option('--dry-run', 'Show what would be created without making changes')
-    .action(async (opts: { config?: string; dryRun?: boolean }) => {
+    .action(async (opts: { dryRun?: boolean }) => {
       try {
-        const { repoRoot, configPath, config } = loadRepoConfig(opts.config);
+        const { repoRoot, configPath, config } = loadRepoConfig();
         const taskNames = Object.keys(config.tasks);
 
         console.log(pc.bold(`paw up: ${taskNames.length} tasks${opts.dryRun ? ' (dry run)' : ''}`));

@@ -20,7 +20,6 @@ import {
 import type { PawPaneConfig } from '../lib/tmux.js';
 import type { PawConfig } from '../lib/config.js';
 import { computeThreads } from './inbox.js';
-import { readDoc, stripFrontmatter } from '../lib/docs.js';
 import { ensureDocsFresh } from '../lib/doc-sync.js';
 import { handleError, formatFocusAreas, colors, success } from '../lib/output.js';
 
@@ -56,18 +55,6 @@ function getVersion(): string {
   } catch {
     return 'unknown';
   }
-}
-
-function loadOrchestratorBriefContent(): string | null {
-  const doc = readDoc('templates', 'orchestrator-brief');
-  if (!doc) return null;
-  return stripFrontmatter(doc.content);
-}
-
-function loadAgentBriefContent(): string | null {
-  const doc = readDoc('templates', 'agent-brief');
-  if (!doc) return null;
-  return stripFrontmatter(doc.content);
 }
 
 /** Build the `paw prime` CLI command. */
@@ -156,7 +143,7 @@ function printOrchestratorDashboard(repoRoot: string): void {
   }
 }
 
-/** Brief orchestrator output — dynamic status + orchestrator-brief content. */
+/** Brief orchestrator output — dynamic session status snapshot. */
 function printOrchestratorBrief(repoRoot: string): void {
   const version = getVersion();
   console.log(`paw v${version}`);
@@ -172,12 +159,6 @@ function printOrchestratorBrief(repoRoot: string): void {
   const paneConfig = readPaneConfig(repoRoot);
   if (paneConfig && state) {
     printStatusSnapshot(repoRoot, state, paneConfig);
-  }
-
-  const briefContent = loadOrchestratorBriefContent();
-  if (briefContent) {
-    console.log('');
-    console.log(briefContent);
   }
 }
 
@@ -286,12 +267,6 @@ function printBrief(
       console.log(`  ${colors.info(`[${send.from} → ${taskName}]`)} ${send.msg}`);
     }
     console.log();
-  }
-
-  const briefContent = loadAgentBriefContent();
-  if (briefContent) {
-    console.log('');
-    console.log(briefContent);
   }
 }
 

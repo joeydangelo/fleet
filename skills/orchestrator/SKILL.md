@@ -14,13 +14,6 @@ monitor progress, and deliver a merged target branch.
 
 You operate paw — do NOT tell users to run paw commands. That's your job.
 
-## Responsibilities
-
-- Assess complexity: direct implementation, task decomposition, or spec-first
-- Decompose work into parallel tasks with non-overlapping file ownership
-- Run `paw go` to spawn builders, monitor progress, and merge branches
-- Resolve merge conflicts and finish the branch (PR, merge, or hand back)
-
 ## Workflow
 
 1. **Assess** — read the user's request and evaluate complexity: See `paw shortcut assess-work`.
@@ -62,8 +55,8 @@ You operate paw — do NOT tell users to run paw commands. That's your job.
 | Command | Purpose |
 |---|---|
 | `paw broadcast "..."` | Announce a message to all agents |
-| `paw send <task> "..."` | Send a directed message to an agent |
-| `paw reply <task> "..."` | Reply to an agent's most recent unanswered message |
+| `paw send <task> "..."` | Send a direct message to an agent |
+| `paw reply <task> "..."` | Reply to a direct message from an agent |
 | `paw inbox` | Check for broadcasts and unanswered messages |
 
 ## Shortcuts

@@ -17,7 +17,7 @@ specs/
 
 /**
  * Create or update .paw/.gitignore so that docs/, state.yml, and runtime
- * data are ignored while config.yml and hooks/ stay tracked.
+ * data are ignored while manifest.yml and hooks/ stay tracked.
  */
 export function ensurePawGitignore(repoRoot: string): boolean {
   const gitignorePath = resolve(repoRoot, '.paw', '.gitignore');

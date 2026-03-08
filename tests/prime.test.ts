@@ -119,18 +119,14 @@ describe('prime from root — orchestrator dashboard', () => {
     expect(stdout).toContain('=== SESSION STATUS ===');
   });
 
-  it('--brief outputs fewer lines than full', () => {
+  it('--brief omits installation section and includes session status', () => {
     const binPath = resolve(process.cwd(), 'dist', 'bin.mjs');
-    const fullResult = execFileSync(process.execPath, [binPath, 'prime'], {
-      cwd: repoDir,
-      stdio: 'pipe',
-    });
     const briefResult = execFileSync(process.execPath, [binPath, 'prime', '--brief'], {
       cwd: repoDir,
       stdio: 'pipe',
     });
-    const fullLines = fullResult.toString().split('\n').length;
-    const briefLines = briefResult.toString().split('\n').length;
-    expect(briefLines).toBeLessThan(fullLines);
+    const stdout = briefResult.toString();
+    expect(stdout).toContain('paw v');
+    expect(stdout).not.toContain('=== INSTALLATION ===');
   });
 });

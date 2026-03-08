@@ -5,10 +5,10 @@ import { readSyncState } from '../lib/sync.js';
 import { appendMessage, generateThreadId } from '../lib/messages.js';
 import { requireSyncState, handleError, colors } from '../lib/output.js';
 
-/** Build the `paw send` CLI command. */
+/** CLI command: send a direct message to an agent. */
 export function sendCommand(): Command {
   return new Command('send')
-    .description('Send a directed message to a specific agent')
+    .description('Send a direct message to an agent')
     .argument('<task>', 'Target task name')
     .argument('<message>', 'Message to send')
     .action((task: string, message: string) => {

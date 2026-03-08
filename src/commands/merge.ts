@@ -30,13 +30,11 @@ import { success, warn, skip, requireSyncState, handleError, colors } from '../l
 export function mergeCommand(): Command {
   return new Command('merge')
     .description('Merge done task branches into the target branch')
-    .option('-c, --config <path>', 'Path to .paw/paw.yaml')
-    .option('--pick <task>', 'Merge only a specific task')
     .option('--continue', 'Continue merging after resolving a conflict')
-    .action((opts: { config?: string; pick?: string; continue?: boolean }) => {
+    .action((opts: { continue?: boolean }) => {
       try {
         const repoRoot = getRepoRoot();
-        const configPath = opts.config ?? resolveConfigPath(repoRoot);
+        const configPath = resolveConfigPath(repoRoot);
         const config = loadConfig(configPath);
 
         const currentBranch = getCurrentBranch(repoRoot);
@@ -72,15 +70,8 @@ export function mergeCommand(): Command {
           writeSyncState(state, repoRoot);
         }
 
-        const toMerge = opts.pick ? worktrees.filter((wt) => wt.taskName === opts.pick) : worktrees;
-
-        if (toMerge.length === 0) {
-          console.error(colors.error(`Task '${opts.pick}' not found in config.`));
-          process.exit(1);
-        }
-
         console.log(pc.bold('paw merge\n'));
-        runMergeLoop(state, toMerge, config, repoRoot);
+        runMergeLoop(state, worktrees, config, repoRoot);
       } catch (err) {
         handleError(err);
       }

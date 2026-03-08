@@ -16,7 +16,7 @@ import {
 } from '../lib/tmux.js';
 import { savePanes, saveDetachedAgents, readPaneConfig } from '../lib/pane-state.js';
 import { SIDEBAR_WIDTH } from '../lib/constants.js';
-import { success, skip, error, pending, handleError, colors } from '../lib/output.js';
+import { success, skip, error, pending, handleError } from '../lib/output.js';
 import { writeHeartbeat } from '../lib/health.js';
 import type { WorktreeInfo } from '../lib/session.js';
 import type { SyncState } from '../lib/sync.js';
@@ -42,11 +42,7 @@ export function printLaunchPreview(
 }
 
 /** Spawn agents in tmux sessions (attached or detached) for tasks that aren't done. */
-export async function runLaunch(
-  repoRoot: string,
-  config: PawConfig,
-  opts?: { detached?: boolean; task?: string },
-): Promise<void> {
+export async function runLaunch(repoRoot: string, config: PawConfig): Promise<void> {
   if (!config.agent) {
     throw new Error('No agent configured. Add an agent field to .paw/paw.yaml:\n\n  agent: claude');
   }
@@ -55,23 +51,17 @@ export async function runLaunch(
   const syncState = readSyncState(repoRoot);
   const sessionName = tmuxSessionName(basename(repoRoot));
 
-  const targets = opts?.task ? worktrees.filter((wt) => wt.taskName === opts.task) : worktrees;
-
-  if (opts?.task && targets.length === 0) {
-    throw new Error(`Task not found: ${opts.task}`);
-  }
-
-  const useDetached = opts?.detached || !isInsideTmux();
+  const useDetached = !isInsideTmux();
   const modeLabel = useDetached ? 'detached' : 'attached';
 
-  console.log(pc.bold(`paw launch: ${targets.length} task(s)`));
+  console.log(pc.bold(`paw launch: ${worktrees.length} task(s)`));
   console.log(`  agent: ${config.agent}`);
   console.log(`  session: ${sessionName}`);
   console.log(`  mode: ${modeLabel}\n`);
 
   const launchList: Array<{ taskName: string; worktreePath: string; agentCommand: string }> = [];
 
-  for (const wt of targets) {
+  for (const wt of worktrees) {
     const taskState = syncState?.tasks[wt.taskName];
 
     if (taskState?.status === 'done' || taskState?.status === 'in_review') {
@@ -150,54 +140,33 @@ export async function runLaunch(
   }
 }
 
-interface LaunchOpts {
-  config?: string;
-  dryRun?: boolean;
-  task?: string;
-  detached?: boolean;
-}
-
 /** Build the `paw launch` CLI command. */
 export function launchCommand(): Command {
   return new Command('launch')
     .description('Spawn agents in tmux panes for each task worktree')
-    .option('-c, --config <path>', 'Path to .paw/paw.yaml')
     .option('--dry-run', 'Show what would be spawned without launching')
-    .option('-t, --task <name>', 'Launch agent in a specific worktree only')
-    .option('--detached', 'Force detached mode (background tmux sessions)')
-    .action(async (opts: LaunchOpts) => {
+    .action(async (opts: { dryRun?: boolean }) => {
       try {
         if (!opts.dryRun) ensureTmuxInstalled();
-        const { repoRoot, config } = loadRepoConfig(opts.config);
+        const { repoRoot, config } = loadRepoConfig();
 
         if (opts.dryRun) {
           const worktrees = planWorktrees(config, repoRoot);
           const syncState = readSyncState(repoRoot);
-          const useDetached = opts.detached || !isInsideTmux();
+          const useDetached = !isInsideTmux();
           const sessionName = tmuxSessionName(basename(repoRoot));
-          const targets = opts.task
-            ? worktrees.filter((wt) => wt.taskName === opts.task)
-            : worktrees;
 
-          if (opts.task && targets.length === 0) {
-            console.error(colors.error(`Task not found: ${opts.task}`));
-            process.exit(1);
-          }
-
-          console.log(pc.bold(`paw launch: ${targets.length} task(s) (dry run)`));
+          console.log(pc.bold(`paw launch: ${worktrees.length} task(s) (dry run)`));
           console.log(`  agent: ${config.agent}`);
           console.log(`  session: ${sessionName}`);
           console.log(`  mode: ${useDetached ? 'detached' : 'attached'}\n`);
 
-          printLaunchPreview(targets, syncState, useDetached, config.agent);
+          printLaunchPreview(worktrees, syncState, useDetached, config.agent);
           console.log(pc.dim('\nDry run -- no sessions opened.'));
           return;
         }
 
-        await runLaunch(repoRoot, config, {
-          detached: opts.detached,
-          task: opts.task,
-        });
+        await runLaunch(repoRoot, config);
       } catch (err) {
         handleError(err);
       }

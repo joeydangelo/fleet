@@ -8,7 +8,7 @@ import { loadConfig, resolveConfigPath } from '../lib/config.js';
 import type { PawConfig } from '../lib/config.js';
 import { planWorktrees } from '../lib/session.js';
 import type { SyncState } from '../lib/sync.js';
-import { readSyncState, writeSyncState } from '../lib/sync.js';
+import { readSyncState } from '../lib/sync.js';
 import type { PawPaneConfig, AgentLivenessResult } from '../lib/tmux.js';
 import {
   createTmuxService,
@@ -100,31 +100,18 @@ export function detectSessionState(repoRoot: string): SessionState {
 
 /** Options for the `paw go` lifecycle command. */
 export interface GoOpts {
-  config?: string;
-  pollInterval: string;
-  detached?: boolean;
-  task?: string;
-  noMerge?: boolean;
-  noReview?: boolean;
-  noTeardown?: boolean;
   dryRun?: boolean;
 }
 
 /** Execute the full paw lifecycle: up, launch, watch, merge, down. */
 export async function runGo(opts: GoOpts): Promise<void> {
   const repoRoot = getRepoRoot();
-  const configPath = opts.config ?? resolveConfigPath(repoRoot);
-  const pollInterval = parseInt(opts.pollInterval, 10);
-
-  if (isNaN(pollInterval) || pollInterval < 1) {
-    console.error(colors.error('Poll interval must be a positive integer (seconds).'));
-    process.exit(1);
-  }
-
+  const configPath = resolveConfigPath(repoRoot);
+  const pollInterval = parseInt(DEFAULT_POLL_INTERVAL, 10);
   const config = loadConfig(configPath);
 
   if (opts.dryRun) {
-    printDryRun(repoRoot, config, opts);
+    printDryRun(repoRoot, config);
     return;
   }
 
@@ -143,8 +130,6 @@ export async function runGo(opts: GoOpts): Promise<void> {
     return;
   }
 
-  const configArgs = opts.config ? ['-c', opts.config] : [];
-
   if (state === 'no-session') {
     console.log(pc.bold('Step 1: paw up\n'));
     let phaseStart = Date.now();
@@ -153,15 +138,8 @@ export async function runGo(opts: GoOpts): Promise<void> {
 
     console.log(pc.bold('\nStep 2: paw launch\n'));
     phaseStart = Date.now();
-    await runLaunch(repoRoot, config, { detached: opts.detached, task: opts.task });
+    await runLaunch(repoRoot, config);
     if (verbose) console.log(colors.info(`⏰ launch: ${formatElapsed(Date.now() - phaseStart)}`));
-  }
-
-  if (opts.noReview) {
-    const syncState = readSyncState(repoRoot);
-    if (syncState && !syncState.skipReview) {
-      writeSyncState({ ...syncState, skipReview: true }, repoRoot);
-    }
   }
 
   if (state === 'no-session' || state === 'agents-running' || state === 'has-dead-agents') {
@@ -170,7 +148,6 @@ export async function runGo(opts: GoOpts): Promise<void> {
       repoRoot,
       configPath,
       interval: pollInterval,
-      noExit: false,
       header: pc.dim(
         `Watching ${Object.keys(config.tasks).length} task(s), polling every ${pollInterval}s...`,
       ),
@@ -180,11 +157,6 @@ export async function runGo(opts: GoOpts): Promise<void> {
       },
     });
     if (verbose) console.log(colors.info(`⏰ watch: ${formatElapsed(Date.now() - totalStart)}`));
-  }
-
-  if (opts.noMerge) {
-    console.log(pc.dim('\n--no-merge: stopping before merge. Run `paw merge` when ready.'));
-    return;
   }
 
   console.log(pc.bold('\npaw merge\n'));
@@ -204,7 +176,7 @@ export async function runGo(opts: GoOpts): Promise<void> {
     git(['checkout', config.target], { cwd: repoRoot });
   }
 
-  const mergeResult = runPawCommand(['merge', ...configArgs]);
+  const mergeResult = runPawCommand(['merge']);
   if (mergeResult.exitCode !== 0) {
     console.log(colors.warn('\nMerge failed. Resolve the issue, then run: paw merge --continue'));
     console.log(colors.warn('Worktrees left intact (skipping paw down).'));
@@ -212,16 +184,9 @@ export async function runGo(opts: GoOpts): Promise<void> {
   }
   if (verbose) console.log(colors.info(`⏰ merge: ${formatElapsed(Date.now() - phaseStart)}`));
 
-  if (opts.noTeardown) {
-    console.log(pc.dim('\n--no-teardown: worktrees left intact. Run `paw down` when ready.'));
-    if (verbose) console.log(colors.info(`⏰ total: ${formatElapsed(Date.now() - totalStart)}`));
-    console.log(colors.success(`\nDone. Work merged to ${config.target}.`));
-    return;
-  }
-
   console.log(pc.bold('\npaw down\n'));
   phaseStart = Date.now();
-  const downResult = runPawCommand(['down', ...configArgs]);
+  const downResult = runPawCommand(['down']);
   if (downResult.exitCode !== 0) {
     console.error(colors.error('\npaw down failed.'));
     process.exit(downResult.exitCode);
@@ -233,23 +198,19 @@ export async function runGo(opts: GoOpts): Promise<void> {
   console.log(pc.dim(`Next: paw shortcut finish-branch`));
 }
 
-function printDryRun(repoRoot: string, config: PawConfig, opts: GoOpts): void {
+function printDryRun(repoRoot: string, config: PawConfig): void {
   const state = detectSessionState(repoRoot);
-  const useDetached = opts.detached || !isInsideTmux();
+  const useDetached = !isInsideTmux();
   const sessionName = tmuxSessionName(basename(repoRoot));
   const worktrees = planWorktrees(config, repoRoot);
   const syncState = readSyncState(repoRoot);
-  const targets = opts.task ? worktrees.filter((wt) => wt.taskName === opts.task) : worktrees;
 
   console.log(pc.bold('paw go (dry run)'));
   console.log(`  target:  ${config.target}`);
-  console.log(`  tasks:   ${targets.length}`);
+  console.log(`  tasks:   ${worktrees.length}`);
   console.log(`  state:   ${state}`);
   console.log(`  mode:    ${useDetached ? 'detached' : 'attached'}`);
   console.log(`  session: ${sessionName}`);
-  if (opts.noReview) console.log(`  flags:   --no-review`);
-  if (opts.noMerge) console.log(`  flags:   --no-merge`);
-  if (opts.noTeardown) console.log(`  flags:   --no-teardown`);
   console.log();
 
   if (state === 'clean') {
@@ -259,7 +220,7 @@ function printDryRun(repoRoot: string, config: PawConfig, opts: GoOpts): void {
 
   if (state === 'no-session') {
     console.log(pc.bold('Would create worktrees:\n'));
-    for (const wt of targets) {
+    for (const wt of worktrees) {
       pending(wt.taskName, `${wt.branch} → ${wt.worktreePath}`);
     }
     const claudeDir = resolve(repoRoot, '.claude');
@@ -271,7 +232,7 @@ function printDryRun(repoRoot: string, config: PawConfig, opts: GoOpts): void {
     }
 
     console.log(pc.bold('\nWould launch agents:\n'));
-    printLaunchPreview(targets, syncState, useDetached, config.agent);
+    printLaunchPreview(worktrees, syncState, useDetached, config.agent);
   }
 
   if (state === 'agents-running') {
@@ -280,7 +241,7 @@ function printDryRun(repoRoot: string, config: PawConfig, opts: GoOpts): void {
 
   if (state === 'has-dead-agents') {
     console.log('Would relaunch dead agents and watch for completion.');
-    for (const wt of targets) {
+    for (const wt of worktrees) {
       const taskState = syncState?.tasks[wt.taskName];
       if (taskState?.status === 'done') {
         skip(wt.taskName, 'done');
@@ -295,8 +256,8 @@ function printDryRun(repoRoot: string, config: PawConfig, opts: GoOpts): void {
   }
 
   console.log();
-  if (!opts.noMerge) console.log(pc.dim('→ Would merge completed branches'));
-  if (!opts.noMerge && !opts.noTeardown) console.log(pc.dim('→ Would tear down worktrees'));
+  console.log(pc.dim('→ Would merge completed branches'));
+  console.log(pc.dim('→ Would tear down worktrees'));
   console.log(pc.dim(`\nLifecycle: up → launch → watch → merge → down`));
   console.log(pc.dim('\nDry run -- no changes made.'));
 }
@@ -305,17 +266,6 @@ function printDryRun(repoRoot: string, config: PawConfig, opts: GoOpts): void {
 export function goCommand(): Command {
   return new Command('go')
     .description('Run the full workflow: up → launch → watch → merge → down')
-    .option('-c, --config <path>', 'Path to .paw/paw.yaml')
-    .option(
-      '--poll-interval <seconds>',
-      'Poll interval in seconds for watching agents',
-      DEFAULT_POLL_INTERVAL,
-    )
-    .option('--detached', 'Force detached mode (background tmux sessions)')
-    .option('-t, --task <name>', 'Spawn and watch a single task only')
-    .option('--no-review', 'Skip PR review phase (agents auto-complete on paw review)')
-    .option('--no-merge', 'Stop after all agents done (inspect before merging)')
-    .option('--no-teardown', 'Merge but keep worktrees (inspect after merging)')
     .option('--dry-run', 'Preview what would happen without executing')
     .action(async (opts: GoOpts) => {
       try {

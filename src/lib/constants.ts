@@ -10,7 +10,7 @@ export const SYNC_BRANCH = 'paw-sync';
 export const DEFAULT_POLL_INTERVAL = '5';
 
 /** The first message sent to an agent after Claude Code boots. */
-export const BEACON_MESSAGE = 'Begin working on your task.';
+export const BEACON_MESSAGE = 'Follow the paw builder workflow to complete your task.';
 
 /** Max time (ms) to wait for Claude Code TUI to render before giving up. */
 export const BEACON_TUI_TIMEOUT_MS = 30_000;

@@ -998,7 +998,7 @@ describe('sendBeacon', () => {
     const sendCalls = mock.calls.filter((c) => c.method === 'sendKeys');
     // Beacon message + 2 follow-up empty Enters (minimum)
     expect(sendCalls.length).toBeGreaterThanOrEqual(3);
-    expect(sendCalls[0]!.args[1]).toBe('Begin working on your task.');
+    expect(sendCalls[0]!.args[1]).toBe('Follow the paw builder workflow to complete your task.');
     // Follow-up Enters are empty strings
     expect(sendCalls[1]!.args[1]).toBe('');
     expect(sendCalls[2]!.args[1]).toBe('');

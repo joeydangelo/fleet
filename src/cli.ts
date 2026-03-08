@@ -103,11 +103,11 @@ Getting Started:
     const m = await import('./commands/broadcast.js');
     return m.broadcastCommand();
   });
-  lazy(program, 'send', 'Send a directed message to a specific agent', async () => {
+  lazy(program, 'send', 'Send a direct message to an agent', async () => {
     const m = await import('./commands/send.js');
     return m.sendCommand();
   });
-  lazy(program, 'reply', 'Reply to the most recent directed message', async () => {
+  lazy(program, 'reply', 'Reply to a direct message from an agent', async () => {
     const m = await import('./commands/reply.js');
     return m.replyCommand();
   });
@@ -134,10 +134,6 @@ Getting Started:
   lazy(program, 'go', 'Run the full lifecycle: up → launch → watch → merge → down', async () => {
     const m = await import('./commands/go.js');
     return m.goCommand();
-  });
-  lazy(program, 'skill', 'Output paw skill content to stdout', async () => {
-    const m = await import('./commands/skill.js');
-    return m.skillCommand();
   });
   lazy(program, 'heartbeat', 'Record agent activity (called by hooks)', async () => {
     const m = await import('./commands/heartbeat.js');

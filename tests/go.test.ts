@@ -141,14 +141,13 @@ describe('runPawCommand', () => {
     expect(result.exitCode).toBe(1);
   });
 
-  it('passes config args through to the subcommand', () => {
+  it('passes args through to the subcommand', () => {
     mockExecFileSync.mockReturnValue(Buffer.from(''));
-    runPawCommand(['up', '-c', '/custom/path.yaml']);
+    runPawCommand(['up', '--dry-run']);
     const call = mockExecFileSync.mock.calls[0]!;
     const args = call[1] as string[];
     expect(args).toContain('up');
-    expect(args).toContain('-c');
-    expect(args).toContain('/custom/path.yaml');
+    expect(args).toContain('--dry-run');
   });
 });
 
@@ -193,8 +192,6 @@ describe('runWatchLoop', () => {
       repoRoot: '/fake/repo',
       configPath: '/fake/repo/.paw/paw.yaml',
       interval: 1,
-
-      noExit: false,
     });
 
     // If we got here without hanging, the watch loop detected all done and exited
@@ -231,8 +228,6 @@ describe('runWatchLoop', () => {
       repoRoot: '/fake/repo',
       configPath: '/fake/repo/.paw/paw.yaml',
       interval: 0.01, // very short for testing
-
-      noExit: false,
     });
 
     expect(callCount).toBeGreaterThanOrEqual(3);
@@ -266,7 +261,7 @@ describe('runGo: merge failure message (paw-lk9k)', () => {
       tasks: { auth: { focus: 'src/auth/' }, api: { focus: 'src/api/' } },
     });
 
-    await runGo({ pollInterval: '5' });
+    await runGo({});
 
     const logs = vi.mocked(console.log).mock.calls.map((c) => String(c[0]));
     const hasManualMsg = logs.some((msg) => msg.includes('Merge failed'));
@@ -296,7 +291,7 @@ describe('runGo: verbose timing display (paw-s3bg)', () => {
   it('shows per-phase and total timing when verbose is enabled', async () => {
     setVerbosity(true, false);
 
-    await runGo({ pollInterval: '5' });
+    await runGo({});
 
     const logs = vi.mocked(console.log).mock.calls.map((c) => String(c[0]));
     const timingLogs = logs.filter((msg) => msg.includes('⏰'));
@@ -308,7 +303,7 @@ describe('runGo: verbose timing display (paw-s3bg)', () => {
   it('does not show timing when verbose is disabled', async () => {
     setVerbosity(false, false);
 
-    await runGo({ pollInterval: '5' });
+    await runGo({});
 
     const logs = vi.mocked(console.log).mock.calls.map((c) => String(c[0]));
     const timingLogs = logs.filter((msg) => msg.includes('⏰'));
