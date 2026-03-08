@@ -7,7 +7,8 @@ import {
   getCommitCount,
   isMergeInProgress,
   isAncestor,
-  commitUntrackedFiles,
+  stashWorkingTree,
+  unstashWorkingTree,
   getHeadRef,
   createBackupRef,
 } from '../lib/git.js';
@@ -141,66 +142,74 @@ function runMergeLoop(
   let state = initialState;
   const target = config.target;
 
-  for (const wt of worktrees) {
-    const mergeEntry = state.merges?.[wt.taskName];
+  const stashed = stashWorkingTree(repoRoot);
 
-    if (mergeEntry?.status === 'merged') {
-      skip(wt.taskName, 'already merged');
-      continue;
+  try {
+    for (const wt of worktrees) {
+      const mergeEntry = state.merges?.[wt.taskName];
+
+      if (mergeEntry?.status === 'merged') {
+        skip(wt.taskName, 'already merged');
+        continue;
+      }
+      if (mergeEntry?.status === 'skipped') {
+        skip(wt.taskName, 'no commits');
+        continue;
+      }
+      if (mergeEntry?.status === 'conflict') {
+        warn(wt.taskName, 'unresolved conflict');
+        console.log(pc.dim(`\nNext: paw shortcut resolve-merge-conflict`));
+        return;
+      }
+      const commits = getCommitCount(wt.branch, target, repoRoot);
+      if (commits === 0) {
+        state = updateMergeEntry(state, wt.taskName, { status: 'skipped' });
+        writeSyncState(state, repoRoot);
+        skip(wt.taskName, 'no commits');
+        continue;
+      }
+
+      const headBefore = getHeadRef(repoRoot);
+      createBackupRef(wt.taskName, headBefore, repoRoot);
+
+      const result = mergeBranch(wt.branch, repoRoot);
+      if (result.success) {
+        success(wt.taskName, 'merged clean');
+
+        state = updateMergeEntry(state, wt.taskName, {
+          status: 'merged',
+          merged: new Date().toISOString(),
+        });
+        writeSyncState(state, repoRoot);
+      } else {
+        const briefPath = `conflicts/${wt.taskName}-into-target.md`;
+        const brief = generateConflictBrief({
+          conflictingTask: wt.taskName,
+          target,
+          state,
+          cwd: repoRoot,
+        });
+
+        state = updateMergeEntry(state, wt.taskName, {
+          status: 'conflict',
+          brief: briefPath,
+        });
+        writeSyncStateAndFiles(state, [{ path: briefPath, content: brief }], repoRoot);
+
+        warn(wt.taskName, 'conflicts');
+        console.log(pc.dim(`    ${result.message.split('\n')[0]}`));
+        console.log(pc.dim(`    Brief written to ${briefPath} on sync branch`));
+        console.log(pc.dim(`\nNext: paw shortcut resolve-merge-conflict`));
+        return;
+      }
     }
-    if (mergeEntry?.status === 'skipped') {
-      skip(wt.taskName, 'no commits');
-      continue;
-    }
-    if (mergeEntry?.status === 'conflict') {
-      warn(wt.taskName, 'unresolved conflict');
-      console.log(pc.dim(`\nNext: paw shortcut resolve-merge-conflict`));
-      process.exit(1);
-    }
-    const commits = getCommitCount(wt.branch, target, repoRoot);
-    if (commits === 0) {
-      state = updateMergeEntry(state, wt.taskName, { status: 'skipped' });
-      writeSyncState(state, repoRoot);
-      skip(wt.taskName, 'no commits');
-      continue;
-    }
-
-    // Stage untracked files to prevent "untracked working tree files would be
-    // overwritten" errors during merge.
-    commitUntrackedFiles(repoRoot, wt.taskName);
-
-    const headBefore = getHeadRef(repoRoot);
-    createBackupRef(wt.taskName, headBefore, repoRoot);
-
-    const result = mergeBranch(wt.branch, repoRoot);
-    if (result.success) {
-      success(wt.taskName, 'merged clean');
-
-      state = updateMergeEntry(state, wt.taskName, {
-        status: 'merged',
-        merged: new Date().toISOString(),
-      });
-      writeSyncState(state, repoRoot);
-    } else {
-      const briefPath = `conflicts/${wt.taskName}-into-target.md`;
-      const brief = generateConflictBrief({
-        conflictingTask: wt.taskName,
-        target,
-        state,
-        cwd: repoRoot,
-      });
-
-      state = updateMergeEntry(state, wt.taskName, {
-        status: 'conflict',
-        brief: briefPath,
-      });
-      writeSyncStateAndFiles(state, [{ path: briefPath, content: brief }], repoRoot);
-
-      warn(wt.taskName, 'conflicts');
-      console.log(pc.dim(`    ${result.message.split('\n')[0]}`));
-      console.log(pc.dim(`    Brief written to ${briefPath} on sync branch`));
-      console.log(pc.dim(`\nNext: paw shortcut resolve-merge-conflict`));
-      process.exit(1);
+  } finally {
+    if (stashed && !unstashWorkingTree(repoRoot)) {
+      console.log(
+        pc.yellow(
+          '    Your local changes are saved in git stash. Run `git stash pop` after resolving the conflict.',
+        ),
+      );
     }
   }
 }

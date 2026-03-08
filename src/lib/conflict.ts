@@ -1,5 +1,5 @@
 import { readMessages } from './messages.js';
-import { getDiffOutput, getConflictingFiles } from './git.js';
+import { getMergeConflictDiff, getConflictingFiles } from './git.js';
 import type { SyncState } from './sync.js';
 import { readSyncFile } from './sync.js';
 
@@ -75,7 +75,7 @@ export function generateConflictBrief(opts: ConflictBriefOpts): string {
     }
   }
 
-  const diffOutput = getDiffOutput(cwd);
+  const diffOutput = getMergeConflictDiff(cwd);
   if (diffOutput) {
     lines.push('## The conflict diff');
     lines.push('```');

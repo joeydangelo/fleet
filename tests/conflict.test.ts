@@ -15,7 +15,7 @@ import { generateConflictBrief } from '../src/lib/conflict.js';
 import {
   mergeBranch,
   isMergeInProgress,
-  getDiffOutput,
+  getMergeConflictDiff,
   getConflictingFiles,
 } from '../src/lib/git.js';
 import { createSession } from '../src/lib/session.js';
@@ -24,7 +24,7 @@ import type { PawConfig } from '../src/lib/config.js';
 import { makeTempDir } from './helpers/temp.js';
 
 function gitInit(dir: string): void {
-  execFileSync('git', ['init', dir], { stdio: 'pipe' });
+  execFileSync('git', ['init', '-b', 'main', dir], { stdio: 'pipe' });
   execFileSync('git', ['commit', '--allow-empty', '-m', 'init'], {
     cwd: dir,
     stdio: 'pipe',
@@ -44,7 +44,7 @@ function checkout(dir: string, branch: string): void {
   execFileSync('git', ['checkout', branch], { cwd: dir, stdio: 'pipe' });
 }
 
-describe('getDiffOutput / getConflictingFiles', () => {
+describe('getMergeConflictDiff / getConflictingFiles', () => {
   let repoDir: string;
 
   beforeEach(() => {
@@ -79,8 +79,31 @@ describe('getDiffOutput / getConflictingFiles', () => {
     const files = getConflictingFiles(repoDir);
     expect(files).toContain('shared.txt');
 
-    const diff = getDiffOutput(repoDir);
+    const diff = getMergeConflictDiff(repoDir);
     expect(diff).toContain('shared.txt');
+  });
+
+  it('only shows conflicting files, not unrelated working tree changes', () => {
+    // Create a tracked file and modify it (unrelated change)
+    commitFile(repoDir, 'docs.md', 'original docs', 'add docs');
+
+    execFileSync('git', ['checkout', '-b', 'branch-a'], {
+      cwd: repoDir,
+      stdio: 'pipe',
+    });
+    commitFile(repoDir, 'shared.txt', 'content-a', 'branch-a commit');
+
+    checkout(repoDir, 'main');
+    commitFile(repoDir, 'shared.txt', 'content-main', 'main commit');
+
+    // Modify an unrelated tracked file (working tree change)
+    writeFileSync(resolve(repoDir, 'docs.md'), 'modified docs');
+
+    mergeBranch('branch-a', repoDir);
+
+    const diff = getMergeConflictDiff(repoDir);
+    expect(diff).toContain('shared.txt');
+    expect(diff).not.toContain('docs.md');
   });
 });
 
@@ -181,6 +204,54 @@ describe('generateConflictBrief', () => {
     expect(brief).toContain('Task being merged: auth');
     expect(brief).toContain('Changed auth interface');
     expect(brief).toContain('What token type?');
+  });
+
+  it('conflict brief excludes unrelated working tree changes', () => {
+    const worktrees = createSession(config, repoDir);
+    worktreePaths = worktrees.map((w) => w.worktreePath);
+
+    const state = initSyncState(config.target, Object.keys(config.tasks), 'paw.yaml');
+    const withMerges = {
+      ...state,
+      merges: initMergeState(Object.keys(config.tasks)),
+    };
+    writeSyncState(withMerges, repoDir);
+
+    // Create a tracked file and then modify it (unrelated change)
+    checkout(repoDir, config.target);
+    commitFile(repoDir, 'docs.md', 'original docs', 'add docs');
+
+    // Also create an untracked file
+    writeFileSync(resolve(repoDir, 'local-notes.txt'), 'my notes');
+
+    // Modify the tracked file
+    writeFileSync(resolve(repoDir, 'docs.md'), 'modified docs');
+
+    // Create conflicting changes
+    commitFile(repoDir, 'shared.txt', 'target-content', 'target commit');
+
+    const authWt = worktrees.find((w) => w.taskName === 'auth')!;
+    commitFile(authWt.worktreePath, 'shared.txt', 'auth-content', 'auth commit');
+
+    // Merge auth (conflicts)
+    checkout(repoDir, config.target);
+    mergeBranch(authWt.branch, repoDir);
+
+    const conflictState = updateMergeEntry(withMerges, 'auth', {
+      status: 'conflict',
+    });
+
+    const brief = generateConflictBrief({
+      conflictingTask: 'auth',
+      target: config.target,
+      state: conflictState,
+      cwd: repoDir,
+    });
+
+    // Brief should contain the conflicting file but NOT the unrelated changes
+    expect(brief).toContain('shared.txt');
+    expect(brief).not.toContain('local-notes.txt');
+    expect(brief).not.toContain('my notes');
   });
 
   it('includes already-merged task entries', () => {
