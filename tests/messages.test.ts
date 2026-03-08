@@ -116,6 +116,17 @@ describe('appendMessage / readMessages', () => {
     const entries = readMessages(repoDir);
     expect(entries).toEqual([]);
   });
+
+  it('round-trips a nudge entry', () => {
+    appendMessage('orchestrator', { type: 'nudge', to: 'auth', msg: 'Finish auth task' }, repoDir);
+
+    const entries = readMessages(repoDir);
+    expect(entries).toHaveLength(1);
+    expect(entries[0]!.from).toBe('orchestrator');
+    expect(entries[0]!.type).toBe('nudge');
+    expect(entries[0]!.to).toBe('auth');
+    expect(entries[0]!.msg).toBe('Finish auth task');
+  });
 });
 
 describe('generateThreadId', () => {
@@ -238,5 +249,14 @@ describe('readMessagesForTask', () => {
     // The old entry (at or before `since`) is excluded
     const msgs = afterFirst.map((e) => e.msg);
     expect(msgs).not.toContain('Old message');
+  });
+
+  it('includes nudges directed at the task', () => {
+    appendMessage('orchestrator', { type: 'nudge', to: 'auth', msg: 'Finish up' }, repoDir);
+    appendMessage('orchestrator', { type: 'nudge', to: 'api', msg: 'Speed up' }, repoDir);
+
+    const forAuth = readMessagesForTask('auth', repoDir);
+    expect(forAuth).toHaveLength(1);
+    expect(forAuth[0]!.msg).toBe('Finish up');
   });
 });

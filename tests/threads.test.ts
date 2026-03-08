@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computeThreads } from '../src/commands/inbox.js';
+import { computeThreads, formatMessage } from '../src/commands/inbox.js';
 import type { Message } from '../src/lib/messages.js';
 
 function entry(overrides: Partial<Message> & { thread?: string }): Message {
@@ -87,5 +87,32 @@ describe('computeThreads', () => {
     expect(open).toHaveLength(0);
     expect(resolved).toHaveLength(0);
     expect(broadcasts).toHaveLength(0);
+  });
+
+  it('nudge entries are grouped with broadcasts', () => {
+    const entries = [
+      entry({ type: 'broadcast', from: 'auth', msg: 'Changed interface' }),
+      entry({
+        type: 'nudge',
+        from: 'orchestrator',
+        to: 'api',
+        msg: 'Please finish auth integration',
+      }),
+      entry({ type: 'send', from: 'orchestrator', to: 'db', msg: 'Schema ready?', thread: 'th1' }),
+    ];
+    const { open, resolved, broadcasts } = computeThreads(entries);
+
+    expect(broadcasts).toHaveLength(2);
+    expect(broadcasts[0]!.type).toBe('broadcast');
+    expect(broadcasts[1]!.type).toBe('nudge');
+    expect(open).toHaveLength(1);
+    expect(resolved).toHaveLength(0);
+  });
+});
+
+describe('formatMessage', () => {
+  it('formats nudge with warning prefix', () => {
+    const nudge = entry({ type: 'nudge', from: 'orchestrator', msg: 'Finish task' });
+    expect(formatMessage(nudge)).toBe('[paw] Warning: Finish task');
   });
 });

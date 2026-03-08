@@ -23,9 +23,9 @@ describe('installHooks', () => {
     const settingsPath = resolve(repoRoot, '.claude', 'settings.json');
     const settings = JSON.parse(readFileSync(settingsPath, 'utf-8'));
 
-    // SessionStart should have matcher group format: paw session + skill inject + inbox
+    // SessionStart should have matcher group format: paw session + skill inject
     const sessionStart = settings.hooks.SessionStart;
-    expect(sessionStart).toHaveLength(3);
+    expect(sessionStart).toHaveLength(2);
     expect(sessionStart[0]).toHaveProperty('matcher', '');
     expect(sessionStart[0].hooks[0]).toEqual({
       type: 'command',
@@ -35,11 +35,6 @@ describe('installHooks', () => {
     expect(sessionStart[1].hooks[0]).toEqual({
       type: 'command',
       command: 'bash .claude/scripts/paw-skill-inject.sh',
-    });
-    expect(sessionStart[2]).toHaveProperty('matcher', '');
-    expect(sessionStart[2].hooks[0]).toEqual({
-      type: 'command',
-      command: 'bash .claude/hooks/paw-inbox.sh',
     });
 
     // UserPromptSubmit should have inbox check
@@ -112,12 +107,11 @@ describe('installHooks', () => {
 
     const settings = JSON.parse(readFileSync(resolve(settingsDir, 'settings.json'), 'utf-8'));
 
-    // Should have custom + paw session + skill inject + paw inbox hooks
-    expect(settings.hooks.SessionStart).toHaveLength(4);
+    // Should have custom + paw session + skill inject hooks
+    expect(settings.hooks.SessionStart).toHaveLength(3);
     expect(settings.hooks.SessionStart[0].hooks[0].command).toContain('custom-session');
     expect(settings.hooks.SessionStart[1].hooks[0].command).toContain('paw-session');
     expect(settings.hooks.SessionStart[2].hooks[0].command).toContain('paw-skill-inject');
-    expect(settings.hooks.SessionStart[3].hooks[0].command).toContain('paw-inbox');
   });
 
   it('registers PostToolUse hook for paw review reminder (paw-xlg3)', () => {
@@ -153,7 +147,7 @@ describe('installHooks', () => {
     const settings = JSON.parse(
       readFileSync(resolve(repoRoot, '.claude', 'settings.json'), 'utf-8'),
     );
-    expect(settings.hooks.SessionStart).toHaveLength(3);
+    expect(settings.hooks.SessionStart).toHaveLength(2);
     expect(settings.hooks.UserPromptSubmit).toHaveLength(1);
     expect(settings.hooks.PreCompact).toHaveLength(1);
     expect(settings.hooks.PostToolUse).toHaveLength(2);
@@ -176,13 +170,12 @@ describe('installHooks', () => {
 
     const settings = JSON.parse(readFileSync(resolve(settingsDir, 'settings.json'), 'utf-8'));
 
-    // Old flat format should be replaced with paw session + skill inject + inbox
-    expect(settings.hooks.SessionStart).toHaveLength(3);
+    // Old flat format should be replaced with paw session + skill inject
+    expect(settings.hooks.SessionStart).toHaveLength(2);
     expect(settings.hooks.SessionStart[0]).toHaveProperty('matcher');
     expect(settings.hooks.SessionStart[0]).toHaveProperty('hooks');
     expect(settings.hooks.SessionStart[0].hooks[0].command).toContain('paw-session');
     expect(settings.hooks.SessionStart[1].hooks[0].command).toContain('paw-skill-inject');
-    expect(settings.hooks.SessionStart[2].hooks[0].command).toContain('paw-inbox');
   });
 });
 

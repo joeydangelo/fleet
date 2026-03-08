@@ -331,15 +331,6 @@ export function installHooks(repoRoot: string): void {
           },
         ],
       },
-      {
-        matcher: '',
-        hooks: [
-          {
-            type: 'command',
-            command: `bash ${INBOX_RELATIVE}`,
-          },
-        ],
-      },
     ],
     UserPromptSubmit: [
       {

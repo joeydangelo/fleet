@@ -1,7 +1,7 @@
 import { Command } from 'commander';
 import { resolveMainRoot } from '../lib/git.js';
 import { detectTaskName } from '../lib/session.js';
-import { readNudge, clearNudge, readInboxCursor, writeInboxCursor } from '../lib/health.js';
+import { readInboxCursor, writeInboxCursor } from '../lib/health.js';
 import { readMessages, readMessagesForTask } from '../lib/messages.js';
 import type { Message } from '../lib/messages.js';
 
@@ -40,7 +40,7 @@ export interface ThreadResult {
 export function computeThreads(entries: Message[]): ThreadResult {
   const sends = entries.filter((e): e is ThreadedEntry => e.type === 'send' && hasThread(e));
   const replyByThread = new Map<string, ThreadedEntry>();
-  const broadcasts = entries.filter((e) => e.type === 'broadcast');
+  const broadcasts = entries.filter((e) => e.type === 'broadcast' || e.type === 'nudge');
 
   for (const e of entries) {
     if (e.type === 'reply' && hasThread(e)) {
@@ -63,7 +63,10 @@ export function computeThreads(entries: Message[]): ThreadResult {
   return { open, resolved, broadcasts };
 }
 
-function formatMessage(entry: Message): string {
+export function formatMessage(entry: Message): string {
+  if (entry.type === 'nudge') {
+    return `[paw] Warning: ${entry.msg}`;
+  }
   if (entry.type === 'broadcast') {
     return `[${entry.from}] broadcast: ${entry.msg}`;
   }
@@ -84,12 +87,6 @@ export function inboxCommand(): Command {
 
         if (!taskName) return;
         const mainRoot = resolveMainRoot(cwd);
-
-        const nudge = readNudge(mainRoot, taskName);
-        if (nudge) {
-          console.log(`\n[paw] Message from orchestrator:\n${nudge}\n`);
-          clearNudge(mainRoot, taskName);
-        }
 
         const cursor = readInboxCursor(mainRoot, taskName);
         const entries = readMessagesForTask(taskName, cwd, cursor ?? undefined);
