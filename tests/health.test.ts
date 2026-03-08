@@ -8,9 +8,6 @@ import {
   writeHeartbeat,
   readHealthSnapshot,
   writeHealthSnapshot,
-  writeNudge,
-  readNudge,
-  clearNudge,
   readInboxCursor,
   writeInboxCursor,
   saveTriageOutput,
@@ -251,31 +248,6 @@ describe('health snapshot I/O writes to .paw/run/', () => {
 
   it('readHealthSnapshot returns null when file is missing', () => {
     expect(readHealthSnapshot(repoRoot)).toBeNull();
-  });
-});
-
-describe('nudge I/O writes to .paw/run/', () => {
-  let repoRoot: string;
-
-  beforeEach(() => {
-    repoRoot = makeTempDir();
-  });
-
-  afterEach(() => {
-    rmSync(repoRoot, { recursive: true, force: true });
-  });
-
-  it('writeNudge creates file under .paw/run/nudges/', () => {
-    writeNudge(repoRoot, 'auth', 'You seem stuck.');
-    const filePath = resolve(repoRoot, '.paw', 'run', 'nudges', 'auth.md');
-    expect(existsSync(filePath)).toBe(true);
-    expect(readFileSync(filePath, 'utf-8')).toBe('You seem stuck.');
-  });
-
-  it('clearNudge removes the file', () => {
-    writeNudge(repoRoot, 'auth', 'msg');
-    clearNudge(repoRoot, 'auth');
-    expect(readNudge(repoRoot, 'auth')).toBeNull();
   });
 });
 

@@ -1,7 +1,7 @@
 import { Command } from 'commander';
 import { resolveMainRoot } from '../lib/git.js';
 import { detectTaskName } from '../lib/session.js';
-import { readNudge, clearNudge, readInboxCursor, writeInboxCursor } from '../lib/health.js';
+import { readInboxCursor, writeInboxCursor } from '../lib/health.js';
 import { readMessages, readMessagesForTask } from '../lib/messages.js';
 import type { Message } from '../lib/messages.js';
 
@@ -84,12 +84,6 @@ export function inboxCommand(): Command {
 
         if (!taskName) return;
         const mainRoot = resolveMainRoot(cwd);
-
-        const nudge = readNudge(mainRoot, taskName);
-        if (nudge) {
-          console.log(`\n[paw] Message from orchestrator:\n${nudge}\n`);
-          clearNudge(mainRoot, taskName);
-        }
 
         const cursor = readInboxCursor(mainRoot, taskName);
         const entries = readMessagesForTask(taskName, cwd, cursor ?? undefined);

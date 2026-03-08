@@ -1,6 +1,6 @@
-/** ZFC Health Monitoring — state machine, heartbeat I/O, and nudge delivery. */
+/** ZFC Health Monitoring — state machine, heartbeat I/O, and inbox cursor. */
 
-import { mkdirSync, readFileSync, rmSync } from 'node:fs';
+import { mkdirSync, readFileSync } from 'node:fs';
 import { writeFileSync } from 'atomically';
 import { resolve } from 'node:path';
 import { execFileSync } from 'node:child_process';
@@ -177,32 +177,6 @@ export function writeHealthSnapshot(repoRoot: string, snapshot: HealthSnapshot):
   const dir = resolve(repoRoot, '.paw', 'run');
   mkdirSync(dir, { recursive: true });
   writeFileSync(resolve(dir, 'health.json'), JSON.stringify(snapshot, null, 2) + '\n', 'utf-8');
-}
-
-/** Persist a nudge message for a task (consumed by the agent on next heartbeat). */
-export function writeNudge(repoRoot: string, taskName: string, message: string): void {
-  const dir = resolve(repoRoot, '.paw', 'run', 'nudges');
-  mkdirSync(dir, { recursive: true });
-  writeFileSync(resolve(dir, `${taskName}.md`), message, 'utf-8');
-}
-
-/** Read a pending nudge message, or null if none exists. */
-export function readNudge(repoRoot: string, taskName: string): string | null {
-  try {
-    const filePath = resolve(repoRoot, '.paw', 'run', 'nudges', `${taskName}.md`);
-    return readFileSync(filePath, 'utf-8');
-  } catch {
-    return null;
-  }
-}
-
-/** Delete a task's nudge file after delivery (idempotent). */
-export function clearNudge(repoRoot: string, taskName: string): void {
-  try {
-    rmSync(resolve(repoRoot, '.paw', 'run', 'nudges', `${taskName}.md`));
-  } catch {
-    // Already cleared or never existed
-  }
 }
 
 /** Read the last-seen inbox cursor for a task, used to skip already-delivered messages. */

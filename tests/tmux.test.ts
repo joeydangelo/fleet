@@ -12,6 +12,7 @@ import {
   waitForTuiReady,
   sendBeacon,
   isTuiPromptReady,
+  sendWakeSignal,
 } from '../src/lib/tmux.js';
 import type { BeaconOptions } from '../src/lib/tmux.js';
 import type { PawPane, PawPaneConfig, DetachedAgent } from '../src/lib/tmux.js';
@@ -1030,5 +1031,25 @@ describe('sendBeacon', () => {
 
     const sendCalls = mock.calls.filter((c) => c.method === 'sendKeys');
     expect(sendCalls.length).toBeGreaterThanOrEqual(2);
+  });
+});
+
+describe('sendWakeSignal', () => {
+  it('sends empty keys and returns true on success', () => {
+    const mock = createMockTmux();
+    const result = sendWakeSignal(mock, '%42');
+    expect(result).toBe(true);
+    const sendCalls = mock.calls.filter((c) => c.method === 'sendKeys');
+    expect(sendCalls).toHaveLength(1);
+    expect(sendCalls[0]!.args).toEqual(['%42', '']);
+  });
+
+  it('returns false when sendKeys throws', () => {
+    const mock = createMockTmux();
+    mock.sendKeys = () => {
+      throw new Error('pane dead');
+    };
+    const result = sendWakeSignal(mock, '%42');
+    expect(result).toBe(false);
   });
 });

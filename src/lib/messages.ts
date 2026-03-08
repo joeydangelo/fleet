@@ -4,7 +4,7 @@ import { readSyncFile, writeSyncFile, listSyncDir } from './sync.js';
 export interface Message {
   ts: string;
   from: string;
-  type: 'broadcast' | 'send' | 'reply';
+  type: 'broadcast' | 'send' | 'reply' | 'nudge';
   to?: string;
   msg: string;
   thread?: string;

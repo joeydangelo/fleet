@@ -6,23 +6,21 @@ import { loadConfig, resolveConfigPath } from '../lib/config.js';
 import { planWorktrees } from '../lib/session.js';
 import { readSyncState, isTerminalStatus } from '../lib/sync.js';
 import type { TaskState } from '../lib/sync.js';
-import { readMessages } from '../lib/messages.js';
+import { readMessages, appendMessage } from '../lib/messages.js';
 import type { Message } from '../lib/messages.js';
 import { readPaneConfig, resolvePaneTarget } from '../lib/pane-state.js';
 import {
   checkAgentLiveness,
   createTmuxService,
-  sendNudgeKeys,
+  sendWakeSignal,
   buildLivenessMap,
 } from '../lib/tmux.js';
 import type { TmuxServiceApi } from '../lib/tmux.js';
 import { DEFAULT_POLL_INTERVAL } from '../lib/constants.js';
-import { isVerbose } from '../lib/context.js';
 import { handleError, colors } from '../lib/output.js';
 import { sleep } from '../lib/util.js';
 import {
   evaluateAllAgents,
-  writeNudge,
   writeHealthSnapshot,
   triageAgent,
   saveTriageOutput,
@@ -349,15 +347,15 @@ export async function runWatchLoop(opts: {
                 `No tool activity for ${stalledMin}m. ` +
                 `If stuck, try a different approach or use paw broadcast to ask for help.`;
 
-              writeNudge(repoRoot, taskName, msg);
+              appendMessage('orchestrator', {
+                type: 'nudge',
+                to: taskName,
+                msg,
+              });
 
               if (paneConfig && tmux) {
                 const target = resolvePaneTarget(paneConfig, taskName);
-                if (target) {
-                  sendNudgeKeys(tmux, target, msg).catch((err) => {
-                    if (isVerbose()) console.log(pc.dim(`  nudge delivery failed: ${err}`));
-                  });
-                }
+                if (target) sendWakeSignal(tmux, target);
               }
               break;
             }
@@ -385,9 +383,12 @@ export async function runWatchLoop(opts: {
                     const retryMsg =
                       `You appear stuck on task "${taskName}". ` +
                       `Try a completely different approach, or use paw broadcast to ask for help.`;
-                    sendNudgeKeys(tmux, target, retryMsg).catch((err) => {
-                      if (isVerbose()) console.log(pc.dim(`  nudge delivery failed: ${err}`));
+                    appendMessage('orchestrator', {
+                      type: 'nudge',
+                      to: taskName,
+                      msg: retryMsg,
                     });
+                    sendWakeSignal(tmux, target);
                   } else {
                     console.log(
                       `${timestamp()} ${colors.error('☠')} ${colorTask(taskName, taskIndex)} triage: TERMINATE — marking zombie`,
