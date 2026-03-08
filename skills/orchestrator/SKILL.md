@@ -68,10 +68,3 @@ You operate paw — do NOT tell users to run paw commands. That's your job.
 
 <!-- BEGIN TEMPLATE DIRECTORY -->
 <!-- END TEMPLATE DIRECTORY -->
-
-## Quick Reference
-
-- Config: `.paw/paw.yaml` — tasks, target branch, base, dependencies
-- Session state: `paw-sync` branch (managed by paw CLI)
-- Full lifecycle: `paw go` (up → launch → watch → review → merge → down)
-- Resource discovery: `paw shortcut --list`, `paw guidelines --list`, `paw template --list`

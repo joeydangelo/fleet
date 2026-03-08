@@ -67,6 +67,11 @@ ensure_paw() {
 # Main
 ensure_paw || exit 1
 
+# Reviewers get context via their prompt, not paw prime
+if [ "$PAW_ROLE" = "reviewer" ]; then
+  exit 0
+fi
+
 # Run paw prime with any passed arguments (e.g., --brief for PreCompact)
 paw prime "$@"
 
@@ -233,35 +238,42 @@ fi
 exit 0
 `;
 
-/** SessionStart hook that checks gh CLI availability and authentication. */
-const CONFIRM_GH_CLI_SCRIPT = `#!/bin/bash
-# Check GitHub CLI (gh) availability for paw workflows
+/** SessionStart hook that injects the role-specific SKILL.md content into agent context.
+ * Detects role from .paw/tasks/ (builder) vs main repo (orchestrator).
+ * Stdout from SessionStart hooks is added directly to Claude's context —
+ * the agent gets the full workflow without needing to invoke anything. */
+const PAW_SKILL_INJECT_SCRIPT = `#!/bin/bash
+# Inject role-specific skill content into agent context at session start
 # Installed by: paw init
-# This script runs on SessionStart — check-only, never installs software
+# Fires on SessionStart — ensures agents have their workflow in context
 
-if ! command -v gh &> /dev/null; then
-    echo "[gh] WARNING: gh CLI not found"
-    echo "[gh] Install: https://cli.github.com/"
-    exit 0
-fi
-
-echo "[gh] CLI found at $(command -v gh)"
-
-if gh auth status &> /dev/null; then
-    echo "[gh] Authenticated successfully"
-elif [ -n "$GH_TOKEN" ]; then
-    echo "[gh] NOTE: GH_TOKEN not set - some operations may require authentication"
-    echo "[gh] See: docs/general/agent-setup/github-cli-setup.md"
+# PAW_ROLE env var takes precedence (set by paw review for reviewer sessions)
+if [ -n "$PAW_ROLE" ]; then
+  ROLE="$PAW_ROLE"
+elif ls .paw/tasks/*.md 1>/dev/null 2>&1; then
+  TASK_COUNT=$(ls .paw/tasks/*.md 2>/dev/null | wc -l)
+  if [ "$TASK_COUNT" -eq 1 ]; then
+    ROLE="builder"
+  else
+    ROLE="orchestrator"
+  fi
 else
-    echo "[gh] NOTE: Not authenticated - some operations may require authentication"
-    echo "[gh] Run: gh auth login"
+  ROLE="orchestrator"
 fi
+
+SKILL_FILE=".claude/skills/$ROLE/SKILL.md"
+if [ ! -f "$SKILL_FILE" ]; then
+  exit 0
+fi
+
+# Strip YAML frontmatter (lines between --- markers) and generated comments
+sed '/^---$/,/^---$/d; /^<!-- DO NOT EDIT/,/-->/d' "$SKILL_FILE"
 
 exit 0
 `;
 
 const SCRIPT_RELATIVE = '.claude/scripts/paw-session.sh';
-const GH_SCRIPT_RELATIVE = '.claude/scripts/confirm-gh-cli.sh';
+const SKILL_INJECT_RELATIVE = '.claude/scripts/paw-skill-inject.sh';
 const GUARD_RELATIVE = '.claude/hooks/paw-guard.sh';
 const REMINDER_RELATIVE = '.claude/hooks/paw-review-reminder.sh';
 const HEARTBEAT_RELATIVE = '.claude/hooks/paw-heartbeat.sh';
@@ -283,7 +295,7 @@ export function installHooks(repoRoot: string): void {
   const scriptDir = resolve(repoRoot, '.claude', 'scripts');
   mkdirSync(scriptDir, { recursive: true });
   writeFileSync(resolve(repoRoot, SCRIPT_RELATIVE), PAW_SESSION_SCRIPT, 'utf-8');
-  writeFileSync(resolve(repoRoot, GH_SCRIPT_RELATIVE), CONFIRM_GH_CLI_SCRIPT, 'utf-8');
+  writeFileSync(resolve(repoRoot, SKILL_INJECT_RELATIVE), PAW_SKILL_INJECT_SCRIPT, 'utf-8');
 
   const hooksDir = resolve(repoRoot, '.claude', 'hooks');
   mkdirSync(hooksDir, { recursive: true });
@@ -306,8 +318,7 @@ export function installHooks(repoRoot: string): void {
         hooks: [
           {
             type: 'command',
-            command: `bash ${GH_SCRIPT_RELATIVE}`,
-            timeout: 10,
+            command: `bash ${SCRIPT_RELATIVE}`,
           },
         ],
       },
@@ -316,7 +327,7 @@ export function installHooks(repoRoot: string): void {
         hooks: [
           {
             type: 'command',
-            command: `bash ${SCRIPT_RELATIVE}`,
+            command: `bash ${SKILL_INJECT_RELATIVE}`,
           },
         ],
       },
@@ -410,7 +421,7 @@ export function installHooks(repoRoot: string): void {
   success('hooks', 'SessionStart + UserPromptSubmit + PreCompact + PreToolUse + PostToolUse');
 
   success('script', SCRIPT_RELATIVE);
-  success('script', GH_SCRIPT_RELATIVE);
+  success('script', SKILL_INJECT_RELATIVE);
   success('script', GUARD_RELATIVE);
   success('script', REMINDER_RELATIVE);
   success('script', HEARTBEAT_RELATIVE);
@@ -439,7 +450,7 @@ function isPawHookEntry(entry: unknown): boolean {
   return false;
 }
 
-/** Check if a hook command belongs to paw (includes paw scripts and confirm-gh-cli). */
+/** Check if a hook command belongs to paw. */
 function isPawCommand(command: string): boolean {
-  return command.includes('paw') || command.includes('confirm-gh-cli');
+  return command.includes('paw');
 }

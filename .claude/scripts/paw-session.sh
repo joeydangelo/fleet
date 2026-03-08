@@ -58,6 +58,11 @@ ensure_paw() {
 # Main
 ensure_paw || exit 1
 
+# Reviewers get context via their prompt, not paw prime
+if [ "$PAW_ROLE" = "reviewer" ]; then
+  exit 0
+fi
+
 # Run paw prime with any passed arguments (e.g., --brief for PreCompact)
 paw prime "$@"
 

@@ -84,7 +84,7 @@ export function readVerdictFile(filePath: string): ReviewResult | null {
 
 /**
  * Build the claude command for the reviewer session.
- * - No project hooks (--setting-sources "user" skips .claude/settings.json)
+ * - PAW_ROLE=reviewer signals hooks to inject reviewer skill and skip paw prime
  * - Read-only tools only (no Edit, Write, NotebookEdit, Agent)
  * - Permissionless (automated — no human to approve)
  */
@@ -105,10 +105,9 @@ function buildReviewerCommand(): string {
   const disallowedTools = ['Edit', 'Write', 'NotebookEdit', 'Agent'].join(',');
 
   return [
+    'PAW_ROLE=reviewer',
     'claude',
     '--dangerously-skip-permissions',
-    '--setting-sources',
-    '"user"',
     '--allowedTools',
     `"${allowedTools}"`,
     '--disallowedTools',

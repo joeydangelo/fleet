@@ -25,11 +25,6 @@ import { handleError, formatFocusAreas, colors, success } from '../lib/output.js
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-function printWorkflowRouting(): void {
-  console.log(pc.dim('  When the user gives a request, assess complexity and route:'));
-  console.log(pc.dim('    → paw shortcut assess-work'));
-}
-
 function statusColor(status: string): (text: string) => string {
   if (status === 'done') return colors.success;
   if (status === 'in_review') return colors.info;
@@ -133,13 +128,11 @@ function printOrchestratorDashboard(repoRoot: string): void {
     if (yamlContent.includes('target: feature/my-feature')) {
       // Template default — not a real config
       console.log('No active session');
-      printWorkflowRouting();
     } else {
       console.log('Session configured (.paw/paw.yaml found) — run `paw go` to start');
     }
   } else {
     console.log('No active session (.paw/paw.yaml not found)');
-    printWorkflowRouting();
   }
 }
 
@@ -291,7 +284,6 @@ function printFull(
   }
 
   console.log(colors.success(`Claimed task: ${taskName}`));
-  console.log(pc.bold('→ Run `paw shortcut build-task` to start.\n'));
 
   const separator = pc.dim('────────────────────────────────────────');
 

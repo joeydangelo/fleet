@@ -23,19 +23,18 @@ describe('installHooks', () => {
     const settingsPath = resolve(repoRoot, '.claude', 'settings.json');
     const settings = JSON.parse(readFileSync(settingsPath, 'utf-8'));
 
-    // SessionStart should have matcher group format: gh CLI + paw session + inbox
+    // SessionStart should have matcher group format: paw session + skill inject + inbox
     const sessionStart = settings.hooks.SessionStart;
     expect(sessionStart).toHaveLength(3);
     expect(sessionStart[0]).toHaveProperty('matcher', '');
     expect(sessionStart[0].hooks[0]).toEqual({
       type: 'command',
-      command: 'bash .claude/scripts/confirm-gh-cli.sh',
-      timeout: 10,
+      command: 'bash .claude/scripts/paw-session.sh',
     });
     expect(sessionStart[1]).toHaveProperty('matcher', '');
     expect(sessionStart[1].hooks[0]).toEqual({
       type: 'command',
-      command: 'bash .claude/scripts/paw-session.sh',
+      command: 'bash .claude/scripts/paw-skill-inject.sh',
     });
     expect(sessionStart[2]).toHaveProperty('matcher', '');
     expect(sessionStart[2].hooks[0]).toEqual({
@@ -63,18 +62,6 @@ describe('installHooks', () => {
     });
   });
 
-  it('writes the confirm-gh-cli script', () => {
-    installHooks(repoRoot);
-
-    const scriptPath = resolve(repoRoot, '.claude', 'scripts', 'confirm-gh-cli.sh');
-    expect(existsSync(scriptPath)).toBe(true);
-
-    const content = readFileSync(scriptPath, 'utf-8');
-    expect(content).toContain('#!/bin/bash');
-    expect(content).toContain('command -v gh');
-    expect(content).toContain('gh auth status');
-  });
-
   it('writes the wrapper script', () => {
     installHooks(repoRoot);
 
@@ -85,6 +72,18 @@ describe('installHooks', () => {
     expect(content).toContain('#!/bin/bash');
     expect(content).toContain('paw prime "$@"');
     expect(content).toContain('npm');
+  });
+
+  it('writes the skill-inject script', () => {
+    installHooks(repoRoot);
+
+    const scriptPath = resolve(repoRoot, '.claude', 'scripts', 'paw-skill-inject.sh');
+    expect(existsSync(scriptPath)).toBe(true);
+
+    const content = readFileSync(scriptPath, 'utf-8');
+    expect(content).toContain('#!/bin/bash');
+    expect(content).toContain('PAW_ROLE');
+    expect(content).toContain('SKILL_FILE');
   });
 
   it('preserves existing non-paw hooks', () => {
@@ -100,7 +99,7 @@ describe('installHooks', () => {
               hooks: [
                 {
                   type: 'command',
-                  command: 'bash .claude/scripts/tbd-session.sh',
+                  command: 'bash .claude/scripts/custom-session.sh',
                 },
               ],
             },
@@ -113,11 +112,11 @@ describe('installHooks', () => {
 
     const settings = JSON.parse(readFileSync(resolve(settingsDir, 'settings.json'), 'utf-8'));
 
-    // Should have tbd + gh CLI + paw session + paw inbox hooks
+    // Should have custom + paw session + skill inject + paw inbox hooks
     expect(settings.hooks.SessionStart).toHaveLength(4);
-    expect(settings.hooks.SessionStart[0].hooks[0].command).toContain('tbd');
-    expect(settings.hooks.SessionStart[1].hooks[0].command).toContain('confirm-gh-cli');
-    expect(settings.hooks.SessionStart[2].hooks[0].command).toContain('paw-session');
+    expect(settings.hooks.SessionStart[0].hooks[0].command).toContain('custom-session');
+    expect(settings.hooks.SessionStart[1].hooks[0].command).toContain('paw-session');
+    expect(settings.hooks.SessionStart[2].hooks[0].command).toContain('paw-skill-inject');
     expect(settings.hooks.SessionStart[3].hooks[0].command).toContain('paw-inbox');
   });
 
@@ -177,12 +176,12 @@ describe('installHooks', () => {
 
     const settings = JSON.parse(readFileSync(resolve(settingsDir, 'settings.json'), 'utf-8'));
 
-    // Old flat format should be replaced with gh CLI + paw session + inbox
+    // Old flat format should be replaced with paw session + skill inject + inbox
     expect(settings.hooks.SessionStart).toHaveLength(3);
     expect(settings.hooks.SessionStart[0]).toHaveProperty('matcher');
     expect(settings.hooks.SessionStart[0]).toHaveProperty('hooks');
-    expect(settings.hooks.SessionStart[0].hooks[0].command).toContain('confirm-gh-cli');
-    expect(settings.hooks.SessionStart[1].hooks[0].command).toContain('paw-session');
+    expect(settings.hooks.SessionStart[0].hooks[0].command).toContain('paw-session');
+    expect(settings.hooks.SessionStart[1].hooks[0].command).toContain('paw-skill-inject');
     expect(settings.hooks.SessionStart[2].hooks[0].command).toContain('paw-inbox');
   });
 });

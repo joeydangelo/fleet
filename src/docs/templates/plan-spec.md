@@ -3,10 +3,13 @@ name: plan-spec
 description: Template for feature planning specification documents
 roles: [orchestrator]
 ---
-# Feature: [Feature Name]
+---
+title: [Feature Name]
+status: draft
+created: YYYY-MM-DD
+---
 
-**Date:** YYYY-MM-DD | **Status:** Draft | In Review | Approved | Implemented
-**Issues:** GH#123, GH#456 <!-- linked issue IDs from any tracker -->
+# [Feature Name]
 
 ## Overview
 

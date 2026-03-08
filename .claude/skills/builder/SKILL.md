@@ -59,7 +59,6 @@ Run `paw prime` to restore full session context after compaction.
 | `paw guidelines test-driven-development` | Red-Green-Refactor cycle, test-first methodology, and TDD workflow rules |
 | `paw guidelines test-quality` | Write the fewest tests that cover the most behavior — no trivial or duplicate tests |
 | `paw guidelines testing-anti-patterns` | Avoid mock misuse, test-only production methods, and incomplete test doubles |
-| `paw guidelines typescript-testing` | Integration testing patterns for TypeScript — test behavior and data flow, not mock existence |
 <!-- END GUIDELINES DIRECTORY -->
 
 ## Templates

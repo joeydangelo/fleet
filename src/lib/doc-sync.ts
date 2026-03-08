@@ -103,7 +103,7 @@ export function syncDocs(repoRoot: string): SyncResult {
   const merged = mergeManifest(existing, defaults);
   const final = pruneStaleInternals(merged);
 
-  const prunedKeys = Object.keys(merged).filter((k) => !(k in final));
+  const prunedKeys = new Set(Object.keys(merged).filter((k) => !(k in final)));
 
   const added: string[] = [];
   const updated: string[] = [];
@@ -150,10 +150,12 @@ export function syncDocs(repoRoot: string): SyncResult {
     }
   }
 
+  // Remove only files that were previously tracked but pruned from the manifest.
+  // Untracked drop-ins (manual files with no manifest entry) are preserved.
   for (const key of prunedKeys) {
-    const filePath = join(docsDir, key);
-    if (existsSync(filePath)) {
-      unlinkSync(filePath);
+    const destPath = join(docsDir, key);
+    if (existsSync(destPath)) {
+      unlinkSync(destPath);
       removed.push(key);
     }
   }
