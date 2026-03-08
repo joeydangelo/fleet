@@ -1,6 +1,7 @@
 ---
 name: write-spec
 description: Create a new feature planning specification document
+roles: [orchestrator]
 ---
 Create a feature spec that defines the end state before any code is written.
 

@@ -1,6 +1,7 @@
 ---
 name: spec-planning
 description: Principles for designing specs that explore alternatives, define end states, and prevent bolt-on complexity
+roles: [orchestrator]
 ---
 # Spec Planning
 

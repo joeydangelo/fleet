@@ -1,6 +1,7 @@
 ---
 name: testing-anti-patterns
 description: Avoid mock misuse, test-only production methods, and incomplete test doubles
+roles: [builder, reviewer]
 ---
 # Testing Anti-Patterns
 

@@ -1,6 +1,7 @@
 ---
 name: test-quality
 description: Write the fewest tests that cover the most behavior — no trivial or duplicate tests
+roles: [builder, reviewer]
 ---
 # Test Quality
 

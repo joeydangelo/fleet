@@ -1,6 +1,7 @@
 ---
 name: code-quality
 description: Flag duplication, dead code, type discipline issues, and structural debt
+roles: [builder, reviewer]
 ---
 # Code Quality Rules
 

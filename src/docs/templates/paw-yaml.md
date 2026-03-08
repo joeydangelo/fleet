@@ -1,6 +1,7 @@
 ---
 name: paw-yaml
 description: Annotated config structure for .paw/paw.yaml
+roles: [orchestrator]
 ---
 ```yaml
 # .paw/paw.yaml — defines parallel agent tasks for a paw session

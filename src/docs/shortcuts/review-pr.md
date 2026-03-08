@@ -1,6 +1,7 @@
 ---
 name: review-pr
 description: Review a task branch — step-by-step workflow returning PASS or FAIL with structured findings
+roles: [reviewer]
 ---
 You are reviewing a paw task branch. This is a **read-only** review — do not
 edit or write files. Your job is to evaluate the diff, find real issues, and

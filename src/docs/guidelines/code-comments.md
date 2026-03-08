@@ -1,6 +1,7 @@
 ---
 name: code-comments
 description: Rules for when to comment, what to avoid, and keeping comments maintainable
+roles: [builder, reviewer]
 ---
 # Code Comments
 

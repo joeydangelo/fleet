@@ -1,6 +1,7 @@
 ---
 name: plan-spec
 description: Template for feature planning specification documents
+roles: [orchestrator]
 ---
 # Feature: [Feature Name]
 

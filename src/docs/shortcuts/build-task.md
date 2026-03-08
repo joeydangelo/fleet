@@ -1,6 +1,7 @@
 ---
 name: build-task
 description: Build, verify, and publish your paw task — the full worktree agent workflow
+roles: [builder]
 ---
 Three-phase workflow: **Build → Verify → Publish**.
 

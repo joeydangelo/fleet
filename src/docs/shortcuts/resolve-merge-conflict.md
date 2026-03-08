@@ -1,6 +1,7 @@
 ---
 name: resolve-merge-conflict
 description: Read a conflict brief, resolve the merge conflict, and continue merging
+roles: [orchestrator]
 ---
 A `paw merge` run hit a conflict. The brief has the context you need to fix it.
 

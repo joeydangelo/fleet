@@ -1,6 +1,7 @@
 ---
 name: commit-conventions
 description: Conventional Commits format with scope, body, and multi-agent extensions
+roles: [orchestrator, builder]
 ---
 # Commit Conventions
 

@@ -1,6 +1,7 @@
 ---
 name: general-tdd-guidelines
 description: Red-Green-Refactor cycle, test-first methodology, and TDD workflow rules
+roles: [builder]
 ---
 # Test-Driven Development (TDD)
 

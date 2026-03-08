@@ -1,6 +1,7 @@
 ---
 name: security-patterns
 description: Flag injection, arbitrary execution, broken auth, hardcoded secrets, and supply chain risks
+roles: [builder, reviewer]
 ---
 # Security Patterns
 

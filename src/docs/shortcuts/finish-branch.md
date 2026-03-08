@@ -1,6 +1,7 @@
 ---
 name: finish-branch
 description: After paw merge, decide what to do with the target branch — merge to main, create a PR, or keep as-is
+roles: [orchestrator]
 ---
 All agent work is merged into the target branch. Verify the result, then
 decide how to integrate it.

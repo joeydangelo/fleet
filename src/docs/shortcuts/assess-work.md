@@ -1,6 +1,7 @@
 ---
 name: assess-work
 description: Assess task complexity and route to the right workflow — direct implementation, task decomposition, or spec-first planning
+roles: [orchestrator]
 ---
 Assess complexity, then follow the right path. When in doubt, choose the simpler
 path — a moderate task treated as simple wastes no time, but a simple task treated

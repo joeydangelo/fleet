@@ -1,6 +1,7 @@
 ---
 name: error-handling
 description: Flag empty catches, lost context, optimistic messages, and swallowed failures
+roles: [builder, reviewer]
 ---
 # Error Handling Rules
 

@@ -1,6 +1,7 @@
 ---
 name: task-decomposition
 description: Split work into independent parallel tasks that minimize merge conflicts
+roles: [orchestrator]
 ---
 # Task Decomposition for Parallel Agents
 

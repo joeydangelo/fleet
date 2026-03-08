@@ -1,6 +1,7 @@
 ---
 name: decompose-work
 description: Analyze a codebase and generate .paw/paw.yaml with well-decomposed parallel tasks
+roles: [orchestrator]
 ---
 Generate `.paw/paw.yaml` to split the user's feature request into parallel agent tasks.
 

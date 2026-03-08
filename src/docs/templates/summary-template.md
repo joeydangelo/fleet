@@ -1,6 +1,7 @@
 ---
 name: summary-template
 description: Task summary template for paw worktree agents
+roles: [builder]
 ---
 Use this template when writing your task summary in the Publish phase.
 Write the filled-in structure to `.paw/summary.md`.
