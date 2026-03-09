@@ -355,7 +355,13 @@ export async function runWatchLoop(opts: {
 
               if (paneConfig && tmux) {
                 const target = resolvePaneTarget(paneConfig, taskName);
-                if (target) sendWakeSignal(tmux, target);
+                if (target && !sendWakeSignal(tmux, target)) {
+                  console.log(
+                    pc.dim(
+                      `${timestamp()}   wake signal failed for ${colorTask(taskName, taskIndex)}`,
+                    ),
+                  );
+                }
               }
               break;
             }
@@ -388,7 +394,13 @@ export async function runWatchLoop(opts: {
                       to: taskName,
                       msg: retryMsg,
                     });
-                    sendWakeSignal(tmux, target);
+                    if (!sendWakeSignal(tmux, target)) {
+                      console.log(
+                        pc.dim(
+                          `${timestamp()}   wake signal failed for ${colorTask(taskName, taskIndex)}`,
+                        ),
+                      );
+                    }
                   } else {
                     console.log(
                       `${timestamp()} ${colors.error('☠')} ${colorTask(taskName, taskIndex)} triage: TERMINATE — marking zombie`,

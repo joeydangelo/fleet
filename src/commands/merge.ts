@@ -207,7 +207,7 @@ function runMergeLoop(
     if (stashed && !unstashWorkingTree(repoRoot)) {
       console.log(
         pc.yellow(
-          '    Your local changes are saved in git stash. Run `git stash pop` after resolving the conflict.',
+          '    Your local changes are saved in git stash. Run `git stash pop` to restore them.',
         ),
       );
     }

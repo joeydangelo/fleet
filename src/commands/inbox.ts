@@ -34,8 +34,8 @@ export interface ThreadResult {
  * Compute open threads, resolved threads, and broadcasts from inbox entries.
  * Open: send entries with a thread value that have no matching reply.
  * Resolved: send entries with a matching reply (same thread value).
- * Broadcasts: entries with type === 'broadcast'.
- * Entries without a thread field (other than broadcasts) are skipped.
+ * Broadcasts: entries with type === 'broadcast' or 'nudge'.
+ * Entries without a thread field (other than broadcasts/nudges) are skipped.
  */
 export function computeThreads(entries: Message[]): ThreadResult {
   const sends = entries.filter((e): e is ThreadedEntry => e.type === 'send' && hasThread(e));

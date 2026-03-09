@@ -37,6 +37,7 @@ Run `paw prime` to restore full session context after compaction.
 | `paw summary --show` | Read and print current summary |
 | `paw summary --append` | Append to existing summary |
 | `paw review` | Submit task for review (commit + summary first) |
+| `paw prime` | Restore full context after compaction |
 
 ## Shortcuts
 

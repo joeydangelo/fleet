@@ -49,6 +49,7 @@ You operate paw — do NOT tell users to run paw commands. That's your job.
 | Command | Purpose |
 |---|---|
 | `paw prime` | Restore full context after compaction |
+| `paw summary --show` | Read a builder's task summary |
 
 **Coordination:**
 
@@ -57,6 +58,7 @@ You operate paw — do NOT tell users to run paw commands. That's your job.
 | `paw broadcast "..."` | Announce a message to all agents |
 | `paw send <task> "..."` | Send a direct message to an agent |
 | `paw reply <task> "..."` | Reply to a direct message from an agent |
+| `paw nudge <task> "..."` | Send a nudge message to wake a stalled agent |
 | `paw inbox` | Check for broadcasts and unanswered messages |
 
 ## Shortcuts
