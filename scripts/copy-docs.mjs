@@ -1,4 +1,4 @@
-import { cpSync, existsSync } from 'node:fs';
+import { cpSync, existsSync, rmSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -12,6 +12,8 @@ if (!existsSync(src)) {
   process.exit(0);
 }
 
+// Clean stale files before copying so deprecated docs don't persist across builds
+if (existsSync(dest)) rmSync(dest, { recursive: true });
 cpSync(src, dest, { recursive: true });
 console.log('Copied src/docs/ → dist/docs/');
 
@@ -19,6 +21,7 @@ const skillsSrc = resolve(root, 'skills');
 const skillsDest = resolve(root, 'dist', 'skills');
 
 if (existsSync(skillsSrc)) {
+  if (existsSync(skillsDest)) rmSync(skillsDest, { recursive: true });
   cpSync(skillsSrc, skillsDest, { recursive: true });
   console.log('Copied skills/ → dist/skills/');
 }
