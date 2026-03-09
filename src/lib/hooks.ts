@@ -152,7 +152,7 @@ exit 0
 const PAW_INBOX_GATE_SCRIPT = `#!/bin/bash
 # Block all tool calls when the agent has unanswered messages
 # Installed by: paw init
-# Fires on PreToolUse (all tools), returns permissionDecision:"deny" to enforce inbox replies
+# Fires on PreToolUse (all tools), uses exit 2 to block — works even in bypass-permissions mode
 
 input=$(cat)
 
@@ -181,10 +181,10 @@ if [ "$tool_name" = "Bash" ]; then
   fi
 fi
 
-# Deny with flag file contents as reason
-reason=$(cat "$FLAG_FILE" | tr '"' "'" | tr '\\n' ' ')
-echo '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"'"$reason"'"}}'
-exit 0
+# Deny — exit 2 blocks the tool call even in bypass-permissions mode
+# stderr is fed back to the agent as the error message
+cat "$FLAG_FILE" >&2
+exit 2
 `;
 
 /** PostToolUse hook that reminds agents to submit for review after committing. */

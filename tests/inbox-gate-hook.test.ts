@@ -144,7 +144,7 @@ describe('inbox gate hook script', () => {
     const content = readFileSync(scriptPath, 'utf-8');
     expect(content).toContain('#!/bin/bash');
     expect(content).toContain('.paw/tasks/*.md');
-    expect(content).toContain('permissionDecision');
+    expect(content).toContain('exit 2');
     expect(content).toContain('.paw/run/.unanswered-');
   });
 
@@ -210,7 +210,7 @@ describe('inbox gate bash script execution', () => {
     expect(result.trim()).toBe('');
   });
 
-  it('denies Read tool when flag file exists', () => {
+  it('denies Read tool when flag file exists (exit 2, stderr has reason)', () => {
     mkdirSync(resolve(repoRoot, '.paw', 'run'), { recursive: true });
     writeFileSync(
       resolve(repoRoot, '.paw', 'run', '.unanswered-my-task'),
@@ -218,13 +218,17 @@ describe('inbox gate bash script execution', () => {
     );
 
     const input = JSON.stringify({ tool_name: 'Read', tool_input: {} });
-    const result = execSync(`echo '${input}' | bash .claude/hooks/paw-inbox-gate.sh`, {
-      cwd: repoRoot,
-      encoding: 'utf-8',
-    });
-    const parsed = JSON.parse(result.trim());
-    expect(parsed.hookSpecificOutput.permissionDecision).toBe('deny');
-    expect(parsed.hookSpecificOutput.permissionDecisionReason).toContain('unanswered');
+    try {
+      execSync(`echo '${input}' | bash .claude/hooks/paw-inbox-gate.sh`, {
+        cwd: repoRoot,
+        encoding: 'utf-8',
+      });
+      expect.unreachable('should have thrown');
+    } catch (err: unknown) {
+      const e = err as { status: number; stderr: string };
+      expect(e.status).toBe(2);
+      expect(e.stderr).toContain('unanswered');
+    }
   });
 
   it('allows paw commands even when flag file exists', () => {
@@ -245,7 +249,7 @@ describe('inbox gate bash script execution', () => {
     expect(result.trim()).toBe('');
   });
 
-  it('denies non-paw Bash commands when flag file exists', () => {
+  it('denies non-paw Bash commands when flag file exists (exit 2)', () => {
     mkdirSync(resolve(repoRoot, '.paw', 'run'), { recursive: true });
     writeFileSync(
       resolve(repoRoot, '.paw', 'run', '.unanswered-my-task'),
@@ -256,12 +260,17 @@ describe('inbox gate bash script execution', () => {
       tool_name: 'Bash',
       tool_input: { command: 'cat file.txt' },
     });
-    const result = execSync(`echo '${input}' | bash .claude/hooks/paw-inbox-gate.sh`, {
-      cwd: repoRoot,
-      encoding: 'utf-8',
-    });
-    const parsed = JSON.parse(result.trim());
-    expect(parsed.hookSpecificOutput.permissionDecision).toBe('deny');
+    try {
+      execSync(`echo '${input}' | bash .claude/hooks/paw-inbox-gate.sh`, {
+        cwd: repoRoot,
+        encoding: 'utf-8',
+      });
+      expect.unreachable('should have thrown');
+    } catch (err: unknown) {
+      const e = err as { status: number; stderr: string };
+      expect(e.status).toBe(2);
+      expect(e.stderr).toContain('unanswered');
+    }
   });
 
   it('allows all tools when no task file exists (not a paw worktree)', () => {
