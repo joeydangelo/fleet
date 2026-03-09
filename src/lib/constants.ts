@@ -68,3 +68,6 @@ export const REVIEW_NUDGE_MS = 300_000;
 
 /** Max review cycles before proceeding with merge anyway. */
 export const REVIEW_MAX_RETRIES = 2;
+
+/** Path prefix for unanswered-message flag files (per task). */
+export const INBOX_GATE_PREFIX = '.paw/run/.unanswered-';

@@ -148,6 +148,45 @@ fi
 exit 0
 `;
 
+/** PreToolUse hook that blocks all tool calls when an agent has unanswered messages. */
+const PAW_INBOX_GATE_SCRIPT = `#!/bin/bash
+# Block all tool calls when the agent has unanswered messages
+# Installed by: paw init
+# Fires on PreToolUse (all tools), returns permissionDecision:"deny" to enforce inbox replies
+
+input=$(cat)
+
+# Only gate worktrees with active tasks
+if ! ls .paw/tasks/*.md 1>/dev/null 2>&1; then
+  exit 0
+fi
+
+# Read task name from the task file
+task_file=$(ls .paw/tasks/*.md 2>/dev/null | head -1)
+task_name=$(basename "$task_file" .md)
+
+# Check for unanswered-message flag file
+FLAG_FILE=".paw/run/.unanswered-\${task_name}"
+if [ ! -f "$FLAG_FILE" ]; then
+  exit 0
+fi
+
+# Flag file exists — check if this is a paw command (always allowed)
+tool_name=$(echo "$input" | grep -o '"tool_name"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"tool_name"[[:space:]]*:[[:space:]]*"\\(.*\\)"/\\1/')
+
+if [ "$tool_name" = "Bash" ]; then
+  command=$(echo "$input" | grep -o '"command"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"command"[[:space:]]*:[[:space:]]*"\\(.*\\)"/\\1/')
+  if echo "$command" | grep -q '^paw '; then
+    exit 0
+  fi
+fi
+
+# Deny with flag file contents as reason
+reason=$(cat "$FLAG_FILE" | tr '"' "'" | tr '\\n' ' ')
+echo '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"'"$reason"'"}}'
+exit 0
+`;
+
 /** PostToolUse hook that reminds agents to submit for review after committing. */
 const PAW_REVIEW_REMINDER_SCRIPT = `#!/bin/bash
 # Remind agents to submit for review after committing
@@ -278,6 +317,7 @@ const GUARD_RELATIVE = '.claude/hooks/paw-guard.sh';
 const REMINDER_RELATIVE = '.claude/hooks/paw-review-reminder.sh';
 const HEARTBEAT_RELATIVE = '.claude/hooks/paw-heartbeat.sh';
 const INBOX_RELATIVE = '.claude/hooks/paw-inbox.sh';
+const GATE_RELATIVE = '.claude/hooks/paw-inbox-gate.sh';
 
 interface HookHandler {
   type: 'command';
@@ -303,6 +343,7 @@ export function installHooks(repoRoot: string): void {
   writeFileSync(resolve(repoRoot, REMINDER_RELATIVE), PAW_REVIEW_REMINDER_SCRIPT, 'utf-8');
   writeFileSync(resolve(repoRoot, HEARTBEAT_RELATIVE), PAW_HEARTBEAT_SCRIPT, 'utf-8');
   writeFileSync(resolve(repoRoot, INBOX_RELATIVE), PAW_INBOX_SCRIPT, 'utf-8');
+  writeFileSync(resolve(repoRoot, GATE_RELATIVE), PAW_INBOX_GATE_SCRIPT, 'utf-8');
 
   const oldReminderPath = resolve(hooksDir, 'paw-done-reminder.sh');
   try {
@@ -364,6 +405,15 @@ export function installHooks(repoRoot: string): void {
           },
         ],
       },
+      {
+        matcher: '',
+        hooks: [
+          {
+            type: 'command',
+            command: `bash ${GATE_RELATIVE}`,
+          },
+        ],
+      },
     ],
     PostToolUse: [
       {
@@ -417,6 +467,7 @@ export function installHooks(repoRoot: string): void {
   success('script', REMINDER_RELATIVE);
   success('script', HEARTBEAT_RELATIVE);
   success('script', INBOX_RELATIVE);
+  success('script', GATE_RELATIVE);
 }
 
 /** Detect any paw-related hook entry (old flat format or correct matcher group). */
