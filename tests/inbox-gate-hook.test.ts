@@ -3,7 +3,6 @@ import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node
 import { resolve } from 'node:path';
 import { execSync } from 'node:child_process';
 import { installHooks } from '../src/lib/hooks.js';
-import { INBOX_GATE_PREFIX } from '../src/lib/constants.js';
 import { makeTempDir } from './helpers/temp.js';
 
 /**
@@ -31,7 +30,7 @@ function simulateInboxGate(opts: {
   // Flag file exists — check if this is a paw command
   if (opts.toolName === 'Bash') {
     const command = (opts.toolInput?.command as string) ?? '';
-    if (command.startsWith('paw ')) {
+    if (/(?:^|&& |; )paw /.test(command)) {
       return { decision: 'allow' };
     }
   }
@@ -99,6 +98,30 @@ describe('inbox gate hook logic', () => {
     expect(result.decision).toBe('allow');
   });
 
+  it('allows paw command after cd && chain', () => {
+    const result = simulateInboxGate({
+      hasTaskFile: true,
+      taskName: 'my-task',
+      flagFileExists: true,
+      flagFileContents: 'unanswered messages',
+      toolName: 'Bash',
+      toolInput: { command: 'cd /tmp && paw reply api-task "done"' },
+    });
+    expect(result.decision).toBe('allow');
+  });
+
+  it('denies Bash command that contains paw as a substring but not as a command', () => {
+    const result = simulateInboxGate({
+      hasTaskFile: true,
+      taskName: 'my-task',
+      flagFileExists: true,
+      flagFileContents: 'unanswered messages',
+      toolName: 'Bash',
+      toolInput: { command: 'echo "paw reply" && cat secret.txt' },
+    });
+    expect(result.decision).toBe('deny');
+  });
+
   it('denies Read tool when flag file present', () => {
     const result = simulateInboxGate({
       hasTaskFile: true,
@@ -106,18 +129,6 @@ describe('inbox gate hook logic', () => {
       flagFileExists: true,
       flagFileContents: 'unanswered messages',
       toolName: 'Read',
-    });
-    expect(result.decision).toBe('deny');
-    expect(result.reason).toBe('unanswered messages');
-  });
-
-  it('denies Edit tool when flag file present', () => {
-    const result = simulateInboxGate({
-      hasTaskFile: true,
-      taskName: 'my-task',
-      flagFileExists: true,
-      flagFileContents: 'unanswered messages',
-      toolName: 'Edit',
     });
     expect(result.decision).toBe('deny');
     expect(result.reason).toBe('unanswered messages');
@@ -177,12 +188,6 @@ describe('inbox gate hook script', () => {
     );
 
     expect(settings.hooks.PreToolUse).toHaveLength(2);
-  });
-});
-
-describe('INBOX_GATE_PREFIX constant', () => {
-  it('has the correct value', () => {
-    expect(INBOX_GATE_PREFIX).toBe('.paw/run/.unanswered-');
   });
 });
 

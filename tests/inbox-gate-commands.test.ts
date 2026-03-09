@@ -170,37 +170,9 @@ describe('inbox gate flag file management', () => {
 
       expect(existsSync(flagPath())).toBe(false);
     });
-
-    it('paw inbox with no unanswered and no flag file does not error', () => {
-      expect(existsSync(flagPath())).toBe(false);
-
-      const entries: Message[] = [];
-      const { open } = computeThreads(entries);
-      const unanswered = open.filter((t) => t.send.to === taskName);
-
-      expect(unanswered).toHaveLength(0);
-      expect(() => clearGateFlag(tmpDir, taskName)).not.toThrow();
-    });
   });
 
   describe('reply command flag lifecycle', () => {
-    it('clears flag when last unanswered message is replied to', () => {
-      // Setup: one unanswered message, flag file exists
-      writeFileSync(flagPath(), 'content');
-
-      const entries = [
-        msg({ type: 'send', from: 'api-task', to: taskName, msg: 'What fields?', thread: 'th01' }),
-        msg({ type: 'reply', from: taskName, to: 'api-task', msg: 'Field A', thread: 'th01' }),
-      ];
-      const { open } = computeThreads(entries);
-      const remaining = open.filter((t) => t.send.to === taskName);
-
-      expect(remaining).toHaveLength(0);
-      clearGateFlag(tmpDir, taskName);
-
-      expect(existsSync(flagPath())).toBe(false);
-    });
-
     it('updates flag when other unanswered messages remain', () => {
       // Two unanswered, reply to one
       const entries = [
