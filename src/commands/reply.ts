@@ -4,6 +4,7 @@ import { getTaskIdentity } from '../lib/session.js';
 import { readSyncState } from '../lib/sync.js';
 import { appendMessage, readMessages } from '../lib/messages.js';
 import { requireSyncState, handleError, colors } from '../lib/output.js';
+import { computeThreads, writeGateFlag, clearGateFlag } from './inbox.js';
 
 /** CLI command: reply to a direct message from an agent. */
 export function replyCommand(): Command {
@@ -56,6 +57,16 @@ export function replyCommand(): Command {
         );
 
         console.log(colors.success(`[${taskName} → ${task}] ${message}`));
+
+        // Re-check for remaining unanswered sends directed at this task
+        const updated = readMessages(repoRoot);
+        const { open } = computeThreads(updated);
+        const remaining = open.filter((t) => t.send.to === taskName);
+        if (remaining.length > 0) {
+          writeGateFlag(repoRoot, taskName, remaining);
+        } else {
+          clearGateFlag(repoRoot, taskName);
+        }
       } catch (err) {
         handleError(err);
       }
