@@ -105,7 +105,7 @@ tool_name=$(echo "$input" | grep -o '"tool_name"[[:space:]]*:[[:space:]]*"[^"]*"
 if [ "$tool_name" = "Edit" ] || [ "$tool_name" = "Write" ]; then
   file_path=$(echo "$input" | grep -o '"file_path"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"file_path"[[:space:]]*:[[:space:]]*"\\(.*\\)"/\\1/')
   if echo "$file_path" | grep -qE '\\.paw/sync/|\\.paw\\\\\\\\sync\\\\\\\\'; then
-    deny "Do not edit files in .paw/sync/. The paw CLI manages all sync state. Manual edits corrupt coordination and break paw watch, paw merge, and paw go. Use paw commands (paw review, paw broadcast, paw status) instead."
+    deny "Do not edit files in .paw/sync/. The paw CLI manages all sync state. Manual edits corrupt coordination and break paw watch, paw merge, and paw go. Use paw commands (paw review, paw broadcast, paw summary, paw status) instead."
   fi
   exit 0
 fi
@@ -136,7 +136,7 @@ fi
 # Block direct access to sync state (state.json, .paw/sync/, paw-sync branch)
 # The paw CLI manages all sync state. Manual edits corrupt coordination and break paw watch, merge, and go.
 if echo "$command" | grep -qE '\\.paw/sync/'; then
-  deny "Do not access .paw/sync/ directly. The paw CLI manages sync state. Manual edits corrupt coordination and break paw watch, paw merge, and paw go. Use paw commands (paw review, paw broadcast, paw status) instead."
+  deny "Do not access .paw/sync/ directly. The paw CLI manages sync state. Manual edits corrupt coordination and break paw watch, paw merge, and paw go. Use paw commands (paw review, paw broadcast, paw summary, paw status) instead."
 fi
 if echo "$command" | grep -qE '\\bgit\\s+(show|log|cat-file|diff).*paw-sync'; then
   # Allow read-only git commands on paw-sync (paw-review-reminder uses git show)

@@ -16,6 +16,11 @@ export function runSummary(opts: SummaryRunOpts): number {
   const repoRoot = getRepoRoot();
   const taskName = detectTaskName(repoRoot);
 
+  if (opts.show && opts.append) {
+    console.error(colors.error('Cannot use --show and --append together.'));
+    return 1;
+  }
+
   if (!taskName) {
     console.error(colors.error('Could not detect task name. Are you in a paw worktree?'));
     return 1;
