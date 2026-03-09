@@ -32,7 +32,6 @@ Run `paw prime` to restore full session context after compaction.
 | `paw broadcast "..."` | Announce a change to all agents |
 | `paw send <task> "..."` | Send a direct message to an agent |
 | `paw reply <task> "..."` | Reply to a direct message from an agent |
-| `paw status` | Check progress across all tasks |
 | `paw inbox` | Check for broadcasts and directed messages |
 | `paw summary` | Write task summary (pipe content via stdin) |
 | `paw summary --show` | Read and print current summary |

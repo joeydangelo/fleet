@@ -34,7 +34,6 @@ Run `paw prime` to restore full session context after compaction.
 | `paw broadcast "..."` | Announce a change to all agents |
 | `paw send <task> "..."` | Send a direct message to an agent |
 | `paw reply <task> "..."` | Reply to a direct message from an agent |
-| `paw status` | Check progress across all tasks |
 | `paw inbox` | Check for broadcasts and directed messages |
 | `paw summary` | Write task summary (pipe content via stdin) |
 | `paw summary --show` | Read and print current summary |
@@ -62,7 +61,6 @@ Run `paw prime` to restore full session context after compaction.
 | `paw guidelines test-driven-development` | Red-Green-Refactor cycle, test-first methodology, and TDD workflow rules |
 | `paw guidelines test-quality` | Write the fewest tests that cover the most behavior — no trivial or duplicate tests |
 | `paw guidelines testing-anti-patterns` | Avoid mock misuse, test-only production methods, and incomplete test doubles |
-| `paw guidelines typescript-testing-guidelines` | typescript-testing-guidelines |
 <!-- END GUIDELINES DIRECTORY -->
 
 ## Templates
