@@ -27,15 +27,6 @@
             "command": "bash .claude/scripts/paw-skill-inject.sh"
           }
         ]
-      },
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash .claude/hooks/paw-inbox.sh"
-          }
-        ]
       }
     ],
     "PreCompact": [
