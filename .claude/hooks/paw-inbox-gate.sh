@@ -21,9 +21,10 @@ if [ ! -f "$FLAG_FILE" ]; then
 fi
 
 # Flag file exists — check if this is a paw Bash command (always allowed)
-# Match "Bash" tool with "paw " anywhere in the input (covers "cd ... && paw reply ...")
+# Extract the command value and check that a command segment starts with "paw "
 if echo "$input" | grep -q '"Bash"'; then
-  if echo "$input" | grep -q 'paw '; then
+  cmd=$(echo "$input" | sed -n 's/.*"command"[[:space:]]*:[[:space:]]*"\(.*\)".*/\1/p')
+  if echo "$cmd" | grep -qE '(^|&& |; )paw '; then
     exit 0
   fi
 fi
