@@ -147,6 +147,10 @@ Getting Started:
     const m = await import('./commands/nudge.js');
     return m.nudgeCommand();
   });
+  lazy(program, 'summary', 'Write, read, or append task summary on the sync branch', async () => {
+    const m = await import('./commands/summary.js');
+    return m.summaryCommand();
+  });
 
   program.action(async () => {
     const { runTui } = await import('./commands/tui.js');

@@ -4,7 +4,14 @@ description: Task summary template for paw worktree agents
 roles: [builder]
 ---
 Use this template when writing your task summary in the Publish phase.
-Write the filled-in structure to `.paw/summary.md`.
+Pipe the filled-in structure to `paw summary`:
+
+```bash
+paw summary <<'EOF'
+(paste filled-in template here)
+EOF
+```
+
 Fill in any issue references from your task's `issue:` field and specs from `spec:`.
 
 ```markdown

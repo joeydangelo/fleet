@@ -126,7 +126,13 @@ paw broadcast "Changed UserProfile.email to optional, added UserProfile.emailVer
 
 2. **Write a summary.** Use `paw template summary-template` for the structure.
    Fill in issue references from your task's `issue:` field and specs from
-   `spec:`. Write the result to `.paw/summary.md`.
+   `spec:`. Pipe it to `paw summary`:
+
+   ```bash
+   paw summary <<'EOF'
+   (your filled-in summary here)
+   EOF
+   ```
 
 3. **Signal completion.** Run `paw review` to submit your task for review.
    This command blocks until the reviewer finishes. On PASS, your task is
@@ -135,10 +141,11 @@ paw broadcast "Changed UserProfile.email to optional, added UserProfile.emailVer
    On FAIL, findings print to stdout and the command exits 1. Restart from
    Phase 1 — the review findings are your work now. Fix every issue, run
    through Verify, then Publish again. Before resubmitting, append a
-   `## Fixed — Cycle N` section to `.paw/summary.md` (where N is the
+   `## Fixed — Cycle N` section using `paw summary --append` (where N is the
    failed cycle number):
 
-   ```markdown
+   ```bash
+   paw summary --append <<'EOF'
    ## Fixed — Cycle 1
 
    | Finding | Resolution |
@@ -146,6 +153,7 @@ paw broadcast "Changed UserProfile.email to optional, added UserProfile.emailVer
    | CRITICAL/security src/api/users.ts:12 — SQL injection | Fixed: switched to parameterized query |
    | MAJOR/testing src/auth/login.ts:45 — no expired-token test | Fixed: added test in login.test.ts:89 |
    | MINOR/quality src/utils/helpers.ts:78 — console.log in prod | Fixed: removed |
+   EOF
    ```
 
    List every finding. For each one:

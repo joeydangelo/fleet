@@ -14,6 +14,7 @@ vi.mock('../src/lib/session.js', () => ({
 
 vi.mock('../src/lib/sync.js', () => ({
   readSyncState: vi.fn(),
+  readSyncFile: vi.fn(() => null),
   writeSyncState: vi.fn(),
   writeSyncFile: vi.fn(),
   submitForReview: (state: SyncState, taskName: string) => ({

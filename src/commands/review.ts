@@ -1,11 +1,11 @@
 import { resolve } from 'node:path';
-import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { Command } from 'commander';
 import pc from 'picocolors';
 import { getRepoRoot, getCurrentBranch } from '../lib/git.js';
 import { detectTaskName } from '../lib/session.js';
 import {
   readSyncState,
+  readSyncFile,
   submitForReview,
   completeTask,
   reopenTask,
@@ -80,17 +80,6 @@ export async function runReview(): Promise<number> {
   const taskFilePath = resolve(repoRoot, '.paw', 'tasks', `${taskName}.md`);
   const safeBranch = taskBranch.replace(/[^a-zA-Z0-9-]/g, '-');
   const reviewFilePath = `review/${safeBranch}.md`;
-  const summaryLocalPath = resolve(repoRoot, '.paw', 'summary.md');
-
-  // Relay the full local summary to the sync branch — it's the single source of truth
-  if (existsSync(summaryLocalPath)) {
-    try {
-      const summaryContent = readFileSync(summaryLocalPath, 'utf-8');
-      writeSyncFile(reviewFilePath, summaryContent, repoRoot);
-    } catch (err: unknown) {
-      console.log(pc.dim(`  warning: failed to relay summary: ${String(err)}`));
-    }
-  }
 
   console.log(pc.dim(`  Reviewing ${taskName}...`));
   const result = await reviewTask(
@@ -127,10 +116,9 @@ export async function runReview(): Promise<number> {
   }
   const findingsText = findingsSection.join('\n') + '\n';
 
-  // Append findings to local .paw/summary.md, then relay updated file to sync branch
+  // Append findings directly to sync branch (no local file)
   try {
-    const existing = existsSync(summaryLocalPath) ? readFileSync(summaryLocalPath, 'utf-8') : '';
-    writeFileSync(summaryLocalPath, existing + findingsText);
+    const existing = readSyncFile(reviewFilePath, repoRoot) ?? '';
     writeSyncFile(reviewFilePath, existing + findingsText, repoRoot);
   } catch (err: unknown) {
     console.log(pc.dim(`  warning: failed to persist findings: ${String(err)}`));
