@@ -171,12 +171,10 @@ if [ ! -f "$FLAG_FILE" ]; then
   exit 0
 fi
 
-# Flag file exists — check if this is a paw command (always allowed)
-tool_name=$(echo "$input" | grep -o '"tool_name"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"tool_name"[[:space:]]*:[[:space:]]*"\\(.*\\)"/\\1/')
-
-if [ "$tool_name" = "Bash" ]; then
-  command=$(echo "$input" | grep -o '"command"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"command"[[:space:]]*:[[:space:]]*"\\(.*\\)"/\\1/')
-  if echo "$command" | grep -q '^paw '; then
+# Flag file exists — check if this is a paw Bash command (always allowed)
+# Match "Bash" tool with "paw " anywhere in the input (covers "cd ... && paw reply ...")
+if echo "$input" | grep -q '"Bash"'; then
+  if echo "$input" | grep -q 'paw '; then
     exit 0
   fi
 fi

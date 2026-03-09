@@ -7,6 +7,7 @@ import type { PawConfig } from '../lib/config.js';
 import { createSession, planWorktrees, writeTaskFiles, copyIncludes } from '../lib/session.js';
 import type { WorktreeInfo } from '../lib/session.js';
 import { initSyncState, writeSyncStateAndFiles, initSyncWorktree } from '../lib/sync.js';
+import { installHooks } from '../lib/hooks.js';
 import { success, pending, handleError } from '../lib/output.js';
 
 /** Create worktrees, copy config, run hooks, and initialize sync state for all tasks. */
@@ -27,6 +28,12 @@ export async function runUp(
         success(wt.taskName, '.claude/ → worktree');
       }
     }
+  }
+
+  // Always install hooks in each worktree to ensure they're current
+  // (the branch's .claude/ may be stale if hooks were added after the base branch)
+  for (const wt of worktrees) {
+    installHooks(wt.worktreePath);
   }
 
   if (config.spec) {

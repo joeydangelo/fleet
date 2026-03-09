@@ -87,6 +87,15 @@
             "command": "bash .claude/hooks/paw-guard.sh"
           }
         ]
+      },
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/paw-inbox-gate.sh"
+          }
+        ]
       }
     ],
     "UserPromptSubmit": [
