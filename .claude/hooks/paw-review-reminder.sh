@@ -17,8 +17,8 @@ if [[ "$input" == *"git commit"* ]]; then
       echo ""
       echo "PAW REMINDER: You have not submitted for review yet."
       echo "  After committing, follow the Publish phase:"
-      echo "    1. Write a summary to .paw/summary.md (paw template summary-template)"
-      echo "    2. paw review"
+      echo "    1. Write your summary: paw summary <<'EOF' ... EOF"
+      echo "    2. Submit for review: paw review"
       echo ""
     fi
   fi

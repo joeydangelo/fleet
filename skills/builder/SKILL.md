@@ -34,6 +34,9 @@ Run `paw prime` to restore full session context after compaction.
 | `paw reply <task> "..."` | Reply to a direct message from an agent |
 | `paw status` | Check progress across all tasks |
 | `paw inbox` | Check for broadcasts and directed messages |
+| `paw summary` | Write task summary (pipe content via stdin) |
+| `paw summary --show` | Read and print current summary |
+| `paw summary --append` | Append to existing summary |
 | `paw review` | Submit task for review (commit + summary first) |
 
 ## Shortcuts

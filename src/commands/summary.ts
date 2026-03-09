@@ -52,10 +52,10 @@ export function runSummary(opts: SummaryRunOpts): number {
   if (opts.append) {
     const existing = readSyncFile(reviewFilePath, repoRoot) ?? '';
     writeSyncFile(reviewFilePath, existing + content, repoRoot);
-    console.log(colors.success(`  ${taskName} -- summary updated on sync branch`));
+    console.log(colors.success(`  ${taskName} -- summary updated`));
   } else {
     writeSyncFile(reviewFilePath, content, repoRoot);
-    console.log(colors.success(`  ${taskName} -- summary written to sync branch`));
+    console.log(colors.success(`  ${taskName} -- summary written`));
   }
 
   return 0;
@@ -71,11 +71,11 @@ async function readStdin(): Promise<string> {
   return Buffer.concat(chunks).toString('utf-8');
 }
 
-/** CLI command: write, read, or append task summary on the sync branch. */
+/** CLI command: write, read, or append task summary. */
 export function summaryCommand(): Command {
   return new Command('summary')
-    .description('Write, read, or append task summary on the sync branch')
-    .option('--show', 'Read and print the current summary from the sync branch')
+    .description('Write, read, or append task summary')
+    .option('--show', 'Read and print the current summary')
     .option('--append', 'Append stdin content to the existing summary')
     .action(async (opts: { show?: boolean; append?: boolean }) => {
       try {
