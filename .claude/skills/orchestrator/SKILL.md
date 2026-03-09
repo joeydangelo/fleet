@@ -3,7 +3,7 @@ name: orchestrator
 description: |-
   Splits work into parallel tasks and swarms agents across worktrees. Plans, decomposes, monitors, merges, and ships.
   Use for: planning features, writing specs, decomposing tasks, splitting issues, running parallel agents, swarming worktrees, monitoring progress, merging branches, resolving conflicts, finishing branches, creating PRs.
-  Invoke when user mentions: paw, swarm, orchestrate, decompose, parallel, worktrees, split work, break into tasks, spawn agents, paw go, merge, conflicts, finish branch, PR, plan, spec.
+  Invoke when user mentions: paw, swarm, orchestrate, decompose, parallel, worktrees, split work, break into tasks, spawn agents, paw go, merge, conflicts, finish branch, PR, plan, spec, commit.
 allowed-tools: Bash(paw:*)
 globs: ".paw/**"
 ---
@@ -72,6 +72,16 @@ You operate paw — do NOT tell users to run paw commands. That's your job.
 | `paw shortcut resolve-merge-conflict` | Read a conflict brief, resolve the merge conflict, and continue merging |
 | `paw shortcut write-spec` | Create a new feature planning specification document |
 <!-- END SHORTCUT DIRECTORY -->
+
+## Guidelines
+
+<!-- BEGIN GUIDELINES DIRECTORY -->
+| Command | Purpose |
+|---|---|
+| `paw guidelines commit-conventions` | Conventional Commits format with scope, body, and multi-agent extensions |
+| `paw guidelines spec-planning` | Principles for designing specs that explore alternatives, define end states, and prevent bolt-on complexity |
+| `paw guidelines task-decomposition` | Split work into independent parallel tasks that minimize merge conflicts |
+<!-- END GUIDELINES DIRECTORY -->
 
 ## Templates
 
