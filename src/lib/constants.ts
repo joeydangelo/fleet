@@ -68,3 +68,6 @@ export const REVIEW_NUDGE_MS = 300_000;
 
 /** Max review cycles before proceeding with merge anyway. */
 export const REVIEW_MAX_RETRIES = 2;
+
+/** Prefix for inbox gate flag files in .paw/run/. */
+export const INBOX_GATE_PREFIX = '.unanswered-';

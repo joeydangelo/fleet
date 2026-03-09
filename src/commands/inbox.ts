@@ -1,9 +1,12 @@
 import { Command } from 'commander';
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { resolveMainRoot } from '../lib/git.js';
 import { detectTaskName } from '../lib/session.js';
 import { readInboxCursor, writeInboxCursor } from '../lib/health.js';
 import { readMessages, readMessagesForTask } from '../lib/messages.js';
 import type { Message } from '../lib/messages.js';
+import { INBOX_GATE_PREFIX } from '../lib/constants.js';
 
 /** Message that carries a thread identifier. */
 type ThreadedEntry = Message & { thread: string };
@@ -76,6 +79,37 @@ export function formatMessage(entry: Message): string {
   return `[${entry.from}] ${entry.msg}`;
 }
 
+/** Format unanswered threads into the gate denial message. */
+export function formatGateContent(unanswered: OpenThread[]): string {
+  const lines: string[] = [
+    `You have ${unanswered.length} unanswered message(s). Reply before continuing.`,
+    '',
+  ];
+  for (const { send } of unanswered) {
+    const id = send.thread.slice(0, 4);
+    lines.push(`  (${id}) ${send.from} → ${send.to}: "${send.msg}"`);
+  }
+  lines.push('');
+  lines.push('Reply with: paw reply <task> "your answer"');
+  return lines.join('\n');
+}
+
+/** Write the inbox gate flag file for a task with unanswered messages. */
+export function writeGateFlag(cwd: string, taskName: string, unanswered: OpenThread[]): void {
+  const dir = join(cwd, '.paw', 'run');
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(join(dir, `${INBOX_GATE_PREFIX}${taskName}`), formatGateContent(unanswered));
+}
+
+/** Clear the inbox gate flag file for a task. Swallows ENOENT. */
+export function clearGateFlag(cwd: string, taskName: string): void {
+  try {
+    rmSync(join(cwd, '.paw', 'run', `${INBOX_GATE_PREFIX}${taskName}`));
+  } catch (err: unknown) {
+    if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
+  }
+}
+
 /** CLI command: show new messages, unanswered threads, and broadcasts for an agent. */
 export function inboxCommand(): Command {
   return new Command('inbox')
@@ -112,6 +146,9 @@ export function inboxCommand(): Command {
             console.log(`  (${id}) ${send.from} → ${send.to}: "${send.msg}"`);
           }
           console.log(`  Reply with: paw reply <task> "your answer"\n`);
+          writeGateFlag(cwd, taskName, unanswered);
+        } else {
+          clearGateFlag(cwd, taskName);
         }
 
         if (entries.length > 0) {
