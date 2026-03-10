@@ -42,12 +42,11 @@ export async function runUp(
     installHooks(wt.worktreePath);
   }
 
-  for (const wt of worktrees) {
-    const taskSpec = config.tasks[wt.taskName]?.spec;
-    const specFile = taskSpec ?? config.spec;
-    if (specFile) {
-      const specPath = resolve(repoRoot, specFile);
-      if (existsSync(specPath)) {
+  const specFile = config.spec;
+  if (specFile) {
+    const specPath = resolve(repoRoot, specFile);
+    if (existsSync(specPath)) {
+      for (const wt of worktrees) {
         const dest = resolve(wt.worktreePath, specFile);
         if (!existsSync(dest)) {
           mkdirSync(dirname(dest), { recursive: true });

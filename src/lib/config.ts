@@ -9,7 +9,6 @@ const TaskSchema = z.object({
   prompt: z.string().optional(),
   issue: z.string().optional(),
   depends_on: z.union([z.string(), z.array(z.string())]).optional(),
-  spec: z.string().optional(),
 });
 
 const PawConfigSchema = z.object({

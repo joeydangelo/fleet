@@ -45,7 +45,6 @@ Generate `.paw/paw.yaml` to split the user's feature request into parallel agent
          - src/relevant/directory/
        depends_on: other-task      # optional: merge after this task
        issue: GH#123              # optional: source issue ID
-       # spec: .paw/specs/spec-for-this-task.md  # optional: override top-level spec
        prompt: |
          What to build. Be specific.
          Mention interfaces shared with other tasks.
@@ -66,7 +65,6 @@ Generate `.paw/paw.yaml` to split the user's feature request into parallel agent
    - `prompt`: what to build — be specific, mention shared interfaces
    - `depends_on`: merge this task after its dependency (controls merge order)
    - `issue`: source issue ID when available
-   - `spec`: per-task spec override — set when tasks come from different specs
 
 4. **Validate.** Check against the decomposition guideline's independence test,
    then confirm:

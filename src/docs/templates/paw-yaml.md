@@ -28,8 +28,6 @@ tasks:
       - src/middleware/auth.ts
 
     issue: GH#123
-    # spec: .paw/specs/spec-for-this-task.md  # override top-level spec
-
     # depends_on: other-task              # merge after this task
     # depends_on:                         # or a list
     #   - task-a
