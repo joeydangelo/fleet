@@ -4,7 +4,13 @@ import { resolve, basename, dirname } from 'node:path';
 import pc from 'picocolors';
 import { loadRepoConfig } from '../lib/config.js';
 import type { PawConfig } from '../lib/config.js';
-import { createSession, planWorktrees, writeTaskFiles, copyIncludes } from '../lib/session.js';
+import {
+  createSession,
+  planWorktrees,
+  writeTaskFiles,
+  copyIncludes,
+  runSetup,
+} from '../lib/session.js';
 import type { WorktreeInfo } from '../lib/session.js';
 import { initSyncState, writeSyncStateAndFiles, initSyncWorktree } from '../lib/sync.js';
 import { installHooks } from '../lib/hooks.js';
@@ -36,11 +42,13 @@ export async function runUp(
     installHooks(wt.worktreePath);
   }
 
-  if (config.spec) {
-    const specPath = resolve(repoRoot, config.spec);
-    if (existsSync(specPath)) {
-      for (const wt of worktrees) {
-        const dest = resolve(wt.worktreePath, config.spec);
+  for (const wt of worktrees) {
+    const taskSpec = config.tasks[wt.taskName]?.spec;
+    const specFile = taskSpec ?? config.spec;
+    if (specFile) {
+      const specPath = resolve(repoRoot, specFile);
+      if (existsSync(specPath)) {
+        const dest = resolve(wt.worktreePath, specFile);
         if (!existsSync(dest)) {
           mkdirSync(dirname(dest), { recursive: true });
           cpSync(specPath, dest);
@@ -57,6 +65,14 @@ export async function runUp(
           pc.dim(`  copied ${copied.length} file(s) to ${wt.taskName}: ${copied.join(', ')}`),
         );
       }
+    }
+  }
+
+  if (config.setup) {
+    for (const wt of worktrees) {
+      pending(wt.taskName, `running setup: ${config.setup}`);
+      runSetup(wt.worktreePath, config.setup);
+      success(wt.taskName, 'setup complete');
     }
   }
 
@@ -110,6 +126,9 @@ export function upCommand(): Command {
           const claudeDirExists = existsSync(resolve(repoRoot, '.claude'));
           if (claudeDirExists) {
             console.log(pc.dim('\n  .claude/ will be copied into each worktree'));
+          }
+          if (config.setup) {
+            console.log(pc.dim(`\n  setup: ${config.setup}`));
           }
           if (config.include?.length) {
             console.log(pc.dim(`\n  include: ${config.include.join(', ')}`));

@@ -10,6 +10,7 @@ target: feature/my-feature
 # base: main                              # default: main
 agent: claude
 # spec: .paw/specs/spec-2026-03-04-my-feature.md
+# setup: pnpm install                     # shell command run per worktree during paw up
 
 # include:                                # gitignored files to copy into each worktree
 #   - .env
@@ -27,6 +28,7 @@ tasks:
       - src/middleware/auth.ts
 
     issue: GH#123
+    # spec: .paw/specs/spec-for-this-task.md  # override top-level spec
 
     # depends_on: other-task              # merge after this task
     # depends_on:                         # or a list

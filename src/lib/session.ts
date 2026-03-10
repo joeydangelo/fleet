@@ -1,5 +1,6 @@
 import { resolve, dirname, basename } from 'node:path';
 import { mkdirSync, readFileSync, existsSync, readdirSync, copyFileSync } from 'node:fs';
+import { execSync } from 'node:child_process';
 import { writeFileSync } from 'atomically';
 import fg from 'fast-glob';
 import type { PawConfig } from './config.js';
@@ -58,7 +59,7 @@ export function generateTaskFile(config: PawConfig, worktreeInfo: WorktreeInfo):
     `**Target:** ${config.target}`,
     `**Worktree:** ${worktreeInfo.worktreePath}`,
     ...(task.issue ? [`**Issue:** ${task.issue}`] : []),
-    ...(config.spec ? [`**Spec:** ${config.spec}`] : []),
+    ...((task.spec ?? config.spec) ? [`**Spec:** ${task.spec ?? config.spec}`] : []),
     ...(task.depends_on ? [`**Depends on:** ${normalizeDeps(task.depends_on).join(', ')}`] : []),
     ``,
     `## Focus`,
@@ -139,6 +140,14 @@ export async function copyIncludes(
   }
 
   return copied;
+}
+
+/** Run a shell command in a worktree directory. Throws on non-zero exit. */
+export function runSetup(worktreePath: string, command: string): void {
+  execSync(command, {
+    cwd: worktreePath,
+    stdio: 'inherit',
+  });
 }
 
 /** Write .paw/tasks/{name}.md into each worktree and ensure .paw/ is gitignored. */

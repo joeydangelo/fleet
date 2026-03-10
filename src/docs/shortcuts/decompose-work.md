@@ -33,6 +33,7 @@ Generate `.paw/paw.yaml` to split the user's feature request into parallel agent
    # base: main                  # branch to create target from (default: main)
    agent: claude
    # spec: .paw/specs/spec-YYYY-MM-DD-feature-name.md  # path to planning spec
+   # setup: pnpm install         # shell command run per worktree during paw up
 
    # include:                     # gitignored files to copy into each worktree
    #   - .env
@@ -44,16 +45,28 @@ Generate `.paw/paw.yaml` to split the user's feature request into parallel agent
          - src/relevant/directory/
        depends_on: other-task      # optional: merge after this task
        issue: GH#123              # optional: source issue ID
+       # spec: .paw/specs/spec-for-this-task.md  # optional: override top-level spec
        prompt: |
          What to build. Be specific.
          Mention interfaces shared with other tasks.
    ```
 
-   Use `paw template paw-yaml` for the full config reference. Notes:
+   Use `paw template paw-yaml` for the full config reference.
+
+   Top-level fields:
+   - `target`: the branch all task branches merge into
    - `base`: set when forking from a branch other than main
-   - `include`: list gitignored files agents need (`.env`, credentials, local configs)
-   - `spec`: set when a spec exists
-   - `issue`: set when issues are available from the user or spec
+   - `agent`: which agent CLI to use (e.g. `claude`)
+   - `setup`: run in each worktree during paw up (e.g. `pnpm install`, `uv sync`)
+   - `spec`: path to the planning spec (shared across all tasks)
+   - `include`: gitignored files agents need (`.env`, credentials, local configs)
+
+   Per-task fields:
+   - `focus`: files/directories this task owns — used for merge conflict detection
+   - `prompt`: what to build — be specific, mention shared interfaces
+   - `depends_on`: merge this task after its dependency (controls merge order)
+   - `issue`: source issue ID when available
+   - `spec`: per-task spec override — set when tasks come from different specs
 
 4. **Validate.** Check against the decomposition guideline's independence test,
    then confirm:
