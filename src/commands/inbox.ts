@@ -1,5 +1,6 @@
 import { Command } from 'commander';
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, rmSync } from 'node:fs';
+import { writeFileSync } from 'atomically';
 import { join } from 'node:path';
 import { resolveMainRoot } from '../lib/git.js';
 import { detectTaskName } from '../lib/session.js';
