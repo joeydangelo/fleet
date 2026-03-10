@@ -10,6 +10,7 @@ import {
   ensureGitignore,
   detectTaskName,
   copyIncludes,
+  runSetup,
 } from '../src/lib/session.js';
 import { makeTempDir } from './helpers/temp.js';
 
@@ -453,6 +454,76 @@ describe('ensureGitignore with baseBranch (paw-numd)', () => {
 
     const content = readFileSync(resolve(repoDir, '.gitignore'), 'utf-8');
     expect(content).toBe('.paw/\n');
+  });
+});
+
+describe('generateTaskFile per-task spec', () => {
+  it('uses task-level spec over top-level spec', () => {
+    const config: PawConfig = {
+      ...baseConfig,
+      spec: '.paw/specs/top-level.md',
+      tasks: {
+        auth: { focus: 'src/auth/', spec: '.paw/specs/task-auth.md' },
+      },
+    };
+    const worktree = {
+      taskName: 'auth',
+      branch: 'feature/dashboard-auth',
+      worktreePath: '/projects/acme-app-paw-auth',
+    };
+
+    const result = generateTaskFile(config, worktree);
+
+    expect(result).toContain('**Spec:** .paw/specs/task-auth.md');
+    expect(result).not.toContain('top-level.md');
+  });
+
+  it('falls back to top-level spec when task has no spec', () => {
+    const config: PawConfig = {
+      ...baseConfig,
+      spec: '.paw/specs/top-level.md',
+    };
+    const worktree = {
+      taskName: 'auth',
+      branch: 'feature/dashboard-auth',
+      worktreePath: '/projects/acme-app-paw-auth',
+    };
+
+    const result = generateTaskFile(config, worktree);
+
+    expect(result).toContain('**Spec:** .paw/specs/top-level.md');
+  });
+
+  it('omits spec line when neither task nor config has spec', () => {
+    const worktree = {
+      taskName: 'auth',
+      branch: 'feature/dashboard-auth',
+      worktreePath: '/projects/acme-app-paw-auth',
+    };
+
+    const result = generateTaskFile(baseConfig, worktree);
+
+    expect(result).not.toContain('**Spec:**');
+  });
+});
+
+describe('runSetup', () => {
+  it('runs command in the specified directory', () => {
+    const dir = makeTempDir();
+
+    runSetup(dir, 'echo hello > output.txt');
+
+    expect(readFileSync(resolve(dir, 'output.txt'), 'utf-8').trim()).toBe('hello');
+
+    rmSync(dir, { recursive: true });
+  });
+
+  it('throws on non-zero exit code', () => {
+    const dir = makeTempDir();
+
+    expect(() => runSetup(dir, 'exit 1')).toThrow();
+
+    rmSync(dir, { recursive: true });
   });
 });
 

@@ -548,6 +548,88 @@ describe('topologicalSort', () => {
   });
 });
 
+describe('setup config', () => {
+  it('parses config with setup field', () => {
+    const dir = makeTempDir();
+    const configPath = resolve(dir, 'paw.yaml');
+    writeFileSync(
+      configPath,
+      `
+target: feature/x
+setup: pnpm install
+tasks:
+  a:
+    focus: src/
+`,
+    );
+
+    const config = loadConfig(configPath);
+    expect(config.setup).toBe('pnpm install');
+
+    rmSync(dir, { recursive: true });
+  });
+
+  it('accepts config without setup', () => {
+    const dir = makeTempDir();
+    const configPath = resolve(dir, 'paw.yaml');
+    writeFileSync(
+      configPath,
+      `
+target: feature/x
+tasks:
+  a:
+    focus: src/
+`,
+    );
+
+    const config = loadConfig(configPath);
+    expect(config.setup).toBeUndefined();
+
+    rmSync(dir, { recursive: true });
+  });
+});
+
+describe('per-task spec field', () => {
+  it('parses task with spec field', () => {
+    const dir = makeTempDir();
+    const configPath = resolve(dir, 'paw.yaml');
+    writeFileSync(
+      configPath,
+      `
+target: feature/x
+tasks:
+  auth:
+    focus: src/auth/
+    spec: .paw/specs/spec-auth.md
+`,
+    );
+
+    const config = loadConfig(configPath);
+    expect(config.tasks['auth']?.spec).toBe('.paw/specs/spec-auth.md');
+
+    rmSync(dir, { recursive: true });
+  });
+
+  it('accepts task without spec field', () => {
+    const dir = makeTempDir();
+    const configPath = resolve(dir, 'paw.yaml');
+    writeFileSync(
+      configPath,
+      `
+target: feature/x
+tasks:
+  auth:
+    focus: src/auth/
+`,
+    );
+
+    const config = loadConfig(configPath);
+    expect(config.tasks['auth']?.spec).toBeUndefined();
+
+    rmSync(dir, { recursive: true });
+  });
+});
+
 describe('resolveConfigPath', () => {
   it('finds .paw/paw.yaml', () => {
     const dir = makeTempDir();
