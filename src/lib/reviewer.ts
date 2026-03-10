@@ -5,9 +5,7 @@
  *
  * Unlike triage (which uses --print one-shot), the reviewer runs as a real
  * Claude Code session so it can invoke tools (paw shortcut, paw guidelines).
- * It is restricted to read-only tools via --allowedTools / --disallowedTools
- * and skips project hooks via --setting-sources "user" so paw prime doesn't
- * fire.
+ * It is restricted to read-only tools via --allowedTools / --disallowedTools.
  *
  * Includes mini-ZFC monitoring: warning → nudge → capture → timeout.
  * Since the reviewer skips project hooks (no heartbeats), escalation is
@@ -100,9 +98,10 @@ function buildReviewerCommand(): string {
     'Bash(git log*)',
     'Bash(git show paw-sync:*)',
     'Bash(node -e *)',
+    'Agent',
   ].join(',');
 
-  const disallowedTools = ['Edit', 'Write', 'NotebookEdit', 'Agent'].join(',');
+  const disallowedTools = ['Edit', 'Write', 'NotebookEdit'].join(',');
 
   return [
     'PAW_ROLE=reviewer',
