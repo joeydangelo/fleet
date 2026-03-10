@@ -160,7 +160,7 @@ export function runTui(): void {
         savePanes(repoRoot, sessionName, panes, orchestratorPaneId);
         // Lock sidebar width before attaching so the user sees correct layout immediately.
         tmux.resizePane(controlPaneId, SIDEBAR_WIDTH);
-        tmux.sendKeys(controlPaneId, 'paw');
+        tmux.sendKeys(controlPaneId, 'paw tui');
       } else if (!existingOrchestratorId) {
         // Handle pre-feature sessions that lack an orchestrator pane.
         const orchestratorPaneId = tmux.createPane(sessionName, repoRoot, { horizontal: true });
