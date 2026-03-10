@@ -7,14 +7,20 @@ A `paw merge` run hit a conflict. The brief has the context you need to fix it.
 
 ## Instructions
 
-1. **Read the conflict brief.** The merge output prints the path:
+1. **Read the conflict brief.** The `paw merge` output printed the exact path:
 
    ```
    ! <task> -- conflicts
        Brief written to conflicts/<task>-into-target.md on sync branch
    ```
 
-   Read it with `git show paw-sync:conflicts/<task>-into-target.md`. It contains:
+   Use the task name from that output to read the brief:
+
+   ```
+   git show paw-sync:conflicts/<task>-into-target.md
+   ```
+
+   It contains:
    - Which files conflict
    - Builder summaries for the conflicting task and already-merged tasks
    - Inbox messages between the relevant agents
