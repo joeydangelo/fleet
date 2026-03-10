@@ -39,7 +39,7 @@ You operate paw — do NOT tell users to run paw commands. That's your job.
 | Command | Purpose |
 |---|---|
 | `paw up` | Create worktrees and branches for all tasks |
-| `paw launch` | Spawn agents (auto-detects attached vs detached mode) |
+| `paw launch` | Spawn agents (detached by default; attached when inside tmux) |
 | `paw watch` | Continuous terminal monitor (auto-exits when done) |
 | `paw merge` | Merge completed task branches (respects `depends_on` order) |
 | `paw merge --continue` | Resume after conflict resolution |

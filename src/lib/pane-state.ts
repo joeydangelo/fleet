@@ -83,7 +83,7 @@ export function resolvePaneTarget(paneConfig: PawPaneConfig, taskName: string): 
 
 /**
  * Kill all persisted task panes, then clear the panes array in panes.json.
- * Preserves orchestratorPaneId so the next `paw` run finds the surviving
+ * Preserves orchestratorPaneId so the next `paw tui` run finds the surviving
  * orchestrator without creating a duplicate. Skips panes that no longer exist.
  */
 export function killPanes(tmux: TmuxServiceApi, repoRoot: string): void {

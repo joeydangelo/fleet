@@ -1,5 +1,6 @@
 import { basename, resolve } from 'node:path';
 import { existsSync, mkdirSync } from 'node:fs';
+import { Command } from 'commander';
 import { render } from 'ink';
 import React from 'react';
 import { getRepoRoot } from '../lib/git.js';
@@ -111,7 +112,7 @@ function runTuiSidebar(
 }
 
 /**
- * Entry point for `paw` (bare command). Always brings the user into the paw workspace.
+ * Entry point for `paw tui`. Always brings the user into the paw workspace.
  *
  * - Already in paw session: renders the TUI in the current pane (start or restart).
  * - Inside a different tmux session: switches the client over; TUI is already running.
@@ -172,4 +173,13 @@ export function runTui(): void {
   } catch (err) {
     handleError(err);
   }
+}
+
+/** Build the `paw tui` CLI command. */
+export function tuiCommand(): Command {
+  return new Command('tui')
+    .description('Open the tmux TUI (optional — paw go runs detached by default)')
+    .action(() => {
+      runTui();
+    });
 }

@@ -59,6 +59,9 @@ export function createCli(): Command {
   program.addHelpText(
     'after',
     `
+Quickstart:
+  paw go                 Run the full lifecycle (detached by default)
+
 IMPORTANT:
   Agents unfamiliar with paw should run \`paw prime\` for full context.
 
@@ -152,10 +155,15 @@ Getting Started:
     return m.summaryCommand();
   });
 
-  program.action(async () => {
-    const { runTui } = await import('./commands/tui.js');
-    runTui();
-  });
+  lazy(
+    program,
+    'tui',
+    'Open the tmux TUI (optional — paw go runs detached by default)',
+    async () => {
+      const m = await import('./commands/tui.js');
+      return m.tuiCommand();
+    },
+  );
 
   return program;
 }

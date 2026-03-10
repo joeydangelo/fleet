@@ -394,9 +394,8 @@ function printWindowsTmuxError(): void {
     const msg = [
       `paw requires tmux — run paw from inside WSL.\n`,
       `  ${wslTmux} found in WSL.\n`,
-      '  Open a WSL terminal, then:',
-      `    cd '${cdPath}'`,
-      '    paw',
+      '  From this terminal:',
+      `    wsl bash -c "cd '${cdPath}' && paw go"`,
     ];
     console.error(msg.join('\n'));
     return;
@@ -410,7 +409,7 @@ function printWindowsTmuxError(): void {
       'paw requires tmux.\n',
       '  WSL detected but tmux is not installed. Inside a WSL terminal:',
       '    sudo apt install tmux\n',
-      '  Then run paw from WSL.',
+      '  Then run paw go from WSL.',
       '',
       '  More info: https://tmux.info/docs/installation',
     ];

@@ -41,7 +41,7 @@ export function printLaunchPreview(
   }
 }
 
-/** Spawn agents in tmux sessions (attached or detached) for tasks that aren't done. */
+/** Spawn agents for tasks that aren't done (detached by default; attached when inside tmux). */
 export async function runLaunch(repoRoot: string, config: PawConfig): Promise<void> {
   if (!config.agent) {
     throw new Error('No agent configured. Add an agent field to .paw/paw.yaml:\n\n  agent: claude');
@@ -143,7 +143,7 @@ export async function runLaunch(repoRoot: string, config: PawConfig): Promise<vo
 /** Build the `paw launch` CLI command. */
 export function launchCommand(): Command {
   return new Command('launch')
-    .description('Spawn agents in tmux panes for each task worktree')
+    .description('Spawn agents for each task worktree (detached by default, attached in tmux)')
     .option('--dry-run', 'Show what would be spawned without launching')
     .action(async (opts: { dryRun?: boolean }) => {
       try {
