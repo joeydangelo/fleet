@@ -147,7 +147,6 @@ export function runSetup(worktreePath: string, command: string): void {
   execSync(command, {
     cwd: worktreePath,
     stdio: 'inherit',
-    shell: true as unknown as string,
   });
 }
 
