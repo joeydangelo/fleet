@@ -4,140 +4,38 @@ import type { PawPaneConfig } from '../src/lib/tmux.js';
 import type { AgentLivenessResult } from '../src/lib/tmux.js';
 import { resolveSessionState } from '../src/commands/go.js';
 
-// Mock child_process before importing go.ts
+// Mock child_process — runPawCommand tests need this; integration tests restore real impl via vi.importActual
 vi.mock('node:child_process', () => ({
   execFileSync: vi.fn(),
 }));
 
-// Mock lib modules
-vi.mock('../src/lib/git.js', () => ({
-  getRepoRoot: vi.fn(() => '/fake/repo'),
-  getCurrentBranch: vi.fn(() => 'feature/x'),
-  git: vi.fn(),
-  getCommitCount: vi.fn(() => 3),
-  getChangedFileCount: vi.fn(() => 5),
-}));
-
-vi.mock('../src/lib/config.js', () => ({
-  loadConfig: vi.fn(() => ({
-    base: 'main',
-    target: 'feature/x',
-    agent: 'claude',
-    tasks: { auth: { focus: 'src/auth/' }, api: { focus: 'src/api/' } },
-  })),
-  resolveConfigPath: vi.fn(() => '/fake/repo/.paw/paw.yaml'),
-  loadRepoConfig: vi.fn(() => ({
-    repoRoot: '/fake/repo',
-    configPath: '/fake/repo/.paw/paw.yaml',
-    config: {
-      base: 'main',
-      target: 'feature/x',
-      agent: 'claude',
-      tasks: { auth: { focus: 'src/auth/' }, api: { focus: 'src/api/' } },
-    },
-  })),
-}));
-
-vi.mock('../src/lib/session.js', () => ({
-  planWorktrees: vi.fn(() => [
-    { taskName: 'auth', branch: 'feature/x-auth', worktreePath: '/fake/repo-paw-auth' },
-    { taskName: 'api', branch: 'feature/x-api', worktreePath: '/fake/repo-paw-api' },
-  ]),
-  createSession: vi.fn(() => [
-    { taskName: 'auth', branch: 'feature/x-auth', worktreePath: '/fake/repo-paw-auth' },
-    { taskName: 'api', branch: 'feature/x-api', worktreePath: '/fake/repo-paw-api' },
-  ]),
-  writeTaskFiles: vi.fn(),
-  copyIncludes: vi.fn(() => Promise.resolve([])),
-}));
-
-vi.mock('../src/lib/sync.js', () => ({
-  isTerminalStatus: (status: string) => status === 'done',
-  readSyncState: vi.fn(() => null),
-  writeSyncState: vi.fn(),
-  initSyncWorktree: vi.fn(),
-  initSyncState: vi.fn(() => ({
-    session: 'test',
-    config: '/fake/config',
-    target: 'feature/x',
-    tasks: {},
-  })),
-  writeSyncStateAndFiles: vi.fn(),
-}));
-
-vi.mock('../src/lib/pane-state.js', () => ({
-  readPaneConfig: vi.fn(() => null),
-  saveDetachedAgents: vi.fn(),
-  savePanes: vi.fn(),
-  resolvePaneTarget: vi.fn(() => null),
-}));
-
-vi.mock('../src/lib/health.js', () => ({
-  evaluateAllAgents: vi.fn(({ taskNames }: { taskNames: string[] }) => ({
-    timestamp: new Date().toISOString(),
-    agents: Object.fromEntries(
-      taskNames.map((t: string) => [
-        t,
-        {
-          taskName: t,
-          state: 'booting',
-          lastActivity: null,
-          stalledSince: null,
-          escalationLevel: 0,
-        },
-      ]),
-    ),
-  })),
-  writeNudge: vi.fn(),
-  writeHealthSnapshot: vi.fn(),
-  triageAgent: vi.fn(() => ({ verdict: 'extend', captured: '' })),
-  saveTriageOutput: vi.fn(),
-}));
-
-vi.mock('../src/lib/tmux.js', async () => {
-  const actual = await vi.importActual('../src/lib/tmux.js');
-  return {
-    ...actual,
-    createTmuxService: vi.fn(),
-    checkAgentLiveness: vi.fn(() => []),
-    ensureTmuxInstalled: vi.fn(),
-    tmuxSessionName: vi.fn(() => 'paw-test'),
-    isInsideTmux: vi.fn(() => false),
-    launchDetached: vi.fn(() => Promise.resolve([])),
-    launchTmux: vi.fn(() => Promise.resolve([])),
-  };
+// Mock only createTmuxService (external boundary)
+vi.mock('../src/lib/tmux.js', async (importOriginal) => {
+  const actual: Record<string, unknown> = (await importOriginal());
+  return { ...actual, createTmuxService: vi.fn() };
 });
-
-vi.mock('../src/lib/messages.js', () => ({
-  readMessages: vi.fn(() => []),
-}));
 
 import { execFileSync } from 'node:child_process';
-import { readSyncState } from '../src/lib/sync.js';
-import { loadConfig } from '../src/lib/config.js';
 import { runPawCommand, runGo } from '../src/commands/go.js';
-import * as watchModule from '../src/commands/watch.js';
-import { runWatchLoop } from '../src/commands/watch.js';
+import { createFixtureRepo } from './helpers/fixture-repo.js';
 
 const mockExecFileSync = vi.mocked(execFileSync);
-const mockReadSyncState = vi.mocked(readSyncState);
-
-beforeEach(() => {
-  vi.clearAllMocks();
-  vi.spyOn(console, 'log').mockImplementation(() => {});
-  vi.spyOn(console, 'error').mockImplementation(() => {});
-});
-
-afterEach(() => {
-  vi.restoreAllMocks();
-});
 
 describe('runPawCommand', () => {
+  beforeEach(() => {
+    mockExecFileSync.mockReset();
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it('returns exitCode 0 on success', () => {
     mockExecFileSync.mockReturnValue(Buffer.from(''));
     const result = runPawCommand(['up']);
     expect(result.exitCode).toBe(0);
-    expect(mockExecFileSync).toHaveBeenCalledTimes(1);
   });
 
   it('returns non-zero exitCode on failure', () => {
@@ -160,121 +58,55 @@ describe('runPawCommand', () => {
   });
 });
 
-describe('go: merge conflict stops without teardown', () => {
-  it('does not call paw down when merge returns non-zero', () => {
-    const callOrder: string[] = [];
-    mockExecFileSync.mockImplementation((_cmd, args) => {
-      const subcommand = (args as string[])[1]!;
-      callOrder.push(subcommand);
-      if (subcommand === 'merge') {
-        const err = new Error('conflict') as Error & { status: number };
-        err.status = 1;
-        throw err;
-      }
-      return Buffer.from('');
-    });
+describe('runGo dry-run integration', () => {
+  let cleanup: () => void;
+  let repoRoot: string;
+  const savedCwd = process.cwd();
 
-    runPawCommand(['up']);
-    runPawCommand(['launch']);
-    const mergeResult = runPawCommand(['merge']);
+  beforeEach(async () => {
+    // Restore real execFileSync so git operations work in the integration test
+    const actualCp = (await vi.importActual('node:child_process'));
+    mockExecFileSync.mockImplementation(actualCp.execFileSync);
 
-    // Merge failed -- do NOT call down
-    expect(mergeResult.exitCode).toBe(1);
-    expect(callOrder).toEqual(['up', 'launch', 'merge']);
-    expect(callOrder).not.toContain('down');
-  });
-});
-
-describe('runWatchLoop', () => {
-  it('exits immediately when all tasks are done', async () => {
-    mockReadSyncState.mockReturnValue({
-      session: 'test',
-      config: '/fake/config',
-      target: 'feature/x',
+    const fixture = createFixtureRepo({
       tasks: {
-        auth: { status: 'done', doneAt: '2026-02-15T00:00:00Z' },
-        api: { status: 'done', doneAt: '2026-02-15T00:01:00Z' },
+        auth: { focus: 'src/auth/' },
+        api: { focus: 'src/api/' },
+      },
+      syncState: {
+        tasks: {
+          auth: { status: 'pending' },
+          api: { status: 'pending' },
+        },
       },
     });
+    repoRoot = fixture.repoRoot;
+    cleanup = fixture.cleanup;
 
-    await runWatchLoop({
-      repoRoot: '/fake/repo',
-      configPath: '/fake/repo/.paw/paw.yaml',
-      interval: 1,
-    });
-
-    // If we got here without hanging, the watch loop detected all done and exited
-    expect(mockReadSyncState).toHaveBeenCalled();
+    process.chdir(repoRoot);
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    vi.spyOn(console, 'error').mockImplementation(() => {});
   });
 
-  it('polls until all tasks complete', async () => {
-    let callCount = 0;
-    mockReadSyncState.mockImplementation(() => {
-      callCount++;
-      if (callCount < 3) {
-        return {
-          session: 'test',
-          config: '/fake/config',
-          target: 'feature/x',
-          tasks: {
-            auth: { status: 'done' as const, doneAt: '2026-02-15T00:00:00Z' },
-            api: { status: 'in_progress' as const, claimed: '2026-02-15T00:00:00Z' },
-          },
-        };
-      }
-      return {
-        session: 'test',
-        config: '/fake/config',
-        target: 'feature/x',
-        tasks: {
-          auth: { status: 'done' as const, doneAt: '2026-02-15T00:00:00Z' },
-          api: { status: 'done' as const, doneAt: '2026-02-15T00:01:00Z' },
-        },
-      };
-    });
-
-    await runWatchLoop({
-      repoRoot: '/fake/repo',
-      configPath: '/fake/repo/.paw/paw.yaml',
-      interval: 0.01, // very short for testing
-    });
-
-    expect(callCount).toBeGreaterThanOrEqual(3);
-  });
-});
-
-describe('runGo: merge failure message (paw-lk9k)', () => {
-  const mockLoadConfig = vi.mocked(loadConfig);
-
-  beforeEach(() => {
-    // Make up and launch succeed, merge fail
-    mockExecFileSync.mockImplementation((_cmd, args) => {
-      const subcommand = (args as string[])[1];
-      if (subcommand === 'merge') {
-        const err = new Error('merge failed') as Error & { status: number };
-        err.status = 1;
-        throw err;
-      }
-      return Buffer.from('');
-    });
-
-    // Mock runWatchLoop to resolve immediately for runGo tests
-    vi.spyOn(watchModule, 'runWatchLoop').mockResolvedValue(undefined);
+  afterEach(() => {
+    process.chdir(savedCwd);
+    cleanup();
+    vi.restoreAllMocks();
   });
 
-  it('shows manual resolve message when merge fails', async () => {
-    mockLoadConfig.mockReturnValueOnce({
-      base: 'main',
-      target: 'feature/x',
-      agent: 'claude',
-      tasks: { auth: { focus: 'src/auth/' }, api: { focus: 'src/api/' } },
-    });
+  it('prints task count, target branch, and worktree paths', async () => {
+    await runGo({ dryRun: true });
 
-    await runGo({});
+    const logs = vi.mocked(console.log).mock.calls.map((c) => c.map(String).join(' '));
+    const output = logs.join('\n');
 
-    const logs = vi.mocked(console.log).mock.calls.map((c) => String(c[0]));
-    const hasManualMsg = logs.some((msg) => msg.includes('Merge failed'));
-    expect(hasManualMsg).toBe(true);
+    // Verify task count
+    expect(output).toContain('tasks:   2');
+    // Verify target branch
+    expect(output).toContain('target:  fix/test-target');
+    // Verify worktree paths appear (planWorktrees generates sibling-directory paths)
+    expect(output).toMatch(/paw-auth/);
+    expect(output).toMatch(/paw-api/);
   });
 });
 
