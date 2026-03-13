@@ -1,7 +1,7 @@
 import { readMessages } from './messages.js';
 import { getMergeConflictDiff, getConflictingFiles } from './git.js';
 import type { SyncState } from './sync.js';
-import { readSyncFile } from './sync.js';
+import { readSyncFile, reviewFilePath } from './sync.js';
 
 interface ConflictBriefOpts {
   /** The task being merged that caused the conflict. */
@@ -16,8 +16,7 @@ interface ConflictBriefOpts {
 
 /** Read the builder's summary from the sync branch. Returns null if not found. */
 function getTaskSummary(branch: string, cwd: string): string | null {
-  const safeBranch = branch.replace(/[^a-zA-Z0-9-]/g, '-');
-  return readSyncFile(`review/${safeBranch}.md`, cwd);
+  return readSyncFile(reviewFilePath(branch), cwd);
 }
 
 /**

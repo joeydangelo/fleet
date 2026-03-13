@@ -767,7 +767,7 @@ describe('checkAgentLiveness', () => {
     const config: PawPaneConfig = {
       mode: 'detached',
       sessionName: 'paw-myapp',
-      projectRoot: '/home/user/myapp',
+      repoRoot: '/home/user/myapp',
       orchestratorPaneId: '',
       panes: [],
       detached: [
@@ -805,7 +805,7 @@ describe('checkAgentLiveness', () => {
     const config: PawPaneConfig = {
       mode: 'attached',
       sessionName: 'paw-myapp',
-      projectRoot: '/home/user/myapp',
+      repoRoot: '/home/user/myapp',
       orchestratorPaneId: '%0',
       panes: [
         {
@@ -841,7 +841,7 @@ describe('checkAgentLiveness', () => {
 
     const config: PawPaneConfig = {
       sessionName: 'paw-myapp',
-      projectRoot: '/home/user/myapp',
+      repoRoot: '/home/user/myapp',
       orchestratorPaneId: '%0',
       panes: [
         {
@@ -867,7 +867,7 @@ describe('checkAgentLiveness', () => {
     const config: PawPaneConfig = {
       mode: 'detached',
       sessionName: 'paw-myapp',
-      projectRoot: '/home/user/myapp',
+      repoRoot: '/home/user/myapp',
       orchestratorPaneId: '',
       panes: [],
       detached: [],

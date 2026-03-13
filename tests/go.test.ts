@@ -322,7 +322,7 @@ describe('resolveSessionState', () => {
   const basePaneConfig: PawPaneConfig = {
     mode: 'detached',
     sessionName: 'paw-test',
-    projectRoot: '/fake/repo',
+    repoRoot: '/fake/repo',
     orchestratorPaneId: '',
     panes: [],
     detached: [

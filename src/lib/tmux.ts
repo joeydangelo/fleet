@@ -65,7 +65,7 @@ export interface PawPaneConfig {
   /** tmux session name. */
   sessionName: string;
   /** Repo root path. */
-  projectRoot: string;
+  repoRoot: string;
   /**
    * Pane ID of the orchestrator shell (pane 1). Empty string if not yet created.
    * The orchestrator is where the user types their AI agent command (claude).

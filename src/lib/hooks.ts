@@ -3,7 +3,7 @@
 import { existsSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
 import { writeFileSync } from 'atomically';
 import { resolve } from 'node:path';
-import { success } from './output.js';
+import { success, toErrorMessage } from './output.js';
 import { INBOX_DEBOUNCE_S } from './constants.js';
 
 /** Wrapper script that resolves PATH and ensures paw is installed before running paw commands. */
@@ -443,7 +443,7 @@ export function installHooks(repoRoot: string): void {
       settings = JSON.parse(readFileSync(settingsPath, 'utf-8')) as Record<string, unknown>;
     } catch (err) {
       console.warn(
-        `[paw] Corrupted settings.json, overwriting with defaults: ${err instanceof Error ? err.message : String(err)}`,
+        `[paw] Corrupted settings.json, overwriting with defaults: ${toErrorMessage(err)}`,
       );
     }
   }

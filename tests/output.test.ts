@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { formatFocusAreas } from '../src/lib/output.js';
+import { formatFocusAreas, formatTaskStatus } from '../src/lib/output.js';
 
 describe('formatFocusAreas', () => {
   it('returns empty string for undefined', () => {
@@ -34,5 +34,17 @@ describe('formatFocusAreas', () => {
     expect(
       formatFocusAreas(['src/auth/', 'src/api/', 'src/middleware/', 'src/utils/', 'tests/']),
     ).toBe('(src/auth/, src/api/, +3 more)');
+  });
+});
+
+describe('formatTaskStatus', () => {
+  it('maps in_review to "in review"', () => {
+    expect(formatTaskStatus('in_review')).toBe('in review');
+  });
+
+  it('passes through other statuses unchanged', () => {
+    expect(formatTaskStatus('done')).toBe('done');
+    expect(formatTaskStatus('pending')).toBe('pending');
+    expect(formatTaskStatus('in_progress')).toBe('in_progress');
   });
 });

@@ -76,6 +76,12 @@ export function requireSyncState<T>(state: T | null): asserts state is T {
   }
 }
 
+/** Map task status codes to display strings (e.g. 'in_review' → 'in review'). */
+export function formatTaskStatus(status: string): string {
+  if (status === 'in_review') return 'in review';
+  return status;
+}
+
 /** Render focus areas as a compact parenthetical, truncated to keep status lines readable. */
 export function formatFocusAreas(focus: string[] | undefined): string {
   if (!focus || focus.length === 0) return '';

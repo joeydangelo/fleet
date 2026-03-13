@@ -18,6 +18,8 @@ import { writeFileSync } from 'atomically';
 import type { TmuxServiceApi } from './tmux.js';
 import { waitForTuiReady, killDetachedSession, isTuiPromptReady } from './tmux.js';
 import { REVIEW_TIMEOUT_MS, REVIEW_NUDGE_MS, BEACON_FOLLOWUP_DELAYS } from './constants.js';
+import { sleep, formatElapsed } from './util.js';
+import { reviewFilePath as sharedReviewFilePath } from './sync.js';
 
 /** Prefix for all reviewer tmux sessions. */
 const REVIEW_SESSION_PREFIX = 'paw-review-';
@@ -128,7 +130,7 @@ function buildReviewPrompt(
   reviewFilePath?: string,
 ): string {
   const escapedPath = verdictPath.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-  const reviewFile = reviewFilePath ?? `review/${taskBranch.replace(/[^a-zA-Z0-9-]/g, '-')}.md`;
+  const reviewFile = reviewFilePath ?? sharedReviewFilePath(taskBranch);
 
   const lines = [`You are reviewing task branch "${taskBranch}" against "${targetBranch}".`, ''];
 
@@ -160,14 +162,6 @@ function buildNudgeMessage(verdictPath: string): string {
     'Run this Bash command with your verdict and review content:',
     `node -e "require('fs').writeFileSync('${escapedPath}', JSON.stringify({ verdict: 'PASS_OR_FAIL', strengths: '...', issues: '...', suggestions: '...' }))"`,
   ].join(' ');
-}
-
-/** Format elapsed milliseconds as "Xm Ys". */
-function formatElapsed(ms: number): string {
-  const totalSeconds = Math.floor(ms / 1000);
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-  return minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
 }
 
 /** Save captured pane content to disk for post-mortem debugging. */
@@ -254,7 +248,7 @@ export async function reviewTask(
     }
 
     // Small delay for TUI to fully initialize
-    await new Promise((r) => setTimeout(r, 2_000));
+    await sleep(2_000);
 
     // Send the review prompt
     tmux.sendKeys(
@@ -264,7 +258,7 @@ export async function reviewTask(
 
     // Follow-up empty Enters to dismiss trust/permission dialogs (same as sendBeacon)
     for (const delay of BEACON_FOLLOWUP_DELAYS) {
-      await new Promise((r) => setTimeout(r, delay));
+      await sleep(delay);
       tmux.sendKeys(sessionName, '');
     }
 
@@ -272,7 +266,7 @@ export async function reviewTask(
     const maxPolls = Math.ceil(REVIEW_TIMEOUT_MS / REVIEW_POLL_MS);
 
     for (let i = 0; i < maxPolls; i++) {
-      await new Promise((r) => setTimeout(r, REVIEW_POLL_MS));
+      await sleep(REVIEW_POLL_MS);
 
       const elapsed = Date.now() - startTime;
 
@@ -310,7 +304,7 @@ export async function reviewTask(
         if (captured && isTuiPromptReady(captured)) {
           tmux.sendKeys(sessionName, buildNudgeMessage(vPath));
           // Follow-up Enter to dismiss any dialog
-          await new Promise((r) => setTimeout(r, BEACON_FOLLOWUP_DELAYS[0]));
+          await sleep(BEACON_FOLLOWUP_DELAYS[0]!);
           tmux.sendKeys(sessionName, '');
         }
       }

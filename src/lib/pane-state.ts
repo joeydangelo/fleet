@@ -45,7 +45,7 @@ export function savePanes(
 ): void {
   const config: PawPaneConfig = {
     sessionName,
-    projectRoot: repoRoot,
+    repoRoot,
     orchestratorPaneId,
     panes,
     lastUpdated: new Date().toISOString(),
@@ -62,7 +62,7 @@ export function saveDetachedAgents(
   const config: PawPaneConfig = {
     mode: 'detached',
     sessionName,
-    projectRoot: repoRoot,
+    repoRoot,
     orchestratorPaneId: '',
     panes: [],
     detached: agents,
@@ -193,9 +193,9 @@ export function restorePanes(
   /** Use `paneExists` rather than `listPanes` to avoid timing races on cold start. */
   let orchestratorPaneId = config.orchestratorPaneId;
   if (orchestratorPaneId && !tmux.paneExists(orchestratorPaneId)) {
-    orchestratorPaneId = tmux.createPane(sessionName, config.projectRoot, { horizontal: true });
+    orchestratorPaneId = tmux.createPane(sessionName, config.repoRoot, { horizontal: true });
     labelOrchestrator(tmux, orchestratorPaneId);
-    tmux.setPaneProject(orchestratorPaneId, config.projectRoot);
+    tmux.setPaneProject(orchestratorPaneId, config.repoRoot);
   }
 
   if (restored.length > 0 || orchestratorPaneId !== config.orchestratorPaneId) {

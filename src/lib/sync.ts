@@ -10,8 +10,9 @@ import {
 } from 'node:fs';
 import { writeFileSync } from 'atomically';
 import { git } from './git.js';
-import { toErrorMessage } from './output.js';
+import { toErrorMessage, requireSyncState } from './output.js';
 import { SYNC_BRANCH } from './constants.js';
+import { detectTaskName } from './session.js';
 const STATE_FILE = 'state.json';
 const MAX_RETRIES = 3;
 
@@ -62,9 +63,9 @@ export interface SyncState {
   lastCheck?: Record<string, string>;
 }
 
-function syncBranchExists(cwd?: string): boolean {
+function syncBranchExists(repoRoot?: string): boolean {
   try {
-    git(['rev-parse', '--verify', SYNC_BRANCH], { cwd, stdio: 'pipe' });
+    git(['rev-parse', '--verify', SYNC_BRANCH], { cwd: repoRoot, stdio: 'pipe' });
     return true;
   } catch {
     return false;
@@ -76,8 +77,8 @@ function syncBranchExists(cwd?: string): boolean {
  * If no branch exists, creates an orphan worktree.
  * Idempotent: returns immediately if the worktree already exists.
  */
-export function initSyncWorktree(cwd: string): string {
-  const worktreePath = resolve(cwd, '.paw', 'sync');
+export function initSyncWorktree(repoRoot: string): string {
+  const worktreePath = resolve(repoRoot, '.paw', 'sync');
 
   if (existsSync(join(worktreePath, '.git'))) {
     return worktreePath;
@@ -85,14 +86,14 @@ export function initSyncWorktree(cwd: string): string {
 
   rmSync(worktreePath, { recursive: true, force: true });
 
-  if (syncBranchExists(cwd)) {
+  if (syncBranchExists(repoRoot)) {
     git(['worktree', 'add', worktreePath, SYNC_BRANCH], {
-      cwd,
+      cwd: repoRoot,
       stdio: 'pipe',
     });
   } else {
     git(['worktree', 'add', '--orphan', '-b', SYNC_BRANCH, worktreePath], {
-      cwd,
+      cwd: repoRoot,
       stdio: 'pipe',
     });
   }
@@ -110,17 +111,17 @@ export function initSyncWorktree(cwd: string): string {
  */
 const syncDirCache = new Map<string, string>();
 
-export function resolveSyncDir(cwd: string): string {
-  const cached = syncDirCache.get(cwd);
+export function resolveSyncDir(repoRoot: string): string {
+  const cached = syncDirCache.get(repoRoot);
   if (cached) return cached;
 
   const gitCommonDir = git(['rev-parse', '--git-common-dir'], {
-    cwd,
+    cwd: repoRoot,
     stdio: 'pipe',
   });
-  const mainRoot = resolve(cwd, gitCommonDir, '..');
+  const mainRoot = resolve(repoRoot, gitCommonDir, '..');
   const result = resolve(mainRoot, '.paw', 'sync');
-  syncDirCache.set(cwd, result);
+  syncDirCache.set(repoRoot, result);
   return result;
 }
 
@@ -128,12 +129,12 @@ export function resolveSyncDir(cwd: string): string {
  * Remove the sync worktree at .paw/sync/.
  * Idempotent: no error if no worktree exists.
  */
-export function removeSyncWorktree(cwd: string): void {
-  const worktreePath = resolve(cwd, '.paw', 'sync');
+export function removeSyncWorktree(repoRoot: string): void {
+  const worktreePath = resolve(repoRoot, '.paw', 'sync');
 
   try {
     git(['worktree', 'remove', '--force', worktreePath], {
-      cwd,
+      cwd: repoRoot,
       stdio: 'pipe',
     });
   } catch {
@@ -141,7 +142,7 @@ export function removeSyncWorktree(cwd: string): void {
   }
 
   try {
-    git(['worktree', 'prune'], { cwd, stdio: 'pipe' });
+    git(['worktree', 'prune'], { cwd: repoRoot, stdio: 'pipe' });
   } catch {
     // Prune failure is non-critical — stale refs get cleaned next session
   }
@@ -173,9 +174,9 @@ function commitSyncChanges(syncDir: string, message: string): void {
 }
 
 /** Read and parse the sync state from the sync worktree, or null if unavailable. */
-export function readSyncState(cwd?: string): SyncState | null {
+export function readSyncState(repoRoot?: string): SyncState | null {
   try {
-    const syncDir = resolveSyncDir(cwd ?? process.cwd());
+    const syncDir = resolveSyncDir(repoRoot ?? process.cwd());
     const raw = readFileSync(resolve(syncDir, STATE_FILE), 'utf-8');
     return JSON.parse(raw) as SyncState;
   } catch {
@@ -184,9 +185,9 @@ export function readSyncState(cwd?: string): SyncState | null {
 }
 
 /** Read a file from the sync worktree by relative path, or null if missing. */
-export function readSyncFile(path: string, cwd?: string): string | null {
+export function readSyncFile(path: string, repoRoot?: string): string | null {
   try {
-    const syncDir = resolveSyncDir(cwd ?? process.cwd());
+    const syncDir = resolveSyncDir(repoRoot ?? process.cwd());
     return readFileSync(resolve(syncDir, path), 'utf-8');
   } catch {
     return null;
@@ -194,9 +195,9 @@ export function readSyncFile(path: string, cwd?: string): string | null {
 }
 
 /** List files under a directory prefix in the sync worktree. */
-export function listSyncDir(prefix: string, cwd?: string): string[] {
+export function listSyncDir(prefix: string, repoRoot?: string): string[] {
   try {
-    const syncDir = resolveSyncDir(cwd ?? process.cwd());
+    const syncDir = resolveSyncDir(repoRoot ?? process.cwd());
     const dir = resolve(syncDir, prefix);
     const entries = readdirSync(dir);
     return entries.map((e) => `${prefix}/${e}`);
@@ -206,8 +207,8 @@ export function listSyncDir(prefix: string, cwd?: string): string[] {
 }
 
 /** Write sync state to the sync worktree and commit. */
-export function writeSyncState(state: SyncState, cwd?: string): void {
-  const syncDir = resolveSyncDir(cwd ?? process.cwd());
+export function writeSyncState(state: SyncState, repoRoot?: string): void {
+  const syncDir = resolveSyncDir(repoRoot ?? process.cwd());
   writeFileSync(resolve(syncDir, STATE_FILE), JSON.stringify(state, null, 2) + '\n');
   commitSyncChanges(syncDir, 'paw: update sync state');
 }
@@ -216,9 +217,9 @@ export function writeSyncState(state: SyncState, cwd?: string): void {
 export function writeSyncStateAndFiles(
   state: SyncState,
   files: Array<{ path: string; content: string }>,
-  cwd?: string,
+  repoRoot?: string,
 ): void {
-  const syncDir = resolveSyncDir(cwd ?? process.cwd());
+  const syncDir = resolveSyncDir(repoRoot ?? process.cwd());
   writeFileSync(resolve(syncDir, STATE_FILE), JSON.stringify(state, null, 2) + '\n');
   for (const file of files) {
     const filePath = resolve(syncDir, file.path);
@@ -229,8 +230,8 @@ export function writeSyncStateAndFiles(
 }
 
 /** Write a single file to the sync worktree and commit. */
-export function writeSyncFile(path: string, content: string, cwd?: string): void {
-  const syncDir = resolveSyncDir(cwd ?? process.cwd());
+export function writeSyncFile(path: string, content: string, repoRoot?: string): void {
+  const syncDir = resolveSyncDir(repoRoot ?? process.cwd());
   const filePath = resolve(syncDir, path);
   mkdirSync(dirname(filePath), { recursive: true });
   writeFileSync(filePath, content);
@@ -388,4 +389,28 @@ export function archiveSession(repoRoot: string, target: string): string | null 
   }
 
   return archiveDir;
+}
+
+/** Read sync state and assert it exists (exits with error if missing). */
+export function readRequiredSyncState(repoRoot: string): SyncState {
+  const state = readSyncState(repoRoot);
+  requireSyncState(state);
+  return state;
+}
+
+/** Sanitize a branch name and return the review file path on the sync branch. */
+export function reviewFilePath(branch: string): string {
+  const safeBranch = branch.replace(/[^a-zA-Z0-9-]/g, '-');
+  return `review/${safeBranch}.md`;
+}
+
+/** Detect the task name from the worktree or throw if not in a worktree. */
+export function requireWorktreeTask(repoRoot: string): string {
+  const taskName = detectTaskName(repoRoot);
+  if (!taskName) {
+    throw new Error(
+      'Not in a paw worktree. This command must be run from a task worktree (with .paw/tasks/<name>.md).',
+    );
+  }
+  return taskName;
 }

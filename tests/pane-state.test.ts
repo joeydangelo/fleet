@@ -46,7 +46,7 @@ describe('pane-state: readPaneConfig / writePaneConfig', () => {
   it('round-trips pane config through write and read', () => {
     const config: PawPaneConfig = {
       sessionName: 'paw-myapp',
-      projectRoot: '/home/user/myapp',
+      repoRoot: '/home/user/myapp',
       orchestratorPaneId: '%1',
       panes: [makePane()],
       lastUpdated: '2026-02-21T00:00:00.000Z',
@@ -61,7 +61,7 @@ describe('pane-state: readPaneConfig / writePaneConfig', () => {
   it('overwrites existing config', () => {
     const config1: PawPaneConfig = {
       sessionName: 'paw-myapp',
-      projectRoot: '/home/user/myapp',
+      repoRoot: '/home/user/myapp',
       orchestratorPaneId: '%1',
       panes: [makePane({ id: 'paw-1' })],
       lastUpdated: '2026-02-21T00:00:00.000Z',
@@ -69,7 +69,7 @@ describe('pane-state: readPaneConfig / writePaneConfig', () => {
 
     const config2: PawPaneConfig = {
       sessionName: 'paw-myapp',
-      projectRoot: '/home/user/myapp',
+      repoRoot: '/home/user/myapp',
       orchestratorPaneId: '%1',
       panes: [makePane({ id: 'paw-1' }), makePane({ id: 'paw-2', taskName: 'api' })],
       lastUpdated: '2026-02-21T01:00:00.000Z',
@@ -85,7 +85,7 @@ describe('pane-state: readPaneConfig / writePaneConfig', () => {
   it('reads config without mode field (backward compat)', () => {
     const config: PawPaneConfig = {
       sessionName: 'paw-myapp',
-      projectRoot: '/home/user/myapp',
+      repoRoot: '/home/user/myapp',
       orchestratorPaneId: '%1',
       panes: [],
       lastUpdated: '2026-02-21T00:00:00.000Z',
@@ -107,7 +107,7 @@ describe('pane-state: readPaneConfig / writePaneConfig', () => {
     const config: PawPaneConfig = {
       mode: 'detached',
       sessionName: 'paw-myapp',
-      projectRoot: '/home/user/myapp',
+      repoRoot: '/home/user/myapp',
       orchestratorPaneId: '',
       panes: [],
       detached: [agent],

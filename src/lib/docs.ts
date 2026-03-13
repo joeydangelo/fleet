@@ -108,11 +108,6 @@ export function listDocs(category: string): DocInfo[] {
   return results.sort((a, b) => a.name.localeCompare(b.name));
 }
 
-/** Strip YAML frontmatter (--- block ---) from markdown content. */
-export function stripFrontmatter(content: string): string {
-  return content.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n/, '');
-}
-
 /** Extract title, description, and roles from a YAML frontmatter block (--- delimited). */
 export function parseFrontmatter(content: string): {
   title?: string;

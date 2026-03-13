@@ -44,7 +44,7 @@ function createAddProject(
 
     const config: PawPaneConfig = {
       sessionName,
-      projectRoot,
+      repoRoot: projectRoot,
       orchestratorPaneId: paneId,
       panes: [],
       lastUpdated: new Date().toISOString(),

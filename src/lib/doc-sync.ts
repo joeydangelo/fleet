@@ -5,6 +5,8 @@ import { fileURLToPath } from 'node:url';
 
 import { readManifest, writeManifest, readLocalState, writeLocalState } from './manifest.js';
 import { fetchWithGhFallback } from './github-fetch.js';
+import { toErrorMessage } from './output.js';
+import { findBundledDir } from './util.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -23,15 +25,9 @@ interface SyncResult {
  * falls back to src/docs/ for local development.
  */
 function getDocsBasePath(): string {
-  const candidates = [
-    join(__dirname, 'docs'),
-    join(__dirname, '..', 'src', 'docs'),
-    join(__dirname, '..', 'docs'),
-  ];
-  for (const p of candidates) {
-    if (existsSync(p)) return p;
-  }
-  throw new Error('paw docs not found');
+  const result = findBundledDir(__dirname, 'docs');
+  if (!result) throw new Error('paw docs not found');
+  return result;
 }
 
 /** Scan bundled docs and return a manifest of internal entries. */
@@ -195,7 +191,7 @@ async function refreshUrlDocs(repoRoot: string): Promise<string[]> {
         writeFileSync(destPath, content, 'utf-8');
       }
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
+      const msg = toErrorMessage(err);
       console.warn(`[paw] Failed to refresh URL doc "${key}": ${msg}`);
       failed.push(key);
     }

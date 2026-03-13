@@ -18,13 +18,13 @@ const DocsCacheSchema = z.object({
     .default(['.paw/docs/shortcuts', '.paw/docs/guidelines', '.paw/docs/templates']),
 });
 
-const SettingsSchema = z.object({
+const ManifestSettingsSchema = z.object({
   doc_auto_sync_hours: z.number().default(24),
 });
 
 const PawManifestSchema = z.object({
   docs_cache: DocsCacheSchema.default({}),
-  settings: SettingsSchema.default({}),
+  settings: ManifestSettingsSchema.default({}),
 });
 
 export type PawManifest = z.infer<typeof PawManifestSchema>;

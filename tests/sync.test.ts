@@ -19,8 +19,10 @@ import {
   removeSyncWorktree,
   resolveSyncDir,
   archiveSession,
+  reviewFilePath,
+  requireWorktreeTask,
 } from '../src/lib/sync.js';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { deleteBranch, createBranch, createWorktree, removeWorktree } from '../src/lib/git.js';
 import { makeTempDir } from './helpers/temp.js';
 
@@ -499,5 +501,37 @@ describe('archiveSession', () => {
     const folderName = archivePath!.split(/[\\/]/).pop()!;
     // Folder should start with a date prefix like 2026-02-14
     expect(folderName).toMatch(/^\d{4}-\d{2}-\d{2}-feature-dash$/);
+  });
+});
+
+describe('reviewFilePath', () => {
+  it('sanitizes branch name and returns review path', () => {
+    expect(reviewFilePath('feature/auth')).toBe('review/feature-auth.md');
+  });
+
+  it('replaces non-alphanumeric chars with hyphens', () => {
+    expect(reviewFilePath('fix/tech-debt-cleanup-lib-layer')).toBe(
+      'review/fix-tech-debt-cleanup-lib-layer.md',
+    );
+  });
+
+  it('handles simple branch names', () => {
+    expect(reviewFilePath('main')).toBe('review/main.md');
+  });
+});
+
+describe('requireWorktreeTask', () => {
+  it('returns task name when .paw/tasks/ has exactly one .md file', () => {
+    const dir = makeTempDir();
+    mkdirSync(resolve(dir, '.paw', 'tasks'), { recursive: true });
+    writeFileSync(resolve(dir, '.paw', 'tasks', 'auth.md'), '# auth');
+    expect(requireWorktreeTask(dir)).toBe('auth');
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('throws when not in a worktree', () => {
+    const dir = makeTempDir();
+    expect(() => requireWorktreeTask(dir)).toThrow('Not in a paw worktree');
+    rmSync(dir, { recursive: true, force: true });
   });
 });

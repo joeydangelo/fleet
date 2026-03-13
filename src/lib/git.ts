@@ -54,17 +54,17 @@ export function createBranch(branch: string, from: string, cwd?: string): void {
   git(['branch', branch, from], { cwd });
 }
 
-/** Create a git worktree at `path` checked out to `branch`. */
-export function createWorktree(path: string, branch: string, cwd?: string): void {
-  git(['worktree', 'add', path, branch], { cwd });
+/** Create a git worktree at `worktreePath` checked out to `branch`. */
+export function createWorktree(worktreePath: string, branch: string, cwd?: string): void {
+  git(['worktree', 'add', worktreePath, branch], { cwd });
 }
 
 /** Falls back to `rmSync` + prune when `git worktree remove` fails (common on Windows). */
-export function removeWorktree(path: string, cwd?: string): void {
+export function removeWorktree(worktreePath: string, cwd?: string): void {
   try {
-    git(['worktree', 'remove', '--force', path], { cwd });
+    git(['worktree', 'remove', '--force', worktreePath], { cwd });
   } catch {
-    rmSync(path, { recursive: true, force: true });
+    rmSync(worktreePath, { recursive: true, force: true });
     git(['worktree', 'prune'], { cwd });
   }
 }

@@ -107,7 +107,7 @@ export interface GoOpts {
 export async function runGo(opts: GoOpts): Promise<void> {
   const repoRoot = getRepoRoot();
   const configPath = resolveConfigPath(repoRoot);
-  const pollInterval = parseInt(DEFAULT_POLL_INTERVAL, 10);
+  const pollInterval = DEFAULT_POLL_INTERVAL;
   const config = loadConfig(configPath);
 
   if (opts.dryRun) {
