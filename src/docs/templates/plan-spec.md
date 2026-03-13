@@ -13,41 +13,31 @@ created: YYYY-MM-DD
 
 ## Overview
 
-What this feature does and why it exists. Include enough context for an agent to
-understand the motivation without external references.
+What this feature does and why it exists. Enough context for an agent to understand
+the motivation and execute without external references.
 
-## Goals
+## Intent
 
-- Goal 1
-- Goal 2
+What to build. Make every statement testable — add concrete examples and constraints.
+Capture the chosen approach and its rationale. Leave implementation sequence to the
+agent; specify the end state, not the steps to get there.
 
-## Non-Goals
+## Constraints
 
-- What this feature explicitly does NOT cover
-
-## Design
-
-### Target Experience
-
-What the user (or consuming system) sees: commands, output, UI flow, error messages,
-the core interaction loop. Lead with behavior, not internals.
-
-### Data Shapes
-
-Core types, schemas, and data models. Show the actual structure — TypeScript
-interfaces, YAML examples, or database schemas — not prose descriptions of them.
-
-### System Boundaries
-
-Where data enters and leaves the system (CLI args, API endpoints, config files,
-external services). Validation and error handling live here; internal code trusts
-its inputs.
+What can't change. What assumptions must hold. Scope boundaries — what's in,
+what's explicitly deferred, and explicit non-goals.
 
 ## Verification
 
-How to prove this works. Not "it compiles" — describe how to exercise the real
-feature path end-to-end and confirm the intended behavior.
+How to prove this works. Define success criteria before implementation.
 
-## Open Questions
+```yaml
+must_haves:
+  truths:
+    - "Behavioral assertion the implementation must satisfy"
+  artifacts:
+    - "src/path/file.ts with specific property"
+  key_links:
+    - "Issue #N closed with validation evidence"
+```
 
-- Unresolved decisions or unknowns that need answers before implementation

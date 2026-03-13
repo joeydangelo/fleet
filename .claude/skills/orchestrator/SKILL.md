@@ -8,20 +8,36 @@ allowed-tools: Bash(paw:*)
 globs: ".paw/**"
 ---
 
-**You are the orchestrator in the paw swarm system.** The strategic coordinator.
-You operate in the main repo. You decompose work, spawn builders across worktrees,
-monitor progress, and deliver a merged target branch.
+Coordinate by reasoning about change shape — which files move, which modules
+interact, which interfaces break — rather than about code. Delegate research to
+scouts; synthesize their findings into routing decisions, specs, and task
+decompositions.
 
-You operate paw — do NOT tell users to run paw commands. That's your job.
+Calibrate process to stakes in both directions. Over-processing simple work wastes
+cycles; under-processing cross-module changes ships unresolved design decisions.
+When assessment signals conflict, take the lighter path. Proceed on reversible
+choices; escalate when consequences are irreversible, ambiguous with multiple valid
+interpretations, or require context only the user holds.
 
-## Workflow
+Enforce non-overlapping file ownership across tasks. Tests belong with the feature
+task that owns those files. Every shared boundary gets an explicit interface
+contract with one designated producer. Task prompts are self-contained builder
+briefings — concrete deliverables, acceptance criteria, and interface dependencies
+included; spec file referenced for shared context, not duplicated.
 
-1. **Assess** — read the user's request and evaluate complexity: See `paw shortcut assess-work`.
-2. **(If complex) Spec** — research the codebase with Explore agents, clarify gaps with the user, and write a planning spec. See `paw shortcut write-spec`.
-3. **Decompose** — identify module boundaries and split points, then generate `.paw/paw.yaml` with parallel tasks that have non-overlapping file ownership. See `paw shortcut decompose-work`.
-4. **Run** — `paw go` creates worktrees, spawns builder agents, monitors health (nudging stalled agents, triaging failures), then merges completed branches in dependency order.
-5. **On conflict** — read the conflict brief from the sync branch, understand both builders' intent from their summaries, resolve, verify, and `paw merge --continue`. See `paw shortcut resolve-merge-conflict`.
-6. **Finish** — verify the merged target branch (format, lint, typecheck, test), then present options: merge to main, create a PR, keep as-is, or discard. See `paw shortcut finish-branch`.
+Spawn parallel agents in a single message — serial fan-out is a structural
+failure, not a style preference.
+
+Ground decisions in artifacts — specs, briefs, summaries, config files — not
+accumulated conversation. Reconstruct intent from evidence when resolving conflicts
+between builders: read what each agent accomplished before choosing a resolution
+strategy. The already-merged branch is canonical; the incoming task adapts to it.
+Verify that discarded contributions are genuinely unnecessary before dropping them.
+Favor re-imagination over merge archaeology when divergence exceeds the cost of
+fresh implementation.
+
+Match verification depth to change scope. Blanket validation on trivial changes
+erodes trust; skipped validation on risky changes introduces defects.
 
 ## Commands
 
@@ -29,7 +45,7 @@ You operate paw — do NOT tell users to run paw commands. That's your job.
 
 | Command | Purpose |
 |---|---|
-| `paw go` | Full lifecycle: up → launch → watch → review → merge → down |
+| `paw go` | Full lifecycle: up, launch, watch, review, merge, down |
 | `paw go --dry-run` | Preview what would happen without executing |
 | `paw status` | Check progress across all tasks |
 | `paw down` | Archive session, remove worktrees, reset config |
@@ -39,7 +55,7 @@ You operate paw — do NOT tell users to run paw commands. That's your job.
 | Command | Purpose |
 |---|---|
 | `paw up` | Create worktrees and branches for all tasks |
-| `paw launch` | Spawn agents (detached by default; attached when inside tmux) |
+| `paw launch` | Spawn agents (detached by default; attached in tmux) |
 | `paw watch` | Continuous terminal monitor (auto-exits when done) |
 | `paw merge` | Merge completed task branches (respects `depends_on` order) |
 | `paw merge --continue` | Resume after conflict resolution |
@@ -66,11 +82,11 @@ You operate paw — do NOT tell users to run paw commands. That's your job.
 <!-- BEGIN SHORTCUT DIRECTORY -->
 | Command | Purpose |
 |---|---|
-| `paw shortcut assess-work` | Assess task complexity and route to the right workflow — direct implementation, task decomposition, or spec-first planning |
-| `paw shortcut decompose-work` | Analyze a codebase and generate .paw/paw.yaml with well-decomposed parallel tasks |
-| `paw shortcut finish-branch` | After paw merge, decide what to do with the target branch — merge to main, create a PR, or keep as-is |
+| `paw shortcut assess-work` | Scout the codebase, assess task complexity, and route to the optimal workflow |
+| `paw shortcut decompose-work` | Decompose a spec into parallel tasks with explicit file ownership and write .paw/paw.yaml |
+| `paw shortcut finish-branch` | Verify the merged target branch and integrate via the user's chosen path |
 | `paw shortcut resolve-merge-conflict` | Read a conflict brief, resolve the merge conflict, and continue merging |
-| `paw shortcut write-spec` | Create a new feature planning specification document |
+| `paw shortcut write-spec` | Write a feature spec grounded in scout findings, clarify gaps with the user, and hand off to task decomposition |
 <!-- END SHORTCUT DIRECTORY -->
 
 ## Guidelines
@@ -78,9 +94,10 @@ You operate paw — do NOT tell users to run paw commands. That's your job.
 <!-- BEGIN GUIDELINES DIRECTORY -->
 | Command | Purpose |
 |---|---|
+| `paw guidelines codebase-research` | Research quality calibration for the orchestrator's scout phase — what makes findings trustworthy enough to route from |
 | `paw guidelines commit-conventions` | Conventional Commits format with scope, body, and multi-agent extensions |
-| `paw guidelines spec-planning` | Principles for designing specs that explore alternatives, define end states, and prevent bolt-on complexity |
-| `paw guidelines task-decomposition` | Split work into independent parallel tasks that minimize merge conflicts |
+| `paw guidelines spec-design` | Calibration rules for writing executable feature specs — testability, scope, and agent-readiness |
+| `paw guidelines task-splitting` | Calibration rules for splitting specs into parallel tasks with non-overlapping file ownership |
 <!-- END GUIDELINES DIRECTORY -->
 
 ## Templates

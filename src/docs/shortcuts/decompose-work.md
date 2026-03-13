@@ -1,85 +1,99 @@
 ---
 name: decompose-work
-description: Analyze a codebase and generate .paw/paw.yaml with well-decomposed parallel tasks
+description: Decompose a spec into parallel tasks with explicit file ownership and write .paw/paw.yaml
 roles: [orchestrator]
 ---
-Generate `.paw/paw.yaml` to split the user's feature request into parallel agent tasks.
 
-## Instructions
+## Variables
 
-1. **Understand the work and find the seams.** Use whatever context is available —
-   spec, user request, linked issues, codebase. Launch 2-3 Explore agents in
-   parallel at `medium` thoroughness:
-   - **Structure and seams** — module boundaries, directory layout, natural split
-     points where work can be parallelized without overlap.
-   - **Affected code** — files the work touches, dependencies, and shared
-     interfaces between them.
-   - **Patterns** — how similar work is structured, test conventions, existing
-     abstractions to build on.
+| Variable | Source | Default |
+|---|---|---|
+| `REQUEST` | User message (required) | — |
+| `SPEC_PATH` | Upstream write-spec artifact (implicit) | — |
 
-   Bias toward action — don't ask permission to explore or make straightforward
-   decisions. Use `AskUserQuestion` for genuine ambiguity: scope surprises,
-   conflicting requirements, or missing context only the user has.
+## Failure Modes
 
-2. **Decompose into tasks.** Load `paw guidelines task-decomposition` for
-   the full decomposition framework — file ownership, sizing, interface contracts,
-   independence tests, and patterns. Each task needs a clear focus area and
-   actionable instructions.
+| Mode | Trigger |
+|---|---|
+| `OVERLAPPING_OWNERSHIP` | Two tasks list the same file or directory in `focus` |
+| `IMPLICIT_INTERFACE` | Tasks share data across a boundary with no contract in either prompt |
+| `SERIAL_FANOUT` | Spawned parallel Explore agents in separate messages instead of one |
+| `VAGUE_PROMPT` | Task prompt lacks concrete deliverable, acceptance criteria, or interface dependencies |
+| `HIDDEN_SEQUENCING` | Task cannot start immediately but has no `depends_on` |
+| `CONTEXT_STUFFING` | Task prompt embeds research findings instead of pointing to the spec file |
+| `SPLIT_TESTS` | Tests decomposed as a separate task instead of colocated with the feature task that owns those files |
 
-3. **Write `.paw/paw.yaml`:**
+## Workflow
 
-   ```yaml
-   target: feature/branch-name
-   # base: main                  # branch to create target from (default: main)
-   agent: claude
-   # spec: .paw/specs/spec-YYYY-MM-DD-feature-name.md  # path to planning spec
-   # setup: pnpm install         # shell command run per worktree during paw up
+### Phase 1: Analyze
 
-   # include:                     # gitignored files to copy into each worktree
-   #   - .env
-   #   - .env.local
+**Objective:** Identify file boundaries, shared interfaces, and split points from the 
+spec and codebase.
+**Tools:** Read, Glob, Grep, Agent (Explore)
 
-   tasks:
-     task-name:
-       focus:
-         - src/relevant/directory/
-       depends_on: other-task      # optional: merge after this task
-       issue: GH#123              # optional: source issue ID
-       prompt: |
-         What to build. Be specific.
-         Mention interfaces shared with other tasks.
-   ```
+1. Read the spec at `SPEC_PATH`. Extract intended changes, constraints, and
+   verification criteria.
+2. Run targeted exploration for module boundaries, file ownership candidates, and
+   shared interfaces. For 1-2 files: read directly. For 3+ files: spawn parallel
+   Explore agents in a single message, each targeting one research question. Do not
+   re-explore areas the spec already covers.
+3. Map each area of change to a file scope owner. Identify interface contracts —
+   one task owns the definition, the other consumes it.
 
-   Use `paw template paw-yaml` for the full config reference.
+**Gate:** Every changed file assigns to exactly one task. Shared interfaces have an
+identified producer and consumer.
+**Artifact:** File ownership map and interface contracts.
 
-   Top-level fields:
-   - `target`: the branch all task branches merge into
-   - `base`: set when forking from a branch other than main
-   - `agent`: which agent CLI to use (e.g. `claude`)
-   - `setup`: run in each worktree during paw up (e.g. `pnpm install`, `uv sync`)
-   - `spec`: path to the planning spec (shared across all tasks)
-   - `include`: gitignored files agents need (`.env`, credentials, local configs)
+---
 
-   Per-task fields:
-   - `focus`: files/directories this task owns — used for merge conflict detection
-   - `prompt`: what to build — be specific, mention shared interfaces
-   - `depends_on`: merge this task after its dependency (controls merge order)
-   - `issue`: source issue ID when available
+### Phase 2: Write
 
-4. **Validate.** Check against the decomposition guideline's independence test,
-   then confirm:
-    - [ ] `agent:` field is set
-    - [ ] Each task can start immediately (no hidden sequencing)
-    - [ ] Consumer tasks set `depends_on` to merge after their producers
+**Objective:** Produce `.paw/paw.yaml` where every task passes the decomposition
+quality checklist.
+**Tools:** Read, Write, Bash (mkdir only)
 
-## After writing
+1. Load `paw guidelines task-splitting` and `paw template paw-yaml`.
+2. Write `.paw/paw.yaml`. For each task:
+   - `focus`: explicit file scope — no overlap between tasks.
+   - `prompt`: self-contained builder briefing. Include the concrete deliverable,
+     interface dependencies (what this task provides to or consumes from other tasks),
+     and acceptance criteria. Point to the spec file for shared context — do not embed
+     research findings. Use declarative framing for goals, imperative for steps.
+     State constraints positively.
+   - `depends_on`: set on consumers so they merge after producers.
+3. Validate every task against the decomposition quality checklist:
+   - [ ] Independently implementable (can start immediately, no hidden dependencies)
+   - [ ] Acceptance criteria are machine-verifiable
+   - [ ] File scope is explicit (every file has one owner)
+   - [ ] Interface contracts are defined (how tasks interact)
+   - [ ] Expected output format is specified
 
-The human sees the yaml diff in the standard permission prompt and approves it
-there — no separate review step needed.
+**Gate:** Every task passes all five checklist items.
+**Artifact:** `.paw/paw.yaml` with decomposed tasks.
 
-Once approved, follow up:
-> "I've written the plan to `.paw/paw.yaml`. Would you like me to run `paw go`
-> to start the session?"
+## Context Flow
 
-If the user says yes, run `paw go`. If they want changes, revise the yaml first.
-If they say no, ask what they'd like instead.
+- Upstream (write-spec) → Phase 1: spec file at `SPEC_PATH` with intent,
+  constraints, and verification criteria
+- Phase 1 → Phase 2: file ownership map, interface contracts, split points
+
+## Stopping Conditions
+
+Stop and report when ANY of these are true:
+
+- `.paw/paw.yaml` written and `paw go` invoked.
+- Request is ambiguous with multiple valid interpretations — ask before decomposing.
+- Spec is missing or insufficient for decomposition — ask user to complete it.
+- File ownership cannot be made non-overlapping — explain the conflict and ask for
+  direction.
+
+## Output Format
+
+Present the task breakdown: task names, file ownership, interface contracts, and
+dependency order. Run `paw go`.
+
+Forbidden in output:
+
+- Preambles ("I have...", "Let me...", "Based on...", "Here is...")
+- Meta-commentary about decomposition methodology
+- Reasoning traces that belong in tool calls, not artifacts

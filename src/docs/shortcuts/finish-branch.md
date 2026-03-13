@@ -1,124 +1,117 @@
 ---
 name: finish-branch
-description: After paw merge, decide what to do with the target branch — merge to main, create a PR, or keep as-is
+description: Verify the merged target branch and integrate via the user's chosen path
 roles: [orchestrator]
 ---
-All agent work is merged into the target branch. Verify the result, then
-decide how to integrate it.
 
-## Step 1: Verify the merged result
+## Variables
 
-**Format, lint, typecheck, and test.** Run in this order. Check
-`package.json`, `Makefile`, `pyproject.toml`, or similar for the project's
-specific commands. Fix any failures before proceeding.
+| Variable | Source | Default |
+|---|---|---|
+| `TARGET_BRANCH` | `paw merge` output (required) | — |
+| `BASE_BRANCH` | git default branch | `main` |
+| `MAX_FIX_ATTEMPTS` | static | `3` |
 
-## Step 2: Determine the base branch
+## Failure Modes
 
-The base branch is usually `main`. Confirm:
+| Mode | Trigger |
+|---|---|
+| `TRUST_WITHOUT_VERIFY` | Presented integration options before validation passed |
+| `BLANKET_VALIDATION` | Ran full test suite for docs-only changes, or skipped tests for logic changes |
+| `VAGUE_APPROVAL` | Presented options without change summary and validation results |
+| `SKIP_CI` | Created PR without waiting for CI to complete |
+| `PREMATURE_DISCARD` | Deleted branch without explicit user confirmation |
 
-```bash
-git merge-base HEAD main 2>/dev/null
-```
+## Workflow
 
-If the project uses a different default branch, ask the user.
+### Phase 1: Verify
 
-## Step 3: Present options
+**Objective:** Validate the merged target branch at a level matched to the change scope.
+**Tools:** Bash, Read
 
-Present exactly these options:
+1. Determine the validation level from the changes on `TARGET_BRANCH`:
+   - **Level 1** (docs, config, formatting): lint + typecheck.
+   - **Level 2** (core logic, bug fixes, new endpoints — **default**): lint + typecheck + tests.
+   - **Level 3** (migrations, auth, release prep): lint + typecheck + full test suite
+     + build.
+2. Check `package.json`, `Makefile`, `pyproject.toml`, or similar for project commands.
+   Run validation at the selected level. Fix failures (max `MAX_FIX_ATTEMPTS` per
+   error). Pre-existing failures (not caused by this branch): document and proceed.
+3. If a spec exists with `must_haves`, verify goal-backward: `truths` (behavioral
+   assertions hold), `artifacts` (expected files exist), `key_links` (issue references
+   present in commits or PR body).
 
-```
-Target branch is ready. What would you like to do?
+**Gate:** Validation passes at the selected level. All `must_haves` satisfied.
+**Artifact:** Validation results and must_haves status.
 
-1. Merge back to <base-branch> locally
-2. Push and create a Pull Request
-3. Keep the branch as-is (I'll handle it later)
-4. Discard this work
-```
+---
 
-Do not add explanation — keep options concise. Wait for the user to choose.
+### Phase 2: Integrate
 
-## Step 4: Execute the choice
+**Objective:** Present the verified branch with context and execute the user's chosen
+integration path.
+**Tools:** Bash, AskUserQuestion
 
-### Option 1: Merge locally
+1. Determine `BASE_BRANCH`:
+   `git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|.*/||'`.
+   If ambiguous, use `AskUserQuestion`.
+2. Present the post-action review gate with context:
+   ```
+   Target branch `<TARGET_BRANCH>` verified (Level N).
+   <change summary — files changed, tests passed, key deliverables>.
 
-```bash
-git checkout <base-branch>
-git pull
-git merge <target-branch>
-# If not a fast-forward, run format, lint, typecheck, and test again.
-# Fix any failures before continuing.
-git branch -d <target-branch>
-```
+   1. Merge to <BASE_BRANCH> locally
+   2. Push and create a Pull Request
+   3. Keep the branch as-is
+   4. Discard
+   ```
+   Wait for the user to choose.
+3. Execute the chosen path:
 
-### Option 2: Push and create a PR
+   **Option 1 — Merge locally:**
+   Checkout `BASE_BRANCH`, pull, merge `TARGET_BRANCH`. If not fast-forward, re-run
+   validation at the same level. Delete `TARGET_BRANCH` after successful merge.
 
-```bash
-git push -u origin <target-branch>
-```
+   **Option 2 — Create PR:**
+   Push `TARGET_BRANCH`. Scan `paw.yaml` `issue` fields for GitHub issue numbers.
+   Create PR with structured body: summary, changes, validation evidence (level,
+   commands run, results), `Closes #N` links. Wait for CI:
+   `gh pr checks <TARGET_BRANCH> --watch 2>&1`. If CI fails, fix, push, wait again.
+   Report PR URL and CI status.
 
-Scan the paw.yaml `issue` fields for GitHub issue numbers (e.g., `#123`).
-Use `Closes #N` or `Fixes #N` in the PR body footer so GitHub auto-closes
-them when the PR merges.
+   **Option 3 — Keep as-is:**
+   Report branch name. No further action.
 
-```bash
-gh pr create \
-  --base <base-branch> \
-  --head <target-branch> \
-  --title "<type>: <description>" \
-  --body "$(cat <<'EOF'
-## Summary
+   **Option 4 — Discard:**
+   Confirm: "This permanently deletes branch `<TARGET_BRANCH>` and all commits on it.
+   Type 'discard' to confirm." Wait for exact match. Checkout `BASE_BRANCH`, then
+   `git branch -D <TARGET_BRANCH>`.
 
-Brief description of what this branch delivers.
+**Gate:** Chosen path executed. For Option 2: PR created and CI passing.
+**Artifact:** Integration outcome: merge commit, PR URL, branch name, or deletion.
 
-## What changed
+## Context Flow
 
-- Change 1
-- Change 2
+- Upstream (paw merge / resolve-merge-conflict) → Phase 1: merged target branch
+- Phase 1 → Phase 2: validation level, results, must_haves status, change summary
 
-## Test plan
+## Stopping Conditions
 
-- [ ] All N tests pass (M new + K existing)
-- [ ] Full suite: N pass, N fail (note pre-existing failures if any)
-- [ ] Lint clean
-- [ ] Typecheck clean
+Stop and report when ANY of these are true:
 
-Closes #123, Fixes #456
-EOF
-)"
-```
+- Chosen integration path executed successfully.
+- Validation failures persist after `MAX_FIX_ATTEMPTS` — report failures.
+- CI fails repeatedly after fixes — report CI status and PR URL.
+- Integration path requires information only the user can provide — use
+  `AskUserQuestion`.
 
-Add additional sections to the PR body when the changes warrant it.
+## Output Format
 
-Wait for CI:
+Report: validation level, results, integration path executed, outcome (PR URL, merge
+status, or branch name).
 
-```bash
-gh pr checks <target-branch> --watch 2>&1
-```
+Forbidden in output:
 
-If checks fail, fix, push, and wait again. Report the PR URL and CI status
-to the user.
-
-### Option 3: Keep as-is
-
-Report: "Keeping branch `<target-branch>` as-is."
-
-No further action needed.
-
-### Option 4: Discard
-
-Confirm before proceeding:
-
-```
-This will permanently delete:
-- Branch <target-branch>
-- All commits on it
-
-Type 'discard' to confirm.
-```
-
-Wait for the user to type `discard` exactly. Then:
-
-```bash
-git checkout <base-branch>
-git branch -D <target-branch>
-```
+- Preambles ("I have...", "Let me...", "Based on...", "Here is...")
+- Meta-commentary about verification methodology
+- Reasoning traces that belong in tool calls, not artifacts

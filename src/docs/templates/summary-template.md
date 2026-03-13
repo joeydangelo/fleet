@@ -3,16 +3,6 @@ name: summary-template
 description: Task summary template for paw worktree agents
 roles: [builder]
 ---
-Use this template when writing your task summary in the Publish phase.
-Pipe the filled-in structure to `paw summary`:
-
-```bash
-paw summary <<'EOF'
-(paste filled-in template here)
-EOF
-```
-
-Fill in any issue references from your task's `issue:` field and specs from `spec:`.
 
 ```markdown
 ---
@@ -22,24 +12,26 @@ task: {your task name}
 
 ## Summary
 
-<!-- What changed and why. Reference issues from your task's issue: field. -->
+<!-- 1-3 sentences: What does this PR add or change? -->
+
+**Spec**: <!-- .paw/specs/{spec-file}.md — if present -->
 
 ## Changes
 
 <!-- Bullet list of what was built or modified. -->
 
--
+## Validation
 
-## Testing
+<!-- Include actual command output, not promises.
+     - Docs/config: lint + typecheck
+     - Features/bug fixes: lint + typecheck + integration tests
+     - Migrations/auth/releases: lint + typecheck + all tests + build -->
 
-<!-- How changes were verified. Test commands run, scenarios covered. -->
+- ✅/❌ `lint` - {status/output snippet}
+- ✅/❌ `typecheck` - {status/output snippet}
+- ✅/❌ `integration tests` - {X tests passed}
+- ✅/❌ `full test suite` - {X tests passed}
+- ✅/❌ `build` - {build output}
 
--
-
-## References
-
-<!-- Link to specs from your task's spec: field, design docs,
-     or related PRs if applicable. Remove section if none. -->
-
--
+Closes #{issue_number}
 ```

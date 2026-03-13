@@ -11,16 +11,14 @@
 # Configure with settings.doc_auto_sync_hours (0 = disabled).
 docs_cache:
   files:
-    guidelines/code-comments.md: internal:guidelines/code-comments.md
-    guidelines/code-quality.md: internal:guidelines/code-quality.md
+    guidelines/code-quality-review.md: internal:guidelines/code-quality-review.md
+    guidelines/codebase-research.md: internal:guidelines/codebase-research.md
     guidelines/commit-conventions.md: internal:guidelines/commit-conventions.md
-    guidelines/error-handling.md: internal:guidelines/error-handling.md
-    guidelines/security-patterns.md: internal:guidelines/security-patterns.md
-    guidelines/spec-planning.md: internal:guidelines/spec-planning.md
-    guidelines/task-decomposition.md: internal:guidelines/task-decomposition.md
-    guidelines/test-driven-development.md: internal:guidelines/test-driven-development.md
-    guidelines/test-quality.md: internal:guidelines/test-quality.md
-    guidelines/testing-anti-patterns.md: internal:guidelines/testing-anti-patterns.md
+    guidelines/performance-review.md: internal:guidelines/performance-review.md
+    guidelines/security-review.md: internal:guidelines/security-review.md
+    guidelines/spec-design.md: internal:guidelines/spec-design.md
+    guidelines/task-splitting.md: internal:guidelines/task-splitting.md
+    guidelines/testing.md: internal:guidelines/testing.md
     shortcuts/assess-work.md: internal:shortcuts/assess-work.md
     shortcuts/build-task.md: internal:shortcuts/build-task.md
     shortcuts/decompose-work.md: internal:shortcuts/decompose-work.md

@@ -1,108 +1,123 @@
 ---
 name: write-spec
-description: Create a new feature planning specification document
+description: Write a feature spec grounded in scout findings, clarify gaps with the user, and hand off to task decomposition
 roles: [orchestrator]
 ---
-Create a feature spec that defines the end state before any code is written.
 
-Load the spec planning guideline first:
+## Variables
 
-```
-paw guidelines spec-planning
-```
+| Variable | Source | Default |
+|---|---|---|
+| `REQUEST` | User message (required) | — |
+| `SCOUT_CONTEXT` | Upstream assess-work findings (implicit) | — |
+| `SPEC_PATH` | derived | `.paw/specs/spec-YYYY-MM-DD-feature-name.md` |
 
-Follow its principles throughout this workflow.
+## Failure Modes
 
-## Step 1: Understand the request
+| Mode | Trigger |
+|---|---|
+| `REDUNDANT_RESEARCH` | Re-explored codebase areas already covered by upstream research |
+| `VAGUE_SPEC` | Spec contains untestable statements with no concrete examples or type definitions |
+| `OVER_SPECIFICATION` | Spec prescribes implementation steps instead of intent, constraints, and end state |
+| `SILENT_DECISION` | Made a high-stakes or irreversible decision without presenting options via `AskUserQuestion` |
+| `UNGROUNDED_PATHS` | Spec references hypothetical file paths not confirmed by exploration |
 
-1. **Read the user's request.** Identify the feature name, goals, and constraints.
+## Workflow
 
-2. **Ask clarifications** — only what you can't infer from the request and
-   codebase. Use `AskUserQuestion` for genuine ambiguity, not low-stakes details.
+### Phase 1: Clarify
 
-## Step 2: Research the codebase
+**Objective:** Resolve ambiguities the user must decide before spec writing begins.
+**Tools:** Read, Glob, Grep, Agent (Explore), AskUserQuestion
 
-Explore autonomously. Don't ask permission to read files or investigate.
+1. Identify what blocks spec writing: unresolved approach choices, unclear scope
+   boundaries, missing context only the user has.
+2. Run targeted exploration for any codebase knowledge gaps. Do not re-explore
+   areas already covered by upstream research.
+3. Use `AskUserQuestion` for each genuine ambiguity, presenting a recommendation
+   with reasoning. Ask when: request is ambiguous with multiple valid
+   interpretations, change has significant consequences, or critical context is
+   missing. Proceed when: choice is stylistic, assumption is verifiable, action
+   is reversible.
+4. Skip this phase if the request and available context are unambiguous.
 
-Launch 3-4 Explore agents in parallel to cover independent areas of the codebase
-simultaneously. Each agent should target a specific research question:
+**Gate:** High-stakes and irreversible decisions resolved. Can define system
+boundaries and verification criteria from known findings.
+**Artifact:** Resolved decisions and research findings in context.
 
-- **Structure and patterns.** Module boundaries, directory layout, existing
-  conventions, and where new code would naturally live.
-- **Related code.** Similar features, shared types, utilities, and interfaces
-  the new feature should follow or extend.
-- **Dependencies and boundaries.** What the feature would import, what other
-  modules depend on, and where data enters and leaves the system.
+---
 
-Use `medium` thoroughness for most research. Use `very thorough` when the feature
-touches unfamiliar or sprawling parts of the codebase.
+### Phase 2: Write
 
-After the Explore agents report back, synthesize their findings and form an opinion.
-If multiple viable approaches exist, compare their tradeoffs against codebase
-patterns and the feature's goals.
+**Objective:** Produce a spec file that downstream agents can execute from without
+clarification.
+**Tools:** Read, Write, Bash (mkdir only)
 
-## Step 3: Clarify gaps from research
+1. Load `paw guidelines spec-design` and `paw template plan-spec`.
+2. Write the spec to `SPEC_PATH`. Fill each section grounded in research findings
+   and Phase 1 decisions:
+   - Make every statement testable. Add concrete examples and constraints.
+   - **Verification criteria.** What commands to run, what output to expect, what
+     state to confirm. Include behavioral truths the implementation must satisfy.
+   - Reference concrete file paths from exploration, not hypothetical ones.
+   - Capture intent and constraints, not line-by-line implementation. Leave room
+     for agent judgment on implementation sequence.
 
-Research typically reveals things the original request didn't cover —
-underspecified behavior, edge cases, scope boundaries, design choices, or
-conflicts with existing patterns. Resolve these before writing the spec.
+**Gate:** Spec contains testable statements and verification criteria.
+**Artifact:** Spec file at `SPEC_PATH`.
 
-Use `AskUserQuestion` to present the user with specific, research-informed
-questions. For each question, include your recommendation with reasoning. The
-user may agree, redirect, or defer to your judgment — but the agent should
-always have an opinion ready.
+---
 
-Common gaps to check:
-- **Approach.** If multiple viable approaches exist, present a brief tradeoff
-  comparison and your recommendation.
-- **Scope boundaries.** What's in vs. what's deferred — especially when research
-  shows the work is larger than the request implied.
-- **Edge cases.** Specific inputs or states where the intended behavior isn't
-  obvious from the request.
-- **Design preferences.** Where the codebase has multiple established patterns
-  and the choice isn't clear-cut.
+### Phase 3: Review
 
-Skip this step if research confirmed the request is straightforward and
-unambiguous. Don't manufacture questions for the sake of asking.
+**Objective:** Human approves the spec as the approval artifact before implementation.
+**Tools:** AskUserQuestion
 
-## Step 4: Write the spec
+1. Present the spec to the user. Walk through key design decisions, scope boundaries
+   (what's in vs. out), and any remaining uncertainties.
+2. Self-check before presenting: Are completion criteria testable? Are ambiguities
+   resolved? Are dependencies documented? Can a downstream agent execute from this
+   artifact?
+3. Iterate on feedback until the user approves.
 
-1. **Create the spec file:**
+**Gate:** User confirms spec is testable, complete, and executable.
+**Artifact:** Approved spec at `SPEC_PATH`.
 
-   ```bash
-   mkdir -p .paw/specs
-   ```
+---
 
-   Use `paw template plan-spec` for the structure. Write the spec to:
+### Phase 4: Decompose
 
-   ```
-   .paw/specs/spec-YYYY-MM-DD-feature-name.md
-   ```
+**Objective:** Transition to parallel task decomposition.
 
-2. **Fill in the template** based on your research:
+1. Run `paw shortcut decompose-work`.
+2. The spec at `SPEC_PATH` becomes the primary input for decomposition.
 
-   - Reference concrete file paths from your research, not hypothetical ones.
-   - Show data shapes as actual types or schemas, not prose descriptions.
-   - Match expression format to content: prose for intent, pseudocode for
-     branching logic, diagrams for state machines, tables for edge cases.
-   - No time estimates. Work ships in one session.
+**Gate:** `decompose-work` invoked with `SPEC_PATH`.
+**Artifact:** Task breakdown produced by `decompose-work`.
 
-## Step 5: Review with the user
+## Context Flow
 
-Present the spec for feedback. Iterate until approved:
+- Upstream (assess-work) → Phase 1: file scope, module count, shared interfaces,
+  constraints, domain risk areas
+- Phase 1 → Phase 2: resolved decisions, additional research findings
+- Phase 2 → Phase 3: spec file at `SPEC_PATH`
+- Phase 3 → Phase 4: approved spec
 
-- Walk through key design decisions
-- Highlight anything you're uncertain about
-- Call out scope boundaries (what's in vs. what's out)
+## Stopping Conditions
 
-## Step 6: Transition to task decomposition
+Stop and report when ANY of these are true:
 
-After the spec is approved, decompose into parallel tasks:
+- Spec approved by user and decompose-work invoked.
+- Request is ambiguous with multiple valid interpretations — ask before writing.
+- Scope exceeds the original request — confirm with user before proceeding.
+- Information required that only the user can provide.
 
-1. Run `paw shortcut decompose-work`
-2. The shortcut uses your spec as its primary input
-3. Set the top-level `spec:` field in paw.yaml:
+## Output Format
 
-   ```yaml
-   spec: .paw/specs/spec-YYYY-MM-DD-feature-name.md
-   ```
+Phase 3 presents the spec with a brief walkthrough of design decisions and scope
+boundaries. No separate summary artifact — the spec file is the output.
+
+Forbidden in output:
+
+- Preambles ("I have...", "Let me...", "Based on...", "Here is...")
+- Meta-commentary about spec methodology
+- Reasoning traces that belong in tool calls, not the spec artifact

@@ -3,54 +3,59 @@ name: commit-conventions
 description: Conventional Commits format with scope, body, and multi-agent extensions
 roles: [orchestrator, builder]
 ---
-# Commit Conventions
 
-[Conventional Commits](https://www.conventionalcommits.org/) with extensions for
-multi-agent development.
+Commit messages serve three audiences: humans scanning `git log`, agents mining history
+for pattern learning, and automation parsing structured prefixes for routing. Conventional
+Commits syntax balances brevity for humans with structure for machines.
 
 ## Format
 
-```
-<type>[optional scope][!]: <description>
+- Structure: `<type>(<scope>): <description>` — scope is optional, use only when it
+  disambiguates (e.g., `fix(parser):` when multiple modules could apply).
+- First line: imperative mood, 72 characters or fewer.
+- Body: optional. Explain *why*, not *what* — the diff shows what changed.
+- Breaking changes: add `!` before `:` and include `BREAKING CHANGE:` in the footer.
+- Commit messages contain decisions, not reasoning. Omit agent thought process,
+  meta-commentary, and conversational filler.
 
-[optional body]
+## Type Selection
 
-[optional footer(s)]
-```
+| Type | Artifact Category |
+|---|---|
+| `feat` | New capability or behavior |
+| `fix` | Bug correction |
+| `refactor` | Code restructuring (no behavior change) |
+| `perf` | Performance improvement |
+| `test` | Test additions or updates |
+| `docs` | Documentation (README, API docs, help text) |
+| `style` | Formatting (no logic change) |
+| `build` | Build system or external dependencies |
+| `ci` | CI/CD configuration |
+| `chore` | Maintenance (deps, config, upgrades) |
+| `resolve` | Merge conflict resolution (paw-specific) |
 
-- First line short, ideally 72 characters or less
-- Imperative mood ("Add feature" not "Added feature")
-- No scope by default; only use when disambiguation is needed (e.g., `fix(parser):`)
-- Breaking changes: add `!` before `:` AND include `BREAKING CHANGE:` in the footer
+- Select type by the *category of artifact changed*, not the motivation. A typo fix in
+  docs is `docs:`, not `fix:`. A test refactor is `refactor:`, not `test:`.
 
-## Types
+## Multi-Agent Metadata
 
-Software development:
-
-- `feat`: New feature
-- `fix`: Bug fix
-- `style`: Code formatting (no logic change)
-- `refactor`: Code restructuring (no behavior change)
-- `perf`: Performance improvement
-- `test`: Adding or updating tests
-- `build`: Build system or external dependencies
-- `ci`: CI/CD configuration and scripts
-- `chore`: Maintenance (deps, config, upgrades)
-- `docs`: User-facing documentation (README, API docs, help text)
-- `resolve`: Merge conflict resolution (from `paw merge` conflicts)
-
-The type reflects the *category of artifact* being changed. Fixing a typo in docs is
-`docs:`, not `fix:`.
+- Include the task or issue number in the description when available
+  (e.g., `feat: add retry logic for webhook delivery (#42)`).
+- Use `resolve:` for commits produced by `paw merge` conflict resolution. Scope to the
+  affected module when multiple modules conflict (e.g., `resolve(api):`).
 
 ## Examples
 
-```
-feat: Add OAuth2 login flow with Google and GitHub
-fix(api): Return 404 for missing user profiles
-docs: Update CLI usage examples
-refactor: Extract token refresh logic to separate module
-test: Add integration tests for merge conflict flow
-chore: Update dependencies
-plan: Design user notification preferences spec
-resolve(api): Reconcile auth types after parallel agent edits
-```
+Correct:
+- `feat: add OAuth2 login flow with Google and GitHub`
+- `fix(api): return 404 for missing user profiles`
+- `resolve(api): reconcile auth types after parallel agent edits`
+- `docs: update CLI usage examples`
+- `refactor: extract token refresh logic to separate module`
+- `chore: update dependencies`
+
+Incorrect:
+- `update files` — no type prefix; unmineable by pattern analysis
+- `Added OAuth2 login flow` — past tense, missing type
+- `fix: fix typo in README` — artifact is docs, use `docs:`
+- `Based on the analysis, this commit updates auth` — reasoning leakage, not a decision
