@@ -49,8 +49,7 @@ export function createCli(): Command {
     .option('--quiet', 'Suppress non-essential output')
     .hook('preAction', (thisCommand) => {
       const verbose = thisCommand.opts().verbose === true;
-      const quiet = thisCommand.opts().quiet === true;
-      setVerbosity(verbose, quiet);
+      setVerbosity(verbose);
       if (verbose) {
         process.env.SHOW_COMMANDS = '1';
       }

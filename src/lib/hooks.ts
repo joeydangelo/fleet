@@ -441,8 +441,10 @@ export function installHooks(repoRoot: string): void {
   if (existsSync(settingsPath)) {
     try {
       settings = JSON.parse(readFileSync(settingsPath, 'utf-8')) as Record<string, unknown>;
-    } catch {
-      // Corrupted settings -- overwrite
+    } catch (err) {
+      console.warn(
+        `[paw] Corrupted settings.json, overwriting with defaults: ${err instanceof Error ? err.message : String(err)}`,
+      );
     }
   }
 
