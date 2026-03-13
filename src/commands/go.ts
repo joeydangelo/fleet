@@ -21,17 +21,10 @@ import { readPaneConfig } from '../lib/pane-state.js';
 import { DEFAULT_POLL_INTERVAL } from '../lib/constants.js';
 import { isVerbose } from '../lib/context.js';
 import { handleError, colors, pending, skip } from '../lib/output.js';
+import { formatElapsed } from '../lib/util.js';
 import { runWatchLoop } from './watch.js';
 import { runUp } from './up.js';
 import { runLaunch, printLaunchPreview } from './launch.js';
-
-function formatElapsed(ms: number): string {
-  const seconds = ms / 1000;
-  if (seconds < 60) return `${seconds.toFixed(1)}s`;
-  const minutes = Math.floor(seconds / 60);
-  const remainingSeconds = seconds % 60;
-  return `${minutes}m ${remainingSeconds.toFixed(0)}s`;
-}
 
 /** Shell out to a paw subcommand. Returns the exit code. */
 export function runPawCommand(args: string[]): { exitCode: number } {
@@ -101,7 +94,7 @@ interface GoOpts {
 /** Execute the full paw lifecycle: up, launch, watch, merge, down. */
 export async function runGo(opts: GoOpts): Promise<void> {
   const { repoRoot, configPath, config } = loadRepoConfig();
-  const pollInterval = parseInt(DEFAULT_POLL_INTERVAL, 10);
+  const pollInterval = DEFAULT_POLL_INTERVAL;
 
   if (opts.dryRun) {
     printDryRun(repoRoot, config);

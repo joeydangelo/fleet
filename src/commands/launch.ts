@@ -16,7 +16,7 @@ import {
 } from '../lib/tmux.js';
 import { savePanes, saveDetachedAgents, readPaneConfig } from '../lib/pane-state.js';
 import { SIDEBAR_WIDTH } from '../lib/constants.js';
-import { success, skip, error, pending, handleError } from '../lib/output.js';
+import { success, skip, error, pending, handleError, formatTaskStatus } from '../lib/output.js';
 import { writeHeartbeat } from '../lib/health.js';
 import type { WorktreeInfo } from '../lib/session.js';
 import type { SyncState } from '../lib/sync.js';
@@ -40,7 +40,7 @@ export function printLaunchPreview(
   for (const wt of targets) {
     const taskState = syncState?.tasks[wt.taskName];
     if (taskState?.status === 'done' || taskState?.status === 'in_review') {
-      skip(wt.taskName, taskState.status === 'in_review' ? 'in review' : 'done');
+      skip(wt.taskName, formatTaskStatus(taskState.status));
     } else if (!existsSync(wt.worktreePath)) {
       error(wt.taskName, 'worktree not found -- run paw up first');
     } else {
@@ -74,7 +74,7 @@ export async function runLaunch(repoRoot: string, config: PawConfig): Promise<vo
     const taskState = syncState?.tasks[wt.taskName];
 
     if (taskState?.status === 'done' || taskState?.status === 'in_review') {
-      skip(wt.taskName, taskState.status === 'in_review' ? 'in review' : 'done');
+      skip(wt.taskName, formatTaskStatus(taskState.status));
       continue;
     }
 

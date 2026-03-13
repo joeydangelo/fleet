@@ -5,11 +5,12 @@ import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import pc from 'picocolors';
 import { getRepoRoot } from '../lib/git.js';
-import { listDocs, readDoc } from '../lib/docs.js';
+import { listDocs } from '../lib/docs.js';
 import { syncDocs } from '../lib/doc-sync.js';
 import { ensurePawGitignore, removePawFromRootGitignore } from '../lib/gitignore.js';
 import { installHooks } from '../lib/hooks.js';
 import { success, skip, handleError } from '../lib/output.js';
+import { findBundledDir, writeDefaultPawYaml } from '../lib/util.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -73,15 +74,7 @@ function injectDirectories(content: string, role: string): string {
  * falls back to repo root skills/ for local development.
  */
 function getSkillsBasePath(): string | null {
-  const candidates = [
-    resolve(__dirname, 'skills'),
-    resolve(__dirname, '..', 'skills'),
-    resolve(__dirname, '..', '..', 'skills'),
-  ];
-  for (const p of candidates) {
-    if (existsSync(p)) return p;
-  }
-  return null;
+  return findBundledDir(__dirname, 'skills');
 }
 
 /** Read a role-specific skill source file. */
@@ -158,15 +151,8 @@ export function initCommand(): Command {
       }
 
       try {
-        const pawYamlDoc = readDoc('templates', 'paw-yaml');
-        if (pawYamlDoc) {
-          const yamlMatch = pawYamlDoc.content.match(/```yaml\r?\n([\s\S]*?)```/);
-          if (yamlMatch) {
-            const configDir = resolve(repoRoot, '.paw');
-            mkdirSync(configDir, { recursive: true });
-            writeFileSync(resolve(configDir, 'paw.yaml'), yamlMatch[1]);
-            success('config', resolve(configDir, 'paw.yaml'));
-          }
+        if (writeDefaultPawYaml(repoRoot)) {
+          success('config', resolve(repoRoot, '.paw', 'paw.yaml'));
         }
       } catch {
         skip('config', 'paw-yaml template not found (run pnpm build)');

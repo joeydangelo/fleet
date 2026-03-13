@@ -479,7 +479,7 @@ export function watchCommand(): Command {
     .action(async () => {
       try {
         const { repoRoot, configPath } = loadRepoConfig();
-        const interval = parseInt(DEFAULT_POLL_INTERVAL, 10);
+        const interval = DEFAULT_POLL_INTERVAL;
 
         await runWatchLoop({
           repoRoot,

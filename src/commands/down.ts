@@ -1,14 +1,12 @@
 import { Command } from 'commander';
 import pc from 'picocolors';
-import { existsSync, mkdirSync, readdirSync, rmSync } from 'node:fs';
-import { writeFileSync } from 'atomically';
+import { existsSync, readdirSync, rmSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { removeWorktree, branchExists, deleteBranch, cleanupBackupRefs } from '../lib/git.js';
 import { loadRepoConfig } from '../lib/config.js';
 import { planWorktrees } from '../lib/session.js';
 import { removeSyncWorktree, archiveSession } from '../lib/sync.js';
 import { SYNC_BRANCH } from '../lib/constants.js';
-import { readDoc } from '../lib/docs.js';
 import { createTmuxService } from '../lib/tmux.js';
 import { killPanes, killDetachedAgents, killOrphanedAgentSessions } from '../lib/pane-state.js';
 import { killReviewerSessions } from '../lib/reviewer.js';
@@ -21,6 +19,7 @@ import {
   handleError,
   colors,
 } from '../lib/output.js';
+import { writeDefaultPawYaml } from '../lib/util.js';
 
 /**
  * State files cleaned up during `paw down`. Must be updated when new
@@ -140,15 +139,8 @@ export function downCommand(): Command {
         }
 
         try {
-          const doc = readDoc('templates', 'paw-yaml');
-          if (doc) {
-            const yamlMatch = doc.content.match(/```yaml\r?\n([\s\S]*?)```/);
-            if (yamlMatch) {
-              const configDir = resolve(repoRoot, '.paw');
-              mkdirSync(configDir, { recursive: true });
-              writeFileSync(resolve(configDir, 'paw.yaml'), yamlMatch[1]);
-              success('config', 'reset .paw/paw.yaml to template');
-            }
+          if (writeDefaultPawYaml(repoRoot)) {
+            success('config', 'reset .paw/paw.yaml to template');
           }
         } catch {
           // Non-critical -- skip silently
