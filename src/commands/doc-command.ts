@@ -2,7 +2,7 @@ import { Command } from 'commander';
 import pc from 'picocolors';
 import { readDoc, listDocs } from '../lib/docs.js';
 import { ensureDocsFresh } from '../lib/doc-sync.js';
-import { handleError, colors, success } from '../lib/output.js';
+import { handleError, colors, success, toErrorMessage } from '../lib/output.js';
 import type { DocType } from '../lib/doc-add.js';
 
 /** Derive a doc name from a URL's last path segment. */
@@ -52,7 +52,7 @@ export function createDocCommand(name: string, category: string, description: st
               code === 'ERR_INVALID_ARG_TYPE' ||
               (err instanceof Error && err.message.includes('not a git repository'));
             if (!isExpected) {
-              console.warn(`Doc sync skipped: ${err instanceof Error ? err.message : String(err)}`);
+              console.warn(`Doc sync skipped: ${toErrorMessage(err)}`);
             }
           }
 

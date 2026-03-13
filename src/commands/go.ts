@@ -3,8 +3,8 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, rmSync } from 'node:fs';
 import { basename, resolve } from 'node:path';
 import pc from 'picocolors';
-import { getRepoRoot, getCurrentBranch, git } from '../lib/git.js';
-import { loadConfig, resolveConfigPath } from '../lib/config.js';
+import { getCurrentBranch, git } from '../lib/git.js';
+import { loadRepoConfig } from '../lib/config.js';
 import type { PawConfig } from '../lib/config.js';
 import { planWorktrees } from '../lib/session.js';
 import type { SyncState } from '../lib/sync.js';
@@ -47,12 +47,7 @@ export function runPawCommand(args: string[]): { exitCode: number } {
   }
 }
 
-export type SessionState =
-  | 'no-session'
-  | 'agents-running'
-  | 'has-dead-agents'
-  | 'all-done'
-  | 'clean';
+type SessionState = 'no-session' | 'agents-running' | 'has-dead-agents' | 'all-done' | 'clean';
 
 /** Pure decision logic — takes pre-fetched data, returns state. Testable without mocking. */
 export function resolveSessionState(
@@ -81,7 +76,7 @@ export function resolveSessionState(
 }
 
 /** Gather sync state, pane config, and tmux liveness, then resolve session state. */
-export function detectSessionState(repoRoot: string): SessionState {
+function detectSessionState(repoRoot: string): SessionState {
   const syncState = readSyncState(repoRoot);
   const paneConfig = readPaneConfig(repoRoot);
 
@@ -99,16 +94,14 @@ export function detectSessionState(repoRoot: string): SessionState {
 }
 
 /** Options for the `paw go` lifecycle command. */
-export interface GoOpts {
+interface GoOpts {
   dryRun?: boolean;
 }
 
 /** Execute the full paw lifecycle: up, launch, watch, merge, down. */
 export async function runGo(opts: GoOpts): Promise<void> {
-  const repoRoot = getRepoRoot();
-  const configPath = resolveConfigPath(repoRoot);
+  const { repoRoot, configPath, config } = loadRepoConfig();
   const pollInterval = parseInt(DEFAULT_POLL_INTERVAL, 10);
-  const config = loadConfig(configPath);
 
   if (opts.dryRun) {
     printDryRun(repoRoot, config);

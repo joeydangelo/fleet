@@ -1,8 +1,8 @@
 import { Command } from 'commander';
 import pc from 'picocolors';
 import type { Formatter } from 'picocolors/types.js';
-import { getRepoRoot, getCommitCount, getChangedFileCount } from '../lib/git.js';
-import { loadConfig, resolveConfigPath } from '../lib/config.js';
+import { getCommitCount, getChangedFileCount } from '../lib/git.js';
+import { loadConfig, loadRepoConfig } from '../lib/config.js';
 import { planWorktrees } from '../lib/session.js';
 import { readSyncState, isTerminalStatus } from '../lib/sync.js';
 import type { TaskState } from '../lib/sync.js';
@@ -478,8 +478,7 @@ export function watchCommand(): Command {
     .description('Continuously monitor agent progress')
     .action(async () => {
       try {
-        const repoRoot = getRepoRoot();
-        const configPath = resolveConfigPath(repoRoot);
+        const { repoRoot, configPath } = loadRepoConfig();
         const interval = parseInt(DEFAULT_POLL_INTERVAL, 10);
 
         await runWatchLoop({
