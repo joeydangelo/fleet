@@ -2,8 +2,8 @@ import { resolve } from 'node:path';
 import { Command } from 'commander';
 import pc from 'picocolors';
 import { getRepoRoot, getCurrentBranch } from '../lib/git.js';
-import { detectTaskName } from '../lib/session.js';
 import {
+  readRequiredSyncState,
   readSyncState,
   readSyncFile,
   submitForReview,
@@ -11,11 +11,13 @@ import {
   reopenTask,
   writeSyncState,
   writeSyncFile,
+  reviewFilePath,
+  requireWorktreeTask,
 } from '../lib/sync.js';
 import { createTmuxService } from '../lib/tmux.js';
 import { reviewTask } from '../lib/reviewer.js';
 import { REVIEW_MAX_RETRIES } from '../lib/constants.js';
-import { requireSyncState, handleError, colors } from '../lib/output.js';
+import { handleError, colors } from '../lib/output.js';
 
 /** Build the `paw review` CLI command. */
 export function reviewCommand(): Command {
@@ -34,16 +36,9 @@ export function reviewCommand(): Command {
 /** Submit the current task for review — returns 0 on PASS/SKIP, 1 on FAIL. */
 export async function runReview(): Promise<number> {
   const repoRoot = getRepoRoot();
-  const taskName = detectTaskName(repoRoot);
+  const taskName = requireWorktreeTask(repoRoot);
 
-  if (!taskName) {
-    console.error(colors.error('Could not detect task name. Are you in a paw worktree?'));
-    console.error(pc.dim('Expected a single .md file in .paw/tasks/.'));
-    return 1;
-  }
-
-  let state = readSyncState(repoRoot);
-  requireSyncState(state);
+  let state = readRequiredSyncState(repoRoot);
 
   const task = state.tasks[taskName];
   if (!task) {
@@ -78,8 +73,7 @@ export async function runReview(): Promise<number> {
   const taskBranch = getCurrentBranch(repoRoot);
   const targetBranch = state.target;
   const taskFilePath = resolve(repoRoot, '.paw', 'tasks', `${taskName}.md`);
-  const safeBranch = taskBranch.replace(/[^a-zA-Z0-9-]/g, '-');
-  const reviewFilePath = `review/${safeBranch}.md`;
+  const reviewPath = reviewFilePath(taskBranch);
 
   console.log(pc.dim(`  Reviewing ${taskName}...`));
   const result = await reviewTask(
@@ -94,7 +88,7 @@ export async function runReview(): Promise<number> {
       onTimeout: (elapsed) => console.log(pc.red(`  ⏱ reviewer timed out (${elapsed}) — skipping`)),
     },
     taskFilePath,
-    reviewFilePath,
+    reviewPath,
   );
 
   // Build the "## Review — Cycle N" section from the verdict
@@ -118,8 +112,8 @@ export async function runReview(): Promise<number> {
 
   // Append findings directly to sync branch (no local file)
   try {
-    const existing = readSyncFile(reviewFilePath, repoRoot) ?? '';
-    writeSyncFile(reviewFilePath, existing + findingsText, repoRoot);
+    const existing = readSyncFile(reviewPath, repoRoot) ?? '';
+    writeSyncFile(reviewPath, existing + findingsText, repoRoot);
   } catch (err: unknown) {
     console.warn(`Failed to persist review findings: ${String(err)}`);
   }

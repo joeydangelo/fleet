@@ -1,6 +1,6 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { resolve } from 'node:path';
-import { existsSync, rmSync } from 'node:fs';
+import { existsSync, rmSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import {
   initSyncState,
@@ -19,10 +19,10 @@ import {
   removeSyncWorktree,
   resolveSyncDir,
   archiveSession,
+  readRequiredSyncState,
   reviewFilePath,
   requireWorktreeTask,
 } from '../src/lib/sync.js';
-import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { deleteBranch, createBranch, createWorktree, removeWorktree } from '../src/lib/git.js';
 import { makeTempDir } from './helpers/temp.js';
 
@@ -501,6 +501,41 @@ describe('archiveSession', () => {
     const folderName = archivePath!.split(/[\\/]/).pop()!;
     // Folder should start with a date prefix like 2026-02-14
     expect(folderName).toMatch(/^\d{4}-\d{2}-\d{2}-feature-dash$/);
+  });
+});
+
+describe('readRequiredSyncState', () => {
+  let repoDir: string;
+
+  beforeEach(() => {
+    repoDir = makeTempDir();
+    gitInit(repoDir);
+    initSyncWorktree(repoDir);
+  });
+
+  afterEach(() => {
+    removeSyncWorktree(repoDir);
+    rmSync(repoDir, { recursive: true, force: true });
+  });
+
+  it('returns state when it exists', () => {
+    const state = initSyncState('feature/dash', ['auth'], 'paw.yaml');
+    writeSyncState(state, repoDir);
+
+    const result = readRequiredSyncState(repoDir);
+    expect(result.target).toBe('feature/dash');
+    expect(result.tasks['auth']?.status).toBe('pending');
+  });
+
+  it('exits process when no state exists', () => {
+    const mockExit = vi.spyOn(process, 'exit').mockImplementation(() => {
+      throw new Error('process.exit');
+    });
+
+    expect(() => readRequiredSyncState(repoDir)).toThrow('process.exit');
+    expect(mockExit).toHaveBeenCalledWith(1);
+
+    mockExit.mockRestore();
   });
 });
 
