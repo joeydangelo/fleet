@@ -8,15 +8,14 @@ vi.mock('../src/lib/git.js', () => ({
   getCurrentBranch: vi.fn(() => 'feature/x-auth'),
 }));
 
-vi.mock('../src/lib/session.js', () => ({
-  detectTaskName: vi.fn(() => 'auth'),
-}));
-
 vi.mock('../src/lib/sync.js', () => ({
+  readRequiredSyncState: vi.fn(),
   readSyncState: vi.fn(),
   readSyncFile: vi.fn(() => null),
   writeSyncState: vi.fn(),
   writeSyncFile: vi.fn(),
+  reviewFilePath: vi.fn((branch: string) => `review/${branch.replace(/[^a-zA-Z0-9-]/g, '-')}.md`),
+  requireWorktreeTask: vi.fn(() => 'auth'),
   submitForReview: (state: SyncState, taskName: string) => ({
     ...state,
     tasks: {
@@ -52,11 +51,17 @@ vi.mock('../src/lib/reviewer.js', () => ({
   reviewTask: vi.fn(),
 }));
 
-import { readSyncState, writeSyncState, writeSyncFile } from '../src/lib/sync.js';
+import {
+  readRequiredSyncState,
+  readSyncState,
+  writeSyncState,
+  writeSyncFile,
+} from '../src/lib/sync.js';
 import { createTmuxService } from '../src/lib/tmux.js';
 import { reviewTask } from '../src/lib/reviewer.js';
 import { runReview } from '../src/commands/review.js';
 
+const mockReadRequiredSyncState = vi.mocked(readRequiredSyncState);
 const mockReadSyncState = vi.mocked(readSyncState);
 const mockWriteSyncState = vi.mocked(writeSyncState);
 const mockCreateTmuxService = vi.mocked(createTmuxService);
@@ -104,7 +109,7 @@ describe('runReview', () => {
   it('auto-completes when cycle exceeds max retries', async () => {
     const state = baseSyncState();
     state.tasks['auth']!.reviewCycle = 2; // REVIEW_MAX_RETRIES is 2
-    mockReadSyncState.mockReturnValue(state);
+    mockReadRequiredSyncState.mockReturnValue(state);
 
     const exitCode = await runReview();
 
@@ -116,6 +121,7 @@ describe('runReview', () => {
 
   it('auto-completes when tmux is unavailable', async () => {
     const state = baseSyncState();
+    mockReadRequiredSyncState.mockReturnValue(state);
     mockReadSyncState.mockReturnValue(state);
     mockCreateTmuxService.mockImplementation(() => {
       throw new Error('tmux not found');
@@ -132,6 +138,7 @@ describe('runReview', () => {
 
   it('marks done and exits 0 on PASS', async () => {
     const state = baseSyncState();
+    mockReadRequiredSyncState.mockReturnValue(state);
     mockReadSyncState.mockReturnValue(state);
     mockReviewTask.mockResolvedValue(passResult());
 
@@ -144,6 +151,7 @@ describe('runReview', () => {
 
   it('marks done and exits 0 on SKIP', async () => {
     const state = baseSyncState();
+    mockReadRequiredSyncState.mockReturnValue(state);
     mockReadSyncState.mockReturnValue(state);
     mockReviewTask.mockResolvedValue(skipResult());
 
@@ -156,6 +164,7 @@ describe('runReview', () => {
 
   it('reopens task and exits 1 on FAIL with findings on stdout', async () => {
     const state = baseSyncState();
+    mockReadRequiredSyncState.mockReturnValue(state);
     mockReadSyncState.mockReturnValue(state);
     mockReviewTask.mockResolvedValue(failResult());
 
@@ -169,6 +178,7 @@ describe('runReview', () => {
 
   it('persists findings to sync branch as single review file', async () => {
     const state = baseSyncState();
+    mockReadRequiredSyncState.mockReturnValue(state);
     mockReadSyncState.mockReturnValue(state);
     mockReviewTask.mockResolvedValue(passResult());
     const mockWriteSyncFile = vi.mocked(writeSyncFile);
@@ -185,6 +195,7 @@ describe('runReview', () => {
 
   it('increments reviewCycle via submitForReview', async () => {
     const state = baseSyncState();
+    mockReadRequiredSyncState.mockReturnValue(state);
     mockReadSyncState.mockReturnValue(state);
     mockReviewTask.mockResolvedValue(passResult());
 

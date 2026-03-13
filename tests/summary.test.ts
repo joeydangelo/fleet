@@ -5,16 +5,14 @@ vi.mock('../src/lib/git.js', () => ({
   getCurrentBranch: vi.fn(() => 'feature/x-auth'),
 }));
 
-vi.mock('../src/lib/session.js', () => ({
-  detectTaskName: vi.fn(() => 'auth'),
-}));
-
 vi.mock('../src/lib/sync.js', () => ({
-  readSyncState: vi.fn(() => ({
+  readRequiredSyncState: vi.fn(() => ({
     session: 'test',
     target: 'main',
     tasks: { auth: { status: 'in_progress' } },
   })),
+  requireWorktreeTask: vi.fn(() => 'auth'),
+  reviewFilePath: vi.fn((branch: string) => `review/${branch.replace(/[^a-zA-Z0-9-]/g, '-')}.md`),
   readSyncFile: vi.fn(),
   writeSyncFile: vi.fn(),
 }));

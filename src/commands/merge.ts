@@ -1,7 +1,6 @@
 import { Command } from 'commander';
 import pc from 'picocolors';
 import {
-  getRepoRoot,
   getCurrentBranch,
   mergeBranch,
   getCommitCount,
@@ -12,12 +11,12 @@ import {
   getHeadRef,
   createBackupRef,
 } from '../lib/git.js';
-import { loadConfig, resolveConfigPath, topologicalSort } from '../lib/config.js';
+import { loadRepoConfig, topologicalSort } from '../lib/config.js';
 import type { PawConfig } from '../lib/config.js';
 import { planWorktrees } from '../lib/session.js';
 import type { WorktreeInfo } from '../lib/session.js';
 import {
-  readSyncState,
+  readRequiredSyncState,
   writeSyncState,
   writeSyncStateAndFiles,
   initMergeState,
@@ -25,7 +24,7 @@ import {
 } from '../lib/sync.js';
 import type { SyncState } from '../lib/sync.js';
 import { generateConflictBrief } from '../lib/conflict.js';
-import { success, warn, skip, requireSyncState, handleError, colors } from '../lib/output.js';
+import { success, warn, skip, handleError, colors } from '../lib/output.js';
 
 /** Build the `paw merge` CLI command. */
 export function mergeCommand(): Command {
@@ -34,9 +33,7 @@ export function mergeCommand(): Command {
     .option('--continue', 'Continue merging after resolving a conflict')
     .action((opts: { continue?: boolean }) => {
       try {
-        const repoRoot = getRepoRoot();
-        const configPath = resolveConfigPath(repoRoot);
-        const config = loadConfig(configPath);
+        const { repoRoot, config } = loadRepoConfig();
 
         const currentBranch = getCurrentBranch(repoRoot);
         if (currentBranch !== config.target) {
@@ -48,8 +45,7 @@ export function mergeCommand(): Command {
           process.exit(1);
         }
 
-        let state = readSyncState(repoRoot);
-        requireSyncState(state);
+        let state = readRequiredSyncState(repoRoot);
 
         const allWorktrees = planWorktrees(config, repoRoot);
         const sortedNames = topologicalSort(config.tasks);

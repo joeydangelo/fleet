@@ -1,8 +1,13 @@
 import { Command } from 'commander';
 import { getRepoRoot, getCurrentBranch } from '../lib/git.js';
-import { detectTaskName } from '../lib/session.js';
-import { readSyncState, readSyncFile, writeSyncFile } from '../lib/sync.js';
-import { requireSyncState, handleError, colors } from '../lib/output.js';
+import {
+  readRequiredSyncState,
+  readSyncFile,
+  writeSyncFile,
+  reviewFilePath,
+  requireWorktreeTask,
+} from '../lib/sync.js';
+import { handleError, colors } from '../lib/output.js';
 import pc from 'picocolors';
 
 interface SummaryRunOpts {
@@ -14,27 +19,21 @@ interface SummaryRunOpts {
 /** Core logic for the summary command — testable without Commander. */
 export function runSummary(opts: SummaryRunOpts): number {
   const repoRoot = getRepoRoot();
-  const taskName = detectTaskName(repoRoot);
 
   if (opts.show && opts.append) {
     console.error(colors.error('Cannot use --show and --append together.'));
     return 1;
   }
 
-  if (!taskName) {
-    console.error(colors.error('Could not detect task name. Are you in a paw worktree?'));
-    return 1;
-  }
+  const taskName = requireWorktreeTask(repoRoot);
 
-  const state = readSyncState(repoRoot);
-  requireSyncState(state);
+  readRequiredSyncState(repoRoot);
 
   const taskBranch = getCurrentBranch(repoRoot);
-  const safeBranch = taskBranch.replace(/[^a-zA-Z0-9-]/g, '-');
-  const reviewFilePath = `review/${safeBranch}.md`;
+  const reviewPath = reviewFilePath(taskBranch);
 
   if (opts.show) {
-    const content = readSyncFile(reviewFilePath, repoRoot);
+    const content = readSyncFile(reviewPath, repoRoot);
     if (content) {
       console.log(content);
     } else {
@@ -50,11 +49,11 @@ export function runSummary(opts: SummaryRunOpts): number {
   }
 
   if (opts.append) {
-    const existing = readSyncFile(reviewFilePath, repoRoot) ?? '';
-    writeSyncFile(reviewFilePath, existing + content, repoRoot);
+    const existing = readSyncFile(reviewPath, repoRoot) ?? '';
+    writeSyncFile(reviewPath, existing + content, repoRoot);
     console.log(colors.success(`  ${taskName} -- summary updated`));
   } else {
-    writeSyncFile(reviewFilePath, content, repoRoot);
+    writeSyncFile(reviewPath, content, repoRoot);
     console.log(colors.success(`  ${taskName} -- summary written`));
   }
 

@@ -10,8 +10,9 @@ import {
 } from 'node:fs';
 import { writeFileSync } from 'atomically';
 import { git } from './git.js';
-import { toErrorMessage } from './output.js';
+import { toErrorMessage, requireSyncState } from './output.js';
 import { SYNC_BRANCH } from './constants.js';
+import { detectTaskName } from './session.js';
 const STATE_FILE = 'state.json';
 const MAX_RETRIES = 3;
 
@@ -388,4 +389,35 @@ export function archiveSession(repoRoot: string, target: string): string | null 
   }
 
   return archiveDir;
+}
+
+/**
+ * Read sync state and assert it exists in one call.
+ * Replaces the common two-liner: readSyncState(repoRoot) + requireSyncState(state).
+ */
+export function readRequiredSyncState(repoRoot: string): SyncState {
+  const state = readSyncState(repoRoot);
+  requireSyncState(state);
+  return state;
+}
+
+/**
+ * Build the review file path for a branch on the sync worktree.
+ * Sanitizes the branch name to a safe filename.
+ */
+export function reviewFilePath(branch: string): string {
+  const safeBranch = branch.replace(/[^a-zA-Z0-9-]/g, '-');
+  return `review/${safeBranch}.md`;
+}
+
+/**
+ * Detect the task name from the worktree or throw with a standard error message.
+ * Replaces the common detectTaskName + null-check guard.
+ */
+export function requireWorktreeTask(repoRoot: string): string {
+  const taskName = detectTaskName(repoRoot);
+  if (!taskName) {
+    throw new Error('Could not detect task name. Are you in a paw worktree?');
+  }
+  return taskName;
 }

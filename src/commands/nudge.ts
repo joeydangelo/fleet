@@ -1,4 +1,6 @@
 import { Command } from 'commander';
+import { getRepoRoot } from '../lib/git.js';
+import { readRequiredSyncState } from '../lib/sync.js';
 import { appendMessage } from '../lib/messages.js';
 import { handleError, success } from '../lib/output.js';
 
@@ -10,11 +12,18 @@ export function nudgeCommand(): Command {
     .argument('<message>', 'Message to send')
     .action((task: string, message: string) => {
       try {
-        appendMessage('orchestrator', {
-          type: 'nudge',
-          to: task,
-          msg: message,
-        });
+        const repoRoot = getRepoRoot();
+        readRequiredSyncState(repoRoot);
+
+        appendMessage(
+          'orchestrator',
+          {
+            type: 'nudge',
+            to: task,
+            msg: message,
+          },
+          repoRoot,
+        );
         success(task, 'nudge delivered');
       } catch (err) {
         handleError(err);

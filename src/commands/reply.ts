@@ -1,9 +1,9 @@
 import { Command } from 'commander';
 import { getRepoRoot } from '../lib/git.js';
 import { getTaskIdentity } from '../lib/session.js';
-import { readSyncState } from '../lib/sync.js';
+import { readRequiredSyncState } from '../lib/sync.js';
 import { appendMessage, readMessages } from '../lib/messages.js';
-import { requireSyncState, handleError, colors } from '../lib/output.js';
+import { handleError, colors } from '../lib/output.js';
 import { computeThreads, writeGateFlag, clearGateFlag } from './inbox.js';
 
 /** CLI command: reply to a direct message from an agent. */
@@ -17,8 +17,7 @@ export function replyCommand(): Command {
         const repoRoot = getRepoRoot();
         const taskName = getTaskIdentity(repoRoot);
 
-        const state = readSyncState(repoRoot);
-        requireSyncState(state);
+        readRequiredSyncState(repoRoot);
 
         const all = readMessages(repoRoot);
 
