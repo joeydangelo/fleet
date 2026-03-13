@@ -96,6 +96,10 @@ describe('isInsideTmux', () => {
   });
 });
 
+/*
+ * These tests verify tmux command assembly (correct args passed to exec),
+ * not actual tmux execution. The mock exec captures calls without running tmux.
+ */
 describe('TmuxService with mock exec', () => {
   it('sessionExists returns true when has-session succeeds', () => {
     const { fn } = createMockExec();
