@@ -21,7 +21,7 @@ import type { PawPaneConfig } from '../lib/tmux.js';
 import type { PawConfig } from '../lib/config.js';
 import { computeThreads } from './inbox.js';
 import { ensureDocsFresh } from '../lib/doc-sync.js';
-import { handleError, formatFocusAreas, colors, success } from '../lib/output.js';
+import { handleError, formatFocusAreas, colors, success, formatTaskStatus } from '../lib/output.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -182,7 +182,7 @@ function printStatusSnapshot(repoRoot: string, state: SyncState, paneConfig: Paw
     const focusSuffix = focus ? `  ${focus}` : '';
 
     if (task.status === 'done' || task.status === 'in_review') {
-      console.log(`  ${marker} ${name} -- ${task.status === 'in_review' ? 'in review' : 'done'}`);
+      console.log(`  ${marker} ${name} -- ${formatTaskStatus(task.status)}`);
       continue;
     }
 

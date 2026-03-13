@@ -26,6 +26,16 @@ vi.mock('../src/lib/config.js', () => ({
     tasks: { auth: { focus: 'src/auth/' }, api: { focus: 'src/api/' } },
   })),
   resolveConfigPath: vi.fn(() => '/fake/repo/.paw/paw.yaml'),
+  loadRepoConfig: vi.fn(() => ({
+    repoRoot: '/fake/repo',
+    configPath: '/fake/repo/.paw/paw.yaml',
+    config: {
+      base: 'main',
+      target: 'feature/x',
+      agent: 'claude',
+      tasks: { auth: { focus: 'src/auth/' }, api: { focus: 'src/api/' } },
+    },
+  })),
 }));
 
 vi.mock('../src/lib/session.js', () => ({

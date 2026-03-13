@@ -13,7 +13,14 @@ import {
   buildLivenessMap,
   livenessMarker,
 } from '../lib/tmux.js';
-import { error, skip, unknown, handleError, formatFocusAreas } from '../lib/output.js';
+import {
+  error,
+  skip,
+  unknown,
+  handleError,
+  formatFocusAreas,
+  formatTaskStatus,
+} from '../lib/output.js';
 
 /** CLI command: check progress of all task worktrees in the session. */
 export function statusCommand(): Command {
@@ -49,7 +56,7 @@ export function statusCommand(): Command {
         }
 
         if (taskSync?.status === 'done' || taskSync?.status === 'in_review') {
-          skip(wt.taskName, taskSync.status === 'in_review' ? 'in review' : 'done');
+          skip(wt.taskName, formatTaskStatus(taskSync.status));
           continue;
         }
 

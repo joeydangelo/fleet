@@ -120,58 +120,54 @@ function runTuiSidebar(
  *   bootstraps TUI in pane 0 via send-keys, then attaches.
  * - Outside tmux, existing session: ensures orchestrator pane exists, then attaches.
  */
-export function runTui(): void {
-  try {
-    ensureTmuxInstalled();
-    const repoRoot = getRepoRoot();
-    const sessionName = tmuxSessionName(basename(repoRoot));
-    const tmux = createTmuxService();
+function runTui(): void {
+  ensureTmuxInstalled();
+  const repoRoot = getRepoRoot();
+  const sessionName = tmuxSessionName(basename(repoRoot));
+  const tmux = createTmuxService();
 
-    const isNewSession = !tmux.sessionExists(sessionName);
-    if (isNewSession) {
-      tmux.createSession(sessionName, repoRoot);
-    }
+  const isNewSession = !tmux.sessionExists(sessionName);
+  if (isNewSession) {
+    tmux.createSession(sessionName, repoRoot);
+  }
 
-    const { panes, orchestratorPaneId: existingOrchestratorId } = restorePanes(
-      tmux,
-      sessionName,
-      repoRoot,
-    );
+  const { panes, orchestratorPaneId: existingOrchestratorId } = restorePanes(
+    tmux,
+    sessionName,
+    repoRoot,
+  );
 
-    if (isInsideTmux()) {
-      const currentSession = tmux.getCurrentSessionName();
-      if (currentSession === sessionName) {
-        // Use $TMUX_PANE (set per-pane by tmux) rather than display-message -p
-        // which returns the *active* pane — after layout operations that may be
-        // the orchestrator, not the TUI.
-        const controlPaneId = process.env['TMUX_PANE'] ?? tmux.getCurrentPaneId();
-        runTuiSidebar(tmux, sessionName, repoRoot, panes, controlPaneId);
-      } else {
-        // TUI was already bootstrapped by `paw launch`.
-        tmux.switchClient(sessionName);
-      }
+  if (isInsideTmux()) {
+    const currentSession = tmux.getCurrentSessionName();
+    if (currentSession === sessionName) {
+      // Use $TMUX_PANE (set per-pane by tmux) rather than display-message -p
+      // which returns the *active* pane — after layout operations that may be
+      // the orchestrator, not the TUI.
+      const controlPaneId = process.env['TMUX_PANE'] ?? tmux.getCurrentPaneId();
+      runTuiSidebar(tmux, sessionName, repoRoot, panes, controlPaneId);
     } else {
-      if (isNewSession) {
-        // Horizontal split places orchestrator RIGHT, TUI sidebar LEFT.
-        const controlPaneId = tmux.listPanes(sessionName)[0] ?? '';
-        const orchestratorPaneId = tmux.createPane(sessionName, repoRoot, { horizontal: true });
-        labelOrchestrator(tmux, orchestratorPaneId);
-        tmux.setPaneProject(orchestratorPaneId, repoRoot);
-        savePanes(repoRoot, sessionName, panes, orchestratorPaneId);
-        // Lock sidebar width before attaching so the user sees correct layout immediately.
-        tmux.resizePane(controlPaneId, SIDEBAR_WIDTH);
-        tmux.sendKeys(controlPaneId, 'paw tui');
-      } else if (!existingOrchestratorId) {
-        // Handle pre-feature sessions that lack an orchestrator pane.
-        const orchestratorPaneId = tmux.createPane(sessionName, repoRoot, { horizontal: true });
-        labelOrchestrator(tmux, orchestratorPaneId);
-        tmux.setPaneProject(orchestratorPaneId, repoRoot);
-        savePanes(repoRoot, sessionName, panes, orchestratorPaneId);
-      }
-      tmux.attachSession(sessionName);
+      // TUI was already bootstrapped by `paw launch`.
+      tmux.switchClient(sessionName);
     }
-  } catch (err) {
-    handleError(err);
+  } else {
+    if (isNewSession) {
+      // Horizontal split places orchestrator RIGHT, TUI sidebar LEFT.
+      const controlPaneId = tmux.listPanes(sessionName)[0] ?? '';
+      const orchestratorPaneId = tmux.createPane(sessionName, repoRoot, { horizontal: true });
+      labelOrchestrator(tmux, orchestratorPaneId);
+      tmux.setPaneProject(orchestratorPaneId, repoRoot);
+      savePanes(repoRoot, sessionName, panes, orchestratorPaneId);
+      // Lock sidebar width before attaching so the user sees correct layout immediately.
+      tmux.resizePane(controlPaneId, SIDEBAR_WIDTH);
+      tmux.sendKeys(controlPaneId, 'paw tui');
+    } else if (!existingOrchestratorId) {
+      // Handle pre-feature sessions that lack an orchestrator pane.
+      const orchestratorPaneId = tmux.createPane(sessionName, repoRoot, { horizontal: true });
+      labelOrchestrator(tmux, orchestratorPaneId);
+      tmux.setPaneProject(orchestratorPaneId, repoRoot);
+      savePanes(repoRoot, sessionName, panes, orchestratorPaneId);
+    }
+    tmux.attachSession(sessionName);
   }
 }
 
@@ -180,6 +176,10 @@ export function tuiCommand(): Command {
   return new Command('tui')
     .description('Open the tmux TUI (optional — paw go runs detached by default)')
     .action(() => {
-      runTui();
+      try {
+        runTui();
+      } catch (err) {
+        handleError(err);
+      }
     });
 }
