@@ -152,6 +152,7 @@ export function removeSyncWorktree(cwd: string): void {
  * Retries on index.lock contention (concurrent multi-agent writes).
  */
 function commitSyncChanges(syncDir: string, message: string): void {
+  const errors: string[] = [];
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
       git(['add', '-A'], { cwd: syncDir, stdio: 'pipe' });
@@ -161,9 +162,10 @@ function commitSyncChanges(syncDir: string, message: string): void {
       });
       return;
     } catch (err) {
+      errors.push(`attempt ${attempt}: ${toErrorMessage(err)}`);
       if (attempt === MAX_RETRIES) {
         throw new Error(
-          `Failed to commit sync changes after ${MAX_RETRIES} attempts: ${toErrorMessage(err)}`,
+          `Failed to commit sync changes after ${MAX_RETRIES} attempts:\n${errors.join('\n')}`,
         );
       }
     }

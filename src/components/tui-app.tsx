@@ -344,7 +344,9 @@ export function TuiApp({
           ),
         );
       } catch {
-        // Session may not exist yet
+        // Expected during startup: the poll fires before the tmux session
+        // is fully created or before panes.json is written. The next poll
+        // cycle will succeed once the session stabilises.
       }
     }, 3000);
 

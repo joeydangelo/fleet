@@ -21,6 +21,15 @@ import { writeHeartbeat } from '../lib/health.js';
 import type { WorktreeInfo } from '../lib/session.js';
 import type { SyncState } from '../lib/sync.js';
 
+const SKIP_PERMISSIONS_FLAG = '--dangerously-skip-permissions';
+
+/** Ensure the agent command includes the permissionless flag. */
+function ensurePermissionless(agentCommand: string): string {
+  return agentCommand.includes(SKIP_PERMISSIONS_FLAG)
+    ? agentCommand
+    : `${agentCommand} ${SKIP_PERMISSIONS_FLAG}`;
+}
+
 /** Print per-task launch preview lines (shared by launch and go dry-run). */
 export function printLaunchPreview(
   targets: WorktreeInfo[],
@@ -75,9 +84,7 @@ export async function runLaunch(repoRoot: string, config: PawConfig): Promise<vo
     }
 
     // Always run agents permissionless — no human present to approve prompts
-    const agentCommand = config.agent.includes('--dangerously-skip-permissions')
-      ? config.agent
-      : `${config.agent} --dangerously-skip-permissions`;
+    const agentCommand = ensurePermissionless(config.agent);
 
     launchList.push({
       taskName: wt.taskName,

@@ -22,6 +22,24 @@ import {
   colors,
 } from '../lib/output.js';
 
+/**
+ * State files cleaned up during `paw down`. Must be updated when new
+ * session-scoped state files are added to .paw/.
+ */
+const SESSION_STATE_FILES = [
+  '.last-inbox-check',
+  '.session-ready',
+  'health.json',
+  'panes.json',
+  'state.yml',
+] as const;
+
+/** Prefix for per-task inbox cursor files. */
+const INBOX_CURSOR_PREFIX = '.inbox-cursor-';
+
+/** Subdirectories removed during cleanup. */
+const SESSION_STATE_DIRS = ['heartbeats', 'nudges', 'triage'] as const;
+
 /** CLI command: tear down a paw session (remove worktrees, kill agents, archive, reset config). */
 export function downCommand(): Command {
   return new Command('down')
@@ -97,19 +115,13 @@ export function downCommand(): Command {
         }
         try {
           const pawDir = resolve(repoRoot, '.paw');
+          const stateFileSet = new Set<string>(SESSION_STATE_FILES);
           for (const f of readdirSync(pawDir)) {
-            if (
-              f.startsWith('.inbox-cursor-') ||
-              f === '.last-inbox-check' ||
-              f === '.session-ready' ||
-              f === 'health.json' ||
-              f === 'panes.json' ||
-              f === 'state.yml'
-            ) {
+            if (f.startsWith(INBOX_CURSOR_PREFIX) || stateFileSet.has(f)) {
               rmSync(resolve(pawDir, f), { force: true });
             }
           }
-          for (const d of ['heartbeats', 'nudges', 'triage']) {
+          for (const d of SESSION_STATE_DIRS) {
             const p = resolve(pawDir, d);
             if (existsSync(p)) rmSync(p, { recursive: true });
           }

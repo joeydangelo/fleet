@@ -177,10 +177,11 @@ export function isDocsStale(lastSyncAt: string | undefined, autoSyncHours: numbe
   return Date.now() - lastSync > thresholdMs;
 }
 
-/** Re-fetch URL-sourced docs and update on-disk copies if changed. */
-async function refreshUrlDocs(repoRoot: string): Promise<void> {
+/** Re-fetch URL-sourced docs and update on-disk copies if changed. Returns keys that failed. */
+async function refreshUrlDocs(repoRoot: string): Promise<string[]> {
   const manifest = readManifest(repoRoot);
   const docsDir = join(repoRoot, '.paw', 'docs');
+  const failed: string[] = [];
 
   for (const [key, source] of Object.entries(manifest.docs_cache.files)) {
     if (source.startsWith(INTERNAL_PREFIX)) continue;
@@ -193,10 +194,14 @@ async function refreshUrlDocs(repoRoot: string): Promise<void> {
       if (!existsSync(destPath) || readFileSync(destPath, 'utf-8') !== content) {
         writeFileSync(destPath, content, 'utf-8');
       }
-    } catch {
-      // Network failures skip silently per-entry
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.warn(`[paw] Failed to refresh URL doc "${key}": ${msg}`);
+      failed.push(key);
     }
   }
+
+  return failed;
 }
 
 /**
@@ -211,10 +216,16 @@ export async function ensureDocsFresh(repoRoot: string): Promise<void> {
   if (!isDocsStale(state.last_doc_sync_at, hours)) return;
 
   syncDocs(repoRoot);
-  await refreshUrlDocs(repoRoot);
+  const failed = await refreshUrlDocs(repoRoot);
 
+  const now = new Date().toISOString();
+  if (failed.length > 0) {
+    console.warn(
+      `[paw] URL doc sync partially failed (${failed.length} entries). Updating timestamp despite failures.`,
+    );
+  }
   writeLocalState(repoRoot, {
     ...readLocalState(repoRoot),
-    last_doc_sync_at: new Date().toISOString(),
+    last_doc_sync_at: now,
   });
 }

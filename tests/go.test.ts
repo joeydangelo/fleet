@@ -285,11 +285,11 @@ describe('runGo: verbose timing display (paw-s3bg)', () => {
   });
 
   afterEach(() => {
-    setVerbosity(false, false);
+    setVerbosity(false);
   });
 
   it('shows per-phase and total timing when verbose is enabled', async () => {
-    setVerbosity(true, false);
+    setVerbosity(true);
 
     await runGo({});
 
@@ -301,7 +301,7 @@ describe('runGo: verbose timing display (paw-s3bg)', () => {
   });
 
   it('does not show timing when verbose is disabled', async () => {
-    setVerbosity(false, false);
+    setVerbosity(false);
 
     await runGo({});
 

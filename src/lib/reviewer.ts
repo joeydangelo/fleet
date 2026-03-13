@@ -68,7 +68,8 @@ export function readVerdictFile(filePath: string): ReviewResult | null {
       suggestions?: string;
     };
     const v = String(data.verdict ?? '').toLowerCase();
-    const verdict: ReviewVerdict = v === 'pass' ? 'pass' : v === 'fail' ? 'fail' : 'fail';
+    // Fail-closed: anything other than an explicit 'pass' is treated as 'fail'
+    const verdict: ReviewVerdict = v === 'pass' ? 'pass' : 'fail';
     return {
       verdict,
       strengths: String(data.strengths ?? ''),
