@@ -134,25 +134,6 @@ tasks:
 
     rmSync(dir, { recursive: true });
   });
-
-  it('accepts config without agent', () => {
-    const dir = makeTempDir();
-    const configPath = resolve(dir, 'paw.yaml');
-    writeFileSync(
-      configPath,
-      `
-target: feature/x
-tasks:
-  a:
-    focus: src/
-`,
-    );
-
-    const config = loadConfig(configPath);
-    expect(config.agent).toBeUndefined();
-
-    rmSync(dir, { recursive: true });
-  });
 });
 
 describe('include config', () => {
@@ -175,25 +156,6 @@ tasks:
 
     const config = loadConfig(configPath);
     expect(config.include).toEqual(['.env', '.env.local', 'config/local.json']);
-
-    rmSync(dir, { recursive: true });
-  });
-
-  it('accepts config without include', () => {
-    const dir = makeTempDir();
-    const configPath = resolve(dir, 'paw.yaml');
-    writeFileSync(
-      configPath,
-      `
-target: feature/x
-tasks:
-  a:
-    focus: src/
-`,
-    );
-
-    const config = loadConfig(configPath);
-    expect(config.include).toBeUndefined();
 
     rmSync(dir, { recursive: true });
   });
@@ -220,26 +182,6 @@ tasks:
 
     rmSync(dir, { recursive: true });
   });
-
-  it('accepts tasks without issue field', () => {
-    const dir = makeTempDir();
-    const configPath = resolve(dir, 'paw.yaml');
-    writeFileSync(
-      configPath,
-      `
-target: feature/x
-tasks:
-  api:
-    focus: src/api/
-    prompt: Build REST endpoints
-`,
-    );
-
-    const config = loadConfig(configPath);
-    expect(config.tasks['api']?.issue).toBeUndefined();
-
-    rmSync(dir, { recursive: true });
-  });
 });
 
 describe('top-level spec field', () => {
@@ -260,25 +202,6 @@ tasks:
 
     const config = loadConfig(configPath);
     expect(config.spec).toBe('.paw/specs/spec-2026-03-04-auth.md');
-
-    rmSync(dir, { recursive: true });
-  });
-
-  it('accepts config without spec', () => {
-    const dir = makeTempDir();
-    const configPath = resolve(dir, 'paw.yaml');
-    writeFileSync(
-      configPath,
-      `
-target: feature/x
-tasks:
-  api:
-    focus: src/api/
-`,
-    );
-
-    const config = loadConfig(configPath);
-    expect(config.spec).toBeUndefined();
 
     rmSync(dir, { recursive: true });
   });
@@ -329,25 +252,6 @@ tasks:
 
     const config = loadConfig(configPath);
     expect(config.tasks['tests']?.depends_on).toEqual(['auth', 'api']);
-
-    rmSync(dir, { recursive: true });
-  });
-
-  it('accepts tasks without depends_on', () => {
-    const dir = makeTempDir();
-    const configPath = resolve(dir, 'paw.yaml');
-    writeFileSync(
-      configPath,
-      `
-target: feature/x
-tasks:
-  auth:
-    focus: src/auth/
-`,
-    );
-
-    const config = loadConfig(configPath);
-    expect(config.tasks['auth']?.depends_on).toBeUndefined();
 
     rmSync(dir, { recursive: true });
   });

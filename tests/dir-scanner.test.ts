@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { tmpdir } from 'node:os';
+import { tmpdir, homedir } from 'node:os';
 import {
   parsePathInput,
   scanDirectories,
@@ -24,8 +24,7 @@ describe('parsePathInput', () => {
   it('returns homedir with empty prefix for empty input', () => {
     const result = parsePathInput('');
     expect(result.prefix).toBe('');
-    // parentDir should be something (homedir), just verify it's non-empty
-    expect(result.parentDir.length).toBeGreaterThan(0);
+    expect(result.parentDir).toBe(homedir());
   });
 
   it('splits path with trailing slash into parentDir + empty prefix', () => {
