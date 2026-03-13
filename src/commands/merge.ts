@@ -197,7 +197,9 @@ function runMergeLoop(
         writeSyncStateAndFiles(state, [{ path: briefPath, content: brief }], repoRoot);
 
         warn(wt.taskName, 'conflicts');
-        console.log(pc.dim(`    ${result.message.split('\n')[0]}`));
+        const firstLine =
+          result.message.split('\n')[0]?.trim() || result.message || 'Merge completed';
+        console.log(pc.dim(`    ${firstLine}`));
         console.log(pc.dim(`    Brief written to ${briefPath} on sync branch`));
         console.log(pc.dim(`\nNext: run \`paw shortcut resolve-merge-conflict\``));
         return;
