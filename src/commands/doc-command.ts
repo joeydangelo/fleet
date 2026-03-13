@@ -42,17 +42,17 @@ export function createDocCommand(name: string, category: string, description: st
           try {
             const { getRepoRoot } = await import('../lib/git.js');
             await ensureDocsFresh(getRepoRoot());
-          } catch (err) {
+          } catch (err: unknown) {
             // Expected: not in a git repo, or docs not configured yet.
             // Unexpected errors (network, permissions) are logged so operators
             // can diagnose sync failures.
-            const msg = String(err);
+            const code = (err as NodeJS.ErrnoException)?.code;
             const isExpected =
-              msg.includes('not a git repository') ||
-              msg.includes('no docs') ||
-              msg.includes('ENOENT');
+              code === 'ENOENT' ||
+              code === 'ERR_INVALID_ARG_TYPE' ||
+              (err instanceof Error && err.message.includes('not a git repository'));
             if (!isExpected) {
-              console.warn(`Doc sync skipped: ${msg}`);
+              console.warn(`Doc sync skipped: ${err instanceof Error ? err.message : String(err)}`);
             }
           }
 

@@ -46,7 +46,6 @@ export function createCli(): Command {
     .description('Parallel Agent Worktrees -- orchestrate multi-agent git worktree workflows')
     .version(pkg.version)
     .option('--verbose', 'Show debug output (enables SHOW_COMMANDS, timing)')
-    .option('--quiet', 'Suppress non-essential output')
     .hook('preAction', (thisCommand) => {
       const verbose = thisCommand.opts().verbose === true;
       setVerbosity(verbose);

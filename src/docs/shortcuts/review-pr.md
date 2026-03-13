@@ -23,6 +23,7 @@ roles: [reviewer]
 | `MISSED_CROSSCUT` | Issue flagged by 2+ specialists not recognized as systemic |
 | `SEVERITY_INFLATION` | Style nit classified as CRITICAL — erodes builder trust |
 | `PHANTOM_FINDINGS` | Manufactured issues when code is solid — triggers unnecessary fix cycles |
+| `LENIENT_PASS` | Wrote PASS verdict despite non-empty issues array — MINOR findings are findings |
 
 ## Workflow
 
@@ -116,7 +117,8 @@ gracefully — one specialist's failure does not block the review.
 Write the verdict using the `node -e` command from the review prompt. **This
 must be the last action.** The review runner kills the session on detection.
 
-**Gate:** Verdict value (PASS/FAIL) determined from synthesized findings.
+**Gate:** Verdict matches issue count: PASS only when issues array is empty,
+FAIL when issues array has one or more entries.
 **Artifact:** Verdict JSON at the path from the review prompt.
 
 ## Stopping Conditions

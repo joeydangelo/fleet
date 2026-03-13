@@ -1,4 +1,4 @@
-/** Global CLI verbosity state, set by --verbose / --quiet program options. */
+/** Global CLI verbosity state, set by --verbose program option. */
 
 let _verbose = false;
 
