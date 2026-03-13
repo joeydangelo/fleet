@@ -121,7 +121,7 @@ export async function runReview(): Promise<number> {
     const existing = readSyncFile(reviewFilePath, repoRoot) ?? '';
     writeSyncFile(reviewFilePath, existing + findingsText, repoRoot);
   } catch (err: unknown) {
-    console.log(pc.dim(`  warning: failed to persist findings: ${String(err)}`));
+    console.warn(`Failed to persist review findings: ${String(err)}`);
   }
 
   // Sync state may have changed during the async review

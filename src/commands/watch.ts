@@ -47,6 +47,9 @@ export function diffMessages(entries: Message[], lastSeenTs: string | undefined)
   const newEntries = lastSeenTs ? entries.filter((e) => e.ts > lastSeenTs) : entries;
 
   const maxTs = entries[entries.length - 1]!.ts;
+  // Cursor advances monotonically: when newEntries is empty, all entries
+  // have ts <= lastSeenTs, so maxTs <= lastSeenTs. Keeping lastSeenTs
+  // avoids regressing the cursor below its current position.
   return {
     newEntries,
     lastSeenTs: lastSeenTs && newEntries.length === 0 ? lastSeenTs : maxTs,
@@ -274,7 +277,8 @@ export async function runWatchLoop(opts: {
       for (const wt of worktrees) {
         try {
           currentCommitCounts[wt.taskName] = getCommitCount(wt.branch, config.target, repoRoot);
-        } catch {
+        } catch (err) {
+          console.warn(`Failed to get commit count for ${wt.taskName}: ${String(err)}`);
           currentCommitCounts[wt.taskName] = prevCommitCounts[wt.taskName] ?? 0;
         }
       }
@@ -290,7 +294,8 @@ export async function runWatchLoop(opts: {
             fileCount = getChangedFileCount(wt.branch, config.target, repoRoot);
           }
         } catch {
-          // Skip file count on error
+          // File count is cosmetic display data — failure does not affect merge logic,
+          // so silent skip is acceptable here.
         }
         printCommitDelta(d, taskIndex, fileCount);
       }
