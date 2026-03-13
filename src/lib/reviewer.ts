@@ -19,7 +19,7 @@ import type { TmuxServiceApi } from './tmux.js';
 import { waitForTuiReady, killDetachedSession, isTuiPromptReady } from './tmux.js';
 import { REVIEW_TIMEOUT_MS, REVIEW_NUDGE_MS, BEACON_FOLLOWUP_DELAYS } from './constants.js';
 import { sleep, formatElapsed } from './util.js';
-import { reviewFilePath as sharedReviewFilePath } from './sync.js';
+import { reviewFilePath } from './sync.js';
 
 /** Prefix for all reviewer tmux sessions. */
 const REVIEW_SESSION_PREFIX = 'paw-review-';
@@ -127,10 +127,10 @@ function buildReviewPrompt(
   targetBranch: string,
   verdictPath: string,
   taskFilePath?: string,
-  reviewFilePath?: string,
+  reviewFileOverride?: string,
 ): string {
   const escapedPath = verdictPath.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-  const reviewFile = reviewFilePath ?? sharedReviewFilePath(taskBranch);
+  const reviewFile = reviewFileOverride ?? reviewFilePath(taskBranch);
 
   const lines = [`You are reviewing task branch "${taskBranch}" against "${targetBranch}".`, ''];
 
@@ -212,7 +212,7 @@ export async function reviewTask(
   repoRoot: string,
   callbacks?: ReviewCallbacks,
   taskFilePath?: string,
-  reviewFilePath?: string,
+  reviewFileOverride?: string,
 ): Promise<ReviewResult> {
   const sessionName = `${REVIEW_SESSION_PREFIX}${taskBranch.replace(/[^a-zA-Z0-9-]/g, '-')}`;
   const vPath = verdictFilePath(repoRoot, taskBranch);
@@ -253,7 +253,7 @@ export async function reviewTask(
     // Send the review prompt
     tmux.sendKeys(
       sessionName,
-      buildReviewPrompt(taskBranch, targetBranch, vPath, taskFilePath, reviewFilePath),
+      buildReviewPrompt(taskBranch, targetBranch, vPath, taskFilePath, reviewFileOverride),
     );
 
     // Follow-up empty Enters to dismiss trust/permission dialogs (same as sendBeacon)
