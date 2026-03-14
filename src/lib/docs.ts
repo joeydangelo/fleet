@@ -1,16 +1,12 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join, basename } from 'node:path';
 import { parse as parseYaml } from 'yaml';
-import { getRepoRoot } from './git.js';
+import { getRepoRootOrNull } from './git.js';
 import { readManifest } from './manifest.js';
 
 /** Return the repo root or null when called outside a git repo. */
 function getRepoRootSafe(): string | null {
-  try {
-    return process.env.PAW_REPO_ROOT || getRepoRoot();
-  } catch {
-    return null;
-  }
+  return process.env.PAW_REPO_ROOT || getRepoRootOrNull();
 }
 
 /** Metadata extracted from a doc file's YAML frontmatter. */

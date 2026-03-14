@@ -38,7 +38,15 @@ describe('buildDisplayItems — single project', () => {
       ),
     ];
     const taskPanes = [makeTaskPane()];
-    const items = buildDisplayItems(tmuxPanes, taskPanes, null, '%0', '%1', '/home/user/myapp');
+    const items = buildDisplayItems(
+      tmuxPanes,
+      taskPanes,
+      null,
+      '%0',
+      '%1',
+      '/home/user/myapp',
+      null,
+    );
     expect(items.every((item) => !item.projectHeader)).toBe(true);
     expect(items).toHaveLength(2);
   });
@@ -56,7 +64,15 @@ describe('buildDisplayItems — single project', () => {
       makeTmuxPane('%3', 'bash', 'bash', '/home/user/myapp', ''),
     ];
     const taskPanes = [makeTaskPane()];
-    const items = buildDisplayItems(tmuxPanes, taskPanes, null, '%0', '%1', '/home/user/myapp');
+    const items = buildDisplayItems(
+      tmuxPanes,
+      taskPanes,
+      null,
+      '%0',
+      '%1',
+      '/home/user/myapp',
+      null,
+    );
     expect(items[0]!.label).toBe('orchestrator');
     expect(items[1]!.label).toBe('auth');
     expect(items[2]!.label).toContain('pane');
@@ -69,7 +85,7 @@ describe('buildDisplayItems — multi-project grouping', () => {
       makeTmuxPane('%1', 'paw-orchestrator', 'claude', '/home/user/myapp', '/home/user/myapp'),
       makeTmuxPane('%5', 'paw-orchestrator', 'claude', '/home/user/other', '/home/user/other'),
     ];
-    const items = buildDisplayItems(tmuxPanes, [], null, '%0', '%1', '/home/user/myapp');
+    const items = buildDisplayItems(tmuxPanes, [], null, '%0', '%1', '/home/user/myapp', null);
     expect(items).toHaveLength(2);
     expect(items[0]!.projectHeader).toBe('myapp');
     expect(items[1]!.projectHeader).toBe('other');
@@ -84,7 +100,7 @@ describe('buildDisplayItems — multi-project grouping', () => {
       // In tests, cwd may not actually be a git repo, so it resolves to null → ungrouped
       makeTmuxPane('%6', 'bash', 'bash', '/tmp', ''),
     ];
-    const items = buildDisplayItems(tmuxPanes, [], null, '%0', '%1', '/home/user/myapp');
+    const items = buildDisplayItems(tmuxPanes, [], null, '%0', '%1', '/home/user/myapp', null);
     // Managed panes get headers, ungrouped pane gets red warning header
     expect(items).toHaveLength(3);
     expect(items[0]!.projectHeader).toBe('myapp');
@@ -101,7 +117,15 @@ describe('buildDisplayItems — multi-project grouping', () => {
       makeTmuxPane('%5', 'paw-orchestrator', 'claude', '/home/user/other', '/home/user/other'),
     ];
     const taskPanes = [makeTaskPane()];
-    const items = buildDisplayItems(tmuxPanes, taskPanes, null, '%0', '%1', '/home/user/myapp');
+    const items = buildDisplayItems(
+      tmuxPanes,
+      taskPanes,
+      null,
+      '%0',
+      '%1',
+      '/home/user/myapp',
+      null,
+    );
     // Both myapp panes grouped under myapp
     const myappItems = items.filter((i) => i.paneId === '%1' || i.paneId === '%2');
     expect(myappItems).toHaveLength(2);
@@ -115,7 +139,7 @@ describe('buildDisplayItems — multi-project grouping', () => {
       makeTmuxPane('%0', 'paw-tui', 'node', '/home/user/myapp', '/home/user/myapp'),
       makeTmuxPane('%1', 'paw-orchestrator', 'claude', '/home/user/myapp', '/home/user/myapp'),
     ];
-    const items = buildDisplayItems(tmuxPanes, [], null, '%0', '%1', '/home/user/myapp');
+    const items = buildDisplayItems(tmuxPanes, [], null, '%0', '%1', '/home/user/myapp', null);
     expect(items).toHaveLength(1);
     expect(items[0]!.paneId).toBe('%1');
   });
@@ -135,7 +159,15 @@ describe('buildDisplayItems — worktree panes group with primary project', () =
       makeTaskPane({ paneId: '%2', taskName: 'auth' }),
       makeTaskPane({ id: 'paw-2', paneId: '%3', taskName: 'api' }),
     ];
-    const items = buildDisplayItems(tmuxPanes, taskPanes, null, '%0', '%1', '/home/user/paw-test');
+    const items = buildDisplayItems(
+      tmuxPanes,
+      taskPanes,
+      null,
+      '%0',
+      '%1',
+      '/home/user/paw-test',
+      null,
+    );
     // All 3 panes should be in the same project group — no headers (single project)
     expect(items).toHaveLength(3);
     expect(items.every((item) => !item.projectHeader)).toBe(true);
@@ -159,7 +191,15 @@ describe('buildDisplayItems — worktree panes group with primary project', () =
       ),
     ];
     const taskPanes = [makeTaskPane({ paneId: '%2', taskName: 'auth' })];
-    const items = buildDisplayItems(tmuxPanes, taskPanes, null, '%0', '%1', '/home/user/paw-test');
+    const items = buildDisplayItems(
+      tmuxPanes,
+      taskPanes,
+      null,
+      '%0',
+      '%1',
+      '/home/user/paw-test',
+      null,
+    );
     expect(items).toHaveLength(2);
     expect(items.every((item) => !item.projectHeader)).toBe(true);
   });
@@ -171,7 +211,7 @@ describe('buildDisplayItems — addProject duplicate detection', () => {
       makeTmuxPane('%1', 'paw-orchestrator', 'claude', '/home/user/myapp', '/home/user/myapp'),
       makeTmuxPane('%5', 'paw-orchestrator', 'claude', '/home/user/other', '/home/user/other'),
     ];
-    const items = buildDisplayItems(tmuxPanes, [], null, '%0', '%1', '/home/user/myapp');
+    const items = buildDisplayItems(tmuxPanes, [], null, '%0', '%1', '/home/user/myapp', null);
     expect(items).toHaveLength(2);
     expect(items[1]!.label).toBe('orchestrator');
   });
@@ -198,7 +238,7 @@ describe('buildDisplayItems — orchestrator role detection', () => {
         'paw-orchestrator',
       ),
     ];
-    const items = buildDisplayItems(tmuxPanes, [], null, '%0', '%1', '/home/user/myapp');
+    const items = buildDisplayItems(tmuxPanes, [], null, '%0', '%1', '/home/user/myapp', null);
     expect(items).toHaveLength(2);
     expect(items[0]!.label).toBe('orchestrator'); // primary — hardcoded
     expect(items[1]!.label).toBe('orchestrator'); // added project — detected by role
@@ -216,7 +256,7 @@ describe('buildDisplayItems — orchestrator role detection', () => {
       ),
       makeTmuxPane('%5', 'my-shell', 'bash', '/home/user/other', '/home/user/other'),
     ];
-    const items = buildDisplayItems(tmuxPanes, [], null, '%0', '%1', '/home/user/myapp');
+    const items = buildDisplayItems(tmuxPanes, [], null, '%0', '%1', '/home/user/myapp', null);
     expect(items[1]!.label).toBe('my-shell');
   });
 });

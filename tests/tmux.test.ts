@@ -315,7 +315,6 @@ describe('launchTmux', () => {
     const worktrees = [{ taskName: 'auth', worktreePath: '/tmp/wt-auth', agentCommand: 'claude' }];
     await launchTmux(mock, 'paw-myapp', '/home/user/myapp', worktrees, [], fastBeacon);
     const createCall = mock.calls.find((c) => c.method === 'createSession');
-    expect(createCall).toBeDefined();
     expect(createCall!.args).toEqual(['paw-myapp', '/home/user/myapp']);
   });
 
@@ -358,7 +357,6 @@ describe('launchTmux', () => {
     ];
     await launchTmux(mock, 'paw-myapp', '/home/user/myapp', worktrees, [], fastBeacon);
     const sendCall = mock.calls.find((c) => c.method === 'sendKeys');
-    expect(sendCall).toBeDefined();
     expect(sendCall!.args[1]).toBe('claude --resume');
   });
 
@@ -367,7 +365,6 @@ describe('launchTmux', () => {
     const worktrees = [{ taskName: 'auth', worktreePath: '/tmp/wt-auth', agentCommand: 'claude' }];
     await launchTmux(mock, 'paw-myapp', '/home/user/myapp', worktrees, [], fastBeacon);
     const titleCall = mock.calls.find((c) => c.method === 'setPaneTitle');
-    expect(titleCall).toBeDefined();
     expect(titleCall!.args[1]).toBe('paw-auth');
   });
 

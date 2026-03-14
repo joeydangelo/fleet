@@ -321,7 +321,6 @@ const GATE_RELATIVE = '.claude/hooks/paw-inbox-gate.sh';
 interface HookHandler {
   type: 'command';
   command: string;
-  timeout?: number;
 }
 
 interface MatcherGroup {

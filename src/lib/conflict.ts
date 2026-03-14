@@ -40,16 +40,14 @@ export function generateConflictBrief(opts: ConflictBriefOpts): string {
     lines.push('');
   }
 
-  const mergedTasks = state.merges
-    ? Object.entries(state.merges).filter(
-        ([name, entry]) => name !== conflictingTask && entry.status === 'merged',
-      )
-    : [];
+  const mergedTasks = Object.entries(state.merges).filter(
+    ([name, entry]) => name !== conflictingTask && entry.status === 'merged',
+  );
 
   if (mergedTasks.length > 0) {
     lines.push('## Already merged (in target)');
     for (const [name, entry] of mergedTasks) {
-      lines.push(`${name} -- merged clean${entry.merged ? ` at ${entry.merged}` : ''}`);
+      lines.push(`${name} -- merged clean${entry.status === 'merged' ? ` at ${entry.merged}` : ''}`);
     }
     lines.push('');
   }
@@ -85,11 +83,9 @@ export function generateConflictBrief(opts: ConflictBriefOpts): string {
 
   const messages = readMessages(cwd);
   const relevantTasks = new Set<string>([conflictingTask]);
-  if (state.merges) {
-    for (const [name, entry] of Object.entries(state.merges)) {
-      if (entry.status === 'merged') {
-        relevantTasks.add(name);
-      }
+  for (const [name, entry] of Object.entries(state.merges)) {
+    if (entry.status === 'merged') {
+      relevantTasks.add(name);
     }
   }
 

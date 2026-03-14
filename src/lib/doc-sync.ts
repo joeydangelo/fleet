@@ -8,8 +8,7 @@ import { fetchWithGhFallback } from './github-fetch.js';
 import { toErrorMessage } from './output.js';
 import { findBundledDir } from './util.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const INTERNAL_PREFIX = 'internal:';
 
@@ -177,23 +176,32 @@ export function isDocsStale(lastSyncAt: string | undefined, autoSyncHours: numbe
 async function refreshUrlDocs(repoRoot: string): Promise<string[]> {
   const manifest = readManifest(repoRoot);
   const docsDir = join(repoRoot, '.paw', 'docs');
-  const failed: string[] = [];
 
-  for (const [key, source] of Object.entries(manifest.docs_cache.files)) {
-    if (source.startsWith(INTERNAL_PREFIX)) continue;
+  const urlEntries = Object.entries(manifest.docs_cache.files).filter(
+    ([, source]) => !source.startsWith(INTERNAL_PREFIX),
+  );
 
-    try {
+  const results = await Promise.allSettled(
+    urlEntries.map(async ([key, source]) => {
       const { content } = await fetchWithGhFallback(source);
       const destPath = join(docsDir, key);
       mkdirSync(dirname(destPath), { recursive: true });
-
       if (!existsSync(destPath) || readFileSync(destPath, 'utf-8') !== content) {
         writeFileSync(destPath, content, 'utf-8');
       }
-    } catch (err) {
-      const msg = toErrorMessage(err);
+      return key;
+    }),
+  );
+
+  const failed: string[] = results
+    .filter((r): r is PromiseRejectedResult => r.status === 'rejected')
+    .map((_, i) => urlEntries[i]![0]);
+
+  for (const [i, result] of results.entries()) {
+    if (result.status === 'rejected') {
+      const key = urlEntries[i]![0];
+      const msg = toErrorMessage(result.reason);
       console.warn(`[paw] Failed to refresh URL doc "${key}": ${msg}`);
-      failed.push(key);
     }
   }
 
@@ -220,8 +228,5 @@ export async function ensureDocsFresh(repoRoot: string): Promise<void> {
       `[paw] URL doc sync partially failed (${failed.length} entries). Updating timestamp despite failures.`,
     );
   }
-  writeLocalState(repoRoot, {
-    ...readLocalState(repoRoot),
-    last_doc_sync_at: now,
-  });
+  writeLocalState(repoRoot, { ...state, last_doc_sync_at: now });
 }

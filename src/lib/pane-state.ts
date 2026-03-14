@@ -1,11 +1,44 @@
 import { existsSync, readFileSync, mkdirSync } from 'node:fs';
 import { resolve, dirname, basename } from 'node:path';
 import { writeFileSync } from 'atomically';
+import { z } from 'zod';
 import type { PawPaneConfig, PawPane, DetachedAgent, TmuxServiceApi } from './tmux.js';
 import { tmuxSessionName } from './tmux.js';
 import { ORCHESTRATOR_ROLE } from './constants.js';
 
 const PANES_FILE = 'panes.json';
+
+const PawPaneSchema = z.object({
+  id: z.string(),
+  paneId: z.string(),
+  taskName: z.string(),
+  worktreePath: z.string(),
+  agent: z.literal('claude'),
+  branchName: z.string(),
+});
+
+const DetachedAgentSchema = z.object({
+  id: z.string(),
+  sessionName: z.string(),
+  taskName: z.string(),
+  worktreePath: z.string(),
+  agent: z.literal('claude'),
+  branchName: z.string(),
+});
+
+const PawPaneConfigBaseSchema = z.object({
+  sessionName: z.string(),
+  repoRoot: z.string(),
+  orchestratorPaneId: z.string(),
+  panes: z.array(PawPaneSchema),
+  lastUpdated: z.string(),
+});
+
+export const PawPaneConfigSchema = z.union([
+  PawPaneConfigBaseSchema.extend({ mode: z.literal('detached'), detached: z.array(DetachedAgentSchema) }),
+  PawPaneConfigBaseSchema.extend({ mode: z.literal('attached') }),
+  PawPaneConfigBaseSchema,
+]);
 
 /** Tag a pane with the orchestrator role so it can be identified on restore. */
 export function labelOrchestrator(tmux: TmuxServiceApi, paneId: string): void {
@@ -22,7 +55,9 @@ export function readPaneConfig(repoRoot: string): PawPaneConfig | null {
   const p = panesPath(repoRoot);
   if (!existsSync(p)) return null;
   try {
-    return JSON.parse(readFileSync(p, 'utf-8')) as PawPaneConfig;
+    const result = PawPaneConfigSchema.safeParse(JSON.parse(readFileSync(p, 'utf-8')));
+    if (!result.success) return null;
+    return result.data as PawPaneConfig;
   } catch {
     return null;
   }
@@ -44,6 +79,7 @@ export function savePanes(
   orchestratorPaneId: string,
 ): void {
   const config: PawPaneConfig = {
+    mode: 'attached',
     sessionName,
     repoRoot,
     orchestratorPaneId,
@@ -73,7 +109,7 @@ export function saveDetachedAgents(
 
 /** Resolve the tmux target (session name or pane ID) for a task by name. */
 export function resolvePaneTarget(paneConfig: PawPaneConfig, taskName: string): string | null {
-  if (paneConfig.mode === 'detached' && paneConfig.detached) {
+  if (paneConfig.mode === 'detached') {
     const agent = paneConfig.detached.find((a) => a.taskName === taskName);
     return agent?.sessionName ?? null;
   }
@@ -97,13 +133,13 @@ export function killPanes(tmux: TmuxServiceApi, repoRoot: string): void {
   }
 
   /** Preserve `orchestratorPaneId` so re-entry doesn't spawn a duplicate. */
-  writePaneConfig(repoRoot, { ...config, panes: [], lastUpdated: new Date().toISOString() });
+  writePaneConfig(repoRoot, { ...config, panes: [], lastUpdated: new Date().toISOString() } as PawPaneConfig);
 }
 
 /** Kill all detached agent sessions recorded in panes.json. */
 export function killDetachedAgents(tmux: TmuxServiceApi, repoRoot: string): void {
   const config = readPaneConfig(repoRoot);
-  if (!config?.detached) return;
+  if (!config || config.mode !== 'detached') return;
 
   for (const agent of config.detached) {
     if (tmux.sessionExists(agent.sessionName)) {
@@ -131,7 +167,7 @@ export function killOrphanedAgentSessions(tmux: TmuxServiceApi, repoRoot: string
 
   const config = readPaneConfig(repoRoot);
   const tracked = new Set<string>();
-  if (config?.detached) {
+  if (config?.mode === 'detached') {
     for (const agent of config.detached) {
       tracked.add(agent.sessionName);
     }

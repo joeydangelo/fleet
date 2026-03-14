@@ -145,8 +145,8 @@ export function buildDisplayItems(
   syncState: SyncState | null,
   controlPaneId: string,
   orchestratorPaneId: string,
-  primaryProject?: string,
-  healthSnapshot?: HealthSnapshot | null,
+  primaryProject: string | null,
+  healthSnapshot: HealthSnapshot | null,
 ): DisplayItem[] {
   const seen = new Set<string>();
   const items: DisplayItem[] = [];

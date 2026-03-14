@@ -10,15 +10,13 @@ import { readMessages, appendMessage } from '../lib/messages.js';
 import type { Message } from '../lib/messages.js';
 import { readPaneConfig, resolvePaneTarget } from '../lib/pane-state.js';
 import {
-  checkAgentLiveness,
   createTmuxService,
   sendWakeSignal,
-  buildLivenessMap,
 } from '../lib/tmux.js';
 import type { TmuxServiceApi } from '../lib/tmux.js';
+import { sleep, tryGetLivenessMap } from '../lib/util.js';
 import { DEFAULT_POLL_INTERVAL } from '../lib/constants.js';
 import { handleError, colors } from '../lib/output.js';
-import { sleep } from '../lib/util.js';
 import {
   evaluateAllAgents,
   writeHealthSnapshot,
@@ -301,16 +299,14 @@ export async function runWatchLoop(opts: {
       }
 
       // Runs after review refresh so health sees up-to-date sync state
-      let livenessMap = new Map<string, boolean>();
       const paneConfig = readPaneConfig(repoRoot);
+      const livenessMap = tryGetLivenessMap(paneConfig);
       let tmux: TmuxServiceApi | null = null;
       if (paneConfig) {
         try {
           tmux = createTmuxService();
-          const results = checkAgentLiveness(tmux, paneConfig);
-          livenessMap = buildLivenessMap(results);
         } catch {
-          // tmux not available — skip liveness
+          // tmux not available — skip wake signals
           tmux = null;
         }
       }
@@ -326,7 +322,9 @@ export async function runWatchLoop(opts: {
       });
       prevHealth = healthSnapshot;
 
-      for (const [taskName, health] of Object.entries(healthSnapshot.agents)) {
+      for (const [taskName, healthSnapshot_] of Object.entries(healthSnapshot.agents)) {
+        // Shallow-copy to avoid mutating the snapshot that prevHealth references
+        const health = { ...healthSnapshot_ };
         const prevState = prevHealthStates[taskName];
         if (prevState !== health.state) {
           printHealthTransition(taskName, prevState, health.state, taskIndex);

@@ -58,9 +58,10 @@ describe('updateMergeEntry', () => {
       merged: '2026-02-10T15:00:00Z',
     });
 
-    expect(updated.merges?.['auth']?.status).toBe('merged');
-    expect(updated.merges?.['auth']?.merged).toBe('2026-02-10T15:00:00Z');
-    expect(updated.merges?.['api']?.status).toBe('pending');
+    const authEntry = updated.merges['auth'];
+    expect(authEntry?.status).toBe('merged');
+    expect(authEntry?.status === 'merged' ? authEntry.merged : undefined).toBe('2026-02-10T15:00:00Z');
+    expect(updated.merges['api']?.status).toBe('pending');
   });
 });
 
@@ -87,7 +88,6 @@ describe('merge state round-trip through sync branch', () => {
     writeSyncState(withMerges, repoDir);
 
     const read = readSyncState(repoDir);
-    expect(read?.merges).toBeDefined();
     expect(read?.merges?.['auth']?.status).toBe('pending');
     expect(read?.merges?.['api']?.status).toBe('pending');
   });
@@ -508,6 +508,7 @@ describe('merge --continue flow', () => {
     // Record conflict in state
     const conflictState = updateMergeEntry(withMerges, 'auth', {
       status: 'conflict',
+      brief: `conflicts/auth-into-target.md`,
     });
     writeSyncState(conflictState, repoDir);
 

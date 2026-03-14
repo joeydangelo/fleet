@@ -7,12 +7,8 @@ import { planWorktrees } from '../lib/session.js';
 import { readSyncState } from '../lib/sync.js';
 import { readMessages } from '../lib/messages.js';
 import { readPaneConfig } from '../lib/pane-state.js';
-import {
-  checkAgentLiveness,
-  createTmuxService,
-  buildLivenessMap,
-  livenessMarker,
-} from '../lib/tmux.js';
+import { livenessMarker } from '../lib/tmux.js';
+import { tryGetLivenessMap } from '../lib/util.js';
 import {
   error,
   skip,
@@ -30,17 +26,8 @@ export function statusCommand(): Command {
       const worktrees = planWorktrees(config, repoRoot);
       const syncState = readSyncState(repoRoot);
 
-      let livenessMap = new Map<string, boolean>();
       const paneConfig = readPaneConfig(repoRoot);
-      if (paneConfig) {
-        try {
-          const tmux = createTmuxService();
-          const results = checkAgentLiveness(tmux, paneConfig);
-          livenessMap = buildLivenessMap(results);
-        } catch {
-          // tmux not available — skip liveness check
-        }
-      }
+      const livenessMap = tryGetLivenessMap(paneConfig);
 
       console.log(pc.bold('paw status\n'));
 

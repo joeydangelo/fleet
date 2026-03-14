@@ -24,7 +24,7 @@ import {
 } from '../lib/sync.js';
 import type { SyncState } from '../lib/sync.js';
 import { generateConflictBrief } from '../lib/conflict.js';
-import { success, warn, skip, handleError, colors } from '../lib/output.js';
+import { success, warn, skip, handleError } from '../lib/output.js';
 
 /** Build the `paw merge` CLI command. */
 export function mergeCommand(): Command {
@@ -37,12 +37,9 @@ export function mergeCommand(): Command {
 
         const currentBranch = getCurrentBranch(repoRoot);
         if (currentBranch !== config.target) {
-          console.error(
-            colors.error(
-              `Must be on target branch '${config.target}' to merge. Currently on '${currentBranch}'.`,
-            ),
+          throw new Error(
+            `Must be on target branch '${config.target}' to merge. Currently on '${currentBranch}'.`,
           );
-          process.exit(1);
         }
 
         let state = readRequiredSyncState(repoRoot);
@@ -59,7 +56,7 @@ export function mergeCommand(): Command {
           return;
         }
 
-        if (!state.merges) {
+        if (Object.keys(state.merges).length === 0) {
           state = {
             ...state,
             merges: initMergeState(worktrees.map((wt) => wt.taskName)),
@@ -85,32 +82,20 @@ function handleMergeContinue(
   repoRoot: string,
 ): SyncState {
   if (isMergeInProgress(repoRoot)) {
-    console.error(
-      colors.error('Git merge is still in progress. Resolve conflicts and commit first.'),
-    );
-    process.exit(1);
+    throw new Error('Git merge is still in progress. Resolve conflicts and commit first.');
   }
 
-  if (!state.merges) {
-    console.error(colors.error('No merge state found. Run `paw merge` first.'));
-    process.exit(1);
-  }
-
-  const conflictTask = worktrees.find((wt) => state.merges?.[wt.taskName]?.status === 'conflict');
+  const conflictTask = worktrees.find((wt) => state.merges[wt.taskName]?.status === 'conflict');
 
   if (!conflictTask) {
-    console.error(colors.error('No conflicting or failed merge found. Run `paw merge` first.'));
-    process.exit(1);
+    throw new Error('No conflicting or failed merge found. Run `paw merge` first.');
   }
 
   if (!isAncestor(conflictTask.branch, 'HEAD', repoRoot)) {
-    console.error(
-      colors.error(
-        `Branch '${conflictTask.branch}' was not merged into the target. ` +
-          `Its commits are not in HEAD. Re-run \`paw merge\` to retry.`,
-      ),
+    throw new Error(
+      `Branch '${conflictTask.branch}' was not merged into the target. ` +
+        `Its commits are not in HEAD. Re-run \`paw merge\` to retry.`,
     );
-    process.exit(1);
   }
 
   const updated = updateMergeEntry(state, conflictTask.taskName, {
@@ -142,7 +127,7 @@ function runMergeLoop(
 
   try {
     for (const wt of worktrees) {
-      const mergeEntry = state.merges?.[wt.taskName];
+      const mergeEntry = state.merges[wt.taskName];
 
       if (mergeEntry?.status === 'merged') {
         skip(wt.taskName, 'already merged');

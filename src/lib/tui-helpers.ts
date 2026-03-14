@@ -2,14 +2,7 @@ import type { TaskState, MergeEntry } from './sync.js';
 import type { HealthState } from './health.js';
 
 /** Task status as shown in the TUI left panel. */
-export type TuiStatus =
-  | 'pending'
-  | 'in_progress'
-  | 'in_review'
-  | 'done'
-  | 'conflict'
-  | 'stalled'
-  | 'zombie';
+export type TuiStatus = TaskState['status'] | 'conflict' | 'stalled' | 'zombie';
 
 const KNOWN_SHELLS = new Set(['bash', 'zsh', 'fish', 'sh', 'ksh', 'tcsh', 'csh']);
 

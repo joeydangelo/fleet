@@ -57,8 +57,13 @@ export async function runUp(
   }
 
   if (config.include?.length) {
-    for (const wt of worktrees) {
-      const copied = await copyIncludes(repoRoot, wt.worktreePath, config.include);
+    const results = await Promise.all(
+      worktrees.map(async (wt) => ({
+        wt,
+        copied: await copyIncludes(repoRoot, wt.worktreePath, config.include!),
+      })),
+    );
+    for (const { wt, copied } of results) {
       if (copied.length > 0) {
         console.log(
           pc.dim(`  copied ${copied.length} file(s) to ${wt.taskName}: ${copied.join(', ')}`),

@@ -48,6 +48,10 @@ export function isGitRepo(dirPath: string): boolean {
 /**
  * Walk up from cwd looking for .git (directory or file). Returns the containing
  * directory or null if no git root is found.
+ *
+ * Note: for general-purpose git-root resolution, prefer `getRepoRootOrNull`
+ * from src/lib/git.ts (the canonical source). This filesystem walk variant
+ * exists for the TUI directory scanner where spawning a git process is undesirable.
  */
 export function resolveGitRoot(cwd: string): string | null {
   let current = cwd;

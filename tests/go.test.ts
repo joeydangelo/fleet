@@ -117,6 +117,8 @@ describe('resolveSessionState', () => {
     config: '/fake/config',
     target: 'feature/x',
     tasks: {},
+    merges: {},
+    lastCheck: {},
   };
 
   const basePaneConfig: PawPaneConfig = {
