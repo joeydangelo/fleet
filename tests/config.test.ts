@@ -70,7 +70,7 @@ tasks:
 `,
     );
 
-    expect(() => loadConfig(configPath)).toThrow();
+    expect(() => loadConfig(configPath)).toThrow(/Invalid \.paw\/paw\.yaml/);
     rmSync(dir, { recursive: true });
   });
 

@@ -444,6 +444,23 @@ describe('runSetup', () => {
     rmSync(dir, { recursive: true });
   });
 
+  it('verifies command runs in the specified working directory', () => {
+    const dir = makeTempDir();
+
+    runSetup(dir, 'pwd > cwd-output.txt');
+
+    const output = readFileSync(resolve(dir, 'cwd-output.txt'), 'utf-8').trim().toLowerCase();
+    // Normalize both paths: pwd on Windows/Git Bash returns /c/... while Node
+    // returns C:\... — lowercase and strip drive-letter prefix differences
+    const normalizedDir = dir.replace(/\\/g, '/').toLowerCase();
+    // Strip leading drive letter format difference: "/c/" vs "C:/"
+    const stripDrive = (p: string) =>
+      p.replace(/^\/([a-z])\//, '$1:/').replace(/^([a-z]):\//, '$1:/');
+    expect(stripDrive(output)).toBe(stripDrive(normalizedDir));
+
+    rmSync(dir, { recursive: true });
+  });
+
   it('throws on non-zero exit code', () => {
     const dir = makeTempDir();
 

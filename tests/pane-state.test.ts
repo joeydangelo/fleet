@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { rmSync } from 'node:fs';
+import { rmSync, writeFileSync, mkdirSync } from 'node:fs';
 import {
   readPaneConfig,
   writePaneConfig,
@@ -11,7 +11,7 @@ import {
   killOrphanedAgentSessions,
 } from '../src/lib/pane-state.js';
 import type { PawPane, PawPaneConfig, DetachedAgent } from '../src/lib/tmux.js';
-import { basename } from 'node:path';
+import { basename, resolve } from 'node:path';
 import { tmuxSessionName } from '../src/lib/tmux.js';
 import { makeTempDir } from './helpers/temp.js';
 import { createMockTmux } from './helpers/mock-tmux.js';
@@ -40,6 +40,25 @@ describe('pane-state: readPaneConfig / writePaneConfig', () => {
   });
 
   it('returns null when panes.json does not exist', () => {
+    expect(readPaneConfig(tempDir)).toBeNull();
+  });
+
+  it('returns null when panes.json contains corrupt JSON', () => {
+    const runDir = resolve(tempDir, '.paw', 'run');
+    mkdirSync(runDir, { recursive: true });
+    writeFileSync(resolve(runDir, 'panes.json'), '{ invalid');
+
+    expect(readPaneConfig(tempDir)).toBeNull();
+  });
+
+  it('returns null when panes.json is a truncated file (partial write)', () => {
+    const runDir = resolve(tempDir, '.paw', 'run');
+    mkdirSync(runDir, { recursive: true });
+    writeFileSync(
+      resolve(runDir, 'panes.json'),
+      '{"sessionName":"paw-myapp","repoRoot":"/home/user/myapp","orchestratorPaneId":"%1","panes":[{"id":"paw-1","paneId":"%1","taskName":"auth","worktreePath":"/tmp/wt-auth","agent":"claude","bra',
+    );
+
     expect(readPaneConfig(tempDir)).toBeNull();
   });
 

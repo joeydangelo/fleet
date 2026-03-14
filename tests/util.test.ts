@@ -21,6 +21,22 @@ describe('formatElapsed', () => {
   it('formats zero', () => {
     expect(formatElapsed(0)).toBe('0s');
   });
+
+  it('handles negative ms input', () => {
+    // Math.floor(-1 / 1000) = -1, -1 % 60 = -1 → produces "-1s"
+    const result = formatElapsed(-1);
+    expect(result).toBe('-1s');
+  });
+
+  it('distinguishes 999ms (rounds to 0s) from 1000ms (rounds to 1s)', () => {
+    expect(formatElapsed(999)).toBe('0s');
+    expect(formatElapsed(1000)).toBe('1s');
+  });
+
+  it('formats large value 3661000ms as 61m 1s', () => {
+    // 3661 seconds = 61 minutes, 1 second
+    expect(formatElapsed(3_661_000)).toBe('61m 1s');
+  });
 });
 
 describe('findBundledDir', () => {
