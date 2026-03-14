@@ -27,14 +27,21 @@ const PawManifestSchema = z.object({
   settings: ManifestSettingsSchema.default({}),
 });
 
+/** Primary manifest shape stored in `.paw/manifest.yml` — tracks doc sources, sync settings, and the docs cache. */
 export type PawManifest = z.infer<typeof PawManifestSchema>;
 
 const LocalStateSchema = z.object({
   last_doc_sync_at: z.string().optional(),
 });
 
+/** Gitignored local runtime state stored in `.paw/run/state.yml` — not committed to the repo. */
 export type LocalState = z.infer<typeof LocalStateSchema>;
 
+/**
+ * Reads and validates the paw manifest YAML from `<repoRoot>/.paw/manifest.yml`.
+ * Schema defaults are applied by Zod, so the return value is always fully populated
+ * even when the file is absent or partially specified.
+ */
 export function readManifest(repoRoot: string): PawManifest {
   const manifestPath = resolve(repoRoot, '.paw', 'manifest.yml');
   if (!existsSync(manifestPath)) {
@@ -58,6 +65,10 @@ const MANIFEST_HEADER = `\
 # Configure with settings.doc_auto_sync_hours (0 = disabled).
 `;
 
+/**
+ * Serializes the manifest to YAML and writes it atomically to `<repoRoot>/.paw/manifest.yml`.
+ * A multi-line header comment explaining the file format is prepended before the `docs_cache:` key.
+ */
 export function writeManifest(repoRoot: string, manifest: PawManifest): void {
   const manifestPath = resolve(repoRoot, '.paw', 'manifest.yml');
   const body = stringifyYaml(manifest, YAML_OPTIONS);
@@ -65,6 +76,10 @@ export function writeManifest(repoRoot: string, manifest: PawManifest): void {
   writeFileSync(manifestPath, output, 'utf-8');
 }
 
+/**
+ * Reads the gitignored local state file from `<repoRoot>/.paw/run/state.yml`.
+ * Returns schema defaults if the file does not exist — callers never need to handle absence.
+ */
 export function readLocalState(repoRoot: string): LocalState {
   const statePath = resolve(repoRoot, '.paw', 'run', 'state.yml');
   if (!existsSync(statePath)) {
@@ -74,6 +89,7 @@ export function readLocalState(repoRoot: string): LocalState {
   return LocalStateSchema.parse((parseYaml(raw) as unknown) ?? {});
 }
 
+/** Writes local state to `<repoRoot>/.paw/run/state.yml`, creating the directory if needed. */
 export function writeLocalState(repoRoot: string, state: LocalState): void {
   const dir = resolve(repoRoot, '.paw', 'run');
   mkdirSync(dir, { recursive: true });

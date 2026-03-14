@@ -33,8 +33,14 @@ export function taskDisplayStatus(
   return task?.status ?? 'pending';
 }
 
+/** Display representation of a task status: an icon glyph and its terminal color name. */
+export interface IconDisplay {
+  icon: string;
+  color: string;
+}
+
 /** Map a TUI status to its display icon and color for the sidebar. */
-export function statusIcon(status: TuiStatus): { icon: string; color: string } {
+export function statusIcon(status: TuiStatus): IconDisplay {
   switch (status) {
     case 'in_progress':
       return { icon: '✻', color: 'cyan' };

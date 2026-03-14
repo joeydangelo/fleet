@@ -134,6 +134,9 @@ function resolveProjectForPane(pane: TmuxPaneInfo): string | null {
   return null;
 }
 
+/** A `DisplayItem` enriched with its resolved project root, used during grouping. */
+type TaggedItem = DisplayItem & { projectRoot: string | null };
+
 /**
  * Builds a unified display list from live tmux panes, enriched with
  * panes.json task metadata and sync state. Panes are grouped by project
@@ -152,7 +155,6 @@ export function buildDisplayItems(
   const items: DisplayItem[] = [];
 
   // Build a flat list of items with their resolved project root.
-  type TaggedItem = DisplayItem & { projectRoot: string | null };
   const tagged: TaggedItem[] = [];
 
   // Orchestrator pane first.
