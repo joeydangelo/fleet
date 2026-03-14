@@ -16,6 +16,12 @@ function expandTilde(inputPath: string): string {
   return inputPath;
 }
 
+/** Parsed components of a raw path input string. */
+export interface PathInputResult {
+  parentDir: string;
+  prefix: string;
+}
+
 /**
  * Split user input into parentDir + prefix for filtering.
  *
@@ -24,7 +30,7 @@ function expandTilde(inputPath: string): string {
  *   "/tmp"         -> { parentDir: "/", prefix: "tmp" }
  *   ""             -> { parentDir: homedir, prefix: "" }
  */
-export function parsePathInput(raw: string): { parentDir: string; prefix: string } {
+export function parsePathInput(raw: string): PathInputResult {
   if (!raw) return { parentDir: homedir(), prefix: '' };
 
   const expanded = expandTilde(raw);
