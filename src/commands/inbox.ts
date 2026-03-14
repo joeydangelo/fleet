@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { resolveMainRoot } from '../lib/git.js';
 import { detectTaskName } from '../lib/session.js';
 import { readInboxCursor, writeInboxCursor } from '../lib/health.js';
-import { readMessages, readMessagesForTask } from '../lib/messages.js';
+import { readMessagesForTask, getUnansweredThreadsForTask } from '../lib/messages.js';
 import type { Message } from '../lib/messages.js';
 import { INBOX_GATE_PREFIX } from '../lib/constants.js';
 
@@ -67,6 +67,7 @@ export function computeThreads(entries: Message[]): ThreadResult {
   return { open, resolved, broadcasts };
 }
 
+/** Formats a Message entry as a display string; layout varies by type: nudge, broadcast, directed, or plain. */
 export function formatMessage(entry: Message): string {
   if (entry.type === 'nudge') {
     return `[paw] Warning: ${entry.msg}`;
@@ -137,9 +138,7 @@ export function inboxCommand(): Command {
           console.log();
         }
 
-        const allEntries = readMessages(cwd);
-        const { open } = computeThreads(allEntries);
-        const unanswered = open.filter((t) => t.send.to === taskName);
+        const unanswered = getUnansweredThreadsForTask(taskName, cwd);
         if (unanswered.length > 0) {
           console.log(`[paw] ${unanswered.length} unanswered message(s):`);
           for (const { send } of unanswered) {

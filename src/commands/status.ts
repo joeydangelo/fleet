@@ -1,7 +1,7 @@
 import { Command } from 'commander';
 import { existsSync } from 'node:fs';
 import pc from 'picocolors';
-import { getCommitCount, getChangedFileCount } from '../lib/git.js';
+import { getWorktreeProgress } from '../lib/worktree-stats.js';
 import { loadRepoConfig } from '../lib/config.js';
 import { planWorktrees } from '../lib/session.js';
 import { readSyncState } from '../lib/sync.js';
@@ -48,8 +48,7 @@ export function statusCommand(): Command {
         }
 
         try {
-          const commits = getCommitCount(wt.branch, config.target, repoRoot);
-          const files = commits > 0 ? getChangedFileCount(wt.branch, config.target, repoRoot) : 0;
+          const { commits, files } = getWorktreeProgress(wt.branch, config.target, repoRoot);
 
           const syncLabel = taskSync?.status === 'in_progress' ? ' [claimed]' : '';
           const focus = formatFocusAreas(taskSync?.focus);

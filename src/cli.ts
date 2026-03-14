@@ -1,12 +1,6 @@
-import { readFileSync } from 'node:fs';
-import { resolve, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { Command } from 'commander';
 import { setVerbosity } from './lib/context.js';
-
-const pkg = JSON.parse(
-  readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), '..', 'package.json'), 'utf-8'),
-) as { version: string };
+import { getVersion } from './lib/version.js';
 
 /**
  * Register a lazily-loaded subcommand. The command module is only imported
@@ -44,7 +38,7 @@ export function createCli(): Command {
   program
     .name('paw')
     .description('Parallel Agent Worktrees -- orchestrate multi-agent git worktree workflows')
-    .version(pkg.version)
+    .version(getVersion())
     .option('--verbose', 'Show debug output (enables SHOW_COMMANDS, timing)')
     .hook('preAction', (thisCommand) => {
       const verbose = thisCommand.opts().verbose === true;

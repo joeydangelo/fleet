@@ -111,6 +111,7 @@ export function replyToMessage(
   );
 }
 
+/** Returns messages addressed to or from taskName, optionally filtered to those after a timestamp cursor. */
 export function readMessagesForTask(taskName: string, cwd?: string, since?: string): Message[] {
   const all = readMessages(cwd);
 
@@ -118,4 +119,31 @@ export function readMessagesForTask(taskName: string, cwd?: string, since?: stri
     if (since && entry.ts <= since) return false;
     return entry.type === 'broadcast' || entry.to === taskName;
   });
+}
+
+/** A message with a thread identifier — guaranteed to have `thread` set. */
+export interface ThreadedMessage extends Message {
+  thread: string;
+}
+
+/** An open (unanswered) message thread. */
+export interface OpenThread {
+  send: ThreadedMessage;
+}
+
+/** Returns open message threads addressed to taskName that have no reply. */
+export function getUnansweredThreadsForTask(taskName: string, cwd: string): OpenThread[] {
+  const allEntries = readMessages(cwd);
+  const sends = allEntries.filter(
+    (e): e is ThreadedMessage => e.type === 'send' && typeof e.thread === 'string',
+  );
+  const replyByThread = new Map<string, ThreadedMessage>();
+  for (const e of allEntries) {
+    if (e.type === 'reply' && typeof e.thread === 'string') {
+      replyByThread.set(e.thread, e as ThreadedMessage);
+    }
+  }
+  return sends
+    .filter((send) => send.to === taskName && !replyByThread.has(send.thread))
+    .map((send) => ({ send }));
 }

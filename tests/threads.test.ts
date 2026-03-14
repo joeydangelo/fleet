@@ -107,4 +107,19 @@ describe('formatMessage', () => {
     const nudge = entry({ type: 'nudge', from: 'orchestrator', msg: 'Finish task' });
     expect(formatMessage(nudge)).toBe('[paw] Warning: Finish task');
   });
+
+  it('formats broadcast as [from] broadcast: msg', () => {
+    const broadcast = entry({ type: 'broadcast', from: 'api', msg: 'Schema updated' });
+    expect(formatMessage(broadcast)).toBe('[api] broadcast: Schema updated');
+  });
+
+  it('formats directed message (with to) as [from → to] msg', () => {
+    const directed = entry({ type: 'send', from: 'orchestrator', to: 'auth', msg: 'Are you done?' });
+    expect(formatMessage(directed)).toBe('[orchestrator → auth] Are you done?');
+  });
+
+  it('formats plain message (no to, not nudge/broadcast) as [from] msg', () => {
+    const plain = entry({ type: 'send', from: 'api', msg: 'Just a note' });
+    expect(formatMessage(plain)).toBe('[api] Just a note');
+  });
 });
