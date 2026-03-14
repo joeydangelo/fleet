@@ -1,25 +1,22 @@
 import { Command } from 'commander';
 import { existsSync, readFileSync } from 'node:fs';
-import { resolve, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { resolve } from 'node:path';
 import pc from 'picocolors';
 import { getRepoRoot } from '../lib/git.js';
-import { getCommitCount, getChangedFileCount } from '../lib/git.js';
+import { getVersion } from '../lib/version.js';
+import { getWorktreeProgress } from '../lib/worktree-stats.js';
 import { detectTaskName, planWorktrees } from '../lib/session.js';
 import { loadConfig, resolveConfigPath } from '../lib/config.js';
 import type { SyncState } from '../lib/sync.js';
 import { readSyncState, claimTask, writeSyncState, readSyncFile } from '../lib/sync.js';
-import { readMessages, readMessagesForTask } from '../lib/messages.js';
+import { readMessagesForTask, getUnansweredThreadsForTask } from '../lib/messages.js';
 import { readPaneConfig } from '../lib/pane-state.js';
 import type { PawPaneConfig } from '../lib/tmux.js';
 import { livenessMarker } from '../lib/tmux.js';
 import { tryGetLivenessMap } from '../lib/util.js';
 import type { PawConfig } from '../lib/config.js';
-import { computeThreads } from './inbox.js';
 import { ensureDocsFresh } from '../lib/doc-sync.js';
 import { handleError, formatFocusAreas, colors, success, formatTaskStatus } from '../lib/output.js';
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
 
 function statusColor(status: string): (text: string) => string {
   if (status === 'done') return colors.success;
@@ -35,17 +32,6 @@ function summarizeTasks(state: SyncState): { total: number; inProgress: number; 
     inProgress: tasks.filter((t) => t.status === 'in_progress').length,
     done: tasks.filter((t) => t.status === 'done').length,
   };
-}
-
-function getVersion(): string {
-  try {
-    const pkg = JSON.parse(readFileSync(resolve(__dirname, '..', 'package.json'), 'utf-8')) as {
-      version: string;
-    };
-    return pkg.version;
-  } catch {
-    return 'unknown';
-  }
 }
 
 /** Build the `paw prime` CLI command. */
@@ -181,9 +167,7 @@ function printStatusSnapshot(repoRoot: string, state: SyncState, paneConfig: Paw
         const worktrees = planWorktrees(configObj, repoRoot);
         const wt = worktrees.find((w) => w.taskName === name);
         if (wt) {
-          const commits = getCommitCount(wt.branch, configObj.target, repoRoot);
-          const files =
-            commits > 0 ? getChangedFileCount(wt.branch, configObj.target, repoRoot) : 0;
+          const { commits, files } = getWorktreeProgress(wt.branch, configObj.target, repoRoot);
           commitInfo = commits > 0 ? `${commits} commit(s), ${files} file(s)` : 'no changes yet';
         }
       } catch {
@@ -240,9 +224,7 @@ function printBrief(
   }
 
   // Unanswered threads must survive compaction — re-surface them here
-  const allEntries = readMessages(repoRoot);
-  const { open } = computeThreads(allEntries);
-  const unanswered = open.filter((t) => t.send.to === taskName);
+  const unanswered = getUnansweredThreadsForTask(taskName, repoRoot);
   if (unanswered.length > 0) {
     console.log(pc.bold('Unanswered Messages'));
     for (const { send } of unanswered) {

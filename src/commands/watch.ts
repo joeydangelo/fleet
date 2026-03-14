@@ -418,6 +418,7 @@ export async function runWatchLoop(opts: {
               break;
             }
 
+            // currLevel is bounded by MAX_ESCALATION_LEVEL; levels above case 2 are terminal and mark zombie.
             default: {
               console.log(
                 `${timestamp()} ${colors.error('☠')} ${colorTask(taskName, taskIndex)} escalation reached terminal level — marking zombie`,
