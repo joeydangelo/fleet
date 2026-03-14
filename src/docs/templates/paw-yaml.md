@@ -8,7 +8,7 @@ roles: [orchestrator]
 
 target: feature/my-feature
 # base: main                              # default: main
-agent: claude
+model: sonnet                             # sonnet or opus
 # spec: .paw/specs/spec-2026-03-04-my-feature.md
 # setup: pnpm install                     # shell command run per worktree during paw up
 
@@ -41,6 +41,7 @@ tasks:
       - src/db/schema.ts
 
     issue: GH#30
+    # model: opus                         # override top-level model for this task
     # depends_on: other-task              # merge after this task completes
     # depends_on:                         # or a list of dependencies
     #   - task-a

@@ -22,7 +22,6 @@ function makePane(overrides: Partial<PawPane> = {}): PawPane {
     paneId: '%1',
     taskName: 'auth',
     worktreePath: '/tmp/wt-auth',
-    agent: 'claude',
     branchName: 'feature-auth',
     ...overrides,
   };
@@ -56,7 +55,7 @@ describe('pane-state: readPaneConfig / writePaneConfig', () => {
     mkdirSync(runDir, { recursive: true });
     writeFileSync(
       resolve(runDir, 'panes.json'),
-      '{"sessionName":"paw-myapp","repoRoot":"/home/user/myapp","orchestratorPaneId":"%1","panes":[{"id":"paw-1","paneId":"%1","taskName":"auth","worktreePath":"/tmp/wt-auth","agent":"claude","bra',
+      '{"sessionName":"paw-myapp","repoRoot":"/home/user/myapp","orchestratorPaneId":"%1","panes":[{"id":"paw-1","paneId":"%1","taskName":"auth","worktreePath":"/tmp/wt-auth","bra',
     );
 
     expect(readPaneConfig(tempDir)).toBeNull();
@@ -120,7 +119,6 @@ describe('pane-state: readPaneConfig / writePaneConfig', () => {
       sessionName: 'paw-myapp-auth',
       taskName: 'auth',
       worktreePath: '/tmp/wt-auth',
-      agent: 'claude',
       branchName: 'feature-auth',
     };
     const config: PawPaneConfig = {
@@ -370,7 +368,6 @@ describe('pane-state: saveDetachedAgents', () => {
         sessionName: 'paw-myapp-auth',
         taskName: 'auth',
         worktreePath: '/tmp/wt-auth',
-        agent: 'claude',
         branchName: 'feat-auth',
       },
     ];
@@ -403,7 +400,6 @@ describe('pane-state: killDetachedAgents', () => {
         sessionName: 'paw-myapp-auth',
         taskName: 'auth',
         worktreePath: '/tmp/wt-auth',
-        agent: 'claude',
         branchName: '',
       },
       {
@@ -411,7 +407,6 @@ describe('pane-state: killDetachedAgents', () => {
         sessionName: 'paw-myapp-api',
         taskName: 'api',
         worktreePath: '/tmp/wt-api',
-        agent: 'claude',
         branchName: '',
       },
     ];
@@ -439,7 +434,6 @@ describe('pane-state: killDetachedAgents', () => {
         sessionName: 'paw-myapp-gone',
         taskName: 'auth',
         worktreePath: '/tmp/wt-auth',
-        agent: 'claude',
         branchName: '',
       },
     ];
@@ -486,7 +480,6 @@ describe('pane-state: killOrphanedAgentSessions', () => {
         sessionName: `${sessionPrefix}-auth`,
         taskName: 'auth',
         worktreePath: '/tmp/wt-auth',
-        agent: 'claude',
         branchName: '',
       },
     ];

@@ -133,7 +133,6 @@ describe('resolveSessionState', () => {
         sessionName: 'paw-test-auth',
         taskName: 'auth',
         worktreePath: '/fake/repo-paw-auth',
-        agent: 'claude',
         branchName: 'feature/x-auth',
       },
       {
@@ -141,7 +140,6 @@ describe('resolveSessionState', () => {
         sessionName: 'paw-test-api',
         taskName: 'api',
         worktreePath: '/fake/repo-paw-api',
-        agent: 'claude',
         branchName: 'feature/x-api',
       },
     ],

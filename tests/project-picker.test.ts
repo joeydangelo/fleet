@@ -19,7 +19,6 @@ function makeTaskPane(overrides: Partial<PawPane> = {}): PawPane {
     paneId: '%2',
     taskName: 'auth',
     worktreePath: '/home/user/myapp/.paw/worktrees/auth',
-    agent: 'claude',
     branchName: 'feature-auth',
     ...overrides,
   };

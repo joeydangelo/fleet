@@ -13,8 +13,6 @@ import {
 } from './constants.js';
 import { sleep } from './util.js';
 
-type AgentName = 'claude';
-
 /** Lightweight snapshot of a tmux pane returned by listPanesDetailed. */
 export interface TmuxPaneInfo {
   /** tmux pane ID (%nn). */
@@ -41,8 +39,6 @@ export interface PawPane {
   taskName: string;
   /** Full path to the git worktree. */
   worktreePath: string;
-  /** Agent type running in this pane. */
-  agent: AgentName;
   /** Git branch name. */
   branchName: string;
 }
@@ -54,7 +50,6 @@ export interface DetachedAgent {
   sessionName: string;
   taskName: string;
   worktreePath: string;
-  agent: AgentName;
   branchName: string;
 }
 
@@ -510,11 +505,6 @@ export function sendWakeSignal(tmux: TmuxServiceApi, target: string): boolean {
   }
 }
 
-/** Currently only 'claude' is supported. */
-function parseAgentName(): AgentName {
-  return 'claude';
-}
-
 /**
  * Launch agents in tmux panes for the given worktrees.
  * Creates the tmux session if it doesn't exist, then creates a pane
@@ -553,7 +543,6 @@ export async function launchTmux(
         paneId,
         taskName: wt.taskName,
         worktreePath: wt.worktreePath,
-        agent: parseAgentName(),
         branchName: '',
       };
       tmux.setPaneTitle(paneId, `paw-${wt.taskName}`);
@@ -774,7 +763,6 @@ export async function launchDetached(
         sessionName,
         taskName: wt.taskName,
         worktreePath: wt.worktreePath,
-        agent: parseAgentName(),
         branchName: wt.branchName ?? '',
       };
     }),

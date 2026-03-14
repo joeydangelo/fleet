@@ -220,7 +220,7 @@ function printDryRun(repoRoot: string, config: PawConfig): void {
     }
 
     console.log(pc.bold('\nWould launch agents:\n'));
-    printLaunchPreview(worktrees, syncState, useDetached, config.agent);
+    printLaunchPreview(worktrees, syncState, useDetached);
   }
 
   if (state === 'agents-running') {

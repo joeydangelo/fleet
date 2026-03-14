@@ -41,7 +41,6 @@ function makePane(taskName: string, paneId: string): PawPane {
     paneId,
     taskName,
     worktreePath: `/tmp/wt-${taskName}`,
-    agent: 'claude',
     branchName: `feature-${taskName}`,
   };
 }

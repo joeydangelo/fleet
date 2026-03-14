@@ -22,6 +22,7 @@ import type { WorktreeInfo } from '../lib/session.js';
 import type { SyncState } from '../lib/sync.js';
 
 const SKIP_PERMISSIONS_FLAG = '--dangerously-skip-permissions';
+const MODEL_FLAG = '--model';
 
 /** Ensure the agent command includes the permissionless flag. */
 function ensurePermissionless(agentCommand: string): string {
@@ -30,12 +31,18 @@ function ensurePermissionless(agentCommand: string): string {
     : `${agentCommand} ${SKIP_PERMISSIONS_FLAG}`;
 }
 
+/** Inject --model <model> into the agent command if not already present. */
+function ensureModel(agentCommand: string, model: string): string {
+  return agentCommand.includes(MODEL_FLAG)
+    ? agentCommand
+    : `${agentCommand} ${MODEL_FLAG} ${model}`;
+}
+
 /** Print per-task launch preview lines (shared by launch and go dry-run). */
 export function printLaunchPreview(
   targets: WorktreeInfo[],
   syncState: SyncState | null,
   useDetached: boolean,
-  agent?: string,
 ): void {
   for (const wt of targets) {
     const taskState = syncState?.tasks[wt.taskName];
@@ -45,17 +52,13 @@ export function printLaunchPreview(
       error(wt.taskName, 'worktree not found -- run paw up first');
     } else {
       const verb = useDetached ? 'tmux new-session -d' : 'tmux split-window';
-      pending(wt.taskName, `${verb} -c ${wt.worktreePath} → ${agent ?? 'claude'}`);
+      pending(wt.taskName, `${verb} -c ${wt.worktreePath} → claude`);
     }
   }
 }
 
 /** Spawn agents for tasks that aren't done (detached by default; attached when inside tmux). */
 export async function runLaunch(repoRoot: string, config: PawConfig): Promise<void> {
-  if (!config.agent) {
-    throw new Error('No agent configured. Add an agent field to .paw/paw.yaml:\n\n  agent: claude');
-  }
-
   const worktrees = planWorktrees(config, repoRoot);
   const syncState = readSyncState(repoRoot);
   const sessionName = tmuxSessionName(basename(repoRoot));
@@ -64,7 +67,7 @@ export async function runLaunch(repoRoot: string, config: PawConfig): Promise<vo
   const modeLabel = useDetached ? 'detached' : 'attached';
 
   console.log(pc.bold(`paw launch: ${worktrees.length} task(s)`));
-  console.log(`  agent: ${config.agent}`);
+  console.log(`  agent: claude`);
   console.log(`  session: ${sessionName}`);
   console.log(`  mode: ${modeLabel}\n`);
 
@@ -84,7 +87,10 @@ export async function runLaunch(repoRoot: string, config: PawConfig): Promise<vo
     }
 
     // Always run agents permissionless — no human present to approve prompts
-    const agentCommand = ensurePermissionless(config.agent);
+    const taskModel = config.tasks[wt.taskName]?.model ?? config.model;
+    const agentCommand = taskModel
+      ? ensureModel(ensurePermissionless('claude'), taskModel)
+      : ensurePermissionless('claude');
 
     launchList.push({
       taskName: wt.taskName,
@@ -164,11 +170,11 @@ export function launchCommand(): Command {
           const sessionName = tmuxSessionName(basename(repoRoot));
 
           console.log(pc.bold(`paw launch: ${worktrees.length} task(s) (dry run)`));
-          console.log(`  agent: ${config.agent}`);
+          console.log(`  agent: claude`);
           console.log(`  session: ${sessionName}`);
           console.log(`  mode: ${useDetached ? 'detached' : 'attached'}\n`);
 
-          printLaunchPreview(worktrees, syncState, useDetached, config.agent);
+          printLaunchPreview(worktrees, syncState, useDetached);
           console.log(pc.dim('\nDry run -- no sessions opened.'));
           return;
         }

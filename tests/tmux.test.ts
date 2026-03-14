@@ -409,11 +409,11 @@ describe('launchTmux', () => {
     expect(panes[0]!.paneId).toMatch(/^%/);
   });
 
-  it('sets agent field to claude regardless of command', async () => {
+  it('returns a pane for each worktree with correct task and path', async () => {
     const mock = createMockTmux();
     const worktrees = [
       { taskName: 'auth', worktreePath: '/tmp/wt-auth', agentCommand: 'claude --some-flag' },
-      { taskName: 'api', worktreePath: '/tmp/wt-api', agentCommand: 'my-custom-agent' },
+      { taskName: 'api', worktreePath: '/tmp/wt-api', agentCommand: 'claude' },
     ];
     const panes = await launchTmux(
       mock,
@@ -423,8 +423,8 @@ describe('launchTmux', () => {
       [],
       fastBeacon,
     );
-    expect(panes[0]!.agent).toBe('claude');
-    expect(panes[1]!.agent).toBe('claude');
+    expect(panes[0]!.taskName).toBe('auth');
+    expect(panes[1]!.taskName).toBe('api');
   });
 
   it('skips tasks that already have a live pane (by paneId)', async () => {
@@ -443,7 +443,6 @@ describe('launchTmux', () => {
         paneId: '%10',
         taskName: 'auth',
         worktreePath: '/tmp/wt-auth',
-        agent: 'claude',
         branchName: 'feature-auth',
       },
     ];
@@ -483,7 +482,6 @@ describe('launchTmux', () => {
         paneId: '%10',
         taskName: 'auth',
         worktreePath: '/tmp/wt-auth',
-        agent: 'claude',
         branchName: 'feature-auth',
       },
     ];
@@ -767,7 +765,6 @@ describe('launchDetached', () => {
       sessionName: 'paw-myapp-auth',
       taskName: 'auth',
       worktreePath: '/tmp/wt-auth',
-      agent: 'claude',
       branchName: 'feat-auth',
     });
   });
@@ -783,7 +780,6 @@ describe('launchDetached', () => {
         sessionName: 'paw-myapp-auth',
         taskName: 'auth',
         worktreePath: '/tmp/wt-auth',
-        agent: 'claude',
         branchName: '',
       },
     ];
@@ -807,7 +803,6 @@ describe('launchDetached', () => {
         sessionName: 'paw-myapp-auth',
         taskName: 'auth',
         worktreePath: '/tmp/wt-auth',
-        agent: 'claude',
         branchName: '',
       },
     ];
@@ -837,7 +832,6 @@ describe('checkAgentLiveness', () => {
           sessionName: 'paw-myapp-auth',
           taskName: 'auth',
           worktreePath: '/tmp/wt-auth',
-          agent: 'claude',
           branchName: '',
         },
         {
@@ -845,7 +839,6 @@ describe('checkAgentLiveness', () => {
           sessionName: 'paw-myapp-api',
           taskName: 'api',
           worktreePath: '/tmp/wt-api',
-          agent: 'claude',
           branchName: '',
         },
       ],
@@ -874,7 +867,6 @@ describe('checkAgentLiveness', () => {
           paneId: '%1',
           taskName: 'auth',
           worktreePath: '/tmp/wt-auth',
-          agent: 'claude',
           branchName: '',
         },
         {
@@ -882,7 +874,6 @@ describe('checkAgentLiveness', () => {
           paneId: '%2',
           taskName: 'api',
           worktreePath: '/tmp/wt-api',
-          agent: 'claude',
           branchName: '',
         },
       ],
@@ -910,7 +901,6 @@ describe('checkAgentLiveness', () => {
           paneId: '%1',
           taskName: 'auth',
           worktreePath: '/tmp/wt-auth',
-          agent: 'claude',
           branchName: '',
         },
       ],

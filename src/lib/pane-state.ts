@@ -13,7 +13,6 @@ const PawPaneSchema = z.object({
   paneId: z.string(),
   taskName: z.string(),
   worktreePath: z.string(),
-  agent: z.literal('claude'),
   branchName: z.string(),
 });
 
@@ -22,7 +21,6 @@ const DetachedAgentSchema = z.object({
   sessionName: z.string(),
   taskName: z.string(),
   worktreePath: z.string(),
-  agent: z.literal('claude'),
   branchName: z.string(),
 });
 
@@ -35,7 +33,10 @@ const PawPaneConfigBaseSchema = z.object({
 });
 
 export const PawPaneConfigSchema = z.union([
-  PawPaneConfigBaseSchema.extend({ mode: z.literal('detached'), detached: z.array(DetachedAgentSchema) }),
+  PawPaneConfigBaseSchema.extend({
+    mode: z.literal('detached'),
+    detached: z.array(DetachedAgentSchema),
+  }),
   PawPaneConfigBaseSchema.extend({ mode: z.literal('attached') }),
   PawPaneConfigBaseSchema,
 ]);
@@ -133,7 +134,11 @@ export function killPanes(tmux: TmuxServiceApi, repoRoot: string): void {
   }
 
   /** Preserve `orchestratorPaneId` so re-entry doesn't spawn a duplicate. */
-  writePaneConfig(repoRoot, { ...config, panes: [], lastUpdated: new Date().toISOString() } as PawPaneConfig);
+  writePaneConfig(repoRoot, {
+    ...config,
+    panes: [],
+    lastUpdated: new Date().toISOString(),
+  } as PawPaneConfig);
 }
 
 /** Kill all detached agent sessions recorded in panes.json. */

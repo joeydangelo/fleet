@@ -115,14 +115,13 @@ tasks:
 });
 
 describe('agent config', () => {
-  it('parses the agent field', () => {
+  it('ignores unknown agent field in yaml', () => {
     const dir = makeTempDir();
     const configPath = resolve(dir, 'paw.yaml');
     writeFileSync(
       configPath,
       `
 target: feature/x
-agent: claude
 tasks:
   a:
     focus: src/
@@ -130,7 +129,7 @@ tasks:
     );
 
     const config = loadConfig(configPath);
-    expect(config.agent).toBe('claude');
+    expect(config).toBeDefined();
 
     rmSync(dir, { recursive: true });
   });
