@@ -1,6 +1,6 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import { existsSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { basename, resolve } from 'node:path';
 import { createFixtureRepo, type FixtureRepo } from './fixture-repo.js';
 import { getRepoRoot } from '../../src/lib/git.js';
 import { resolveSyncDir, readSyncState } from '../../src/lib/sync.js';
@@ -30,7 +30,8 @@ describe('createFixtureRepo', () => {
     fixture = createFixtureRepo();
     process.chdir(fixture.repoRoot);
 
-    expect(getRepoRoot()).toBe(fixture.repoRoot);
+    // git rev-parse and os.tmpdir may disagree on Windows 8.3 short names
+    expect(basename(getRepoRoot())).toBe(basename(fixture.repoRoot));
   });
 
   it('resolveSyncDir returns the syncDir path', () => {
