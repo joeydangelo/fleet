@@ -5,6 +5,7 @@ import { resolve, dirname } from 'node:path';
 import { fetchWithGhFallback } from './github-fetch.js';
 import { readManifest, writeManifest } from './manifest.js';
 
+/** The category of a tbd doc file — controls which subdirectory and manifest section it uses. */
 export type DocType = 'shortcut' | 'guideline' | 'template';
 
 interface AddDocResult {
@@ -36,6 +37,10 @@ function getDocTypeSubdir(docType: DocType): string {
       return 'shortcuts';
     case 'template':
       return 'templates';
+    default: {
+      const _exhaustive: never = docType;
+      throw new Error(`Unhandled DocType: ${_exhaustive}`);
+    }
   }
 }
 
