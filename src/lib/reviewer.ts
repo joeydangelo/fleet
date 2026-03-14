@@ -63,12 +63,7 @@ export function readVerdictFile(filePath: string): ReviewResult | null {
   if (!existsSync(filePath)) return null;
   try {
     const raw = readFileSync(filePath, 'utf-8');
-    const data = JSON.parse(raw) as {
-      verdict?: string;
-      strengths?: string;
-      issues?: string;
-      suggestions?: string;
-    };
+    const data = JSON.parse(raw) as Partial<ReviewResult>;
     const v = String(data.verdict ?? '').toLowerCase();
     // Fail-closed: anything other than an explicit 'pass' is treated as 'fail'
     const verdict: ReviewVerdict = v === 'pass' ? 'pass' : 'fail';

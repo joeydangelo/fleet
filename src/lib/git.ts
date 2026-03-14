@@ -98,8 +98,14 @@ export function getChangedFileCount(branch: string, base: string, cwd?: string):
   return output.split('\n').length;
 }
 
+/** Result of a git merge operation. */
+export interface MergeResult {
+  success: boolean;
+  message: string;
+}
+
 /** Attempt a no-edit merge of `branch` into HEAD. Returns success status and git output. */
-export function mergeBranch(branch: string, cwd?: string): { success: boolean; message: string } {
+export function mergeBranch(branch: string, cwd?: string): MergeResult {
   try {
     const output = git(['merge', branch, '--no-edit'], { cwd });
     return { success: true, message: output };

@@ -9,6 +9,12 @@ function getRepoRootSafe(): string | null {
   return process.env.PAW_REPO_ROOT || getRepoRootOrNull();
 }
 
+/** A loaded doc file with its content and resolved filesystem path. */
+export interface DocPayload {
+  content: string;
+  path: string;
+}
+
 /** Metadata extracted from a doc file's YAML frontmatter. */
 export interface DocInfo {
   name: string;
@@ -54,7 +60,7 @@ function getLookupPaths(repoRoot: string, category: string): string[] {
  * Read a doc file by category and name.
  * Searches lookup paths in order; first match wins.
  */
-export function readDoc(category: string, name: string): { content: string; path: string } | null {
+export function readDoc(category: string, name: string): DocPayload | null {
   const filename = name.endsWith('.md') ? name : `${name}.md`;
   const repoRoot = getRepoRootSafe();
   if (!repoRoot) return null;
