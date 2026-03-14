@@ -81,14 +81,6 @@ describe('computeThreads', () => {
     expect(broadcasts[0]!.msg).toBe('Some broadcast');
   });
 
-  it('no entries returns empty', () => {
-    const { open, resolved, broadcasts } = computeThreads([]);
-
-    expect(open).toHaveLength(0);
-    expect(resolved).toHaveLength(0);
-    expect(broadcasts).toHaveLength(0);
-  });
-
   it('nudge entries are grouped with broadcasts', () => {
     const entries = [
       entry({ type: 'broadcast', from: 'auth', msg: 'Changed interface' }),

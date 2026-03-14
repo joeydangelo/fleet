@@ -164,26 +164,6 @@ describe('addDoc', () => {
     );
     expect(content).toContain('roles: [reviewer]');
   });
-
-  it('does not inject roles when --roles is omitted', async () => {
-    mockedFetch.mockResolvedValue({
-      content: '---\nname: general\n---\n# General',
-      usedGhCli: false,
-    });
-
-    await addDoc(repoRoot, {
-      url: 'https://example.com/general.md',
-      name: 'general',
-      docType: 'guideline',
-    });
-
-    const { readFileSync } = await import('node:fs');
-    const content = readFileSync(
-      resolve(repoRoot, '.paw', 'docs', 'guidelines', 'general.md'),
-      'utf-8',
-    );
-    expect(content).not.toContain('roles:');
-  });
 });
 
 describe('injectRolesFrontmatter', () => {

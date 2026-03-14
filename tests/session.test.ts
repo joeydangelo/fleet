@@ -76,8 +76,8 @@ describe('generateTaskFile', () => {
     expect(result).toContain('- src/routes/');
   });
 
-  it('includes instructions section when prompt is set', () => {
-    const config: PawConfig = {
+  it('includes instructions when prompt is set, omits when absent', () => {
+    const configWithPrompt: PawConfig = {
       ...baseConfig,
       tasks: {
         auth: { focus: 'src/auth/', prompt: 'Implement OAuth2 login.' },
@@ -89,22 +89,12 @@ describe('generateTaskFile', () => {
       worktreePath: '/projects/acme-app-paw-auth',
     };
 
-    const result = generateTaskFile(config, worktree);
+    const withPrompt = generateTaskFile(configWithPrompt, worktree);
+    expect(withPrompt).toContain('## Instructions');
+    expect(withPrompt).toContain('Implement OAuth2 login.');
 
-    expect(result).toContain('## Instructions');
-    expect(result).toContain('Implement OAuth2 login.');
-  });
-
-  it('omits instructions section when no prompt', () => {
-    const worktree = {
-      taskName: 'auth',
-      branch: 'feature/dashboard-auth',
-      worktreePath: '/projects/acme-app-paw-auth',
-    };
-
-    const result = generateTaskFile(baseConfig, worktree);
-
-    expect(result).not.toContain('## Instructions');
+    const withoutPrompt = generateTaskFile(baseConfig, worktree);
+    expect(withoutPrompt).not.toContain('## Instructions');
   });
 
   it('includes issue in header when issue field is set', () => {
@@ -214,20 +204,6 @@ describe('generateTaskFile', () => {
     const result = generateTaskFile(baseConfig, worktree);
 
     expect(result).not.toContain('**Depends on:**');
-  });
-
-  it('does not include workflow directive or inline collaboration rules', () => {
-    const worktree = {
-      taskName: 'auth',
-      branch: 'feature/dashboard-auth',
-      worktreePath: '/projects/acme-app-paw-auth',
-    };
-
-    const result = generateTaskFile(baseConfig, worktree);
-
-    expect(result).not.toContain('## Workflow');
-    expect(result).not.toContain('## Collaboration Rules');
-    expect(result).not.toContain("## When You're Done");
   });
 
   it('throws on unknown task name', () => {

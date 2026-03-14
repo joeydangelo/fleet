@@ -18,7 +18,7 @@ describe('ensurePawGitignore', () => {
     rmSync(repoRoot, { recursive: true, force: true });
   });
 
-  it('creates .paw/.gitignore with expected entries', () => {
+  it('creates .paw/.gitignore with expected entries and is idempotent', () => {
     const created = ensurePawGitignore(repoRoot);
     expect(created).toBe(true);
 
@@ -30,6 +30,12 @@ describe('ensurePawGitignore', () => {
     expect(content).toContain('sessions/');
     expect(content).toContain('paw.yaml');
     expect(content).toContain('*.tmp');
+
+    // Second call is idempotent — returns false, content unchanged
+    const secondResult = ensurePawGitignore(repoRoot);
+    expect(secondResult).toBe(false);
+    const contentAfter = readFileSync(resolve(repoRoot, '.paw', '.gitignore'), 'utf-8');
+    expect(contentAfter).toBe(content);
   });
 
   it('does not include manifest.yml, hooks/, or individual runtime files', () => {
@@ -40,12 +46,6 @@ describe('ensurePawGitignore', () => {
     // These moved into run/ — no longer need individual entries
     expect(content).not.toContain('state.yml');
     expect(content).not.toContain('panes.json');
-  });
-
-  it('is idempotent — returns false on second call', () => {
-    ensurePawGitignore(repoRoot);
-    const result = ensurePawGitignore(repoRoot);
-    expect(result).toBe(false);
   });
 
   it('updates if content differs', () => {
