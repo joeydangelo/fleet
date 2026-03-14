@@ -121,6 +121,31 @@ describe('addDoc', () => {
     ).rejects.toThrow('empty');
   });
 
+  // TODO: When HIGH spec (github-fetch de-mocking) is done, replace mock with real fetch
+  it('propagates error when fetchWithGhFallback throws (network failure)', async () => {
+    mockedFetch.mockRejectedValue(new Error('Network error: ECONNREFUSED'));
+
+    await expect(
+      addDoc(repoRoot, {
+        url: 'https://example.com/unreachable.md',
+        name: 'unreachable',
+        docType: 'guideline',
+      }),
+    ).rejects.toThrow('Network error: ECONNREFUSED');
+  });
+
+  it('throws validation error when fetch returns whitespace-only content', async () => {
+    mockedFetch.mockResolvedValue({ content: '   \n\t  ', usedGhCli: false });
+
+    await expect(
+      addDoc(repoRoot, {
+        url: 'https://example.com/blank.md',
+        name: 'blank',
+        docType: 'shortcut',
+      }),
+    ).rejects.toThrow('empty');
+  });
+
   it('preserves existing config entries', async () => {
     // Write an existing config with an entry
     writeManifest(repoRoot, {

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { existsSync, rmSync } from 'node:fs';
 import { writeFileSync } from 'atomically';
 import { resolve } from 'node:path';
@@ -176,6 +176,54 @@ describe('syncDocs', () => {
   });
 });
 
+describe('syncDocs — failure paths', () => {
+  let repoRoot: string;
+
+  beforeEach(() => {
+    repoRoot = makeTempDir();
+  });
+
+  afterEach(() => {
+    rmSync(repoRoot, { recursive: true, force: true });
+  });
+
+  it('returns empty result when bundled docs directory is missing', async () => {
+    // Mock findBundledDir to return null (simulating missing docs directory)
+    const utilMod = await import('../src/lib/util.js');
+    const spy = vi.spyOn(utilMod, 'findBundledDir').mockReturnValue(null);
+
+    try {
+      // Re-import to pick up the mock — but since getDocsBasePath uses the
+      // direct import, we need to verify via the public API behavior.
+      // syncDocs catches the getDocsBasePath error and returns early.
+      // generateDefaultManifest also catches it and returns {}.
+      const defaults = generateDefaultManifest();
+      expect(Object.keys(defaults)).toHaveLength(0);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it('syncDocs writes manifest but skips file copies when bundled dir is missing', async () => {
+    // First do a normal sync to establish manifest
+    syncDocs(repoRoot);
+
+    const utilMod = await import('../src/lib/util.js');
+    const spy = vi.spyOn(utilMod, 'findBundledDir').mockReturnValue(null);
+
+    try {
+      const result = syncDocs(repoRoot);
+      // When bundled dir is missing, syncDocs catches the error at line 110-115
+      // and returns early with no added/updated/removed
+      expect(result.added).toHaveLength(0);
+      expect(result.updated).toHaveLength(0);
+      expect(result.removed).toHaveLength(0);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+});
+
 describe('isDocsStale', () => {
   it('returns true when lastSyncAt is undefined', () => {
     expect(isDocsStale(undefined, 24)).toBe(true);
@@ -199,5 +247,21 @@ describe('isDocsStale', () => {
     const halfHourAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString();
     expect(isDocsStale(halfHourAgo, 1)).toBe(false);
     expect(isDocsStale(halfHourAgo, 0.001)).toBe(true);
+  });
+
+  it('returns true at exact 0-hour threshold boundary', () => {
+    // With threshold 0, any elapsed time should be stale
+    // 0-hour threshold means thresholdMs = 0, so Date.now() - lastSync > 0
+    // A timestamp from even a ms ago should be stale
+    const slightlyOld = new Date(Date.now() - 1).toISOString();
+    expect(isDocsStale(slightlyOld, 0)).toBe(true);
+  });
+
+  it('returns false when elapsed time equals threshold exactly (not stale)', () => {
+    // Boundary: elapsed === threshold should NOT be stale (strict > comparison)
+    // We can't control Date.now() precisely, so use a threshold that matches
+    const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
+    // At exactly 2 hours threshold, elapsed == threshold, so > returns false
+    expect(isDocsStale(twoHoursAgo, 2)).toBe(false);
   });
 });

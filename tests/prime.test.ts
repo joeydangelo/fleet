@@ -57,6 +57,30 @@ describe('prime cursor write', () => {
     expect(updated.lastCheck?.[taskName]).toBe(now);
   });
 
+  it('filtering returns only messages after cursor, not zero (proves filter, not delete)', () => {
+    const taskName = 'auth';
+
+    // Add a broadcast from another agent
+    appendMessage('api', { type: 'broadcast', msg: 'Old change' }, repoDir);
+
+    // Read and set cursor
+    const state1 = readSyncState(repoDir)!;
+    const entries1 = readMessagesForTask(taskName, repoDir, state1.lastCheck?.[taskName]);
+    expect(entries1).toHaveLength(1);
+
+    const cursor = new Date().toISOString();
+    writeSyncState({ ...state1, lastCheck: { ...state1.lastCheck, [taskName]: cursor } }, repoDir);
+
+    // Append a NEW message with a later timestamp (after cursor)
+    appendMessage('api', { type: 'broadcast', msg: 'New change after cursor' }, repoDir);
+
+    // Read with the cursor — should return exactly the new message
+    const state2 = readSyncState(repoDir)!;
+    const entries2 = readMessagesForTask(taskName, repoDir, state2.lastCheck?.[taskName]);
+    expect(entries2).toHaveLength(1);
+    expect(entries2[0]!.msg).toBe('New change after cursor');
+  });
+
   it('second prime run with no new broadcasts shows empty broadcasts section', () => {
     const taskName = 'auth';
 
