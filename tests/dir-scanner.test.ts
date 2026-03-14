@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, dirname, basename } from 'node:path';
 import { tmpdir, homedir } from 'node:os';
 import {
   parsePathInput,
@@ -47,17 +47,15 @@ describe('parsePathInput', () => {
 
   it('expands ~ to homedir', () => {
     const result = parsePathInput('~/pro');
-    expect(result.parentDir).not.toContain('~');
+    expect(result.parentDir).toBe(homedir());
     expect(result.prefix).toBe('pro');
   });
 
-  it('expands bare ~ to homedir', () => {
+  it('expands bare ~ to homedir parent with homedir basename as prefix', () => {
     const result = parsePathInput('~');
-    // ~ alone means parentDir = homedir's parent, prefix = homedir's basename
-    // Actually per dmux: ~ expands to homedir, then since no trailing slash,
-    // dirname = parent of homedir, basename = homedir name
-    // Let's just verify ~ is expanded
-    expect(result.parentDir).not.toContain('~');
+    // ~ expands to homedir; no trailing slash so dirname/basename splits it
+    expect(result.parentDir).toBe(dirname(homedir()));
+    expect(result.prefix).toBe(basename(homedir()));
   });
 
   it('handles absolute path with no directory component', () => {

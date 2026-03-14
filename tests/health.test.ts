@@ -270,14 +270,14 @@ describe('health snapshot I/O writes to .paw/run/', () => {
     rmSync(repoRoot, { recursive: true, force: true });
   });
 
-  it('writeHealthSnapshot creates .paw/run/health.json', () => {
+  it('writeHealthSnapshot round-trips snapshot to .paw/run/health.json', () => {
     const snapshot: HealthSnapshot = {
       timestamp: '2026-01-01T00:00:00.000Z',
       agents: {},
     };
     writeHealthSnapshot(repoRoot, snapshot);
-    const filePath = resolve(repoRoot, '.paw', 'run', 'health.json');
-    expect(existsSync(filePath)).toBe(true);
+    const result = readHealthSnapshot(repoRoot);
+    expect(result).toEqual(snapshot);
   });
 
   it('readHealthSnapshot returns null when file is missing', () => {
@@ -296,10 +296,9 @@ describe('inbox cursor I/O writes to .paw/run/', () => {
     rmSync(repoRoot, { recursive: true, force: true });
   });
 
-  it('writeInboxCursor creates file under .paw/run/', () => {
+  it('writeInboxCursor round-trips cursor value to .paw/run/', () => {
     writeInboxCursor(repoRoot, 'auth', '2026-01-01T00:00:00.000Z');
-    const filePath = resolve(repoRoot, '.paw', 'run', '.inbox-cursor-auth');
-    expect(existsSync(filePath)).toBe(true);
+    expect(readInboxCursor(repoRoot, 'auth')).toBe('2026-01-01T00:00:00.000Z');
   });
 
   it('readInboxCursor returns null when missing', () => {
