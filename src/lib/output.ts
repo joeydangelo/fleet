@@ -1,14 +1,27 @@
-import pc from 'picocolors';
+import { createSemanticColors } from './context.js';
 import { CLIError } from './errors.js';
 
-/** Semantic color map for consistent CLI output. */
-export const colors = {
-  success: pc.green,
-  error: pc.red,
-  warn: pc.yellow,
-  info: pc.cyan,
-  muted: pc.gray,
-} as const;
+let _colors: ReturnType<typeof createSemanticColors> | null = null;
+
+export function getColors() {
+  if (!_colors) _colors = createSemanticColors();
+  return _colors;
+}
+
+/** Reset cached colors (called after --color flag is parsed). */
+export function resetColors(): void {
+  _colors = null;
+}
+
+/** Semantic color map — respects --color flag and NO_COLOR/FORCE_COLOR env vars. */
+export const colors: ReturnType<typeof createSemanticColors> = new Proxy(
+  {} as ReturnType<typeof createSemanticColors>,
+  {
+    get(_, prop: string) {
+      return getColors()[prop as keyof ReturnType<typeof createSemanticColors>];
+    },
+  },
+);
 
 /** Extract a human-readable message from an unknown error. */
 export function toErrorMessage(err: unknown): string {
@@ -42,32 +55,32 @@ const ICONS = {
 
 /** Print a success status line for a task. */
 export function success(taskName: string, detail: string): void {
-  console.log(`  ${colors.success(ICONS.SUCCESS)} ${pc.bold(taskName)} -- ${detail}`);
+  console.log(`  ${colors.success(ICONS.SUCCESS)} ${colors.bold(taskName)} -- ${detail}`);
 }
 
 /** Print an error status line for a task. */
 export function error(taskName: string, detail: string): void {
-  console.error(`  ${colors.error(ICONS.ERROR)} ${pc.bold(taskName)} -- ${detail}`);
+  console.error(`  ${colors.error(ICONS.ERROR)} ${colors.bold(taskName)} -- ${detail}`);
 }
 
 /** Print a warning status line for a task. */
 export function warn(taskName: string, detail: string): void {
-  console.error(`  ${colors.warn(ICONS.WARN)} ${pc.bold(taskName)} -- ${detail}`);
+  console.error(`  ${colors.warn(ICONS.WARN)} ${colors.bold(taskName)} -- ${detail}`);
 }
 
 /** Print a pending status line for a task. */
 export function pending(taskName: string, detail: string): void {
-  console.log(`  ${pc.dim(ICONS.PENDING)} ${pc.bold(taskName)} -- ${detail}`);
+  console.log(`  ${colors.dim(ICONS.PENDING)} ${colors.bold(taskName)} -- ${detail}`);
 }
 
 /** Print a skipped status line for a task. */
 export function skip(taskName: string, detail: string): void {
-  console.log(`  ${pc.dim(ICONS.SKIP)} ${pc.bold(taskName)} -- ${detail}`);
+  console.log(`  ${colors.dim(ICONS.SKIP)} ${colors.bold(taskName)} -- ${detail}`);
 }
 
 /** Print an unknown-state status line for a task. */
 export function unknown(taskName: string, detail: string): void {
-  console.error(`  ${colors.warn(ICONS.UNKNOWN)} ${pc.bold(taskName)} -- ${detail}`);
+  console.error(`  ${colors.warn(ICONS.UNKNOWN)} ${colors.bold(taskName)} -- ${detail}`);
 }
 
 /** Guard that throws if no sync state is available. */
