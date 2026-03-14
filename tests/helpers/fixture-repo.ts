@@ -121,8 +121,10 @@ export function createFixtureRepo(opts?: FixtureRepoOptions): FixtureRepo {
   };
 
   const readSyncFile = (path: string): string | null => {
+    const resolved = resolve(syncDir, path);
+    if (!resolved.startsWith(syncDir)) return null;
     try {
-      return readFileSync(resolve(syncDir, path), 'utf-8');
+      return readFileSync(resolved, 'utf-8');
     } catch {
       return null;
     }

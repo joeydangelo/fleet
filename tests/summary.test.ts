@@ -81,6 +81,24 @@ describe('runSummary', () => {
       const result = fixture.readSyncFile(reviewPath);
       expect(result).toBe(original + appendContent);
     });
+
+    it('fails with exit 1 when append content is empty', () => {
+      const exitCode = runSummary({ append: true, content: '' });
+
+      expect(exitCode).toBe(1);
+      const written = fixture.readSyncFile(reviewPath);
+      expect(written).toBeNull();
+    });
+
+    it('creates new file when appending with no existing summary', () => {
+      const content = '## Fixed — Cycle 1\nFix notes\n';
+
+      const exitCode = runSummary({ append: true, content });
+
+      expect(exitCode).toBe(0);
+      const result = fixture.readSyncFile(reviewPath);
+      expect(result).toBe(content);
+    });
   });
 
   describe('show + append conflict', () => {

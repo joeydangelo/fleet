@@ -61,9 +61,10 @@ describe('runPawCommand', () => {
 describe('runGo dry-run integration', () => {
   let cleanup: () => void;
   let repoRoot: string;
-  const savedCwd = process.cwd();
+  let savedCwd: string;
 
   beforeEach(async () => {
+    savedCwd = process.cwd();
     // Restore real execFileSync so git operations work in the integration test
     const actualCp: Record<string, unknown> = await vi.importActual('node:child_process');
     mockExecFileSync.mockImplementation(actualCp.execFileSync as typeof execFileSync);
