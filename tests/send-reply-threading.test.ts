@@ -7,7 +7,13 @@ import {
   initSyncWorktree,
   removeSyncWorktree,
 } from '../src/lib/sync.js';
-import { appendMessage, readMessages, generateThreadId } from '../src/lib/messages.js';
+import {
+  appendMessage,
+  readMessages,
+  generateThreadId,
+  getUnansweredMessages,
+  replyToMessage,
+} from '../src/lib/messages.js';
 
 import { makeTempDir } from './helpers/temp.js';
 
@@ -75,24 +81,13 @@ describe('reply targets unanswered messages', () => {
       repoDir,
     );
 
-    // Simulate reply logic: find unanswered send from orchestrator to api
-    const all = readMessages(repoDir);
-    const unanswered = all.filter(
-      (e) => e.type === 'send' && e.from === 'orchestrator' && e.to === 'api',
-    );
-    const target = unanswered[0]!;
+    const reply = replyToMessage('api', 'orchestrator', 'Using /users', repoDir);
 
-    appendMessage(
-      'api',
-      { type: 'reply', to: 'orchestrator', msg: 'Using /users', thread: target.thread },
-      repoDir,
-    );
-
-    const entries = readMessages(repoDir);
-    const replies = entries.filter((e) => e.type === 'reply');
-    expect(replies).toHaveLength(1);
-    expect(replies[0]!.thread).toBe(thread);
-    expect(replies[0]!.to).toBe('orchestrator');
+    expect(reply).not.toBeNull();
+    expect(reply!.thread).toBe(thread);
+    expect(reply!.to).toBe('orchestrator');
+    expect(reply!.type).toBe('reply');
+    expect(reply!.msg).toBe('Using /users');
   });
 
   it('second reply skips already-answered message and targets the next', () => {
@@ -117,18 +112,8 @@ describe('reply targets unanswered messages', () => {
       repoDir,
     );
 
-    // Find remaining unanswered
-    const all = readMessages(repoDir);
-    const repliedThreads = new Set(
-      all.filter((e) => e.type === 'reply' && e.from === 'api' && e.thread).map((e) => e.thread!),
-    );
-    const unanswered = all.filter(
-      (e) =>
-        e.type === 'send' &&
-        e.from === 'orchestrator' &&
-        e.to === 'api' &&
-        (!e.thread || !repliedThreads.has(e.thread)),
-    );
+    // Use production function to find remaining unanswered
+    const unanswered = getUnansweredMessages('api', 'orchestrator', repoDir);
 
     expect(unanswered).toHaveLength(1);
     expect(unanswered[0]!.thread).toBe(thread1);
@@ -140,18 +125,7 @@ describe('reply targets unanswered messages', () => {
     appendMessage('orchestrator', { type: 'send', to: 'api', msg: 'Question?', thread }, repoDir);
     appendMessage('api', { type: 'reply', to: 'orchestrator', msg: 'Answer', thread }, repoDir);
 
-    const all = readMessages(repoDir);
-    const repliedThreads = new Set(
-      all.filter((e) => e.type === 'reply' && e.from === 'api' && e.thread).map((e) => e.thread!),
-    );
-    const unanswered = all.filter(
-      (e) =>
-        e.type === 'send' &&
-        e.from === 'orchestrator' &&
-        e.to === 'api' &&
-        (!e.thread || !repliedThreads.has(e.thread)),
-    );
-
+    const unanswered = getUnansweredMessages('api', 'orchestrator', repoDir);
     expect(unanswered).toHaveLength(0);
   });
 
@@ -166,11 +140,8 @@ describe('reply targets unanswered messages', () => {
     );
     appendMessage('auth', { type: 'send', to: 'api', msg: 'From auth', thread: thread2 }, repoDir);
 
-    const all = readMessages(repoDir);
-    const fromOrch = all.filter(
-      (e) => e.type === 'send' && e.from === 'orchestrator' && e.to === 'api',
-    );
-    const fromAuth = all.filter((e) => e.type === 'send' && e.from === 'auth' && e.to === 'api');
+    const fromOrch = getUnansweredMessages('api', 'orchestrator', repoDir);
+    const fromAuth = getUnansweredMessages('api', 'auth', repoDir);
 
     expect(fromOrch).toHaveLength(1);
     expect(fromOrch[0]!.msg).toBe('From orch');

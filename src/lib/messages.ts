@@ -72,6 +72,52 @@ export function readMessages(cwd?: string): Message[] {
  *
  * Optionally filter to entries after a given timestamp.
  */
+/**
+ * Find unanswered sends from `fromTask` directed at `taskName`.
+ * A send is unanswered if no reply from `taskName` shares its thread ID.
+ */
+export function getUnansweredMessages(taskName: string, fromTask: string, cwd?: string): Message[] {
+  const all = readMessages(cwd);
+
+  const repliedThreads = new Set(
+    all.filter((e) => e.type === 'reply' && e.from === taskName && e.thread).map((e) => e.thread!),
+  );
+
+  return all.filter(
+    (e) =>
+      e.type === 'send' &&
+      e.from === fromTask &&
+      e.to === taskName &&
+      (!e.thread || !repliedThreads.has(e.thread)),
+  );
+}
+
+/**
+ * Reply to the oldest unanswered send from `toTask` directed at `taskName`.
+ * Returns the reply Message, or null if no unanswered messages exist.
+ */
+export function replyToMessage(
+  taskName: string,
+  toTask: string,
+  message: string,
+  cwd?: string,
+): Message | null {
+  const unanswered = getUnansweredMessages(taskName, toTask, cwd);
+  if (unanswered.length === 0) return null;
+
+  const target = unanswered[0]!;
+  return appendMessage(
+    taskName,
+    {
+      type: 'reply',
+      to: toTask,
+      msg: message,
+      ...(target.thread ? { thread: target.thread } : {}),
+    },
+    cwd,
+  );
+}
+
 export function readMessagesForTask(taskName: string, cwd?: string, since?: string): Message[] {
   const all = readMessages(cwd);
 

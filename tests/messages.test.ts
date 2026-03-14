@@ -95,6 +95,8 @@ describe('appendMessage / readMessages', () => {
     }
   });
 
+  // Sort edge case: manual JSONL to control timestamps — cannot use appendMessage
+  // because it auto-generates timestamps, making identical-ts collisions untestable.
   it('breaks ties deterministically by task name when timestamps match', () => {
     const ts = '2026-01-15T12:00:00.000Z';
     // Write both entries to the same file with zebra FIRST to defeat stable-sort
