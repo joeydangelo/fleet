@@ -58,7 +58,7 @@ describe('claimTask', () => {
     const claimed = claimTask(state, 'auth');
 
     expect(claimed.tasks['auth']?.status).toBe('in_progress');
-    expect(claimed.tasks['auth']?.claimed).toBeTruthy();
+    expect(claimed.tasks['auth']?.claimed).toMatch(/^\d{4}-\d{2}-\d{2}T/);
     expect(claimed.tasks['api']?.status).toBe('pending');
   });
 
@@ -75,7 +75,7 @@ describe('completeTask', () => {
     const completed = completeTask(state, 'auth');
 
     expect(completed.tasks['auth']?.status).toBe('done');
-    expect(completed.tasks['auth']?.doneAt).toBeTruthy();
+    expect(completed.tasks['auth']?.doneAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
     expect(completed.tasks['api']?.status).toBe('pending');
   });
 

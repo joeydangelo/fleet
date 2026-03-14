@@ -2,6 +2,7 @@ import { execFileSync } from 'node:child_process';
 import type { ExecFileSyncOptions } from 'node:child_process';
 import { rmSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { toErrorMessage } from './output.js';
 
 /** Runs a git command synchronously. Strips trailing whitespace and throws on non-zero exit. */
 export function git(args: string[], options?: ExecFileSyncOptions): string {
@@ -21,6 +22,15 @@ export function git(args: string[], options?: ExecFileSyncOptions): string {
 /** Resolve the root of the git repository containing `cwd`. */
 export function getRepoRoot(cwd?: string): string {
   return git(['rev-parse', '--show-toplevel'], { cwd });
+}
+
+/** Like getRepoRoot but returns null instead of throwing when not in a git repo. */
+export function getRepoRootOrNull(cwd?: string): string | null {
+  try {
+    return getRepoRoot(cwd);
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -94,8 +104,7 @@ export function mergeBranch(branch: string, cwd?: string): { success: boolean; m
     const output = git(['merge', branch, '--no-edit'], { cwd });
     return { success: true, message: output };
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    return { success: false, message };
+    return { success: false, message: toErrorMessage(error) };
   }
 }
 
