@@ -2,7 +2,7 @@ import { Command } from 'commander';
 import { getRepoRoot } from '../lib/git.js';
 import { getTaskIdentity } from '../lib/session.js';
 import { readRequiredSyncState } from '../lib/sync.js';
-import { appendMessage, readMessages } from '../lib/messages.js';
+import { readMessages, replyToMessage } from '../lib/messages.js';
 import { handleError, colors } from '../lib/output.js';
 import { computeThreads, writeGateFlag, clearGateFlag } from './inbox.js';
 
@@ -19,41 +19,12 @@ export function replyCommand(): Command {
 
         readRequiredSyncState(repoRoot);
 
-        const all = readMessages(repoRoot);
+        const reply = replyToMessage(taskName, task, message, repoRoot);
 
-        // Thread IDs that already have a reply from this agent
-        const repliedThreads = new Set(
-          all
-            .filter((e) => e.type === 'reply' && e.from === taskName && e.thread)
-            .map((e) => e.thread!),
-        );
-
-        // Find unanswered sends from the target task directed at this agent
-        const unanswered = all.filter(
-          (e) =>
-            e.type === 'send' &&
-            e.from === task &&
-            e.to === taskName &&
-            (!e.thread || !repliedThreads.has(e.thread)),
-        );
-
-        if (unanswered.length === 0) {
+        if (!reply) {
           console.error(colors.warn(`No unanswered messages from '${task}'.`));
           process.exit(1);
         }
-
-        const target = unanswered[0]!;
-
-        appendMessage(
-          taskName,
-          {
-            type: 'reply',
-            to: task,
-            msg: message,
-            ...(target.thread ? { thread: target.thread } : {}),
-          },
-          repoRoot,
-        );
 
         console.log(colors.success(`[${taskName} → ${task}] ${message}`));
 
