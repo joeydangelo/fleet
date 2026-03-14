@@ -1,5 +1,6 @@
-import { Command } from 'commander';
-import { setVerbosity } from './lib/context.js';
+import { Command, Option } from 'commander';
+import { setVerbosity, setColorOption, type ColorOption } from './lib/context.js';
+import { resetColors } from './lib/output.js';
 import { getVersion } from './lib/version.js';
 
 /**
@@ -40,12 +41,20 @@ export function createCli(): Command {
     .description('Parallel Agent Worktrees -- orchestrate multi-agent git worktree workflows')
     .version(getVersion())
     .option('--verbose', 'Show debug output (enables SHOW_COMMANDS, timing)')
+    .addOption(
+      new Option('--color <when>', 'Colorize output: auto, always, never')
+        .choices(['auto', 'always', 'never'])
+        .default('auto'),
+    )
     .hook('preAction', (thisCommand) => {
       const verbose = thisCommand.opts().verbose === true;
       setVerbosity(verbose);
       if (verbose) {
         process.env.SHOW_COMMANDS = '1';
       }
+      const colorOpt = thisCommand.opts().color as ColorOption;
+      setColorOption(colorOpt);
+      resetColors();
     });
 
   program.addHelpText(
