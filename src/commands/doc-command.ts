@@ -3,7 +3,9 @@ import pc from 'picocolors';
 import { readDoc, listDocs } from '../lib/docs.js';
 import { ensureDocsFresh } from '../lib/doc-sync.js';
 import { handleError, colors, success, toErrorMessage } from '../lib/output.js';
+import { addDoc } from '../lib/doc-add.js';
 import type { DocType } from '../lib/doc-add.js';
+import { getRepoRoot } from '../lib/git.js';
 
 /** Derive a doc name from a URL's last path segment. */
 function deriveNameFromUrl(url: string): string {
@@ -21,10 +23,7 @@ function categoryToDocType(category: string): DocType {
   return category.replace(/s$/, '') as DocType;
 }
 
-/**
- * Factory for list/display commands that serve a single doc category.
- * Used by guidelines, shortcut, and template commands.
- */
+/** Builds a Commander CLI subcommand that fetches and displays a tbd doc file by name within a given category. */
 export function createDocCommand(name: string, category: string, description: string): Command {
   return new Command(name)
     .description(description)
@@ -39,8 +38,6 @@ export function createDocCommand(name: string, category: string, description: st
         opts: { list?: boolean; add?: string; name?: string; roles?: string },
       ) => {
         try {
-          const { getRepoRoot } = await import('../lib/git.js');
-
           try {
             await ensureDocsFresh(getRepoRoot());
           } catch (err: unknown) {
@@ -58,8 +55,6 @@ export function createDocCommand(name: string, category: string, description: st
           }
 
           if (opts.add) {
-            const { addDoc } = await import('../lib/doc-add.js');
-
             const docNameForAdd = opts.name || deriveNameFromUrl(opts.add);
             const repoRoot = getRepoRoot();
 
