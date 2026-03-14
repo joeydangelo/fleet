@@ -258,10 +258,15 @@ describe('isDocsStale', () => {
   });
 
   it('returns false when elapsed time equals threshold exactly (not stale)', () => {
-    // Boundary: elapsed === threshold should NOT be stale (strict > comparison)
-    // We can't control Date.now() precisely, so use a threshold that matches
-    const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
-    // At exactly 2 hours threshold, elapsed == threshold, so > returns false
-    expect(isDocsStale(twoHoursAgo, 2)).toBe(false);
+    // Freeze time so Date.now() inside isDocsStale matches our reference
+    const now = Date.now();
+    vi.useFakeTimers({ now });
+    try {
+      const twoHoursAgo = new Date(now - 2 * 60 * 60 * 1000).toISOString();
+      // elapsed === threshold → strict > returns false
+      expect(isDocsStale(twoHoursAgo, 2)).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
