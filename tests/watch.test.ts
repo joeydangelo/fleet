@@ -50,6 +50,54 @@ describe('diffMessages', () => {
     expect(result.newEntries).toHaveLength(0);
     expect(result.lastSeenTs).toBeUndefined();
   });
+
+  // Finding 22: timestamp edge cases
+
+  it('excludes entries with timestamp equal to lastSeenTs (strict >)', () => {
+    const entries: Message[] = [
+      { ts: '2026-02-14T10:00:00.000Z', from: 'auth', type: 'broadcast', msg: 'exact match' },
+      { ts: '2026-02-14T10:00:01.000Z', from: 'api', type: 'broadcast', msg: 'after' },
+    ];
+
+    const result = diffMessages(entries, '2026-02-14T10:00:00.000Z');
+    expect(result.newEntries).toHaveLength(1);
+    expect(result.newEntries[0]!.msg).toBe('after');
+  });
+
+  it('handles duplicate timestamps — all entries with same ts included/excluded consistently', () => {
+    const entries: Message[] = [
+      { ts: '2026-02-14T10:00:00.000Z', from: 'auth', type: 'broadcast', msg: 'dup-1' },
+      { ts: '2026-02-14T10:00:00.000Z', from: 'api', type: 'broadcast', msg: 'dup-2' },
+      { ts: '2026-02-14T10:00:01.000Z', from: 'auth', type: 'broadcast', msg: 'later' },
+    ];
+
+    // When cursor is before duplicates, both should be included
+    const result1 = diffMessages(entries, '2026-02-14T09:59:59.000Z');
+    expect(result1.newEntries).toHaveLength(3);
+    expect(result1.newEntries.filter((e) => e.msg.startsWith('dup-'))).toHaveLength(2);
+
+    // When cursor equals the duplicate ts, both should be excluded
+    const result2 = diffMessages(entries, '2026-02-14T10:00:00.000Z');
+    expect(result2.newEntries).toHaveLength(1);
+    expect(result2.newEntries[0]!.msg).toBe('later');
+    // Neither dup-1 nor dup-2 should appear
+    expect(result2.newEntries.some((e) => e.msg.startsWith('dup-'))).toBe(false);
+  });
+
+  it('handles out-of-order entries — filter is per-entry, not positional', () => {
+    const entries: Message[] = [
+      { ts: '2026-02-14T10:02:00.000Z', from: 'auth', type: 'broadcast', msg: 'late' },
+      { ts: '2026-02-14T10:00:00.000Z', from: 'api', type: 'broadcast', msg: 'early' },
+      { ts: '2026-02-14T10:01:00.000Z', from: 'auth', type: 'broadcast', msg: 'mid' },
+    ];
+
+    const result = diffMessages(entries, '2026-02-14T10:00:30.000Z');
+    // 'early' is at 10:00:00 — excluded (not > cursor)
+    // 'mid' is at 10:01:00 — included
+    // 'late' is at 10:02:00 — included
+    expect(result.newEntries).toHaveLength(2);
+    expect(result.newEntries.map((e) => e.msg).sort()).toEqual(['late', 'mid']);
+  });
 });
 
 describe('diffStatuses', () => {

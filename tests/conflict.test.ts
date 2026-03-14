@@ -204,6 +204,22 @@ describe('generateConflictBrief', () => {
     expect(brief).toContain('Task being merged: auth');
     expect(brief).toContain('Changed auth interface');
     expect(brief).toContain('What token type?');
+
+    // Assert section ordering: header < files < diff (Finding 15)
+    const headerIdx = brief.indexOf('# Merge Conflict:');
+    const filesIdx = brief.indexOf('## Conflicting files');
+    const taskIdx = brief.indexOf('## Task being merged:');
+    const diffIdx = brief.indexOf('## The conflict diff');
+    const inboxIdx = brief.indexOf('## Relevant inbox entries');
+
+    expect(headerIdx).toBeGreaterThanOrEqual(0);
+    expect(filesIdx).toBeGreaterThanOrEqual(0);
+    expect(diffIdx).toBeGreaterThanOrEqual(0);
+
+    expect(headerIdx).toBeLessThan(filesIdx);
+    expect(filesIdx).toBeLessThan(taskIdx);
+    expect(taskIdx).toBeLessThan(diffIdx);
+    expect(diffIdx).toBeLessThan(inboxIdx);
   });
 
   it('conflict brief excludes unrelated working tree changes', () => {

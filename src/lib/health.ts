@@ -54,6 +54,7 @@ export function resolveHealthState(opts: {
   if (!lastActivity) return 'zombie';
 
   const activityMs = new Date(lastActivity).getTime();
+  if (Number.isNaN(activityMs)) return 'zombie';
   const elapsedS = (now.getTime() - activityMs) / 1000;
 
   if (elapsedS < stallThreshold) return 'working';

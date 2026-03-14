@@ -225,6 +225,10 @@ describe('merge stops on first conflict', () => {
     const result = mergeBranch(authWt.branch, repoDir);
     expect(result.success).toBe(true);
 
+    // Verify task commit messages appear in git log after merge (Finding 16)
+    const log = git(['log', '--oneline'], { cwd: repoDir });
+    expect(log).toContain('auth commit');
+
     // Update merge state
     const updated = updateMergeEntry(withMerges, 'auth', {
       status: 'merged',
@@ -531,6 +535,11 @@ describe('merge --continue flow', () => {
     // Now merge api -- should succeed
     const apiResult = mergeBranch(apiWt.branch, repoDir);
     expect(apiResult.success).toBe(true);
+
+    // Verify both task commit messages appear in git log (Finding 16)
+    const log = git(['log', '--oneline'], { cwd: repoDir });
+    expect(log).toContain('auth commit');
+    expect(log).toContain('api commit');
 
     const finalState = updateMergeEntry(resolvedState, 'api', {
       status: 'merged',

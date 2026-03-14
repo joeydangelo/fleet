@@ -142,4 +142,26 @@ describe('runReview', () => {
     const state = fixture.readSyncState()!;
     expect(state.tasks['auth']?.reviewCycle).toBe(1);
   });
+
+  it('calls submitForReview before reviewTask (Finding 21)', async () => {
+    fixture = createFixtureRepo();
+    process.chdir(fixture.repoRoot);
+
+    // Track call order to verify submitForReview happens before reviewTask
+    const callOrder: string[] = [];
+    mockReviewTask.mockImplementation(() => {
+      // At the point reviewTask is called, sync state should already be 'in_review'
+      const stateAtReviewTime = fixture.readSyncState()!;
+      callOrder.push(`reviewTask:status=${stateAtReviewTime.tasks['auth']?.status}`);
+      return Promise.resolve(passResult());
+    });
+
+    await runReview();
+
+    // TODO: when reviewTask is de-mocked (HIGH spec), this assertion
+    // becomes naturally testable through real review artifacts.
+    expect(mockReviewTask).toHaveBeenCalledTimes(1);
+    expect(callOrder).toHaveLength(1);
+    expect(callOrder[0]).toBe('reviewTask:status=in_review');
+  });
 });
