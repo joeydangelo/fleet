@@ -147,6 +147,40 @@ describe('resolveHealthState', () => {
       ),
     ).toBe('working');
   });
+
+  // Finding 23: boundary tests for lastActivity
+
+  it('returns zombie when lastActivity is empty string (falsy)', () => {
+    expect(
+      resolveHealthState(
+        makeOpts({
+          lastActivity: '',
+        }),
+      ),
+    ).toBe('zombie');
+  });
+
+  it('returns zombie when lastActivity is an invalid date string (NaN elapsed)', () => {
+    expect(
+      resolveHealthState(
+        makeOpts({
+          lastActivity: 'not-a-date',
+        }),
+      ),
+    ).toBe('zombie');
+  });
+
+  it('returns working when lastActivity is in the future (negative elapsed)', () => {
+    // Future-dated lastActivity means elapsed < 0, which is < stallThreshold → working
+    expect(
+      resolveHealthState(
+        makeOpts({
+          lastActivity: '2026-01-01T01:00:00.000Z',
+          now: new Date('2026-01-01T00:00:30.000Z'),
+        }),
+      ),
+    ).toBe('working');
+  });
 });
 
 describe('computeEscalationLevel', () => {
