@@ -2,6 +2,32 @@ import { existsSync, mkdirSync } from 'node:fs';
 import { writeFileSync } from 'atomically';
 import { join, resolve } from 'node:path';
 import { readDoc } from './docs.js';
+import {
+  createTmuxService,
+  checkAgentLiveness,
+  buildLivenessMap,
+} from './tmux.js';
+import type { PawPaneConfig } from './tmux.js';
+
+/**
+ * Try to build a liveness map from tmux pane config.
+ * Returns an empty map if paneConfig is null or if tmux is unavailable.
+ */
+export function tryGetLivenessMap(paneConfig: PawPaneConfig | null): Map<string, boolean> {
+  if (!paneConfig) return new Map();
+  try {
+    const tmux = createTmuxService();
+    const results = checkAgentLiveness(tmux, paneConfig);
+    return buildLivenessMap(results);
+  } catch {
+    return new Map();
+  }
+}
+
+/** Sanitize a string for use as a branch name component by replacing non-alphanumeric chars with hyphens. */
+export function sanitizeBranchName(branch: string): string {
+  return branch.replace(/[^a-zA-Z0-9-]/g, '-');
+}
 
 /** Return a promise that resolves after `ms` milliseconds. */
 export function sleep(ms: number): Promise<void> {
