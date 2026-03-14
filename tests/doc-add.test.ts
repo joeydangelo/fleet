@@ -121,7 +121,6 @@ describe('addDoc', () => {
     ).rejects.toThrow('empty');
   });
 
-  // TODO: When HIGH spec (github-fetch de-mocking) is done, replace mock with real fetch
   it('propagates error when fetchWithGhFallback throws (network failure)', async () => {
     mockedFetch.mockRejectedValue(new Error('Network error: ECONNREFUSED'));
 
