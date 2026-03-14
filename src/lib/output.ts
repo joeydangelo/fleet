@@ -68,11 +68,10 @@ export function unknown(taskName: string, detail: string): void {
   console.log(`  ${colors.warn(ICONS.UNKNOWN)} ${pc.bold(taskName)} -- ${detail}`);
 }
 
-/** Guard that exits with an error if no sync state is available. */
+/** Guard that throws if no sync state is available. */
 export function requireSyncState<T>(state: T | null): asserts state is T {
   if (!state) {
-    console.error(colors.error('No sync state found. Run `paw up` first.'));
-    process.exit(1);
+    throw new Error('No sync state found. Run `paw up` first.');
   }
 }
 
