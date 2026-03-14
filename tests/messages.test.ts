@@ -48,7 +48,7 @@ describe('appendMessage / readMessages', () => {
     expect(entries[0]!.from).toBe('auth');
     expect(entries[0]!.type).toBe('broadcast');
     expect(entries[0]!.msg).toBe('Changed auth interface');
-    expect(entries[0]!.ts).toBeTruthy();
+    expect(entries[0]!.ts).toMatch(/^\d{4}-\d{2}-\d{2}T/);
     expect(entries[0]!.to).toBeUndefined();
   });
 

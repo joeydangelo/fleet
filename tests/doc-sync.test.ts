@@ -171,7 +171,6 @@ describe('syncDocs', () => {
   it('updates state.yml with sync timestamp', () => {
     syncDocs(repoRoot);
     const state = readLocalState(repoRoot);
-    expect(state.last_doc_sync_at).toBeDefined();
     expect(new Date(state.last_doc_sync_at!).getTime()).not.toBeNaN();
   });
 });

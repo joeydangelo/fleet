@@ -87,7 +87,6 @@ describe('merge state round-trip through sync branch', () => {
     writeSyncState(withMerges, repoDir);
 
     const read = readSyncState(repoDir);
-    expect(read?.merges).toBeDefined();
     expect(read?.merges?.['auth']?.status).toBe('pending');
     expect(read?.merges?.['api']?.status).toBe('pending');
   });

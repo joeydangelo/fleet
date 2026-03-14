@@ -159,7 +159,7 @@ describe('pane-state: savePanes', () => {
     expect(config?.sessionName).toBe('paw-myapp');
     expect(config?.orchestratorPaneId).toBe('%1');
     expect(config?.panes).toEqual(panes);
-    expect(config?.lastUpdated).toBeDefined();
+    expect(new Date(config!.lastUpdated).getTime()).not.toBeNaN();
   });
 
   it('saves empty orchestratorPaneId when not yet created', () => {

@@ -57,7 +57,7 @@ describe('createFixtureRepo', () => {
     expect(state).not.toBeNull();
     expect(state!.tasks).toHaveProperty('auth');
     expect(state!.tasks.auth!.status).toBe('in_progress');
-    expect(state!.target).toBeTruthy();
+    expect(state!.target).toBe('fix/test-target');
   });
 
   it('supports custom task names and definitions', () => {
