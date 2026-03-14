@@ -25,6 +25,7 @@ import {
 import type { SyncState } from '../lib/sync.js';
 import { generateConflictBrief } from '../lib/conflict.js';
 import { success, warn, skip, handleError } from '../lib/output.js';
+import { ValidationError } from '../lib/errors.js';
 
 /** Build the `paw merge` CLI command. */
 export function mergeCommand(): Command {
@@ -37,7 +38,7 @@ export function mergeCommand(): Command {
 
         const currentBranch = getCurrentBranch(repoRoot);
         if (currentBranch !== config.target) {
-          throw new Error(
+          throw new ValidationError(
             `Must be on target branch '${config.target}' to merge. Currently on '${currentBranch}'.`,
           );
         }
@@ -82,17 +83,19 @@ function handleMergeContinue(
   repoRoot: string,
 ): SyncState {
   if (isMergeInProgress(repoRoot)) {
-    throw new Error('Git merge is still in progress. Resolve conflicts and commit first.');
+    throw new ValidationError(
+      'Git merge is still in progress. Resolve conflicts and commit first.',
+    );
   }
 
   const conflictTask = worktrees.find((wt) => state.merges[wt.taskName]?.status === 'conflict');
 
   if (!conflictTask) {
-    throw new Error('No conflicting or failed merge found. Run `paw merge` first.');
+    throw new ValidationError('No conflicting or failed merge found. Run `paw merge` first.');
   }
 
   if (!isAncestor(conflictTask.branch, 'HEAD', repoRoot)) {
-    throw new Error(
+    throw new ValidationError(
       `Branch '${conflictTask.branch}' was not merged into the target. ` +
         `Its commits are not in HEAD. Re-run \`paw merge\` to retry.`,
     );

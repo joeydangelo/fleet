@@ -1,4 +1,5 @@
 import pc from 'picocolors';
+import { CLIError } from './errors.js';
 
 /** Semantic color map for consistent CLI output. */
 export const colors = {
@@ -26,7 +27,8 @@ export function handleError(err: unknown): never {
     console.error(colors.error(message));
   }
 
-  process.exit(1);
+  const exitCode = err instanceof CLIError ? err.exitCode : 1;
+  process.exit(exitCode);
 }
 
 const ICONS = {
@@ -71,7 +73,7 @@ export function unknown(taskName: string, detail: string): void {
 /** Guard that throws if no sync state is available. */
 export function requireSyncState<T>(state: T | null): asserts state is T {
   if (!state) {
-    throw new Error('No sync state found. Run `paw up` first.');
+    throw new CLIError('No sync state found. Run `paw up` first.');
   }
 }
 

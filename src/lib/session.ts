@@ -6,6 +6,7 @@ import fg from 'fast-glob';
 import type { PawConfig } from './config.js';
 import { normalizeDeps } from './config.js';
 import { branchExists, createBranch, createWorktree, getFileFromBranch } from './git.js';
+import { NotFoundError } from './errors.js';
 
 /** Identity triple for a task worktree: task name, its branch, and the filesystem path. */
 export interface WorktreeInfo {
@@ -48,7 +49,7 @@ export function createSession(config: PawConfig, repoRoot: string): WorktreeInfo
 export function generateTaskFile(config: PawConfig, worktreeInfo: WorktreeInfo): string {
   const { taskName } = worktreeInfo;
   const task = config.tasks[taskName];
-  if (!task) throw new Error(`Task not found: ${taskName}`);
+  if (!task) throw new NotFoundError(`Task not found: ${taskName}`);
 
   const focusList = Array.isArray(task.focus) ? task.focus : [task.focus];
 

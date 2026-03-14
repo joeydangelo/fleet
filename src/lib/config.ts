@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 import { parse as parseYaml } from 'yaml';
 import { z } from 'zod';
 import { getRepoRoot } from './git.js';
+import { NotFoundError, ValidationError } from './errors.js';
 
 const TaskSchema = z.object({
   focus: z.union([z.string(), z.array(z.string())]),
@@ -28,13 +29,13 @@ export type PawConfig = z.infer<typeof PawConfigSchema>;
 /** Parse and validate a paw.yaml file, including dependency-graph checks. */
 export function loadConfig(configPath: string): PawConfig {
   if (!existsSync(configPath)) {
-    throw new Error(`Config file not found: ${configPath}`);
+    throw new NotFoundError(`Config file not found: ${configPath}`);
   }
 
   const raw = readFileSync(configPath, 'utf-8');
 
   if (/^<<<<<<< /m.test(raw) || /^=======/m.test(raw) || /^>>>>>>> /m.test(raw)) {
-    throw new Error(
+    throw new ValidationError(
       `${configPath} contains unresolved git merge conflict markers. Resolve conflicts before running paw.`,
     );
   }
@@ -44,7 +45,7 @@ export function loadConfig(configPath: string): PawConfig {
   const result = PawConfigSchema.safeParse(parsed);
   if (!result.success) {
     const issues = result.error.issues.map((i) => `  ${i.path.join('.')}: ${i.message}`).join('\n');
-    throw new Error(`Invalid .paw/paw.yaml:\n${issues}`);
+    throw new ValidationError(`Invalid .paw/paw.yaml:\n${issues}`);
   }
 
   validateDependsOn(result.data);
@@ -65,12 +66,12 @@ function validateDependsOn(config: PawConfig): void {
     const deps = normalizeDeps(task.depends_on);
     for (const dep of deps) {
       if (dep === name) {
-        throw new Error(
+        throw new ValidationError(
           `Invalid .paw/paw.yaml:\n  tasks.${name}.depends_on references "${dep}" (itself)`,
         );
       }
       if (!taskNames.has(dep)) {
-        throw new Error(
+        throw new ValidationError(
           `Invalid .paw/paw.yaml:\n  tasks.${name}.depends_on references "${dep}" which does not exist in tasks`,
         );
       }
@@ -82,7 +83,7 @@ function validateDependsOn(config: PawConfig): void {
 
   function visit(name: string): void {
     if (inStack.has(name)) {
-      throw new Error(
+      throw new ValidationError(
         `Invalid .paw/paw.yaml:\n  Cycle detected in depends_on: ${[...inStack, name].join(' → ')}`,
       );
     }
@@ -178,5 +179,5 @@ export function resolveConfigPath(cwd: string): string {
     const p = resolve(cwd, name);
     if (existsSync(p)) return p;
   }
-  throw new Error('No .paw/paw.yaml found. Run `paw init` first.');
+  throw new NotFoundError('No .paw/paw.yaml found. Run `paw init` first.');
 }

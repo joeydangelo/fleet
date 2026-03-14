@@ -12,6 +12,7 @@ import { writeFileSync } from 'atomically';
 import { z } from 'zod';
 import { git } from './git.js';
 import { toErrorMessage, requireSyncState } from './output.js';
+import { CLIError, NotFoundError, ExternalCommandError } from './errors.js';
 import { SYNC_BRANCH } from './constants.js';
 import { detectTaskName } from './session.js';
 import { sanitizeBranchName } from './util.js';
@@ -39,7 +40,7 @@ export function isTerminalStatus(status: TaskState['status']): boolean {
       return false;
     default: {
       const exhaustive: never = status;
-      throw new Error(`Unhandled task status: ${String(exhaustive)}`);
+      throw new CLIError(`Unhandled task status: ${String(exhaustive)}`);
     }
   }
 }
@@ -175,6 +176,7 @@ export function removeSyncWorktree(repoRoot: string): void {
  */
 function commitSyncChanges(syncDir: string, message: string): void {
   const errors: string[] = [];
+  let lastCause: Error | undefined;
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
       git(['add', '-A'], { cwd: syncDir, stdio: 'pipe' });
@@ -184,10 +186,12 @@ function commitSyncChanges(syncDir: string, message: string): void {
       });
       return;
     } catch (err) {
+      lastCause = err instanceof Error ? err : new CLIError(String(err));
       errors.push(`attempt ${attempt}: ${toErrorMessage(err)}`);
       if (attempt === MAX_RETRIES) {
-        throw new Error(
+        throw new ExternalCommandError(
           `Failed to commit sync changes after ${MAX_RETRIES} attempts:\n${errors.join('\n')}`,
+          { cause: lastCause },
         );
       }
     }
@@ -285,7 +289,7 @@ export function initSyncState(
 /** Transition a task to `in_progress` with a claimed timestamp. */
 export function claimTask(state: SyncState, taskName: string): SyncState {
   const task = state.tasks[taskName];
-  if (!task) throw new Error(`Task not found in sync state: ${taskName}`);
+  if (!task) throw new NotFoundError(`Task not found in sync state: ${taskName}`);
 
   return {
     ...state,
@@ -304,7 +308,7 @@ export function claimTask(state: SyncState, taskName: string): SyncState {
 /** Transition a task to `in_review` and increment its review cycle counter. */
 export function submitForReview(state: SyncState, taskName: string): SyncState {
   const task = state.tasks[taskName];
-  if (!task) throw new Error(`Task not found in sync state: ${taskName}`);
+  if (!task) throw new NotFoundError(`Task not found in sync state: ${taskName}`);
 
   return {
     ...state,
@@ -322,7 +326,7 @@ export function submitForReview(state: SyncState, taskName: string): SyncState {
 /** Transition a task to `done` with a completion timestamp. */
 export function completeTask(state: SyncState, taskName: string): SyncState {
   const task = state.tasks[taskName];
-  if (!task) throw new Error(`Task not found in sync state: ${taskName}`);
+  if (!task) throw new NotFoundError(`Task not found in sync state: ${taskName}`);
 
   return {
     ...state,
@@ -340,7 +344,7 @@ export function completeTask(state: SyncState, taskName: string): SyncState {
 /** Revert a task back to `in_progress` (e.g. after a failed review). */
 export function reopenTask(state: SyncState, taskName: string): SyncState {
   const task = state.tasks[taskName];
-  if (!task) throw new Error(`Task not found in sync state: ${taskName}`);
+  if (!task) throw new NotFoundError(`Task not found in sync state: ${taskName}`);
 
   return {
     ...state,
@@ -432,7 +436,7 @@ export function reviewFilePath(branch: string): string {
 export function requireWorktreeTask(repoRoot: string): string {
   const taskName = detectTaskName(repoRoot);
   if (!taskName) {
-    throw new Error(
+    throw new CLIError(
       'Not in a paw worktree. This command must be run from a task worktree (with .paw/tasks/<name>.md).',
     );
   }
