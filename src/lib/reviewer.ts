@@ -18,7 +18,7 @@ import { writeFileSync } from 'atomically';
 import type { TmuxServiceApi } from './tmux.js';
 import { waitForTuiReady, killDetachedSession, isTuiPromptReady } from './tmux.js';
 import { REVIEW_TIMEOUT_MS, REVIEW_NUDGE_MS, BEACON_FOLLOWUP_DELAYS } from './constants.js';
-import { sleep, formatElapsed } from './util.js';
+import { sleep, formatElapsed, sanitizeBranchName } from './util.js';
 import { reviewFilePath } from './sync.js';
 
 /** Prefix for all reviewer tmux sessions. */
@@ -54,7 +54,7 @@ const REVIEW_WARN_MS = 120_000;
 
 /** Compute the path for the out-of-band verdict sentinel file. */
 export function verdictFilePath(repoRoot: string, taskBranch: string): string {
-  const safeName = taskBranch.replace(/[^a-zA-Z0-9-]/g, '-');
+  const safeName = sanitizeBranchName(taskBranch);
   return resolve(repoRoot, '.paw', 'run', `review-verdict-${safeName}.json`);
 }
 
@@ -166,7 +166,7 @@ function buildNudgeMessage(verdictPath: string): string {
 
 /** Save captured pane content to disk for post-mortem debugging. */
 function saveCapture(repoRoot: string, taskBranch: string, content: string): string {
-  const safeName = taskBranch.replace(/[^a-zA-Z0-9-]/g, '-');
+  const safeName = sanitizeBranchName(taskBranch);
   const dir = resolve(repoRoot, '.paw', 'run', 'review');
   mkdirSync(dir, { recursive: true });
   const path = resolve(dir, `${safeName}.txt`);
@@ -214,7 +214,7 @@ export async function reviewTask(
   taskFilePath?: string,
   reviewFileOverride?: string,
 ): Promise<ReviewResult> {
-  const sessionName = `${REVIEW_SESSION_PREFIX}${taskBranch.replace(/[^a-zA-Z0-9-]/g, '-')}`;
+  const sessionName = `${REVIEW_SESSION_PREFIX}${sanitizeBranchName(taskBranch)}`;
   const vPath = verdictFilePath(repoRoot, taskBranch);
 
   // Clean up any leftover session or verdict file from a previous run

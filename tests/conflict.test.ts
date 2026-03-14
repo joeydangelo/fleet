@@ -187,6 +187,7 @@ describe('generateConflictBrief', () => {
     // Mark auth as conflict in state
     const conflictState = updateMergeEntry(withMerges, 'auth', {
       status: 'conflict',
+      brief: 'conflicts/auth-into-target.md',
     });
 
     // Generate the brief
@@ -255,6 +256,7 @@ describe('generateConflictBrief', () => {
 
     const conflictState = updateMergeEntry(withMerges, 'auth', {
       status: 'conflict',
+      brief: 'conflicts/auth-into-target.md',
     });
 
     const brief = generateConflictBrief({
@@ -300,6 +302,7 @@ describe('generateConflictBrief', () => {
 
     const conflictState = updateMergeEntry(authMerged, 'api', {
       status: 'conflict',
+      brief: 'conflicts/api-into-target.md',
     });
 
     const brief = generateConflictBrief({

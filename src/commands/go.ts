@@ -28,8 +28,10 @@ import { runLaunch, printLaunchPreview } from './launch.js';
 
 /** Shell out to a paw subcommand. Returns the exit code. */
 export function runPawCommand(args: string[]): { exitCode: number } {
+  const scriptPath = process.argv[1];
+  if (!scriptPath) throw new Error('Cannot determine CLI script path');
   try {
-    execFileSync(process.execPath, [process.argv[1]!, ...args], {
+    execFileSync(process.execPath, [scriptPath, ...args], {
       stdio: 'inherit',
     });
     return { exitCode: 0 };

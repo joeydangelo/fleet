@@ -11,13 +11,9 @@ import type { SyncState } from '../lib/sync.js';
 import { readSyncState, claimTask, writeSyncState, readSyncFile } from '../lib/sync.js';
 import { readMessages, readMessagesForTask } from '../lib/messages.js';
 import { readPaneConfig } from '../lib/pane-state.js';
-import {
-  checkAgentLiveness,
-  createTmuxService,
-  buildLivenessMap,
-  livenessMarker,
-} from '../lib/tmux.js';
 import type { PawPaneConfig } from '../lib/tmux.js';
+import { livenessMarker } from '../lib/tmux.js';
+import { tryGetLivenessMap } from '../lib/util.js';
 import type { PawConfig } from '../lib/config.js';
 import { computeThreads } from './inbox.js';
 import { ensureDocsFresh } from '../lib/doc-sync.js';
@@ -157,14 +153,7 @@ function printOrchestratorBrief(repoRoot: string): void {
 
 /** Print a compact status snapshot for the orchestrator brief (PreCompact). */
 function printStatusSnapshot(repoRoot: string, state: SyncState, paneConfig: PawPaneConfig): void {
-  let livenessMap = new Map<string, boolean>();
-  try {
-    const tmux = createTmuxService();
-    const results = checkAgentLiveness(tmux, paneConfig);
-    livenessMap = buildLivenessMap(results);
-  } catch {
-    // tmux not available
-  }
+  const livenessMap = tryGetLivenessMap(paneConfig);
 
   let configObj: PawConfig | undefined;
   try {
@@ -290,7 +279,7 @@ function printFull(
   console.log(separator);
   printTeamStatus(taskName, state);
 
-  const lastCheck = state.lastCheck?.[taskName];
+  const lastCheck = state.lastCheck[taskName];
   const entries = readMessagesForTask(taskName, repoRoot, lastCheck);
   const broadcasts = entries.filter((e) => e.type === 'broadcast' && e.from !== taskName);
   const directed = entries.filter((e) => e.to === taskName);
@@ -316,20 +305,19 @@ function printFull(
   const now = new Date().toISOString();
   writeSyncState({ ...state, lastCheck: { ...state.lastCheck, [taskName]: now } }, repoRoot);
 
-  if (state.merges) {
-    const conflictEntries = Object.entries(state.merges).filter(
-      ([, entry]) => entry.status === 'conflict' && entry.brief,
-    );
-    if (conflictEntries.length > 0) {
-      console.log(separator);
-      console.log(pc.bold(colors.warn('Active Conflict\n')));
-      for (const [name, entry] of conflictEntries) {
-        const brief = readSyncFile(entry.brief!, repoRoot);
-        if (brief) {
-          console.log(brief);
-        } else {
-          console.log(colors.warn(`Conflict on ${name} — brief at ${entry.brief}`));
-        }
+  const conflictEntries = Object.entries(state.merges).filter(
+    ([, entry]) => entry.status === 'conflict',
+  );
+  if (conflictEntries.length > 0) {
+    console.log(separator);
+    console.log(pc.bold(colors.warn('Active Conflict\n')));
+    for (const [name, entry] of conflictEntries) {
+      if (entry.status !== 'conflict') continue;
+      const brief = readSyncFile(entry.brief, repoRoot);
+      if (brief) {
+        console.log(brief);
+      } else {
+        console.log(colors.warn(`Conflict on ${name} — brief not available`));
       }
     }
   }
