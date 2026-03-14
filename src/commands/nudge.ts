@@ -3,6 +3,7 @@ import { getRepoRoot } from '../lib/git.js';
 import { readRequiredSyncState } from '../lib/sync.js';
 import { appendMessage } from '../lib/messages.js';
 import { handleError, success } from '../lib/output.js';
+import { getTaskIdentity } from '../lib/session.js';
 
 /** Build the `paw nudge` CLI command. */
 export function nudgeCommand(): Command {
@@ -15,8 +16,9 @@ export function nudgeCommand(): Command {
         const repoRoot = getRepoRoot();
         readRequiredSyncState(repoRoot);
 
+        const sender = getTaskIdentity(repoRoot);
         appendMessage(
-          'orchestrator',
+          sender,
           {
             type: 'nudge',
             to: task,
