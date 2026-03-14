@@ -17,13 +17,13 @@ describe('taskDisplayStatus', () => {
 
   it('returns conflict when merge entry has conflict status', () => {
     const task: TaskState = { status: 'done' };
-    const merge: MergeEntry = { status: 'conflict' };
+    const merge: MergeEntry = { status: 'conflict', brief: 'conflicts/auth-into-target.md' };
     expect(taskDisplayStatus(task, merge)).toBe('conflict');
   });
 
   it('does not override non-conflict merge statuses', () => {
     const task: TaskState = { status: 'done' };
-    const merge: MergeEntry = { status: 'merged' };
+    const merge: MergeEntry = { status: 'merged', merged: '2026-01-01T00:00:00Z' };
     expect(taskDisplayStatus(task, merge)).toBe('done');
   });
 
@@ -59,6 +59,8 @@ describe('buildDisplayItems', () => {
       config: 'paw.yaml',
       target: 'main',
       tasks: { auth: { status: 'in_progress' } },
+      merges: {},
+      lastCheck: {},
     };
 
     const items = buildDisplayItems(tmuxPanes, taskPanes, syncState, '%0', '');
@@ -130,7 +132,8 @@ describe('buildDisplayItems', () => {
       config: 'paw.yaml',
       target: 'main',
       tasks: { api: { status: 'done' } },
-      merges: { api: { status: 'conflict' } },
+      merges: { api: { status: 'conflict', brief: 'conflicts/api-into-target.md' } },
+      lastCheck: {},
     };
     const items = buildDisplayItems(tmuxPanes, taskPanes, syncState, '%0', '');
     expect(items[0]!.status).toBe('conflict');
@@ -154,6 +157,8 @@ describe('buildDisplayItems', () => {
       config: 'paw.yaml',
       target: 'main',
       tasks: { auth: { status: 'in_progress' } },
+      merges: {},
+      lastCheck: {},
     };
     // No task panes passed — simulates panes.json not yet written
     const items = buildDisplayItems(tmuxPanes, [], syncState, '%0', '');
@@ -178,6 +183,8 @@ describe('buildDisplayItems', () => {
       config: 'paw.yaml',
       target: 'main',
       tasks: { auth: { status: 'in_progress' } },
+      merges: {},
+      lastCheck: {},
     };
     const health = {
       timestamp: new Date().toISOString(),

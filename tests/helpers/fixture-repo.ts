@@ -103,6 +103,8 @@ export function createFixtureRepo(opts?: FixtureRepoOptions): FixtureRepo {
     config: '.paw/paw.yaml',
     target,
     tasks: syncTasks,
+    merges: {},
+    lastCheck: {},
   };
 
   // Write state.json and create review/ directory in sync worktree

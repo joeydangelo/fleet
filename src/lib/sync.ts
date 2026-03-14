@@ -9,10 +9,12 @@ import {
   copyFileSync,
 } from 'node:fs';
 import { writeFileSync } from 'atomically';
+import { z } from 'zod';
 import { git } from './git.js';
 import { toErrorMessage, requireSyncState } from './output.js';
 import { SYNC_BRANCH } from './constants.js';
 import { detectTaskName } from './session.js';
+import { sanitizeBranchName } from './util.js';
 const STATE_FILE = 'state.json';
 const MAX_RETRIES = 3;
 
@@ -22,6 +24,7 @@ export interface TaskState {
   claimed?: string;
   doneAt?: string;
   focus?: string[];
+  /** Always initialized to 0; incremented by submitForReview. */
   reviewCycle?: number;
 }
 
@@ -41,16 +44,11 @@ export function isTerminalStatus(status: TaskState['status']): boolean {
   }
 }
 
-type MergeStatus = 'pending' | 'merged' | 'skipped' | 'conflict';
-
 /** Per-task merge tracking: whether a task branch was merged, skipped, or hit a conflict. */
-export interface MergeEntry {
-  status: MergeStatus;
-  /** ISO timestamp when merged clean. */
-  merged?: string;
-  /** Path to conflict brief on sync branch. */
-  brief?: string;
-}
+export type MergeEntry =
+  | { status: 'pending' | 'skipped' }
+  | { status: 'merged'; merged: string }
+  | { status: 'conflict'; brief: string };
 
 /** Session coordination state on the paw-sync branch. Tracks task statuses, merge progress, and inbox cursors. */
 export interface SyncState {
@@ -58,10 +56,33 @@ export interface SyncState {
   config: string;
   target: string;
   tasks: Record<string, TaskState>;
-  merges?: Record<string, MergeEntry>;
+  merges: Record<string, MergeEntry>;
   /** Per-task timestamp of last message read, written by `paw prime`. */
-  lastCheck?: Record<string, string>;
+  lastCheck: Record<string, string>;
 }
+
+const TaskStateSchema = z.object({
+  status: z.enum(['pending', 'in_progress', 'in_review', 'done']),
+  claimed: z.string().optional(),
+  doneAt: z.string().optional(),
+  focus: z.array(z.string()).optional(),
+  reviewCycle: z.number().optional().default(0),
+});
+
+const MergeEntrySchema = z.discriminatedUnion('status', [
+  z.object({ status: z.enum(['pending', 'skipped']) }),
+  z.object({ status: z.literal('merged'), merged: z.string() }),
+  z.object({ status: z.literal('conflict'), brief: z.string() }),
+]);
+
+const SyncStateSchema = z.object({
+  session: z.string(),
+  config: z.string(),
+  target: z.string(),
+  tasks: z.record(z.string(), TaskStateSchema),
+  merges: z.record(z.string(), MergeEntrySchema).default({}),
+  lastCheck: z.record(z.string(), z.string()).default({}),
+});
 
 function syncBranchExists(repoRoot?: string): boolean {
   try {
@@ -178,7 +199,7 @@ export function readSyncState(repoRoot?: string): SyncState | null {
   try {
     const syncDir = resolveSyncDir(repoRoot ?? process.cwd());
     const raw = readFileSync(resolve(syncDir, STATE_FILE), 'utf-8');
-    return JSON.parse(raw) as SyncState;
+    return SyncStateSchema.parse(JSON.parse(raw));
   } catch {
     return null;
   }
@@ -248,7 +269,7 @@ export function initSyncState(
   const tasks: Record<string, TaskState> = {};
   for (const name of taskNames) {
     const focus = focusMap?.[name];
-    tasks[name] = { status: 'pending', ...(focus ? { focus } : {}) };
+    tasks[name] = { status: 'pending', reviewCycle: 0, ...(focus ? { focus } : {}) };
   }
 
   return {
@@ -256,6 +277,8 @@ export function initSyncState(
     config: configPath,
     target,
     tasks,
+    merges: {},
+    lastCheck: {},
   };
 }
 
@@ -272,6 +295,7 @@ export function claimTask(state: SyncState, taskName: string): SyncState {
         ...task,
         status: 'in_progress',
         claimed: new Date().toISOString(),
+        reviewCycle: task.reviewCycle ?? 0,
       },
     },
   };
@@ -400,7 +424,7 @@ export function readRequiredSyncState(repoRoot: string): SyncState {
 
 /** Sanitize a branch name and return the review file path on the sync branch. */
 export function reviewFilePath(branch: string): string {
-  const safeBranch = branch.replace(/[^a-zA-Z0-9-]/g, '-');
+  const safeBranch = sanitizeBranchName(branch);
   return `review/${safeBranch}.md`;
 }
 
