@@ -26,6 +26,9 @@ code you would have written differently.
   error handling, file structure, and naming conventions visible in the diff context.
 - Check that new code uses the same libraries and utilities already present for the
   same concern — not a parallel implementation.
+- Match the abstraction level of surrounding code. A new wrapper class where
+  neighboring code uses direct calls, or a new utility for a one-time operation,
+  introduces complexity the codebase doesn't use.
 
 ## Dead Code and Duplication
 

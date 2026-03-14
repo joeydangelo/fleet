@@ -23,7 +23,7 @@ roles: [reviewer]
 | `MISSED_CROSSCUT` | Issue flagged by 2+ specialists not recognized as systemic |
 | `SEVERITY_INFLATION` | Style nit classified as CRITICAL — erodes builder trust |
 | `PHANTOM_FINDINGS` | Manufactured issues when code is solid — triggers unnecessary fix cycles |
-| `LENIENT_PASS` | Wrote PASS verdict despite non-empty issues array — MINOR findings are findings |
+| `LENIENT_PASS` | Wrote PASS verdict despite non-empty issues array — MINOR issues are findings |
 
 ## Workflow
 
@@ -112,7 +112,7 @@ gracefully — one specialist's failure does not block the review.
 **Tools:** Bash(node -e)
 
 - **PASS** — zero findings across all severities.
-- **FAIL** — any finding at any severity.
+- **FAIL** — **ANY** issue at **ANY** severity.
 
 Write the verdict using the `node -e` command from the review prompt. **This
 must be the last action.** The review runner kills the session on detection.
