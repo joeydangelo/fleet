@@ -4,6 +4,7 @@ import { mkdirSync, readFileSync } from 'node:fs';
 import { writeFileSync } from 'atomically';
 import { resolve } from 'node:path';
 import { execFileSync } from 'node:child_process';
+import { z } from 'zod';
 import {
   STALL_THRESHOLD_S,
   ZOMBIE_THRESHOLD_S,
@@ -15,6 +16,19 @@ import {
 import type { TmuxServiceApi } from './tmux.js';
 
 export type HealthState = 'booting' | 'working' | 'stalled' | 'zombie' | 'completed';
+
+const AgentHealthSchema = z.object({
+  taskName: z.string(),
+  state: z.enum(['booting', 'working', 'stalled', 'zombie', 'completed']),
+  lastActivity: z.string().nullable(),
+  stalledSince: z.string().nullable(),
+  escalationLevel: z.number(),
+});
+
+export const HealthSnapshotSchema = z.object({
+  timestamp: z.string(),
+  agents: z.record(z.string(), AgentHealthSchema),
+});
 
 interface AgentHealth {
   taskName: string;
@@ -167,7 +181,7 @@ export function writeHeartbeat(repoRoot: string, taskName: string): void {
 export function readHealthSnapshot(repoRoot: string): HealthSnapshot | null {
   try {
     const filePath = resolve(repoRoot, '.paw', 'run', 'health.json');
-    return JSON.parse(readFileSync(filePath, 'utf-8')) as HealthSnapshot;
+    return HealthSnapshotSchema.parse(JSON.parse(readFileSync(filePath, 'utf-8')));
   } catch {
     return null;
   }
