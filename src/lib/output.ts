@@ -45,12 +45,12 @@ export function success(taskName: string, detail: string): void {
 
 /** Print an error status line for a task. */
 export function error(taskName: string, detail: string): void {
-  console.log(`  ${colors.error(ICONS.ERROR)} ${pc.bold(taskName)} -- ${detail}`);
+  console.error(`  ${colors.error(ICONS.ERROR)} ${pc.bold(taskName)} -- ${detail}`);
 }
 
 /** Print a warning status line for a task. */
 export function warn(taskName: string, detail: string): void {
-  console.log(`  ${colors.warn(ICONS.WARN)} ${pc.bold(taskName)} -- ${detail}`);
+  console.error(`  ${colors.warn(ICONS.WARN)} ${pc.bold(taskName)} -- ${detail}`);
 }
 
 /** Print a pending status line for a task. */
@@ -65,7 +65,7 @@ export function skip(taskName: string, detail: string): void {
 
 /** Print an unknown-state status line for a task. */
 export function unknown(taskName: string, detail: string): void {
-  console.log(`  ${colors.warn(ICONS.UNKNOWN)} ${pc.bold(taskName)} -- ${detail}`);
+  console.error(`  ${colors.warn(ICONS.UNKNOWN)} ${pc.bold(taskName)} -- ${detail}`);
 }
 
 /** Guard that throws if no sync state is available. */

@@ -1,5 +1,67 @@
-import { describe, it, expect } from 'vitest';
-import { formatFocusAreas, formatTaskStatus } from '../src/lib/output.js';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import {
+  formatFocusAreas,
+  formatTaskStatus,
+  error,
+  warn,
+  unknown,
+  success,
+  pending,
+  handleError,
+} from '../src/lib/output.js';
+
+describe('stderr/stdout routing', () => {
+  let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
+  let consoleLogSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('error() writes to stderr', () => {
+    error('my-task', 'something failed');
+    expect(consoleErrorSpy).toHaveBeenCalledOnce();
+    expect(consoleLogSpy).not.toHaveBeenCalled();
+  });
+
+  it('warn() writes to stderr', () => {
+    warn('my-task', 'heads up');
+    expect(consoleErrorSpy).toHaveBeenCalledOnce();
+    expect(consoleLogSpy).not.toHaveBeenCalled();
+  });
+
+  it('unknown() writes to stderr', () => {
+    unknown('my-task', 'state unclear');
+    expect(consoleErrorSpy).toHaveBeenCalledOnce();
+    expect(consoleLogSpy).not.toHaveBeenCalled();
+  });
+
+  it('success() writes to stdout', () => {
+    success('my-task', 'all good');
+    expect(consoleLogSpy).toHaveBeenCalledOnce();
+    expect(consoleErrorSpy).not.toHaveBeenCalled();
+  });
+
+  it('pending() writes to stdout', () => {
+    pending('my-task', 'working...');
+    expect(consoleLogSpy).toHaveBeenCalledOnce();
+    expect(consoleErrorSpy).not.toHaveBeenCalled();
+  });
+
+  it('handleError() writes to stderr and exits with code 1', () => {
+    const exitSpy = vi.spyOn(process, 'exit').mockImplementation((_code) => {
+      throw new Error('process.exit called');
+    });
+    expect(() => handleError(new Error('boom'))).toThrow('process.exit called');
+    expect(consoleErrorSpy).toHaveBeenCalledOnce();
+    expect(exitSpy).toHaveBeenCalledWith(1);
+  });
+});
 
 describe('formatFocusAreas', () => {
   it('returns empty string for undefined', () => {
