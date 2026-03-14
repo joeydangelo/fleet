@@ -1,3 +1,5 @@
+import pc from 'picocolors';
+
 /** Global CLI verbosity state, set by --verbose program option. */
 
 let _verbose = false;
@@ -11,8 +13,6 @@ export function setVerbosity(verbose: boolean): void {
 export function isVerbose(): boolean {
   return _verbose;
 }
-
-import pc from 'picocolors';
 
 export type ColorOption = 'auto' | 'always' | 'never';
 
