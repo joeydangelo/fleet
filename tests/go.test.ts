@@ -65,10 +65,8 @@ describe('runGo dry-run integration', () => {
 
   beforeEach(async () => {
     // Restore real execFileSync so git operations work in the integration test
-    const actualCp = (await vi.importActual(
-      'node:child_process',
-    ));
-    mockExecFileSync.mockImplementation(actualCp.execFileSync);
+    const actualCp: Record<string, unknown> = await vi.importActual('node:child_process');
+    mockExecFileSync.mockImplementation(actualCp.execFileSync as typeof execFileSync);
 
     const fixture = createFixtureRepo({
       tasks: {
