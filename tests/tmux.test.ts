@@ -188,18 +188,30 @@ describe('TmuxService with mock exec', () => {
     expect(calls[0]).toEqual(['send-keys', '-t', '%42', 'claude --resume', 'Enter']);
   });
 
-  it('capturePane captures with line limit', () => {
-    const { fn, calls } = createMockExec();
+  it('capturePane captures with line limit and returns content', () => {
+    const responses = new Map([
+      [
+        'capture-pane -t %42 -p -S -50',
+        '$ claude --resume\nClaude Code v1.0\n❯ working on task...',
+      ],
+    ]);
+    const { fn, calls } = createMockExec(responses);
     const svc = new TmuxService(fn);
-    svc.capturePane('%42', 50);
+    const output = svc.capturePane('%42', 50);
     expect(calls[0]).toEqual(['capture-pane', '-t', '%42', '-p', '-S', '-50']);
+    expect(output).toContain('Claude Code v1.0');
+    expect(output).toContain('❯');
   });
 
-  it('capturePane captures without line limit', () => {
-    const { fn, calls } = createMockExec();
+  it('capturePane captures without line limit and returns content', () => {
+    const responses = new Map([
+      ['capture-pane -t %42 -p', 'paw-auth: running tests\nAll 5 tests passed'],
+    ]);
+    const { fn, calls } = createMockExec(responses);
     const svc = new TmuxService(fn);
-    svc.capturePane('%42');
+    const output = svc.capturePane('%42');
     expect(calls[0]).toEqual(['capture-pane', '-t', '%42', '-p']);
+    expect(output).toContain('All 5 tests passed');
   });
 
   it('selectLayout applies layout', () => {
@@ -509,6 +521,53 @@ describe('launchTmux', () => {
     );
     expect(panes).toHaveLength(1);
     expect(panes[0]!.taskName).toBe('auth');
+  });
+});
+
+describe('TmuxService listSessions', () => {
+  it('returns parsed session names from tmux output', () => {
+    const responses = new Map([
+      ['list-sessions -F #{session_name}', 'paw-myapp\npaw-other\ndefault'],
+    ]);
+    const { fn } = createMockExec(responses);
+    const svc = new TmuxService(fn);
+    const sessions = svc.listSessions();
+    expect(sessions).toEqual(['paw-myapp', 'paw-other', 'default']);
+  });
+
+  it('returns empty array when tmux is not running', () => {
+    const fn = () => {
+      throw new Error('no server running');
+    };
+    const svc = new TmuxService(fn);
+    expect(svc.listSessions()).toEqual([]);
+  });
+});
+
+describe('TmuxService capturePaneContent', () => {
+  it('returns captured content when pane has output', () => {
+    const responses = new Map([
+      ['capture-pane -t %5 -p -S -50', 'Claude Code v1.0\nTask: auth\n❯ implementing feature'],
+    ]);
+    const { fn } = createMockExec(responses);
+    const svc = new TmuxService(fn);
+    const content = svc.capturePaneContent('%5');
+    expect(content).toContain('Claude Code v1.0');
+    expect(content).toContain('❯');
+  });
+
+  it('returns null when pane does not exist', () => {
+    const fn = () => {
+      throw new Error('pane not found');
+    };
+    const svc = new TmuxService(fn);
+    expect(svc.capturePaneContent('%999')).toBeNull();
+  });
+
+  it('returns null when content is empty', () => {
+    const { fn } = createMockExec();
+    const svc = new TmuxService(fn);
+    expect(svc.capturePaneContent('%5')).toBeNull();
   });
 });
 

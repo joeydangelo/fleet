@@ -1,5 +1,11 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 
+// Mock node:child_process at the external boundary — gh CLI is an external tool
+vi.mock('node:child_process', () => ({
+  execFile: vi.fn(),
+}));
+
+import { execFile } from 'node:child_process';
 import { githubBlobToRawUrl, directFetch, fetchWithGhFallback } from '../src/lib/github-fetch.js';
 
 describe('githubBlobToRawUrl', () => {
@@ -90,6 +96,31 @@ describe('fetchWithGhFallback', () => {
       'https://raw.githubusercontent.com/org/repo/main/doc.md',
       expect.any(Object),
     );
+  });
+
+  it('falls back to gh CLI on 403 and returns usedGhCli: true', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 403,
+      statusText: 'Forbidden',
+    });
+
+    // gh api returns base64-encoded content for GitHub API contents endpoint
+    const base64Content = Buffer.from('# Fetched via gh CLI').toString('base64');
+    const mockExecFile = execFile as unknown as ReturnType<typeof vi.fn>;
+    mockExecFile.mockImplementation(
+      (
+        _cmd: string,
+        _args: string[],
+        callback: (err: null, result: { stdout: string; stderr: string }) => void,
+      ) => {
+        callback(null, { stdout: base64Content + '\n', stderr: '' });
+      },
+    );
+
+    const result = await fetchWithGhFallback('https://github.com/org/repo/blob/main/docs/guide.md');
+    expect(result.usedGhCli).toBe(true);
+    expect(result.content).toBe('# Fetched via gh CLI');
   });
 
   it('re-throws non-403 errors', async () => {
