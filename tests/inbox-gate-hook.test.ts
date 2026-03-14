@@ -106,6 +106,48 @@ describe('inbox gate bash script execution', () => {
     }
   });
 
+  it('denies Edit tool when flag file exists (exit 2, stderr has reason)', () => {
+    mkdirSync(resolve(repoRoot, '.paw', 'run'), { recursive: true });
+    writeFileSync(
+      resolve(repoRoot, '.paw', 'run', '.unanswered-my-task'),
+      'You have 1 unanswered message',
+    );
+
+    const input = JSON.stringify({ tool_name: 'Edit', tool_input: { file_path: 'foo.ts' } });
+    try {
+      execSync(`echo '${input}' | bash .claude/hooks/paw-inbox-gate.sh`, {
+        cwd: repoRoot,
+        encoding: 'utf-8',
+      });
+      expect.unreachable('should have thrown');
+    } catch (err: unknown) {
+      const e = err as { status: number; stderr: string };
+      expect(e.status).toBe(2);
+      expect(e.stderr).toContain('unanswered');
+    }
+  });
+
+  it('denies Write tool when flag file exists (exit 2, stderr has reason)', () => {
+    mkdirSync(resolve(repoRoot, '.paw', 'run'), { recursive: true });
+    writeFileSync(
+      resolve(repoRoot, '.paw', 'run', '.unanswered-my-task'),
+      'You have 1 unanswered message',
+    );
+
+    const input = JSON.stringify({ tool_name: 'Write', tool_input: { file_path: 'bar.ts' } });
+    try {
+      execSync(`echo '${input}' | bash .claude/hooks/paw-inbox-gate.sh`, {
+        cwd: repoRoot,
+        encoding: 'utf-8',
+      });
+      expect.unreachable('should have thrown');
+    } catch (err: unknown) {
+      const e = err as { status: number; stderr: string };
+      expect(e.status).toBe(2);
+      expect(e.stderr).toContain('unanswered');
+    }
+  });
+
   it('allows paw commands even when flag file exists', () => {
     mkdirSync(resolve(repoRoot, '.paw', 'run'), { recursive: true });
     writeFileSync(
