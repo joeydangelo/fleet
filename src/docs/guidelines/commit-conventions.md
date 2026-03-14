@@ -32,7 +32,6 @@ Commits syntax balances brevity for humans with structure for machines.
 | `build` | Build system or external dependencies |
 | `ci` | CI/CD configuration |
 | `chore` | Maintenance (deps, config, upgrades) |
-| `resolve` | Merge conflict resolution (paw-specific) |
 
 - Select type by the *category of artifact changed*, not the motivation. A typo fix in
   docs is `docs:`, not `fix:`. A test refactor is `refactor:`, not `test:`.
@@ -41,15 +40,12 @@ Commits syntax balances brevity for humans with structure for machines.
 
 - Include the task or issue number in the description when available
   (e.g., `feat: add retry logic for webhook delivery (#42)`).
-- Use `resolve:` for commits produced by `paw merge` conflict resolution. Scope to the
-  affected module when multiple modules conflict (e.g., `resolve(api):`).
 
 ## Examples
 
 Correct:
 - `feat: add OAuth2 login flow with Google and GitHub`
 - `fix(api): return 404 for missing user profiles`
-- `resolve(api): reconcile auth types after parallel agent edits`
 - `docs: update CLI usage examples`
 - `refactor: extract token refresh logic to separate module`
 - `chore: update dependencies`

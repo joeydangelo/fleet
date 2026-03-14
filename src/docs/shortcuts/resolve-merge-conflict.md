@@ -78,7 +78,7 @@ errors.
 
 1. Run lint and typecheck. Check `package.json`, `Makefile`, `pyproject.toml`, or
    similar for project commands. Fix failures before proceeding.
-2. Commit the resolution using type `resolve`
+2. Commit the resolution using the commit conventions
    (see `paw guidelines commit-conventions`).
 3. Run `paw merge --continue`. If another conflict occurs, repeat from Phase 1.
 

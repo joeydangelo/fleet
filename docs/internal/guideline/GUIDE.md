@@ -211,7 +211,7 @@ rules and the other references it. Do not duplicate rules across guidelines — 
 same rule appears in two places, they drift apart and eventually contradict.
 
 **Category-based loading.** Guidelines compose well when each one covers a distinct
-domain category. A code review shortcut might load `security-patterns`, `test-quality`,
+domain category. A code review shortcut might load `security-review`, `code-quality-review`,
 and `commit-conventions` simultaneously because each covers a non-overlapping concern.
 If two guidelines cover overlapping concerns, merge them or redraw the boundary.
 
