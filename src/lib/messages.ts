@@ -66,13 +66,6 @@ export function readMessages(cwd?: string): Message[] {
 }
 
 /**
- * Read inbox entries relevant to a specific task:
- * - All broadcasts
- * - Messages directed at this task (to === taskName)
- *
- * Optionally filter to entries after a given timestamp.
- */
-/**
  * Find unanswered sends from `fromTask` directed at `taskName`.
  * A send is unanswered if no reply from `taskName` shares its thread ID.
  */

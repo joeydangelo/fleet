@@ -112,7 +112,8 @@ afterEach(() => {
   }
 });
 
-/** Fake time (ms) to advance past reviewTask's sleep+poll cycle. */
+/** Fake time (ms) to advance past reviewTask's sleep+poll cycle.
+ *  Derived from: 2s initial + 5s poll + 10s timeout + 3s margin = 20s, rounded to 25s. */
 const REVIEW_SETTLE_MS = 25_000;
 
 describe('runReview', () => {
