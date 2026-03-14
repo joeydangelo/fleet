@@ -63,13 +63,13 @@ describe('buildDisplayItems', () => {
       lastCheck: {},
     };
 
-    const items = buildDisplayItems(tmuxPanes, taskPanes, syncState, '%0', '');
+    const items = buildDisplayItems(tmuxPanes, taskPanes, syncState, '%0', '', null, null);
     expect(items).toEqual([{ paneId: '%1', label: 'auth', badge: '[cc]', status: 'in_progress' }]);
   });
 
   it('labels orchestrator pane from panes.json orchestratorPaneId', () => {
     const tmuxPanes = [makeTmuxPane('%2', 'AA822972-1', 'claude')];
-    const items = buildDisplayItems(tmuxPanes, [], null, '%0', '%2');
+    const items = buildDisplayItems(tmuxPanes, [], null, '%0', '%2', null, null);
     expect(items).toEqual([{ paneId: '%2', label: 'orchestrator', badge: '[cc]', status: null }]);
   });
 
@@ -78,7 +78,7 @@ describe('buildDisplayItems', () => {
       makeTmuxPane('%0', 'bash', 'bash'),
       makeTmuxPane('%1', 'AA822972-1', 'claude'),
     ];
-    const items = buildDisplayItems(tmuxPanes, [], null, '%0', '%1');
+    const items = buildDisplayItems(tmuxPanes, [], null, '%0', '%1', null, null);
     expect(items).toHaveLength(1);
     expect(items[0]!.paneId).toBe('%1');
     expect(items[0]!.label).toBe('orchestrator');
@@ -92,7 +92,7 @@ describe('buildDisplayItems', () => {
       makeTmuxPane('%4', 'my-scratch', 'node'), // ad-hoc
     ];
     const taskPanes = [makePane('auth', '%2')];
-    const items = buildDisplayItems(tmuxPanes, taskPanes, null, '%0', '%1');
+    const items = buildDisplayItems(tmuxPanes, taskPanes, null, '%0', '%1', null, null);
     expect(items[0]!.label).toBe('orchestrator'); // orchestrator first
     expect(items[1]!.label).toBe('auth'); // task second
     expect(items[2]!.label).toBe('my-scratch'); // ad-hoc last
@@ -101,26 +101,26 @@ describe('buildDisplayItems', () => {
   it('drops task panes that are no longer alive in tmux', () => {
     const tmuxPanes = [makeTmuxPane('%1', 'paw-auth', 'claude')];
     const taskPanes = [makePane('auth', '%1'), makePane('api', '%99')];
-    const items = buildDisplayItems(tmuxPanes, taskPanes, null, '%0', '');
+    const items = buildDisplayItems(tmuxPanes, taskPanes, null, '%0', '', null, null);
     expect(items).toHaveLength(1);
     expect(items[0]!.label).toBe('auth');
   });
 
   it('uses pane ID as fallback label for untitled panes', () => {
     const tmuxPanes = [makeTmuxPane('%5', 'bash', 'bash')];
-    const items = buildDisplayItems(tmuxPanes, [], null, '%0', '');
+    const items = buildDisplayItems(tmuxPanes, [], null, '%0', '', null, null);
     expect(items[0]!.label).toBe('pane %5');
   });
 
   it('updates badge when command changes (e.g. bash -> claude)', () => {
     const tmuxPanes = [makeTmuxPane('%2', 'paw-auth', 'bash')];
     const taskPanes = [makePane('auth', '%2')];
-    const items = buildDisplayItems(tmuxPanes, taskPanes, null, '%0', '');
+    const items = buildDisplayItems(tmuxPanes, taskPanes, null, '%0', '', null, null);
     expect(items[0]!.badge).toBe('[bash]');
 
     // Simulate next poll: command changed to claude
     const tmuxPanes2 = [makeTmuxPane('%2', 'paw-auth', 'claude')];
-    const items2 = buildDisplayItems(tmuxPanes2, taskPanes, null, '%0', '');
+    const items2 = buildDisplayItems(tmuxPanes2, taskPanes, null, '%0', '', null, null);
     expect(items2[0]!.badge).toBe('[cc]');
   });
 
@@ -135,7 +135,7 @@ describe('buildDisplayItems', () => {
       merges: { api: { status: 'conflict', brief: 'conflicts/api-into-target.md' } },
       lastCheck: {},
     };
-    const items = buildDisplayItems(tmuxPanes, taskPanes, syncState, '%0', '');
+    const items = buildDisplayItems(tmuxPanes, taskPanes, syncState, '%0', '', null, null);
     expect(items[0]!.status).toBe('conflict');
   });
 
@@ -161,7 +161,7 @@ describe('buildDisplayItems', () => {
       lastCheck: {},
     };
     // No task panes passed — simulates panes.json not yet written
-    const items = buildDisplayItems(tmuxPanes, [], syncState, '%0', '');
+    const items = buildDisplayItems(tmuxPanes, [], syncState, '%0', '', null, null);
     expect(items).toHaveLength(1);
     expect(items[0]!.label).toBe('auth');
     expect(items[0]!.status).toBe('in_progress');
@@ -198,7 +198,7 @@ describe('buildDisplayItems', () => {
         },
       },
     };
-    const items = buildDisplayItems(tmuxPanes, [], syncState, '%0', '', undefined, health);
+    const items = buildDisplayItems(tmuxPanes, [], syncState, '%0', '', null, health);
     expect(items).toHaveLength(1);
     expect(items[0]!.label).toBe('auth');
     expect(items[0]!.status).toBe('stalled');
@@ -210,7 +210,7 @@ describe('buildDisplayItems', () => {
       makeTmuxPane('%1', 'AA822972-1', 'claude'),
       makeTmuxPane('%4', 'my-scratch', 'node'),
     ];
-    const items = buildDisplayItems(tmuxPanes, [], null, '%0', '%1');
+    const items = buildDisplayItems(tmuxPanes, [], null, '%0', '%1', null, null);
     expect(items).toHaveLength(2);
     expect(items[0]!.label).toBe('orchestrator');
     expect(items[1]!.label).toBe('my-scratch');
