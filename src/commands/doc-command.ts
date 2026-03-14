@@ -39,8 +39,9 @@ export function createDocCommand(name: string, category: string, description: st
         opts: { list?: boolean; add?: string; name?: string; roles?: string },
       ) => {
         try {
+          const { getRepoRoot } = await import('../lib/git.js');
+
           try {
-            const { getRepoRoot } = await import('../lib/git.js');
             await ensureDocsFresh(getRepoRoot());
           } catch (err: unknown) {
             // Expected: not in a git repo, or docs not configured yet.
@@ -58,7 +59,6 @@ export function createDocCommand(name: string, category: string, description: st
 
           if (opts.add) {
             const { addDoc } = await import('../lib/doc-add.js');
-            const { getRepoRoot } = await import('../lib/git.js');
 
             const docNameForAdd = opts.name || deriveNameFromUrl(opts.add);
             const repoRoot = getRepoRoot();
