@@ -58,26 +58,46 @@ export interface DetachedAgent {
   branchName: string;
 }
 
-/** Persisted session state. */
-export interface PawPaneConfig {
-  /** 'attached' when inside tmux, 'detached' when running background sessions. */
-  mode?: 'attached' | 'detached';
-  /** tmux session name. */
-  sessionName: string;
-  /** Repo root path. */
-  repoRoot: string;
-  /**
-   * Pane ID of the orchestrator shell (pane 1). Empty string if not yet created.
-   * The orchestrator is where the user types their AI agent command (claude).
-   */
-  orchestratorPaneId: string;
-  /** Active agent panes (panes 2+) — attached mode. */
-  panes: PawPane[];
-  /** Detached tmux sessions — detached mode. */
-  detached?: DetachedAgent[];
-  /** ISO timestamp of last update. */
-  lastUpdated: string;
-}
+/** Persisted session state — discriminated by mode. */
+export type PawPaneConfig =
+  | {
+      /** 'attached' when inside a shared tmux session (default when absent). */
+      mode?: 'attached';
+      /** tmux session name. */
+      sessionName: string;
+      /** Repo root path. */
+      repoRoot: string;
+      /**
+       * Pane ID of the orchestrator shell (pane 1). Empty string if not yet created.
+       * The orchestrator is where the user types their AI agent command (claude).
+       */
+      orchestratorPaneId: string;
+      /** Active agent panes (panes 2+). */
+      panes: PawPane[];
+      /** Not present in attached mode. */
+      detached?: never;
+      /** ISO timestamp of last update. */
+      lastUpdated: string;
+    }
+  | {
+      /** 'detached' when running one background session per agent. */
+      mode: 'detached';
+      /** tmux session name. */
+      sessionName: string;
+      /** Repo root path. */
+      repoRoot: string;
+      /**
+       * Pane ID of the orchestrator shell (pane 1). Empty string if not yet created.
+       * The orchestrator is where the user types their AI agent command (claude).
+       */
+      orchestratorPaneId: string;
+      /** Active agent panes (panes 2+). */
+      panes: PawPane[];
+      /** Detached tmux sessions — only present when mode is 'detached'. */
+      detached: DetachedAgent[];
+      /** ISO timestamp of last update. */
+      lastUpdated: string;
+    };
 
 /**
  * Interface for tmux operations. Enables dependency injection for testing.
@@ -373,7 +393,7 @@ export function ensureTmuxInstalled(): void {
   } else {
     printUnixTmuxError();
   }
-  process.exit(1);
+  throw new Error('tmux is not installed or not in PATH.');
 }
 
 function tryExec(cmd: string, args: string[], timeoutMs = 5000): string | null {
@@ -523,33 +543,29 @@ export async function launchTmux(
     }
   }
 
-  const panes: PawPane[] = [];
-  let paneIndex = 1;
+  const pendingWorktrees = worktrees.filter((wt) => !liveByTask.has(wt.taskName));
 
-  for (const wt of worktrees) {
-    if (liveByTask.has(wt.taskName)) continue;
+  const launchedPanes = await Promise.all(
+    pendingWorktrees.map(async (wt, idx) => {
+      const paneId = tmux.createPane(sessionName, wt.worktreePath);
+      const pane: PawPane = {
+        id: `paw-${idx + 1}`,
+        paneId,
+        taskName: wt.taskName,
+        worktreePath: wt.worktreePath,
+        agent: parseAgentName(),
+        branchName: '',
+      };
+      tmux.setPaneTitle(paneId, `paw-${wt.taskName}`);
+      tmux.setPaneRole(paneId, `paw-${wt.taskName}`);
+      tmux.setPaneProject(paneId, repoRoot);
+      tmux.sendKeys(paneId, wt.agentCommand);
+      await sendBeacon(tmux, paneId, { ...beaconOpts, worktreePath: wt.worktreePath });
+      return pane;
+    }),
+  );
 
-    const paneId = tmux.createPane(sessionName, wt.worktreePath);
-    const pane: PawPane = {
-      id: `paw-${paneIndex}`,
-      paneId,
-      taskName: wt.taskName,
-      worktreePath: wt.worktreePath,
-      agent: parseAgentName(),
-      branchName: '',
-    };
-
-    tmux.setPaneTitle(paneId, `paw-${wt.taskName}`);
-    tmux.setPaneRole(paneId, `paw-${wt.taskName}`);
-    tmux.setPaneProject(paneId, repoRoot);
-    tmux.sendKeys(paneId, wt.agentCommand);
-    await sendBeacon(tmux, paneId, { ...beaconOpts, worktreePath: wt.worktreePath });
-
-    panes.push(pane);
-    paneIndex++;
-  }
-
-  return panes;
+  return launchedPanes;
 }
 
 /** Factory that creates a real `TmuxService` wired to the local tmux binary. */
@@ -668,9 +684,7 @@ export function checkAgentLiveness(
   tmux: TmuxServiceApi,
   config: PawPaneConfig,
 ): AgentLivenessResult[] {
-  const mode = config.mode ?? 'attached';
-
-  if (mode === 'detached' && config.detached) {
+  if (config.mode === 'detached') {
     return config.detached.map((agent) => ({
       taskName: agent.taskName,
       alive: tmux.sessionExists(agent.sessionName),
@@ -746,28 +760,25 @@ export async function launchDetached(
     }
   }
 
-  const agents: DetachedAgent[] = [];
-  let index = 1;
+  const pendingWorktrees = worktrees.filter((wt) => !liveByTask.has(wt.taskName));
 
-  for (const wt of worktrees) {
-    if (liveByTask.has(wt.taskName)) continue;
-
-    const sessionName = `${sessionPrefix}-${wt.taskName}`;
-    await createDetachedSession(tmux, sessionName, wt.worktreePath, wt.agentCommand, {
-      ...beaconOpts,
-      worktreePath: wt.worktreePath,
-    });
-
-    agents.push({
-      id: `paw-${index}`,
-      sessionName,
-      taskName: wt.taskName,
-      worktreePath: wt.worktreePath,
-      agent: parseAgentName(),
-      branchName: wt.branchName ?? '',
-    });
-    index++;
-  }
+  const agents = await Promise.all(
+    pendingWorktrees.map(async (wt, idx) => {
+      const sessionName = `${sessionPrefix}-${wt.taskName}`;
+      await createDetachedSession(tmux, sessionName, wt.worktreePath, wt.agentCommand, {
+        ...beaconOpts,
+        worktreePath: wt.worktreePath,
+      });
+      return {
+        id: `paw-${idx + 1}`,
+        sessionName,
+        taskName: wt.taskName,
+        worktreePath: wt.worktreePath,
+        agent: parseAgentName(),
+        branchName: wt.branchName ?? '',
+      };
+    }),
+  );
 
   return agents;
 }
