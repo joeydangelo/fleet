@@ -11,7 +11,7 @@ vi.mock('node:child_process', () => ({
 
 // Mock only createTmuxService (external boundary)
 vi.mock('../src/lib/tmux.js', async (importOriginal) => {
-  const actual: Record<string, unknown> = (await importOriginal());
+  const actual: Record<string, unknown> = await importOriginal();
   return { ...actual, createTmuxService: vi.fn() };
 });
 
@@ -65,7 +65,9 @@ describe('runGo dry-run integration', () => {
 
   beforeEach(async () => {
     // Restore real execFileSync so git operations work in the integration test
-    const actualCp = (await vi.importActual('node:child_process'));
+    const actualCp = (await vi.importActual(
+      'node:child_process',
+    ));
     mockExecFileSync.mockImplementation(actualCp.execFileSync);
 
     const fixture = createFixtureRepo({

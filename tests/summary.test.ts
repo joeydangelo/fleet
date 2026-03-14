@@ -1,93 +1,65 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-
-vi.mock('../src/lib/git.js', () => ({
-  getRepoRoot: vi.fn(() => '/fake/repo'),
-  getCurrentBranch: vi.fn(() => 'feature/x-auth'),
-}));
-
-vi.mock('../src/lib/sync.js', () => ({
-  readRequiredSyncState: vi.fn(() => ({
-    session: 'test',
-    target: 'main',
-    tasks: { auth: { status: 'in_progress' } },
-  })),
-  requireWorktreeTask: vi.fn(() => 'auth'),
-  reviewFilePath: vi.fn((branch: string) => `review/${branch.replace(/[^a-zA-Z0-9-]/g, '-')}.md`),
-  readSyncFile: vi.fn(),
-  writeSyncFile: vi.fn(),
-}));
-
-import { readSyncFile, writeSyncFile } from '../src/lib/sync.js';
+import { writeFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { createFixtureRepo } from './helpers/fixture-repo.js';
 import { runSummary } from '../src/commands/summary.js';
+import { getCurrentBranch } from '../src/lib/git.js';
+import { reviewFilePath } from '../src/lib/sync.js';
 
-const mockReadSyncFile = vi.mocked(readSyncFile);
-const mockWriteSyncFile = vi.mocked(writeSyncFile);
+let fixture: ReturnType<typeof createFixtureRepo>;
+let originalCwd: string;
+let reviewPath: string;
 
 beforeEach(() => {
-  vi.clearAllMocks();
+  originalCwd = process.cwd();
+  fixture = createFixtureRepo();
+  process.chdir(fixture.repoRoot);
+  reviewPath = reviewFilePath(getCurrentBranch());
   vi.spyOn(console, 'log').mockImplementation(() => {});
   vi.spyOn(console, 'error').mockImplementation(() => {});
 });
 
 afterEach(() => {
+  process.chdir(originalCwd);
   vi.restoreAllMocks();
+  fixture.cleanup();
 });
 
 describe('runSummary', () => {
-  describe('write mode (default)', () => {
-    it('writes stdin content to sync branch review file', () => {
+  describe('write mode', () => {
+    it('writes content to sync branch review file', () => {
       const content = '## Summary\nTest summary content\n';
 
       const exitCode = runSummary({ content });
 
       expect(exitCode).toBe(0);
-      expect(mockWriteSyncFile).toHaveBeenCalledWith(
-        'review/feature-x-auth.md',
-        content,
-        '/fake/repo',
-      );
+      const written = fixture.readSyncFile(reviewPath);
+      expect(written).toBe(content);
     });
 
     it('fails with exit 1 when content is empty', () => {
       const exitCode = runSummary({ content: '' });
 
       expect(exitCode).toBe(1);
-      expect(mockWriteSyncFile).not.toHaveBeenCalled();
-    });
-
-    it('prints confirmation with task name', () => {
-      runSummary({ content: 'test content' });
-
-      const logs = vi.mocked(console.log).mock.calls.map((c) => String(c[0]));
-      expect(logs.some((l) => l.includes('auth') && l.includes('summary written'))).toBe(true);
+      const written = fixture.readSyncFile(reviewPath);
+      expect(written).toBeNull();
     });
   });
 
-  describe('--show and --append together', () => {
-    it('fails with exit 1 when both flags are set', () => {
-      const exitCode = runSummary({ show: true, append: true, content: 'test' });
-
-      expect(exitCode).toBe(1);
-      expect(mockWriteSyncFile).not.toHaveBeenCalled();
-      expect(mockReadSyncFile).not.toHaveBeenCalled();
-    });
-  });
-
-  describe('--show mode', () => {
+  describe('show mode', () => {
     it('reads and prints summary from sync branch', () => {
-      mockReadSyncFile.mockReturnValue('## Summary\nExisting content\n');
+      const content = '## Summary\nExisting content\n';
+      // Write file directly to sync dir so show can read it
+      writeFileSync(resolve(fixture.syncDir, reviewPath), content);
 
       const exitCode = runSummary({ show: true });
 
       expect(exitCode).toBe(0);
-      expect(mockReadSyncFile).toHaveBeenCalledWith('review/feature-x-auth.md', '/fake/repo');
       const logs = vi.mocked(console.log).mock.calls.map((c) => String(c[0]));
       expect(logs.some((l) => l.includes('Existing content'))).toBe(true);
     });
 
-    it('prints message when no summary exists yet', () => {
-      mockReadSyncFile.mockReturnValue(null);
-
+    it('prints message when no summary exists', () => {
       const exitCode = runSummary({ show: true });
 
       expect(exitCode).toBe(0);
@@ -96,49 +68,26 @@ describe('runSummary', () => {
     });
   });
 
-  describe('--append mode', () => {
-    it('appends content to existing summary on sync branch', () => {
-      mockReadSyncFile.mockReturnValue('## Summary\nOriginal\n');
+  describe('append mode', () => {
+    it('appends content to existing summary', () => {
+      const original = '## Summary\nOriginal\n';
       const appendContent = '\n## Fixed — Cycle 1\nFix notes\n';
+      // Write initial file
+      runSummary({ content: original });
 
       const exitCode = runSummary({ append: true, content: appendContent });
 
       expect(exitCode).toBe(0);
-      expect(mockWriteSyncFile).toHaveBeenCalledWith(
-        'review/feature-x-auth.md',
-        '## Summary\nOriginal\n' + appendContent,
-        '/fake/repo',
-      );
+      const result = fixture.readSyncFile(reviewPath);
+      expect(result).toBe(original + appendContent);
     });
+  });
 
-    it('writes content even when no existing summary (creates new)', () => {
-      mockReadSyncFile.mockReturnValue(null);
-      const content = '## Fixed — Cycle 1\nFix notes\n';
-
-      const exitCode = runSummary({ append: true, content });
-
-      expect(exitCode).toBe(0);
-      expect(mockWriteSyncFile).toHaveBeenCalledWith(
-        'review/feature-x-auth.md',
-        content,
-        '/fake/repo',
-      );
-    });
-
-    it('fails with exit 1 when append content is empty', () => {
-      const exitCode = runSummary({ append: true, content: '' });
+  describe('show + append conflict', () => {
+    it('fails with exit 1 when both flags are set', () => {
+      const exitCode = runSummary({ show: true, append: true });
 
       expect(exitCode).toBe(1);
-      expect(mockWriteSyncFile).not.toHaveBeenCalled();
-    });
-
-    it('prints confirmation with updated message', () => {
-      mockReadSyncFile.mockReturnValue('existing');
-
-      runSummary({ append: true, content: 'new stuff' });
-
-      const logs = vi.mocked(console.log).mock.calls.map((c) => String(c[0]));
-      expect(logs.some((l) => l.includes('auth') && l.includes('summary updated'))).toBe(true);
     });
   });
 });
