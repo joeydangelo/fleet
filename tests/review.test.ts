@@ -1,48 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import type { SyncState } from '../src/lib/sync.js';
 import type { ReviewResult } from '../src/lib/reviewer.js';
+import { createFixtureRepo, type FixtureRepo } from './helpers/fixture-repo.js';
+import { getCurrentBranch } from '../src/lib/git.js';
+import { reviewFilePath } from '../src/lib/sync.js';
 
-// Mock lib modules before importing review
-vi.mock('../src/lib/git.js', () => ({
-  getRepoRoot: vi.fn(() => '/fake/repo'),
-  getCurrentBranch: vi.fn(() => 'feature/x-auth'),
-}));
-
-vi.mock('../src/lib/sync.js', () => ({
-  readRequiredSyncState: vi.fn(),
-  readSyncState: vi.fn(),
-  readSyncFile: vi.fn(() => null),
-  writeSyncState: vi.fn(),
-  writeSyncFile: vi.fn(),
-  reviewFilePath: vi.fn((branch: string) => `review/${branch.replace(/[^a-zA-Z0-9-]/g, '-')}.md`),
-  requireWorktreeTask: vi.fn(() => 'auth'),
-  submitForReview: (state: SyncState, taskName: string) => ({
-    ...state,
-    tasks: {
-      ...state.tasks,
-      [taskName]: {
-        ...state.tasks[taskName],
-        status: 'in_review',
-        reviewCycle: (state.tasks[taskName]?.reviewCycle ?? 0) + 1,
-      },
-    },
-  }),
-  completeTask: (state: SyncState, taskName: string) => ({
-    ...state,
-    tasks: {
-      ...state.tasks,
-      [taskName]: { ...state.tasks[taskName], status: 'done', doneAt: new Date().toISOString() },
-    },
-  }),
-  reopenTask: (state: SyncState, taskName: string) => ({
-    ...state,
-    tasks: {
-      ...state.tasks,
-      [taskName]: { ...state.tasks[taskName], status: 'in_progress' },
-    },
-  }),
-}));
-
+// Mock only external boundaries
 vi.mock('../src/lib/tmux.js', () => ({
   createTmuxService: vi.fn(() => ({})),
 }));
@@ -51,33 +13,15 @@ vi.mock('../src/lib/reviewer.js', () => ({
   reviewTask: vi.fn(),
 }));
 
-import {
-  readRequiredSyncState,
-  readSyncState,
-  writeSyncState,
-  writeSyncFile,
-} from '../src/lib/sync.js';
 import { createTmuxService } from '../src/lib/tmux.js';
 import { reviewTask } from '../src/lib/reviewer.js';
 import { runReview } from '../src/commands/review.js';
 
-const mockReadRequiredSyncState = vi.mocked(readRequiredSyncState);
-const mockReadSyncState = vi.mocked(readSyncState);
-const mockWriteSyncState = vi.mocked(writeSyncState);
 const mockCreateTmuxService = vi.mocked(createTmuxService);
 const mockReviewTask = vi.mocked(reviewTask);
 
-function baseSyncState(overrides?: Partial<SyncState>): SyncState {
-  return {
-    session: 'test',
-    config: '/fake/config',
-    target: 'feature/x',
-    tasks: {
-      auth: { status: 'in_progress', claimed: '2026-03-01T00:00:00Z' },
-    },
-    ...overrides,
-  };
-}
+let fixture: FixtureRepo;
+let originalCwd: string;
 
 function passResult(): ReviewResult {
   return { verdict: 'pass', strengths: 'Clean code', issues: '' };
@@ -97,32 +41,42 @@ function skipResult(): ReviewResult {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  originalCwd = process.cwd();
   vi.spyOn(console, 'log').mockImplementation(() => {});
   vi.spyOn(console, 'error').mockImplementation(() => {});
+  vi.spyOn(console, 'warn').mockImplementation(() => {});
 });
 
 afterEach(() => {
+  process.chdir(originalCwd);
   vi.restoreAllMocks();
+  if (fixture) {
+    fixture.cleanup();
+  }
 });
 
 describe('runReview', () => {
   it('auto-completes when cycle exceeds max retries', async () => {
-    const state = baseSyncState();
-    state.tasks['auth']!.reviewCycle = 2; // REVIEW_MAX_RETRIES is 2
-    mockReadRequiredSyncState.mockReturnValue(state);
+    fixture = createFixtureRepo({
+      syncState: {
+        tasks: {
+          auth: { reviewCycle: 2 },
+        },
+      },
+    });
+    process.chdir(fixture.repoRoot);
 
     const exitCode = await runReview();
 
     expect(exitCode).toBe(0);
-    const written = mockWriteSyncState.mock.calls[0]![0];
-    expect(written.tasks['auth']?.status).toBe('done');
+    const state = fixture.readSyncState()!;
+    expect(state.tasks['auth']?.status).toBe('done');
     expect(mockReviewTask).not.toHaveBeenCalled();
   });
 
   it('auto-completes when tmux is unavailable', async () => {
-    const state = baseSyncState();
-    mockReadRequiredSyncState.mockReturnValue(state);
-    mockReadSyncState.mockReturnValue(state);
+    fixture = createFixtureRepo();
+    process.chdir(fixture.repoRoot);
     mockCreateTmuxService.mockImplementation(() => {
       throw new Error('tmux not found');
     });
@@ -130,80 +84,63 @@ describe('runReview', () => {
     const exitCode = await runReview();
 
     expect(exitCode).toBe(0);
-    // Should have written twice: once for submitForReview, once for completeTask
-    expect(mockWriteSyncState).toHaveBeenCalledTimes(2);
-    const lastWrite = mockWriteSyncState.mock.calls[1]![0];
-    expect(lastWrite.tasks['auth']?.status).toBe('done');
+    const state = fixture.readSyncState()!;
+    expect(state.tasks['auth']?.status).toBe('done');
   });
 
-  it('marks done and exits 0 on PASS', async () => {
-    const state = baseSyncState();
-    mockReadRequiredSyncState.mockReturnValue(state);
-    mockReadSyncState.mockReturnValue(state);
+  it('marks done and exits 0 on PASS verdict', async () => {
+    fixture = createFixtureRepo();
+    process.chdir(fixture.repoRoot);
     mockReviewTask.mockResolvedValue(passResult());
 
     const exitCode = await runReview();
 
     expect(exitCode).toBe(0);
-    const logs = vi.mocked(console.log).mock.calls.map((c) => String(c[0]));
-    expect(logs.some((l) => l.includes('PASS'))).toBe(true);
+    const state = fixture.readSyncState()!;
+    expect(state.tasks['auth']?.status).toBe('done');
+
+    // Verify review file was written with cycle and verdict
+    const reviewContent = fixture.readSyncFile(reviewFilePath(getCurrentBranch()));
+    expect(reviewContent).toContain('Review — Cycle 1');
+    expect(reviewContent).toContain('PASS');
   });
 
-  it('marks done and exits 0 on SKIP', async () => {
-    const state = baseSyncState();
-    mockReadRequiredSyncState.mockReturnValue(state);
-    mockReadSyncState.mockReturnValue(state);
-    mockReviewTask.mockResolvedValue(skipResult());
-
-    const exitCode = await runReview();
-
-    expect(exitCode).toBe(0);
-    const logs = vi.mocked(console.log).mock.calls.map((c) => String(c[0]));
-    expect(logs.some((l) => l.includes('SKIP'))).toBe(true);
-  });
-
-  it('reopens task and exits 1 on FAIL with findings on stdout', async () => {
-    const state = baseSyncState();
-    mockReadRequiredSyncState.mockReturnValue(state);
-    mockReadSyncState.mockReturnValue(state);
+  it('reopens task and exits 1 on FAIL verdict', async () => {
+    fixture = createFixtureRepo();
+    process.chdir(fixture.repoRoot);
     mockReviewTask.mockResolvedValue(failResult());
 
     const exitCode = await runReview();
 
     expect(exitCode).toBe(1);
+    const state = fixture.readSyncState()!;
+    expect(state.tasks['auth']?.status).toBe('in_progress');
+
+    // Verify issue text appears in console output
     const logs = vi.mocked(console.log).mock.calls.map((c) => String(c[0]));
-    expect(logs.some((l) => l.includes('FAIL'))).toBe(true);
-    expect(logs.some((l) => typeof l === 'string' && l.includes('SQL injection'))).toBe(true);
+    expect(logs.some((l) => l.includes('SQL injection'))).toBe(true);
   });
 
-  it('persists findings to sync branch as single review file', async () => {
-    const state = baseSyncState();
-    mockReadRequiredSyncState.mockReturnValue(state);
-    mockReadSyncState.mockReturnValue(state);
-    mockReviewTask.mockResolvedValue(passResult());
-    const mockWriteSyncFile = vi.mocked(writeSyncFile);
+  it('marks done and exits 0 on SKIP verdict', async () => {
+    fixture = createFixtureRepo();
+    process.chdir(fixture.repoRoot);
+    mockReviewTask.mockResolvedValue(skipResult());
 
-    await runReview();
+    const exitCode = await runReview();
 
-    // Last writeSyncFile call is the post-verdict relay with appended findings
-    const lastCall = mockWriteSyncFile.mock.calls[mockWriteSyncFile.mock.calls.length - 1]!;
-    const [path, content] = lastCall;
-    expect(path).toBe('review/feature-x-auth.md');
-    expect(content).toContain('## Review — Cycle 1');
-    expect(content).toContain('PASS');
+    expect(exitCode).toBe(0);
+    const state = fixture.readSyncState()!;
+    expect(state.tasks['auth']?.status).toBe('done');
   });
 
-  it('increments reviewCycle via submitForReview', async () => {
-    const state = baseSyncState();
-    mockReadRequiredSyncState.mockReturnValue(state);
-    mockReadSyncState.mockReturnValue(state);
+  it('increments reviewCycle after PASS', async () => {
+    fixture = createFixtureRepo();
+    process.chdir(fixture.repoRoot);
     mockReviewTask.mockResolvedValue(passResult());
 
     await runReview();
 
-    // First write is submitForReview (sets in_review + increments cycle)
-    const submitWrite = mockWriteSyncState.mock.calls[0]![0];
-    expect(submitWrite.tasks['auth']?.status).toBe('in_review');
-    expect(submitWrite.tasks['auth']?.reviewCycle).toBe(1);
+    const state = fixture.readSyncState()!;
+    expect(state.tasks['auth']?.reviewCycle).toBe(1);
   });
 });
