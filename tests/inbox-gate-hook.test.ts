@@ -85,12 +85,10 @@ describe('inbox gate bash script execution', () => {
     expect(result.trim()).toBe('');
   });
 
-  it('denies Read tool when flag file exists (exit 2, stderr has reason)', () => {
+  it('denies Read tool when flag file exists (exit 2, stderr has exact denial text)', () => {
+    const denialText = 'You have 1 unanswered message';
     mkdirSync(resolve(repoRoot, '.paw', 'run'), { recursive: true });
-    writeFileSync(
-      resolve(repoRoot, '.paw', 'run', '.unanswered-my-task'),
-      'You have 1 unanswered message',
-    );
+    writeFileSync(resolve(repoRoot, '.paw', 'run', '.unanswered-my-task'), denialText);
 
     const input = JSON.stringify({ tool_name: 'Read', tool_input: {} });
     try {
@@ -102,7 +100,7 @@ describe('inbox gate bash script execution', () => {
     } catch (err: unknown) {
       const e = err as { status: number; stderr: string };
       expect(e.status).toBe(2);
-      expect(e.stderr).toContain('unanswered');
+      expect(e.stderr.trim()).toBe(denialText);
     }
   });
 

@@ -9,6 +9,12 @@ describe('taskDisplayStatus', () => {
     expect(taskDisplayStatus(undefined, undefined)).toBe('pending');
   });
 
+  it('returns explicit status when task has one (proves fallback is load-bearing)', () => {
+    const task: TaskState = { status: 'done' };
+    expect(taskDisplayStatus(task, undefined)).toBe('done');
+    expect(taskDisplayStatus(task, undefined)).not.toBe('pending');
+  });
+
   it('returns conflict when merge entry has conflict status', () => {
     const task: TaskState = { status: 'done' };
     const merge: MergeEntry = { status: 'conflict' };

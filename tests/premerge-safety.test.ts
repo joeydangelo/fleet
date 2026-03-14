@@ -16,7 +16,7 @@ import type { PawConfig } from '../src/lib/config.js';
 import { makeTempDir } from './helpers/temp.js';
 
 function gitInit(dir: string): void {
-  execFileSync('git', ['init', dir], { stdio: 'pipe' });
+  execFileSync('git', ['init', '-b', 'main', dir], { stdio: 'pipe' });
   execFileSync('git', ['commit', '--allow-empty', '-m', 'init'], {
     cwd: dir,
     stdio: 'pipe',
@@ -168,6 +168,9 @@ describe('backup refs during merge', () => {
     const headAfter = getHeadRef(repoDir);
     expect(headAfter).not.toBe(headBefore);
 
+    // Merged file should now exist
+    expect(existsSync(resolve(repoDir, 'auth.txt'))).toBe(true);
+
     // Rollback using backup ref
     execFileSync('git', ['reset', '--hard', 'refs/paw-backup/auth'], {
       cwd: repoDir,
@@ -176,5 +179,8 @@ describe('backup refs during merge', () => {
 
     const headRestored = getHeadRef(repoDir);
     expect(headRestored).toBe(headBefore);
+
+    // Merged file should be gone after rollback
+    expect(existsSync(resolve(repoDir, 'auth.txt'))).toBe(false);
   });
 });
