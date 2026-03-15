@@ -231,11 +231,11 @@ describe('computeEscalationLevel', () => {
   });
 });
 
-// --- I/O functions: all transient files go under .paw/run/ ---
+// --- I/O functions: all transient files go under .fleet/run/ ---
 
 import { makeTempDir } from './helpers/temp.js';
 
-describe('heartbeat I/O writes to .paw/run/', () => {
+describe('heartbeat I/O writes to .fleet/run/', () => {
   let repoRoot: string;
 
   beforeEach(() => {
@@ -246,9 +246,9 @@ describe('heartbeat I/O writes to .paw/run/', () => {
     rmSync(repoRoot, { recursive: true, force: true });
   });
 
-  it('writeHeartbeat creates file under .paw/run/heartbeats/', () => {
+  it('writeHeartbeat creates file under .fleet/run/heartbeats/', () => {
     writeHeartbeat(repoRoot, 'auth');
-    const filePath = resolve(repoRoot, '.paw', 'run', 'heartbeats', 'auth');
+    const filePath = resolve(repoRoot, '.fleet', 'run', 'heartbeats', 'auth');
     expect(existsSync(filePath)).toBe(true);
     const content = readFileSync(filePath, 'utf-8').trim();
     expect(new Date(content).toISOString()).toBe(content); // valid ISO timestamp
@@ -259,7 +259,7 @@ describe('heartbeat I/O writes to .paw/run/', () => {
   });
 });
 
-describe('health snapshot I/O writes to .paw/run/', () => {
+describe('health snapshot I/O writes to .fleet/run/', () => {
   let repoRoot: string;
 
   beforeEach(() => {
@@ -270,7 +270,7 @@ describe('health snapshot I/O writes to .paw/run/', () => {
     rmSync(repoRoot, { recursive: true, force: true });
   });
 
-  it('writeHealthSnapshot round-trips snapshot to .paw/run/health.json', () => {
+  it('writeHealthSnapshot round-trips snapshot to .fleet/run/health.json', () => {
     const snapshot: HealthSnapshot = {
       timestamp: '2026-01-01T00:00:00.000Z',
       agents: {},
@@ -285,7 +285,7 @@ describe('health snapshot I/O writes to .paw/run/', () => {
   });
 });
 
-describe('inbox cursor I/O writes to .paw/run/', () => {
+describe('inbox cursor I/O writes to .fleet/run/', () => {
   let repoRoot: string;
 
   beforeEach(() => {
@@ -296,7 +296,7 @@ describe('inbox cursor I/O writes to .paw/run/', () => {
     rmSync(repoRoot, { recursive: true, force: true });
   });
 
-  it('writeInboxCursor round-trips cursor value to .paw/run/', () => {
+  it('writeInboxCursor round-trips cursor value to .fleet/run/', () => {
     writeInboxCursor(repoRoot, 'auth', '2026-01-01T00:00:00.000Z');
     expect(readInboxCursor(repoRoot, 'auth')).toBe('2026-01-01T00:00:00.000Z');
   });
@@ -306,7 +306,7 @@ describe('inbox cursor I/O writes to .paw/run/', () => {
   });
 });
 
-describe('triage I/O writes to .paw/run/', () => {
+describe('triage I/O writes to .fleet/run/', () => {
   let repoRoot: string;
 
   beforeEach(() => {
@@ -317,9 +317,9 @@ describe('triage I/O writes to .paw/run/', () => {
     rmSync(repoRoot, { recursive: true, force: true });
   });
 
-  it('saveTriageOutput creates file under .paw/run/triage/', () => {
+  it('saveTriageOutput creates file under .fleet/run/triage/', () => {
     saveTriageOutput(repoRoot, 'auth', 'terminal output', 'extend', '2026-01-01T00:00:00.000Z');
-    const filePath = resolve(repoRoot, '.paw', 'run', 'triage', 'auth.txt');
+    const filePath = resolve(repoRoot, '.fleet', 'run', 'triage', 'auth.txt');
     expect(existsSync(filePath)).toBe(true);
     const content = readFileSync(filePath, 'utf-8');
     expect(content).toContain('extend');

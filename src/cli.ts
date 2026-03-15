@@ -37,7 +37,7 @@ export function createCli(): Command {
   const program = new Command();
 
   program
-    .name('paw')
+    .name('fleet')
     .description('Parallel Agent Worktrees -- orchestrate multi-agent git worktree workflows')
     .version(getVersion())
     .option('--verbose', 'Show debug output (enables SHOW_COMMANDS, timing)')
@@ -61,16 +61,16 @@ export function createCli(): Command {
     'after',
     `
 Quickstart:
-  paw go                 Run the full lifecycle (detached by default)
+  fleet go                 Run the full lifecycle (detached by default)
 
 IMPORTANT:
-  Agents unfamiliar with paw should run \`paw prime\` for full context.
+  Agents unfamiliar with fleet should run \`fleet prime\` for full context.
 
 Getting Started:
-  npm install -g get-paw@latest && paw init`,
+  npm install -g get-fleet@latest && fleet init`,
   );
 
-  lazy(program, 'init', 'Initialize paw in a repo', async () => {
+  lazy(program, 'init', 'Initialize fleet in a repo', async () => {
     const m = await import('./commands/init.js');
     return m.initCommand();
   });
@@ -159,7 +159,7 @@ Getting Started:
   lazy(
     program,
     'tui',
-    'Open the tmux TUI (optional — paw go runs detached by default)',
+    'Open the tmux TUI (optional — fleet go runs detached by default)',
     async () => {
       const m = await import('./commands/tui.js');
       return m.tuiCommand();

@@ -19,7 +19,7 @@ import { reviewTask } from '../lib/reviewer.js';
 import { REVIEW_MAX_RETRIES } from '../lib/constants.js';
 import { handleError, colors } from '../lib/output.js';
 
-/** Build the `paw review` CLI command. */
+/** Build the `fleet review` CLI command. */
 export function reviewCommand(): Command {
   return new Command('review')
     .description('Submit task for review — blocks until verdict, exits 0 on PASS/SKIP, 1 on FAIL')
@@ -72,7 +72,7 @@ export async function runReview(): Promise<number> {
 
   const taskBranch = getCurrentBranch(repoRoot);
   const targetBranch = state.target;
-  const taskFilePath = resolve(repoRoot, '.paw', 'tasks', `${taskName}.md`);
+  const taskFilePath = resolve(repoRoot, '.fleet', 'tasks', `${taskName}.md`);
   const reviewPath = reviewFilePath(taskBranch);
 
   console.log(pc.dim(`  Reviewing ${taskName}...`));

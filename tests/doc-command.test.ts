@@ -12,12 +12,8 @@ vi.mock('../src/lib/github-fetch.js', () => ({
 
 // Mock git so getRepoRoot() returns our temp dir (no actual git required)
 vi.mock('../src/lib/git.js', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../src/lib/git.js')>();
-  return {
-    ...actual,
-    getRepoRoot: vi.fn(),
-    getRepoRootOrNull: vi.fn(),
-  };
+   
+  return { ...(await importOriginal()), getRepoRoot: vi.fn(), getRepoRootOrNull: vi.fn() };
 });
 
 // Mock ensureDocsFresh to be a no-op — it calls git and network; irrelevant here
@@ -45,7 +41,7 @@ async function runCommand(
   const origLog = console.log;
   const origErr = console.error;
   const origWarn = console.warn;
-  const origExit = process.exit;
+  const origExit = process.exit.bind(process);
 
   console.log = (...a: unknown[]) => logs.push(a.map(String).join(' '));
   console.error = (...a: unknown[]) => errs.push(a.map(String).join(' '));
@@ -87,7 +83,7 @@ describe('createDocCommand', () => {
   beforeEach(() => {
     repoRoot = makeTempDir();
     mockedFetch.mockReset();
-    vi.stubEnv('PAW_REPO_ROOT', repoRoot);
+    vi.stubEnv('FLEET_REPO_ROOT', repoRoot);
   });
 
   afterEach(() => {
@@ -97,7 +93,7 @@ describe('createDocCommand', () => {
 
   // ── 1. Default path: name lookup reads and displays doc content ──────────
   it('displays doc content when a known name is provided', async () => {
-    const docsDir = resolve(repoRoot, '.paw', 'docs', 'shortcuts');
+    const docsDir = resolve(repoRoot, '.fleet', 'docs', 'shortcuts');
     mkdirSync(docsDir, { recursive: true });
     writeFileSync(
       resolve(docsDir, 'build-task.md'),
@@ -114,7 +110,7 @@ describe('createDocCommand', () => {
 
   // ── 2. --list path: lists available docs without error ───────────────────
   it('lists available docs when --list is passed', async () => {
-    const docsDir = resolve(repoRoot, '.paw', 'docs', 'shortcuts');
+    const docsDir = resolve(repoRoot, '.fleet', 'docs', 'shortcuts');
     mkdirSync(docsDir, { recursive: true });
     writeFileSync(
       resolve(docsDir, 'alpha.md'),
@@ -135,7 +131,7 @@ describe('createDocCommand', () => {
   });
 
   it('shows empty message when --list finds no docs', async () => {
-    mkdirSync(resolve(repoRoot, '.paw', 'docs', 'shortcuts'), { recursive: true });
+    mkdirSync(resolve(repoRoot, '.fleet', 'docs', 'shortcuts'), { recursive: true });
 
     const { stdout, exitCode } = await runCommand(['--list'], repoRoot);
 
@@ -145,7 +141,7 @@ describe('createDocCommand', () => {
 
   // ── 3. --add path: addDoc is called with correct args and file is created ─
   it('creates the doc file at the correct path when --add is used', async () => {
-    mkdirSync(resolve(repoRoot, '.paw'), { recursive: true });
+    mkdirSync(resolve(repoRoot, '.fleet'), { recursive: true });
 
     mockedFetch.mockResolvedValue({
       content: '---\nname: my-shortcut\ndescription: A new one\n---\n# My Shortcut\nContent.',
@@ -160,12 +156,12 @@ describe('createDocCommand', () => {
     expect(exitCode).toBeNull();
     expect(mockedFetch).toHaveBeenCalledWith('https://example.com/my-shortcut.md');
 
-    const destFile = resolve(repoRoot, '.paw', 'docs', 'shortcuts', 'my-shortcut.md');
+    const destFile = resolve(repoRoot, '.fleet', 'docs', 'shortcuts', 'my-shortcut.md');
     expect(existsSync(destFile)).toBe(true);
   });
 
   it('derives doc name from URL when --name is not given', async () => {
-    mkdirSync(resolve(repoRoot, '.paw'), { recursive: true });
+    mkdirSync(resolve(repoRoot, '.fleet'), { recursive: true });
 
     mockedFetch.mockResolvedValue({
       content: '# Derived\nContent here.',
@@ -174,12 +170,12 @@ describe('createDocCommand', () => {
 
     await runCommand(['--add', 'https://example.com/derived-name.md'], repoRoot);
 
-    const destFile = resolve(repoRoot, '.paw', 'docs', 'shortcuts', 'derived-name.md');
+    const destFile = resolve(repoRoot, '.fleet', 'docs', 'shortcuts', 'derived-name.md');
     expect(existsSync(destFile)).toBe(true);
   });
 
   it('injects roles into frontmatter when --roles is supplied with --add', async () => {
-    mkdirSync(resolve(repoRoot, '.paw'), { recursive: true });
+    mkdirSync(resolve(repoRoot, '.fleet'), { recursive: true });
 
     mockedFetch.mockResolvedValue({
       content: '---\nname: role-doc\ndescription: Roles test\n---\n# Role Doc',
@@ -187,13 +183,20 @@ describe('createDocCommand', () => {
     });
 
     await runCommand(
-      ['--add', 'https://example.com/role-doc.md', '--name', 'role-doc', '--roles', 'builder,reviewer'],
+      [
+        '--add',
+        'https://example.com/role-doc.md',
+        '--name',
+        'role-doc',
+        '--roles',
+        'builder,reviewer',
+      ],
       repoRoot,
     );
 
     const { readFileSync } = await import('node:fs');
     const content = readFileSync(
-      resolve(repoRoot, '.paw', 'docs', 'shortcuts', 'role-doc.md'),
+      resolve(repoRoot, '.fleet', 'docs', 'shortcuts', 'role-doc.md'),
       'utf-8',
     );
     expect(content).toContain('roles: [builder, reviewer]');
@@ -201,7 +204,7 @@ describe('createDocCommand', () => {
 
   // ── 4. Error path: doc not found exits gracefully ────────────────────────
   it('exits with code 1 when the named doc does not exist', async () => {
-    mkdirSync(resolve(repoRoot, '.paw', 'docs', 'shortcuts'), { recursive: true });
+    mkdirSync(resolve(repoRoot, '.fleet', 'docs', 'shortcuts'), { recursive: true });
 
     const { exitCode, stderr } = await runCommand(['nonexistent-doc'], repoRoot);
 

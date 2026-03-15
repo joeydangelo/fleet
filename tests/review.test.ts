@@ -58,7 +58,7 @@ function createMockTmuxApi(opts?: {
     sendKeys: vi.fn((_target: string, _keys: string) => {
       sendKeysCount++;
       // Write verdict file when review prompt is sent (2nd sendKeys call),
-      // after reviewTask has created the .paw/run/ directory and cleaned
+      // after reviewTask has created the .fleet/run/ directory and cleaned
       // up any old verdict file.
       if (sendKeysCount === 2 && opts?.verdictToWrite && opts?.repoRoot && opts?.branch) {
         const vPath = verdictFilePath(opts.repoRoot, opts.branch);

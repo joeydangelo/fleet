@@ -3,7 +3,7 @@ import { mkdirSync, readFileSync, existsSync, readdirSync, copyFileSync } from '
 import { execSync } from 'node:child_process';
 import { writeFileSync } from 'atomically';
 import fg from 'fast-glob';
-import type { PawConfig } from './config.js';
+import type { FleetConfig } from './config.js';
 import { normalizeDeps } from './config.js';
 import { branchExists, createBranch, createWorktree, getFileFromBranch } from './git.js';
 import { NotFoundError } from './errors.js';
@@ -16,19 +16,19 @@ export interface WorktreeInfo {
 }
 
 /** Derive branch names and sibling-directory worktree paths from the task list. */
-export function planWorktrees(config: PawConfig, repoRoot: string): WorktreeInfo[] {
+export function planWorktrees(config: FleetConfig, repoRoot: string): WorktreeInfo[] {
   const repoName = basename(repoRoot);
   const parentDir = dirname(repoRoot);
 
   return Object.keys(config.tasks).map((taskName) => ({
     taskName,
     branch: `${config.target}-${taskName}`,
-    worktreePath: resolve(parentDir, `${repoName}-paw-${taskName}`),
+    worktreePath: resolve(parentDir, `${repoName}-fleet-${taskName}`),
   }));
 }
 
 /** Creates the target branch (if needed), per-task branches, and their worktrees. */
-export function createSession(config: PawConfig, repoRoot: string): WorktreeInfo[] {
+export function createSession(config: FleetConfig, repoRoot: string): WorktreeInfo[] {
   if (!branchExists(config.target, repoRoot)) {
     createBranch(config.target, config.base, repoRoot);
   }
@@ -46,7 +46,7 @@ export function createSession(config: PawConfig, repoRoot: string): WorktreeInfo
 }
 
 /** Build the markdown task assignment (focus, prompt, collaboration rules) for an agent. */
-export function generateTaskFile(config: PawConfig, worktreeInfo: WorktreeInfo): string {
+export function generateTaskFile(config: FleetConfig, worktreeInfo: WorktreeInfo): string {
   const { taskName } = worktreeInfo;
   const task = config.tasks[taskName];
   if (!task) throw new NotFoundError(`Task not found: ${taskName}`);
@@ -75,13 +75,13 @@ export function generateTaskFile(config: PawConfig, worktreeInfo: WorktreeInfo):
   return lines.join('\n') + '\n';
 }
 
-/** Adds `.paw/` to .gitignore unless the base branch already has it, avoiding duplicate entries that cause merge conflicts. */
+/** Adds `.fleet/` to .gitignore unless the base branch already has it, avoiding duplicate entries that cause merge conflicts. */
 export function ensureGitignore(worktreePath: string, baseBranch?: string): void {
   const gitignorePath = resolve(worktreePath, '.gitignore');
-  const entry = '.paw/';
+  const entry = '.fleet/';
 
   // If the base branch already has this entry, the worktree inherited it -- skip
-  // to avoid duplicate additions across branches that cause merge conflicts (paw-numd).
+  // to avoid duplicate additions across branches that cause merge conflicts (fleet-numd).
   if (baseBranch) {
     const baseContent = getFileFromBranch(baseBranch, '.gitignore', worktreePath);
     if (baseContent && baseContent.split('\n').some((line) => line.trim() === entry)) {
@@ -99,11 +99,11 @@ export function ensureGitignore(worktreePath: string, baseBranch?: string): void
 }
 
 /**
- * Detect which task this directory belongs to by checking .paw/tasks/ for a
+ * Detect which task this directory belongs to by checking .fleet/tasks/ for a
  * single task file. Returns null if detection fails.
  */
 export function detectTaskName(cwd: string): string | null {
-  const tasksDir = resolve(cwd, '.paw', 'tasks');
+  const tasksDir = resolve(cwd, '.fleet', 'tasks');
   if (existsSync(tasksDir)) {
     const files = readdirSync(tasksDir).filter((f) => f.endsWith('.md'));
     if (files.length === 1) {
@@ -151,14 +151,14 @@ export function runSetup(worktreePath: string, command: string): void {
   });
 }
 
-/** Write .paw/tasks/{name}.md into each worktree and ensure .paw/ is gitignored. */
+/** Write .fleet/tasks/{name}.md into each worktree and ensure .fleet/ is gitignored. */
 export function writeTaskFiles(
-  config: PawConfig,
+  config: FleetConfig,
   worktrees: WorktreeInfo[],
   baseBranch?: string,
 ): void {
   for (const wt of worktrees) {
-    const taskDir = resolve(wt.worktreePath, '.paw', 'tasks');
+    const taskDir = resolve(wt.worktreePath, '.fleet', 'tasks');
     mkdirSync(taskDir, { recursive: true });
 
     const taskFilePath = resolve(taskDir, `${wt.taskName}.md`);

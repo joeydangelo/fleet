@@ -29,7 +29,7 @@ roles: [orchestrator]
 root causes (if bug/fix), and constraints — grounded in file paths and evidence.
 **Tools:** Read, Glob, Grep, Agent (Explore only)
 
-1. Load `paw guidelines codebase-research`.
+1. Load `fleet guidelines codebase-research`.
 2. For 1-2 files: read directly. For 3+ files: spawn parallel Explore agents,
    each targeting one research question:
    - **Codebase structure** — where does relevant code live, what are the existing
@@ -93,11 +93,11 @@ risk, approach clarity) with explicit reasoning.
      interpretations, change has significant consequences, or you need
      information only the user can provide.
 2. Validate: lint, typecheck, and tests appropriate to the change type.
-3. Commit using `paw guidelines commit-conventions`.
+3. Commit using `fleet guidelines commit-conventions`.
 
 **If Spec:**
 
-1. Run `paw shortcut write-spec`.
+1. Run `fleet shortcut write-spec`.
 
 **Gate:** Direct — lint, typecheck, tests pass. Spec — write-spec invoked.
 **Artifact:** Direct — committed change. Spec — write-spec shortcut invoked.

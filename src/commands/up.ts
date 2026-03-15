@@ -3,7 +3,7 @@ import { cpSync, existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { resolve, basename, dirname } from 'node:path';
 import pc from 'picocolors';
 import { loadRepoConfig } from '../lib/config.js';
-import type { PawConfig } from '../lib/config.js';
+import type { FleetConfig } from '../lib/config.js';
 import {
   createSession,
   planWorktrees,
@@ -20,7 +20,7 @@ import { success, pending, handleError } from '../lib/output.js';
 export async function runUp(
   repoRoot: string,
   configPath: string,
-  config: PawConfig,
+  config: FleetConfig,
 ): Promise<WorktreeInfo[]> {
   const worktrees = createSession(config, repoRoot);
   writeTaskFiles(config, worktrees, config.target);
@@ -118,7 +118,9 @@ export function upCommand(): Command {
         const { repoRoot, configPath, config } = loadRepoConfig();
         const taskNames = Object.keys(config.tasks);
 
-        console.log(pc.bold(`paw up: ${taskNames.length} tasks${opts.dryRun ? ' (dry run)' : ''}`));
+        console.log(
+          pc.bold(`fleet up: ${taskNames.length} tasks${opts.dryRun ? ' (dry run)' : ''}`),
+        );
         console.log(`  base:   ${config.base}`);
         console.log(`  target: ${config.target}\n`);
 

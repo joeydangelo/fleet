@@ -39,7 +39,7 @@ function getDocTypeSubdir(docType: DocType): string {
       return 'templates';
     default: {
       const _exhaustive: never = docType;
-      throw new Error(`Unhandled DocType: ${_exhaustive}`);
+      throw new Error(`Unhandled DocType: ${_exhaustive as string}`);
     }
   }
 }
@@ -61,7 +61,7 @@ export function injectRolesFrontmatter(content: string, roles: string[]): string
   return `---\nroles: [${roles.join(', ')}]\n---\n${content}`;
 }
 
-/** Fetch a doc from a URL and save it to .paw/docs/{category}/. */
+/** Fetch a doc from a URL and save it to .fleet/docs/{category}/. */
 export async function addDoc(
   repoRoot: string,
   options: { url: string; name: string; docType: DocType; roles?: string[] },
@@ -83,7 +83,7 @@ export async function addDoc(
     content = injectRolesFrontmatter(content, roles);
   }
 
-  const fullPath = resolve(repoRoot, '.paw', 'docs', destPath);
+  const fullPath = resolve(repoRoot, '.fleet', 'docs', destPath);
   mkdirSync(dirname(fullPath), { recursive: true });
   writeFileSync(fullPath, content, 'utf-8');
 

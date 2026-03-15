@@ -12,7 +12,7 @@ import {
 } from '../src/lib/sync.js';
 import { branchExists, removeWorktree, deleteBranch } from '../src/lib/git.js';
 import { writeSyncStateAndFiles } from '../src/lib/sync.js';
-import type { PawConfig } from '../src/lib/config.js';
+import type { FleetConfig } from '../src/lib/config.js';
 import { makeTempDir } from './helpers/temp.js';
 
 function gitInit(dir: string): void {
@@ -23,11 +23,11 @@ function gitInit(dir: string): void {
   });
 }
 
-describe('paw session lifecycle', () => {
+describe('fleet session lifecycle', () => {
   let repoDir: string;
   let worktreePaths: string[];
 
-  const config: PawConfig = {
+  const config: FleetConfig = {
     base: 'main',
     target: 'feature/dash',
     tasks: {
@@ -90,7 +90,7 @@ describe('paw session lifecycle', () => {
     writeTaskFiles(config, worktrees);
 
     for (const wt of worktrees) {
-      const taskFile = resolve(wt.worktreePath, '.paw', 'tasks', `${wt.taskName}.md`);
+      const taskFile = resolve(wt.worktreePath, '.fleet', 'tasks', `${wt.taskName}.md`);
       expect(existsSync(taskFile)).toBe(true);
 
       const content = readFileSync(taskFile, 'utf-8');
@@ -99,7 +99,7 @@ describe('paw session lifecycle', () => {
     }
   });
 
-  it('adds .paw/ to .gitignore in each worktree', () => {
+  it('adds .fleet/ to .gitignore in each worktree', () => {
     const worktrees = createSession(config, repoDir);
     worktreePaths = worktrees.map((w) => w.worktreePath);
 
@@ -110,7 +110,7 @@ describe('paw session lifecycle', () => {
       expect(existsSync(gitignore)).toBe(true);
 
       const content = readFileSync(gitignore, 'utf-8');
-      expect(content).toContain('.paw/');
+      expect(content).toContain('.fleet/');
     }
   });
 
@@ -119,7 +119,7 @@ describe('paw session lifecycle', () => {
     worktreePaths = worktrees.map((w) => w.worktreePath);
 
     const taskNames = Object.keys(config.tasks);
-    const syncState = initSyncState(config.target, taskNames, 'paw.yaml');
+    const syncState = initSyncState(config.target, taskNames, 'fleet.yaml');
     writeSyncState(syncState, repoDir);
 
     const read = readSyncState(repoDir);
@@ -162,26 +162,26 @@ describe('paw session lifecycle', () => {
     worktreePaths = worktrees.map((w) => w.worktreePath);
 
     const taskNames = Object.keys(config.tasks);
-    const syncState = initSyncState(config.target, taskNames, 'paw.yaml');
+    const syncState = initSyncState(config.target, taskNames, 'fleet.yaml');
     writeSyncStateAndFiles(syncState, [{ path: 'inbox/.gitkeep', content: '' }], repoDir);
 
-    expect(branchExists('paw-sync', repoDir)).toBe(true);
+    expect(branchExists('fleet-sync', repoDir)).toBe(true);
 
-    // Tear down (as paw down does): worktrees first, then sync worktree, then branch
+    // Tear down (as fleet down does): worktrees first, then sync worktree, then branch
     for (const wt of worktrees) {
       removeWorktree(wt.worktreePath, repoDir);
     }
     removeSyncWorktree(repoDir);
-    deleteBranch('paw-sync', repoDir);
-    expect(branchExists('paw-sync', repoDir)).toBe(false);
+    deleteBranch('fleet-sync', repoDir);
+    expect(branchExists('fleet-sync', repoDir)).toBe(false);
 
-    // Verify paw up works again after full teardown
+    // Verify fleet up works again after full teardown
     initSyncWorktree(repoDir);
     const worktrees2 = createSession(config, repoDir);
-    const syncState2 = initSyncState(config.target, taskNames, 'paw.yaml');
+    const syncState2 = initSyncState(config.target, taskNames, 'fleet.yaml');
     writeSyncStateAndFiles(syncState2, [{ path: 'inbox/.gitkeep', content: '' }], repoDir);
 
-    expect(branchExists('paw-sync', repoDir)).toBe(true);
+    expect(branchExists('fleet-sync', repoDir)).toBe(true);
     const read = readSyncState(repoDir);
     expect(read).not.toBeNull();
     expect(read!.tasks['auth']?.status).toBe('pending');
@@ -202,7 +202,7 @@ describe('paw session lifecycle', () => {
     const worktrees = createSession(config, repoDir);
     worktreePaths = worktrees.map((w) => w.worktreePath);
 
-    // Simulate what paw up does: copy .claude/ into each worktree
+    // Simulate what fleet up does: copy .claude/ into each worktree
     for (const wt of worktrees) {
       const dest = resolve(wt.worktreePath, '.claude');
       if (!existsSync(dest)) {

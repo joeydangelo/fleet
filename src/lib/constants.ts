@@ -1,16 +1,16 @@
 /**
- * Shared constants for paw CLI: sync config, agent roles, health
+ * Shared constants for fleet CLI: sync config, agent roles, health
  * thresholds, beacon timing, and TUI layout values.
  */
 
 /** Git branch used to persist session state across worktrees. */
-export const SYNC_BRANCH = 'paw-sync';
+export const SYNC_BRANCH = 'fleet-sync';
 
 /** Unit: seconds. */
 export const DEFAULT_POLL_INTERVAL = 5;
 
 /** The first message sent to an agent after Claude Code boots. */
-export const BEACON_MESSAGE = 'Run `paw shortcut build-task` and follow its instructions.';
+export const BEACON_MESSAGE = 'Run `fleet shortcut build-task` and follow its instructions.';
 
 /** Max time (ms) to wait for Claude Code TUI to render before giving up. */
 export const BEACON_TUI_TIMEOUT_MS = 30_000;
@@ -31,10 +31,10 @@ export const BEACON_SESSION_READY_TIMEOUT_MS = 60_000;
 export const BEACON_FOLLOWUP_DELAYS: readonly number[] = [5_000, 10_000];
 
 /** Role identifier for the orchestrator process. */
-export const ORCHESTRATOR_ROLE = 'paw-orchestrator';
+export const ORCHESTRATOR_ROLE = 'fleet-orchestrator';
 
 /** Role identifier for the TUI process. */
-export const TUI_ROLE = 'paw-tui';
+export const TUI_ROLE = 'fleet-tui';
 
 /** Seconds with no heartbeat before an agent is considered stalled. */
 export const STALL_THRESHOLD_S = 300;
@@ -70,4 +70,4 @@ export const REVIEW_NUDGE_MS = 300_000;
 export const REVIEW_MAX_RETRIES = 2;
 
 /** Path prefix for unanswered-message flag files (per task). */
-export const INBOX_GATE_PREFIX = '.paw/run/.unanswered-';
+export const INBOX_GATE_PREFIX = '.fleet/run/.unanswered-';

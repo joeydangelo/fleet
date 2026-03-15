@@ -49,7 +49,7 @@ describe('addDoc', () => {
 
   beforeEach(() => {
     repoRoot = makeTempDir();
-    mkdirSync(resolve(repoRoot, '.paw'), { recursive: true });
+    mkdirSync(resolve(repoRoot, '.fleet'), { recursive: true });
     mockedFetch.mockReset();
   });
 
@@ -57,7 +57,7 @@ describe('addDoc', () => {
     rmSync(repoRoot, { recursive: true, force: true });
   });
 
-  it('writes doc to .paw/docs/{category}/', async () => {
+  it('writes doc to .fleet/docs/{category}/', async () => {
     mockedFetch.mockResolvedValue({
       content: '---\ntitle: My Guideline\n---\n# Guide\nContent',
       usedGhCli: false,
@@ -70,7 +70,7 @@ describe('addDoc', () => {
     });
 
     expect(result.destPath).toBe('guidelines/my-guide.md');
-    const filePath = resolve(repoRoot, '.paw', 'docs', 'guidelines', 'my-guide.md');
+    const filePath = resolve(repoRoot, '.fleet', 'docs', 'guidelines', 'my-guide.md');
     expect(existsSync(filePath)).toBe(true);
   });
 
@@ -150,7 +150,7 @@ describe('addDoc', () => {
     writeManifest(repoRoot, {
       docs_cache: {
         files: { 'guidelines/old.md': 'https://example.com/old.md' },
-        lookup_path: ['.paw/docs/shortcuts', '.paw/docs/guidelines', '.paw/docs/templates'],
+        lookup_path: ['.fleet/docs/shortcuts', '.fleet/docs/guidelines', '.fleet/docs/templates'],
       },
       settings: { doc_auto_sync_hours: 24 },
     });
@@ -183,7 +183,7 @@ describe('addDoc', () => {
 
     const { readFileSync } = await import('node:fs');
     const content = readFileSync(
-      resolve(repoRoot, '.paw', 'docs', 'guidelines', 'security-audit.md'),
+      resolve(repoRoot, '.fleet', 'docs', 'guidelines', 'security-audit.md'),
       'utf-8',
     );
     expect(content).toContain('roles: [reviewer]');

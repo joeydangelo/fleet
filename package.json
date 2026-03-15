@@ -1,7 +1,7 @@
 {
-  "name": "get-paw",
+  "name": "get-fleet",
   "version": "0.1.0",
-  "description": "Parallel Agent Worktrees — orchestrate multi-agent git worktree workflows",
+  "description": "Fleet — orchestrate multi-agent git worktree workflows",
   "license": "MIT",
   "type": "module",
   "main": "./dist/index.mjs",
@@ -14,7 +14,7 @@
     "./package.json": "./package.json"
   },
   "bin": {
-    "paw": "./dist/bin.mjs"
+    "fleet": "./dist/bin.mjs"
   },
   "files": [
     "dist"

@@ -6,7 +6,7 @@ import { makeTempDir } from './temp.js';
 import type { SyncState, TaskState } from '../../src/lib/sync.js';
 import { SYNC_BRANCH } from '../../src/lib/constants.js';
 
-/** A single task definition for paw.yaml. */
+/** A single task definition for fleet.yaml. */
 export interface FixtureTaskDef {
   focus: string | string[];
   prompt?: string;
@@ -20,8 +20,8 @@ export interface FixtureRepoOptions {
   syncState?: {
     tasks?: Record<string, Partial<TaskState>>;
   };
-  /** Override raw paw.yaml content (bypasses task-based generation). */
-  pawYaml?: string;
+  /** Override raw fleet.yaml content (bypasses task-based generation). */
+  fleetYaml?: string;
 }
 
 /** Object returned by createFixtureRepo with paths and convenience methods. */
@@ -40,7 +40,7 @@ function gitIn(cwd: string, args: string[]): string {
 
 /**
  * Create a minimal real git repo in a temp directory for integration tests.
- * Sets up .paw/paw.yaml, task files, sync worktree with state.json, and review/ directory.
+ * Sets up .fleet/fleet.yaml, task files, sync worktree with state.json, and review/ directory.
  */
 export function createFixtureRepo(opts?: FixtureRepoOptions): FixtureRepo {
   const repoRoot = makeTempDir();
@@ -53,15 +53,15 @@ export function createFixtureRepo(opts?: FixtureRepoOptions): FixtureRepo {
   gitIn(repoRoot, ['config', 'user.email', 'test@test.com']);
   gitIn(repoRoot, ['config', 'user.name', 'Test User']);
 
-  // Write .paw/paw.yaml
-  const pawDir = resolve(repoRoot, '.paw');
-  mkdirSync(pawDir, { recursive: true });
+  // Write .fleet/fleet.yaml
+  const fleetDir = resolve(repoRoot, '.fleet');
+  mkdirSync(fleetDir, { recursive: true });
 
-  const pawYamlPath = resolve(pawDir, 'paw.yaml');
-  if (opts?.pawYaml) {
-    writeFileSync(pawYamlPath, opts.pawYaml);
+  const fleetYamlPath = resolve(fleetDir, 'fleet.yaml');
+  if (opts?.fleetYaml) {
+    writeFileSync(fleetYamlPath, opts.fleetYaml);
   } else {
-    const pawConfig = {
+    const fleetConfig = {
       target,
       tasks: Object.fromEntries(
         Object.entries(tasks).map(([name, def]) => [
@@ -70,11 +70,11 @@ export function createFixtureRepo(opts?: FixtureRepoOptions): FixtureRepo {
         ]),
       ),
     };
-    writeFileSync(pawYamlPath, stringifyYaml(pawConfig));
+    writeFileSync(fleetYamlPath, stringifyYaml(fleetConfig));
   }
 
-  // Write .paw/tasks/<name>.md for each task
-  const tasksDir = resolve(pawDir, 'tasks');
+  // Write .fleet/tasks/<name>.md for each task
+  const tasksDir = resolve(fleetDir, 'tasks');
   mkdirSync(tasksDir, { recursive: true });
   for (const name of taskNames) {
     writeFileSync(resolve(tasksDir, `${name}.md`), `# Task: ${name}\n`);
@@ -84,8 +84,8 @@ export function createFixtureRepo(opts?: FixtureRepoOptions): FixtureRepo {
   gitIn(repoRoot, ['add', '-A']);
   gitIn(repoRoot, ['commit', '-m', 'initial commit']);
 
-  // Init sync worktree on paw-sync branch
-  const syncDir = resolve(pawDir, 'sync');
+  // Init sync worktree on fleet-sync branch
+  const syncDir = resolve(fleetDir, 'sync');
   gitIn(repoRoot, ['worktree', 'add', '--orphan', '-b', SYNC_BRANCH, syncDir]);
 
   // Build initial sync state
@@ -100,7 +100,7 @@ export function createFixtureRepo(opts?: FixtureRepoOptions): FixtureRepo {
 
   const state: SyncState = {
     session: new Date().toISOString(),
-    config: '.paw/paw.yaml',
+    config: '.fleet/fleet.yaml',
     target,
     tasks: syncTasks,
     merges: {},
@@ -113,13 +113,13 @@ export function createFixtureRepo(opts?: FixtureRepoOptions): FixtureRepo {
 
   // Commit sync worktree contents
   gitIn(syncDir, ['add', '-A']);
-  gitIn(syncDir, ['commit', '-m', 'paw: init sync state']);
+  gitIn(syncDir, ['commit', '-m', 'fleet: init sync state']);
 
   // Convenience methods
   const writeSyncState = (s: SyncState): void => {
     writeFileSync(resolve(syncDir, 'state.json'), JSON.stringify(s, null, 2) + '\n');
     gitIn(syncDir, ['add', '-A']);
-    gitIn(syncDir, ['commit', '--allow-empty', '-m', 'paw: update sync state']);
+    gitIn(syncDir, ['commit', '--allow-empty', '-m', 'fleet: update sync state']);
   };
 
   const readSyncFile = (path: string): string | null => {

@@ -5,9 +5,9 @@ import { tmpdir } from 'node:os';
 import { verdictFilePath, readVerdictFile } from '../src/lib/reviewer.js';
 
 describe('verdictFilePath', () => {
-  it('returns path under .paw/run with sanitized branch name', () => {
+  it('returns path under .fleet/run with sanitized branch name', () => {
     const result = verdictFilePath('/repo', 'feature/api-auth');
-    expect(result).toBe(resolve('/repo', '.paw', 'run', 'review-verdict-feature-api-auth.json'));
+    expect(result).toBe(resolve('/repo', '.fleet', 'run', 'review-verdict-feature-api-auth.json'));
   });
 
   it('sanitizes special characters in branch name', () => {
@@ -20,7 +20,7 @@ describe('readVerdictFile', () => {
   let tmpDir: string;
 
   beforeEach(() => {
-    tmpDir = resolve(tmpdir(), `paw-test-verdict-${Date.now()}`);
+    tmpDir = resolve(tmpdir(), `fleet-test-verdict-${Date.now()}`);
     mkdirSync(tmpDir, { recursive: true });
   });
 

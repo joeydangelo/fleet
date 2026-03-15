@@ -1,10 +1,10 @@
 /**
  * PR reviewer — launches a read-only Claude session in tmux to review a task
- * branch diff. The reviewer loads `paw shortcut review-pr` and relevant
+ * branch diff. The reviewer loads `fleet shortcut review-pr` and relevant
  * guidelines autonomously, then returns PASS/FAIL with structured findings.
  *
  * Unlike triage (which uses --print one-shot), the reviewer runs as a real
- * Claude Code session so it can invoke tools (paw shortcut, paw guidelines).
+ * Claude Code session so it can invoke tools (fleet shortcut, fleet guidelines).
  * It is restricted to read-only tools via --allowedTools / --disallowedTools.
  *
  * Includes mini-ZFC monitoring: warning → nudge → capture → timeout.
@@ -22,7 +22,7 @@ import { sleep, formatElapsed, sanitizeBranchName } from './util.js';
 import { reviewFilePath } from './sync.js';
 
 /** Prefix for all reviewer tmux sessions. */
-const REVIEW_SESSION_PREFIX = 'paw-review-';
+const REVIEW_SESSION_PREFIX = 'fleet-review-';
 
 /** Outcome of a PR review: pass, fail, or skip (timeout/error). */
 export type ReviewVerdict = 'pass' | 'fail' | 'skip';
@@ -55,7 +55,7 @@ const REVIEW_WARN_MS = 120_000;
 /** Compute the path for the out-of-band verdict sentinel file. */
 export function verdictFilePath(repoRoot: string, taskBranch: string): string {
   const safeName = sanitizeBranchName(taskBranch);
-  return resolve(repoRoot, '.paw', 'run', `review-verdict-${safeName}.json`);
+  return resolve(repoRoot, '.fleet', 'run', `review-verdict-${safeName}.json`);
 }
 
 /** Read and parse the verdict sentinel file. Returns null if not yet written. */
@@ -80,7 +80,7 @@ export function readVerdictFile(filePath: string): ReviewResult | null {
 
 /**
  * Build the claude command for the reviewer session.
- * - PAW_ROLE=reviewer signals hooks to inject reviewer skill and skip paw prime
+ * - FLEET_ROLE=reviewer signals hooks to inject reviewer skill and skip fleet prime
  * - Read-only tools only (no Edit, Write, NotebookEdit, Agent)
  * - Permissionless (automated — no human to approve)
  */
@@ -89,12 +89,12 @@ function buildReviewerCommand(): string {
     'Read',
     'Glob',
     'Grep',
-    'Bash(paw shortcut*)',
-    'Bash(paw guidelines*)',
-    'Bash(paw template*)',
+    'Bash(fleet shortcut*)',
+    'Bash(fleet guidelines*)',
+    'Bash(fleet template*)',
     'Bash(git diff*)',
     'Bash(git log*)',
-    'Bash(git show paw-sync:*)',
+    'Bash(git show fleet-sync:*)',
     'Bash(node -e *)',
     'Agent',
   ].join(',');
@@ -102,7 +102,7 @@ function buildReviewerCommand(): string {
   const disallowedTools = ['Edit', 'Write', 'NotebookEdit'].join(',');
 
   return [
-    'PAW_ROLE=reviewer',
+    'FLEET_ROLE=reviewer',
     'claude',
     '--dangerously-skip-permissions',
     '--allowedTools',
@@ -115,7 +115,7 @@ function buildReviewerCommand(): string {
 /**
  * Build the review prompt sent via send-keys after the session starts.
  * Three concerns only: context, workflow pointer, verdict signaling.
- * The actual review process is defined in `paw shortcut review-pr`.
+ * The actual review process is defined in `fleet shortcut review-pr`.
  */
 function buildReviewPrompt(
   taskBranch: string,
@@ -132,10 +132,10 @@ function buildReviewPrompt(
   if (taskFilePath) {
     lines.push(`TASK FILE: ${taskFilePath}`);
   }
-  lines.push(`REVIEW FILE: git show paw-sync:${reviewFile}`);
+  lines.push(`REVIEW FILE: git show fleet-sync:${reviewFile}`);
   lines.push(`DIFF: git diff ${targetBranch}...${taskBranch}`);
   lines.push('');
-  lines.push('Run `paw shortcut review-pr` and follow its instructions.');
+  lines.push('Run `fleet shortcut review-pr` and follow its instructions.');
   lines.push('');
   lines.push('WHEN DONE: Write the verdict file — this is MANDATORY and must be your last action:');
   lines.push(
@@ -162,7 +162,7 @@ function buildNudgeMessage(verdictPath: string): string {
 /** Save captured pane content to disk for post-mortem debugging. */
 function saveCapture(repoRoot: string, taskBranch: string, content: string): string {
   const safeName = sanitizeBranchName(taskBranch);
-  const dir = resolve(repoRoot, '.paw', 'run', 'review');
+  const dir = resolve(repoRoot, '.fleet', 'run', 'review');
   mkdirSync(dir, { recursive: true });
   const path = resolve(dir, `${safeName}.txt`);
   writeFileSync(
@@ -172,7 +172,7 @@ function saveCapture(repoRoot: string, taskBranch: string, content: string): str
   return path;
 }
 
-/** Kill any orphaned reviewer tmux sessions (paw-review-*). Used by paw down. */
+/** Kill any orphaned reviewer tmux sessions (fleet-review-*). Used by fleet down. */
 export function killReviewerSessions(tmux: TmuxServiceApi): void {
   const sessions = tmux.listSessions();
 
@@ -185,7 +185,7 @@ export function killReviewerSessions(tmux: TmuxServiceApi): void {
 
 /**
  * Review a task branch by launching a Claude session in a detached tmux session.
- * The reviewer loads `paw shortcut review-pr` and guidelines autonomously.
+ * The reviewer loads `fleet shortcut review-pr` and guidelines autonomously.
  *
  * Mini-ZFC escalation (time-based, no heartbeats):
  *   0–2min:  polling silently
@@ -221,7 +221,7 @@ export async function reviewTask(
   }
 
   // Ensure the parent directory exists for the verdict file
-  mkdirSync(resolve(repoRoot, '.paw', 'run'), { recursive: true });
+  mkdirSync(resolve(repoRoot, '.fleet', 'run'), { recursive: true });
 
   // Escalation flags — each fires once
   let warned = false;

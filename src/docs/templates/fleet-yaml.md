@@ -1,16 +1,16 @@
 ---
-name: paw-yaml
-description: Annotated config structure for .paw/paw.yaml
+name: fleet-yaml
+description: Annotated config structure for .fleet/fleet.yaml
 roles: [orchestrator]
 ---
 ```yaml
-# .paw/paw.yaml — defines parallel agent tasks for a paw session
+# .fleet/fleet.yaml — defines parallel agent tasks for a fleet session
 
 target: feature/my-feature
 # base: main                              # default: main
 model: sonnet                             # sonnet or opus
-# spec: .paw/specs/spec-2026-03-04-my-feature.md
-# setup: pnpm install                     # shell command run per worktree during paw up
+# spec: .fleet/specs/spec-2026-03-04-my-feature.md
+# setup: pnpm install                     # shell command run per worktree during fleet up
 
 # include:                                # gitignored files to copy into each worktree
 #   - .env
@@ -20,7 +20,7 @@ model: sonnet                             # sonnet or opus
 tasks:
   # Each key is the task name → branch suffix and worktree directory.
   #   Branch:    {target}-{taskName}
-  #   Worktree:  {repoName}-paw-{taskName}
+  #   Worktree:  {repoName}-fleet-{taskName}
   #
   # Prompt language:
   #   - Declarative for goals: "The service handles X with Y guarantees"

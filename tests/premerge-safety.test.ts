@@ -12,7 +12,7 @@ import {
 } from '../src/lib/git.js';
 import { initSyncWorktree, removeSyncWorktree } from '../src/lib/sync.js';
 import { createSession } from '../src/lib/session.js';
-import type { PawConfig } from '../src/lib/config.js';
+import type { FleetConfig } from '../src/lib/config.js';
 import { makeTempDir } from './helpers/temp.js';
 
 function gitInit(dir: string): void {
@@ -52,7 +52,7 @@ describe('backup refs', () => {
     const head = getHeadRef(repoDir);
     createBackupRef('auth', head, repoDir);
 
-    const refValue = git(['rev-parse', 'refs/paw-backup/auth'], { cwd: repoDir, stdio: 'pipe' });
+    const refValue = git(['rev-parse', 'refs/fleet-backup/auth'], { cwd: repoDir, stdio: 'pipe' });
     expect(refValue).toBe(head);
   });
 
@@ -64,8 +64,8 @@ describe('backup refs', () => {
     const head2 = getHeadRef(repoDir);
     createBackupRef('api', head2, repoDir);
 
-    const ref1 = git(['rev-parse', 'refs/paw-backup/auth'], { cwd: repoDir, stdio: 'pipe' });
-    const ref2 = git(['rev-parse', 'refs/paw-backup/api'], { cwd: repoDir, stdio: 'pipe' });
+    const ref1 = git(['rev-parse', 'refs/fleet-backup/auth'], { cwd: repoDir, stdio: 'pipe' });
+    const ref2 = git(['rev-parse', 'refs/fleet-backup/api'], { cwd: repoDir, stdio: 'pipe' });
 
     expect(ref1).toBe(head1);
     expect(ref2).toBe(head2);
@@ -81,13 +81,13 @@ describe('backup refs', () => {
 
     // Verify refs are gone
     expect(() =>
-      git(['rev-parse', 'refs/paw-backup/auth'], {
+      git(['rev-parse', 'refs/fleet-backup/auth'], {
         cwd: repoDir,
         stdio: 'pipe',
       }),
     ).toThrow();
     expect(() =>
-      git(['rev-parse', 'refs/paw-backup/api'], {
+      git(['rev-parse', 'refs/fleet-backup/api'], {
         cwd: repoDir,
         stdio: 'pipe',
       }),
@@ -103,7 +103,7 @@ describe('backup refs during merge', () => {
   let repoDir: string;
   let worktreePaths: string[];
 
-  const config: PawConfig = {
+  const config: FleetConfig = {
     base: 'main',
     target: 'feature/dash',
     tasks: {
@@ -172,7 +172,7 @@ describe('backup refs during merge', () => {
     expect(existsSync(resolve(repoDir, 'auth.txt'))).toBe(true);
 
     // Rollback using backup ref
-    execFileSync('git', ['reset', '--hard', 'refs/paw-backup/auth'], {
+    execFileSync('git', ['reset', '--hard', 'refs/fleet-backup/auth'], {
       cwd: repoDir,
       stdio: 'pipe',
     });

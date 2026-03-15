@@ -8,8 +8,8 @@ roles: [orchestrator]
 
 | Variable | Source | Default |
 |---|---|---|
-| `TASK` | `paw merge` output (required) | — |
-| `BRIEF_PATH` | `paw merge` output | `conflicts/<TASK>-into-target.md` |
+| `TASK` | `fleet merge` output (required) | — |
+| `BRIEF_PATH` | `fleet merge` output | `conflicts/<TASK>-into-target.md` |
 | `MAX_FIX_ATTEMPTS` | static | `3` |
 
 ## Failure Modes
@@ -31,7 +31,7 @@ roles: [orchestrator]
 
 1. Read the conflict brief from the sync branch:
    ```
-   git show paw-sync:conflicts/<TASK>-into-target.md
+   git show fleet-sync:conflicts/<TASK>-into-target.md
    ```
 2. Extract from the brief: conflicting files, builder summary for the conflicting
    task (its intent), builder summaries for already-merged tasks (canonical in
@@ -79,25 +79,25 @@ errors.
 1. Run lint and typecheck. Check `package.json`, `Makefile`, `pyproject.toml`, or
    similar for project commands. Fix failures before proceeding.
 2. Commit the resolution using the commit conventions
-   (see `paw guidelines commit-conventions`).
-3. Run `paw merge --continue`. If another conflict occurs, repeat from Phase 1.
+   (see `fleet guidelines commit-conventions`).
+3. Run `fleet merge --continue`. If another conflict occurs, repeat from Phase 1.
 
 **Gate:** Lint and typecheck pass on resolved files.
-**Artifact:** Resolution commit on the target branch. `paw merge --continue`
+**Artifact:** Resolution commit on the target branch. `fleet merge --continue`
 invoked.
 
 ## Context Flow
 
-- `paw merge` → Phase 1: conflict brief on sync branch at `BRIEF_PATH`
+- `fleet merge` → Phase 1: conflict brief on sync branch at `BRIEF_PATH`
 - Phase 1 → Phase 2: builder intents, conflicting files, coordination context
 - Phase 2 → Phase 3: resolved files
-- Phase 3 → `paw merge --continue` or `paw shortcut finish-branch`
+- Phase 3 → `fleet merge --continue` or `fleet shortcut finish-branch`
 
 ## Stopping Conditions
 
 Stop and report when ANY of these are true:
 
-- Resolution committed and `paw merge --continue` invoked.
+- Resolution committed and `fleet merge --continue` invoked.
 - Resolution requires information only the user can provide — ask via
   AskUserQuestion.
 - Re-imagination scope exceeds the original task — ask user for direction.
@@ -106,7 +106,7 @@ Stop and report when ANY of these are true:
 ## Output Format
 
 Report: resolution tier applied, files resolved, validation results. Run
-`paw merge --continue`.
+`fleet merge --continue`.
 
 Forbidden in output:
 

@@ -163,7 +163,7 @@ export function evaluateAllAgents(opts: {
 /** Read the ISO timestamp from a task's heartbeat file, or null if missing. */
 export function readHeartbeat(repoRoot: string, taskName: string): string | null {
   try {
-    const filePath = resolve(repoRoot, '.paw', 'run', 'heartbeats', taskName);
+    const filePath = resolve(repoRoot, '.fleet', 'run', 'heartbeats', taskName);
     return readFileSync(filePath, 'utf-8').trim() || null;
   } catch {
     return null;
@@ -172,7 +172,7 @@ export function readHeartbeat(repoRoot: string, taskName: string): string | null
 
 /** Write the current time as the task's heartbeat (called by the hook on each tool invocation). */
 export function writeHeartbeat(repoRoot: string, taskName: string): void {
-  const dir = resolve(repoRoot, '.paw', 'run', 'heartbeats');
+  const dir = resolve(repoRoot, '.fleet', 'run', 'heartbeats');
   mkdirSync(dir, { recursive: true });
   writeFileSync(resolve(dir, taskName), new Date().toISOString(), 'utf-8');
 }
@@ -180,7 +180,7 @@ export function writeHeartbeat(repoRoot: string, taskName: string): void {
 /** Load the last persisted health snapshot, or null if none exists. */
 export function readHealthSnapshot(repoRoot: string): HealthSnapshot | null {
   try {
-    const filePath = resolve(repoRoot, '.paw', 'run', 'health.json');
+    const filePath = resolve(repoRoot, '.fleet', 'run', 'health.json');
     return HealthSnapshotSchema.parse(JSON.parse(readFileSync(filePath, 'utf-8')));
   } catch {
     return null;
@@ -189,7 +189,7 @@ export function readHealthSnapshot(repoRoot: string): HealthSnapshot | null {
 
 /** Single writer: called exclusively from the watch loop. */
 export function writeHealthSnapshot(repoRoot: string, snapshot: HealthSnapshot): void {
-  const dir = resolve(repoRoot, '.paw', 'run');
+  const dir = resolve(repoRoot, '.fleet', 'run');
   mkdirSync(dir, { recursive: true });
   writeFileSync(resolve(dir, 'health.json'), JSON.stringify(snapshot, null, 2) + '\n', 'utf-8');
 }
@@ -197,7 +197,7 @@ export function writeHealthSnapshot(repoRoot: string, snapshot: HealthSnapshot):
 /** Read the last-seen inbox cursor for a task, used to skip already-delivered messages. */
 export function readInboxCursor(repoRoot: string, taskName: string): string | null {
   try {
-    const filePath = resolve(repoRoot, '.paw', 'run', `.inbox-cursor-${taskName}`);
+    const filePath = resolve(repoRoot, '.fleet', 'run', `.inbox-cursor-${taskName}`);
     return readFileSync(filePath, 'utf-8').trim() || null;
   } catch {
     return null;
@@ -206,7 +206,7 @@ export function readInboxCursor(repoRoot: string, taskName: string): string | nu
 
 /** Persist the inbox cursor so future reads skip already-delivered messages. */
 export function writeInboxCursor(repoRoot: string, taskName: string, cursor: string): void {
-  const dir = resolve(repoRoot, '.paw', 'run');
+  const dir = resolve(repoRoot, '.fleet', 'run');
   mkdirSync(dir, { recursive: true });
   writeFileSync(resolve(dir, `.inbox-cursor-${taskName}`), cursor, 'utf-8');
 }
@@ -261,7 +261,7 @@ export function saveTriageOutput(
   verdict: string,
   timestamp: string,
 ): void {
-  const dir = resolve(repoRoot, '.paw', 'run', 'triage');
+  const dir = resolve(repoRoot, '.fleet', 'run', 'triage');
   mkdirSync(dir, { recursive: true });
   const content =
     `Triage verdict: ${verdict}\n` +

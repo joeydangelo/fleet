@@ -10,9 +10,9 @@ import {
   isInsideTmux,
   ensureTmuxInstalled,
 } from '../lib/tmux.js';
-import type { TmuxServiceApi, PawPane } from '../lib/tmux.js';
+import type { TmuxServiceApi, FleetPane } from '../lib/tmux.js';
 import { restorePanes, savePanes, labelOrchestrator, writePaneConfig } from '../lib/pane-state.js';
-import type { PawPaneConfig } from '../lib/tmux.js';
+import type { FleetPaneConfig } from '../lib/tmux.js';
 import { TuiApp } from '../components/tui-app.js';
 import { handleError, colors } from '../lib/output.js';
 import { SIDEBAR_WIDTH, TUI_ROLE } from '../lib/constants.js';
@@ -33,16 +33,16 @@ function createAddProject(
       return;
     }
 
-    const pawDir = resolve(projectRoot, '.paw');
-    if (!existsSync(pawDir)) {
-      mkdirSync(pawDir, { recursive: true });
+    const fleetDir = resolve(projectRoot, '.fleet');
+    if (!existsSync(fleetDir)) {
+      mkdirSync(fleetDir, { recursive: true });
     }
 
     const paneId = tmux.createPane(sessionName, projectRoot);
     labelOrchestrator(tmux, paneId);
     tmux.setPaneProject(paneId, projectRoot);
 
-    const config: PawPaneConfig = {
+    const config: FleetPaneConfig = {
       sessionName,
       repoRoot: projectRoot,
       orchestratorPaneId: paneId,
@@ -67,13 +67,13 @@ function runTuiSidebar(
   tmux: TmuxServiceApi,
   sessionName: string,
   repoRoot: string,
-  panes: PawPane[],
+  panes: FleetPane[],
   controlPaneId: string,
 ): void {
   const existingPanes = tmux.listPanesDetailed(sessionName);
   const existingTui = existingPanes.find((p) => p.role === TUI_ROLE && p.paneId !== controlPaneId);
   if (existingTui) {
-    console.error(colors.error('paw TUI is already running in this session.'));
+    console.error(colors.error('fleet TUI is already running in this session.'));
     console.error(
       colors.info(
         `  Switch to pane ${existingTui.paneId} or press q to quit the existing TUI first.`,
@@ -94,7 +94,7 @@ function runTuiSidebar(
 
   const onQuit = () => {
     process.stdout.write('\x1b[2J\x1b[H');
-    console.log(colors.info(`\n  Run \`paw\` to resume. Session: ${sessionName}\n`));
+    console.log(colors.info(`\n  Run \`fleet\` to resume. Session: ${sessionName}\n`));
     process.exit(0);
   };
 
@@ -112,9 +112,9 @@ function runTuiSidebar(
 }
 
 /**
- * Entry point for `paw tui`. Always brings the user into the paw workspace.
+ * Entry point for `fleet tui`. Always brings the user into the fleet workspace.
  *
- * - Already in paw session: renders the TUI in the current pane (start or restart).
+ * - Already in fleet session: renders the TUI in the current pane (start or restart).
  * - Inside a different tmux session: switches the client over; TUI is already running.
  * - Outside tmux, new session: creates session with orchestrator shell (pane 1),
  *   bootstraps TUI in pane 0 via send-keys, then attaches.
@@ -146,7 +146,7 @@ function runTui(): void {
       const controlPaneId = process.env['TMUX_PANE'] ?? tmux.getCurrentPaneId();
       runTuiSidebar(tmux, sessionName, repoRoot, panes, controlPaneId);
     } else {
-      // TUI was already bootstrapped by `paw launch`.
+      // TUI was already bootstrapped by `fleet launch`.
       tmux.switchClient(sessionName);
     }
   } else {
@@ -159,7 +159,7 @@ function runTui(): void {
       savePanes(repoRoot, sessionName, panes, orchestratorPaneId);
       // Lock sidebar width before attaching so the user sees correct layout immediately.
       tmux.resizePane(controlPaneId, SIDEBAR_WIDTH);
-      tmux.sendKeys(controlPaneId, 'paw tui');
+      tmux.sendKeys(controlPaneId, 'fleet tui');
     } else if (!existingOrchestratorId) {
       // Handle pre-feature sessions that lack an orchestrator pane.
       const orchestratorPaneId = tmux.createPane(sessionName, repoRoot, { horizontal: true });
@@ -171,10 +171,10 @@ function runTui(): void {
   }
 }
 
-/** Build the `paw tui` CLI command. */
+/** Build the `fleet tui` CLI command. */
 export function tuiCommand(): Command {
   return new Command('tui')
-    .description('Open the tmux TUI (optional — paw go runs detached by default)')
+    .description('Open the tmux TUI (optional — fleet go runs detached by default)')
     .action(() => {
       try {
         runTui();

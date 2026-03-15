@@ -1,4 +1,4 @@
-/** Base class for all paw CLI errors. Carries an exit code for process.exit(). */
+/** Base class for all fleet CLI errors. Carries an exit code for process.exit(). */
 export class CLIError extends Error {
   exitCode = 1;
   constructor(message: string, options?: { cause?: Error }) {

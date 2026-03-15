@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { taskDisplayStatus } from '../src/lib/tui-helpers.js';
 import { buildDisplayItems } from '../src/components/tui-app.js';
 import type { TaskState, MergeEntry, SyncState } from '../src/lib/sync.js';
-import type { PawPane, TmuxPaneInfo } from '../src/lib/tmux.js';
+import type { FleetPane, TmuxPaneInfo } from '../src/lib/tmux.js';
 
 describe('taskDisplayStatus', () => {
   it('returns pending when no task state exists', () => {
@@ -35,9 +35,9 @@ describe('taskDisplayStatus', () => {
 
 // --- buildDisplayItems ---
 
-function makePane(taskName: string, paneId: string): PawPane {
+function makePane(taskName: string, paneId: string): FleetPane {
   return {
-    id: `paw-1`,
+    id: `fleet-1`,
     paneId,
     taskName,
     worktreePath: `/tmp/wt-${taskName}`,
@@ -51,11 +51,11 @@ function makeTmuxPane(paneId: string, title: string, command: string): TmuxPaneI
 
 describe('buildDisplayItems', () => {
   it('shows task panes with sync state status', () => {
-    const tmuxPanes = [makeTmuxPane('%1', 'paw-auth', 'claude')];
+    const tmuxPanes = [makeTmuxPane('%1', 'fleet-auth', 'claude')];
     const taskPanes = [makePane('auth', '%1')];
     const syncState: SyncState = {
-      session: 'paw-test',
-      config: 'paw.yaml',
+      session: 'fleet-test',
+      config: 'fleet.yaml',
       target: 'main',
       tasks: { auth: { status: 'in_progress' } },
       merges: {},
@@ -87,7 +87,7 @@ describe('buildDisplayItems', () => {
     const tmuxPanes = [
       makeTmuxPane('%0', 'bash', 'bash'), // TUI — excluded
       makeTmuxPane('%1', 'AA822972-1', 'bash'), // orchestrator (title stomped by app)
-      makeTmuxPane('%2', 'paw-auth', 'claude'), // task
+      makeTmuxPane('%2', 'fleet-auth', 'claude'), // task
       makeTmuxPane('%4', 'my-scratch', 'node'), // ad-hoc
     ];
     const taskPanes = [makePane('auth', '%2')];
@@ -98,7 +98,7 @@ describe('buildDisplayItems', () => {
   });
 
   it('drops task panes that are no longer alive in tmux', () => {
-    const tmuxPanes = [makeTmuxPane('%1', 'paw-auth', 'claude')];
+    const tmuxPanes = [makeTmuxPane('%1', 'fleet-auth', 'claude')];
     const taskPanes = [makePane('auth', '%1'), makePane('api', '%99')];
     const items = buildDisplayItems(tmuxPanes, taskPanes, null, '%0', '', null, null);
     expect(items).toHaveLength(1);
@@ -112,23 +112,23 @@ describe('buildDisplayItems', () => {
   });
 
   it('updates badge when command changes (e.g. bash -> claude)', () => {
-    const tmuxPanes = [makeTmuxPane('%2', 'paw-auth', 'bash')];
+    const tmuxPanes = [makeTmuxPane('%2', 'fleet-auth', 'bash')];
     const taskPanes = [makePane('auth', '%2')];
     const items = buildDisplayItems(tmuxPanes, taskPanes, null, '%0', '', null, null);
     expect(items[0]!.badge).toBe('[bash]');
 
     // Simulate next poll: command changed to claude
-    const tmuxPanes2 = [makeTmuxPane('%2', 'paw-auth', 'claude')];
+    const tmuxPanes2 = [makeTmuxPane('%2', 'fleet-auth', 'claude')];
     const items2 = buildDisplayItems(tmuxPanes2, taskPanes, null, '%0', '', null, null);
     expect(items2[0]!.badge).toBe('[cc]');
   });
 
   it('shows conflict status when merge entry has conflict', () => {
-    const tmuxPanes = [makeTmuxPane('%1', 'paw-api', 'claude')];
+    const tmuxPanes = [makeTmuxPane('%1', 'fleet-api', 'claude')];
     const taskPanes = [makePane('api', '%1')];
     const syncState: SyncState = {
-      session: 'paw-test',
-      config: 'paw.yaml',
+      session: 'fleet-test',
+      config: 'fleet.yaml',
       target: 'main',
       tasks: { api: { status: 'done' } },
       merges: { api: { status: 'conflict', brief: 'conflicts/api-into-target.md' } },
@@ -138,9 +138,9 @@ describe('buildDisplayItems', () => {
     expect(items[0]!.status).toBe('conflict');
   });
 
-  it('recovers task label and status from @paw_role when pane not in panes.json', () => {
+  it('recovers task label and status from @fleet_role when pane not in panes.json', () => {
     // Simulate a task pane that's NOT in panes.json (timing issue or pane ID shift)
-    // but has @paw_role set to 'paw-auth' by launchTmux.
+    // but has @fleet_role set to 'fleet-auth' by launchTmux.
     const tmuxPanes: TmuxPaneInfo[] = [
       {
         paneId: '%3',
@@ -148,12 +148,12 @@ describe('buildDisplayItems', () => {
         command: 'claude',
         cwd: '/home/user/myapp',
         project: '/home/user/myapp',
-        role: 'paw-auth',
+        role: 'fleet-auth',
       },
     ];
     const syncState: SyncState = {
-      session: 'paw-test',
-      config: 'paw.yaml',
+      session: 'fleet-test',
+      config: 'fleet.yaml',
       target: 'main',
       tasks: { auth: { status: 'in_progress' } },
       merges: {},
@@ -166,7 +166,7 @@ describe('buildDisplayItems', () => {
     expect(items[0]!.status).toBe('in_progress');
   });
 
-  it('recovers task label with health state from @paw_role', () => {
+  it('recovers task label with health state from @fleet_role', () => {
     const tmuxPanes: TmuxPaneInfo[] = [
       {
         paneId: '%3',
@@ -174,12 +174,12 @@ describe('buildDisplayItems', () => {
         command: 'claude',
         cwd: '/home/user/myapp',
         project: '/home/user/myapp',
-        role: 'paw-auth',
+        role: 'fleet-auth',
       },
     ];
     const syncState: SyncState = {
-      session: 'paw-test',
-      config: 'paw.yaml',
+      session: 'fleet-test',
+      config: 'fleet.yaml',
       target: 'main',
       tasks: { auth: { status: 'in_progress' } },
       merges: {},

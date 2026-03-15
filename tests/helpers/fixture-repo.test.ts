@@ -21,8 +21,8 @@ describe('createFixtureRepo', () => {
 
     expect(existsSync(fixture.repoRoot)).toBe(true);
     expect(existsSync(resolve(fixture.repoRoot, '.git'))).toBe(true);
-    expect(existsSync(resolve(fixture.repoRoot, '.paw', 'paw.yaml'))).toBe(true);
-    expect(existsSync(resolve(fixture.repoRoot, '.paw', 'tasks', 'auth.md'))).toBe(true);
+    expect(existsSync(resolve(fixture.repoRoot, '.fleet', 'fleet.yaml'))).toBe(true);
+    expect(existsSync(resolve(fixture.repoRoot, '.fleet', 'tasks', 'auth.md'))).toBe(true);
   });
 
   it('getRepoRoot works when chdir to repoRoot', () => {
@@ -69,9 +69,9 @@ describe('createFixtureRepo', () => {
       },
     });
 
-    expect(existsSync(resolve(fixture.repoRoot, '.paw', 'tasks', 'api.md'))).toBe(true);
-    expect(existsSync(resolve(fixture.repoRoot, '.paw', 'tasks', 'web.md'))).toBe(true);
-    expect(existsSync(resolve(fixture.repoRoot, '.paw', 'tasks', 'auth.md'))).toBe(false);
+    expect(existsSync(resolve(fixture.repoRoot, '.fleet', 'tasks', 'api.md'))).toBe(true);
+    expect(existsSync(resolve(fixture.repoRoot, '.fleet', 'tasks', 'web.md'))).toBe(true);
+    expect(existsSync(resolve(fixture.repoRoot, '.fleet', 'tasks', 'auth.md'))).toBe(false);
 
     const state = readSyncState(fixture.repoRoot);
     expect(state!.tasks).toHaveProperty('api');

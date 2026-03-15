@@ -21,7 +21,7 @@ import {
 } from '../src/lib/git.js';
 import { createSession } from '../src/lib/session.js';
 import { removeWorktree } from '../src/lib/git.js';
-import type { PawConfig } from '../src/lib/config.js';
+import type { FleetConfig } from '../src/lib/config.js';
 import { makeTempDir } from './helpers/temp.js';
 
 function gitInit(dir: string): void {
@@ -47,7 +47,7 @@ function checkout(dir: string, branch: string): void {
 
 describe('updateMergeEntry', () => {
   it("updates a single task's merge status", () => {
-    const state = initSyncState('feature/dash', ['auth', 'api'], 'paw.yaml');
+    const state = initSyncState('feature/dash', ['auth', 'api'], 'fleet.yaml');
     const withMerges = {
       ...state,
       merges: initMergeState(['auth', 'api']),
@@ -60,7 +60,9 @@ describe('updateMergeEntry', () => {
 
     const authEntry = updated.merges['auth'];
     expect(authEntry?.status).toBe('merged');
-    expect(authEntry?.status === 'merged' ? authEntry.merged : undefined).toBe('2026-02-10T15:00:00Z');
+    expect(authEntry?.status === 'merged' ? authEntry.merged : undefined).toBe(
+      '2026-02-10T15:00:00Z',
+    );
     expect(updated.merges['api']?.status).toBe('pending');
   });
 });
@@ -80,7 +82,7 @@ describe('merge state round-trip through sync branch', () => {
   });
 
   it('persists merge state in sync branch', () => {
-    const state = initSyncState('feature/dash', ['auth', 'api'], 'paw.yaml');
+    const state = initSyncState('feature/dash', ['auth', 'api'], 'fleet.yaml');
     const withMerges = {
       ...state,
       merges: initMergeState(['auth', 'api']),
@@ -93,7 +95,7 @@ describe('merge state round-trip through sync branch', () => {
   });
 
   it('updates merge state across writes', () => {
-    const state = initSyncState('feature/dash', ['auth', 'api'], 'paw.yaml');
+    const state = initSyncState('feature/dash', ['auth', 'api'], 'fleet.yaml');
     const withMerges = {
       ...state,
       merges: initMergeState(['auth', 'api']),
@@ -159,7 +161,7 @@ describe('merge stops on first conflict', () => {
   let repoDir: string;
   let worktreePaths: string[];
 
-  const config: PawConfig = {
+  const config: FleetConfig = {
     base: 'main',
     target: 'feature/dash',
     tasks: {
@@ -209,7 +211,7 @@ describe('merge stops on first conflict', () => {
     worktreePaths = worktrees.map((w) => w.worktreePath);
 
     // Init sync state with merges
-    const state = initSyncState(config.target, Object.keys(config.tasks), 'paw.yaml');
+    const state = initSyncState(config.target, Object.keys(config.tasks), 'fleet.yaml');
     const withMerges = {
       ...state,
       merges: initMergeState(Object.keys(config.tasks)),
@@ -263,7 +265,7 @@ describe('merge stops on first conflict', () => {
     const worktrees = createSession(config, repoDir);
     worktreePaths = worktrees.map((w) => w.worktreePath);
 
-    const state = initSyncState(config.target, Object.keys(config.tasks), 'paw.yaml');
+    const state = initSyncState(config.target, Object.keys(config.tasks), 'fleet.yaml');
     const withMerges = {
       ...state,
       merges: initMergeState(Object.keys(config.tasks)),
@@ -280,7 +282,7 @@ describe('merge stops on first conflict', () => {
   });
 });
 
-describe('isAncestor (paw-0yqg)', () => {
+describe('isAncestor (fleet-0yqg)', () => {
   let repoDir: string;
 
   beforeEach(() => {
@@ -385,7 +387,7 @@ describe('stashWorkingTree / unstashWorkingTree', () => {
     // Untracked file should be restored, no junk commit in log
     expect(readFileSync(resolve(repoDir, 'local-notes.txt'), 'utf-8')).toBe('my notes');
     const log = git(['log', '--oneline'], { cwd: repoDir });
-    expect(log).not.toContain('paw: stage untracked');
+    expect(log).not.toContain('fleet: stage untracked');
   });
 
   it('unstash returns false during active merge conflict, stash preserved for later', () => {
@@ -419,7 +421,7 @@ describe('stashWorkingTree / unstashWorkingTree', () => {
 
     // Stash is preserved — user can pop after resolving
     const stashList = git(['stash', 'list'], { cwd: repoDir });
-    expect(stashList).toContain('paw: pre-merge stash');
+    expect(stashList).toContain('fleet: pre-merge stash');
 
     // After aborting the merge, stash can be popped
     execFileSync('git', ['merge', '--abort'], { cwd: repoDir, stdio: 'pipe' });
@@ -433,7 +435,7 @@ describe('merge --continue flow', () => {
   let repoDir: string;
   let worktreePaths: string[];
 
-  const config: PawConfig = {
+  const config: FleetConfig = {
     base: 'main',
     target: 'feature/dash',
     tasks: {
@@ -493,7 +495,7 @@ describe('merge --continue flow', () => {
     commitFile(apiWt.worktreePath, 'api.txt', 'api work', 'api commit');
 
     // Init merge state
-    const state = initSyncState(config.target, Object.keys(config.tasks), 'paw.yaml');
+    const state = initSyncState(config.target, Object.keys(config.tasks), 'fleet.yaml');
     const withMerges = {
       ...state,
       merges: initMergeState(Object.keys(config.tasks)),

@@ -10,7 +10,7 @@ roles: [orchestrator]
 |---|---|---|
 | `REQUEST` | User message (required) | — |
 | `SCOUT_CONTEXT` | Upstream assess-work findings (implicit) | — |
-| `SPEC_PATH` | derived | `.paw/specs/spec-YYYY-MM-DD-feature-name.md` |
+| `SPEC_PATH` | derived | `.fleet/specs/spec-YYYY-MM-DD-feature-name.md` |
 
 ## Failure Modes
 
@@ -52,7 +52,7 @@ boundaries and verification criteria from known findings.
 clarification.
 **Tools:** Read, Write, Bash (mkdir only)
 
-1. Load `paw guidelines spec-design` and `paw template plan-spec`.
+1. Load `fleet guidelines spec-design` and `fleet template plan-spec`.
 2. Write the spec to `SPEC_PATH`. Fill each section grounded in research findings
    and Phase 1 decisions:
    - Make every statement testable. Add concrete examples and constraints.
@@ -88,7 +88,7 @@ clarification.
 
 **Objective:** Transition to parallel task decomposition.
 
-1. Run `paw shortcut decompose-work`.
+1. Run `fleet shortcut decompose-work`.
 2. The spec at `SPEC_PATH` becomes the primary input for decomposition.
 
 **Gate:** `decompose-work` invoked with `SPEC_PATH`.

@@ -5,11 +5,11 @@ import { basename, resolve } from 'node:path';
 import pc from 'picocolors';
 import { getCurrentBranch, git } from '../lib/git.js';
 import { loadRepoConfig } from '../lib/config.js';
-import type { PawConfig } from '../lib/config.js';
+import type { FleetConfig } from '../lib/config.js';
 import { planWorktrees } from '../lib/session.js';
 import type { SyncState } from '../lib/sync.js';
 import { readSyncState } from '../lib/sync.js';
-import type { PawPaneConfig, AgentLivenessResult } from '../lib/tmux.js';
+import type { FleetPaneConfig, AgentLivenessResult } from '../lib/tmux.js';
 import {
   createTmuxService,
   checkAgentLiveness,
@@ -26,8 +26,8 @@ import { runWatchLoop } from './watch.js';
 import { runUp } from './up.js';
 import { runLaunch, printLaunchPreview } from './launch.js';
 
-/** Shell out to a paw subcommand. Returns the exit code. */
-export function runPawCommand(args: string[]): { exitCode: number } {
+/** Shell out to a fleet subcommand. Returns the exit code. */
+export function runFleetCommand(args: string[]): { exitCode: number } {
   const scriptPath = process.argv[1];
   if (!scriptPath) throw new Error('Cannot determine CLI script path');
   try {
@@ -47,7 +47,7 @@ type SessionState = 'no-session' | 'agents-running' | 'has-dead-agents' | 'all-d
 /** Pure decision logic — takes pre-fetched data, returns state. Testable without mocking. */
 export function resolveSessionState(
   syncState: SyncState | null,
-  paneConfig: PawPaneConfig | null,
+  paneConfig: FleetPaneConfig | null,
   liveness: AgentLivenessResult[] | null,
 ): SessionState {
   if (!syncState) return 'no-session';
@@ -88,12 +88,12 @@ function detectSessionState(repoRoot: string): SessionState {
   return resolveSessionState(syncState, paneConfig, liveness);
 }
 
-/** Options for the `paw go` lifecycle command. */
+/** Options for the `fleet go` lifecycle command. */
 interface GoOpts {
   dryRun?: boolean;
 }
 
-/** Execute the full paw lifecycle: up, launch, watch, merge, down. */
+/** Execute the full fleet lifecycle: up, launch, watch, merge, down. */
 export async function runGo(opts: GoOpts): Promise<void> {
   const { repoRoot, configPath, config } = loadRepoConfig();
   const pollInterval = DEFAULT_POLL_INTERVAL;
@@ -108,7 +108,7 @@ export async function runGo(opts: GoOpts): Promise<void> {
   const totalStart = Date.now();
 
   const state = detectSessionState(repoRoot);
-  console.log(pc.bold('paw go'));
+  console.log(pc.bold('fleet go'));
   console.log(`  target: ${config.target}`);
   console.log(`  tasks:  ${Object.keys(config.tasks).length}`);
   console.log(`  state:  ${state}\n`);
@@ -119,12 +119,12 @@ export async function runGo(opts: GoOpts): Promise<void> {
   }
 
   if (state === 'no-session') {
-    console.log(pc.bold('Step 1: paw up\n'));
+    console.log(pc.bold('Step 1: fleet up\n'));
     let phaseStart = Date.now();
     await runUp(repoRoot, configPath, config);
     if (verbose) console.log(colors.info(`⏰ up: ${formatElapsed(Date.now() - phaseStart)}`));
 
-    console.log(pc.bold('\nStep 2: paw launch\n'));
+    console.log(pc.bold('\nStep 2: fleet launch\n'));
     phaseStart = Date.now();
     await runLaunch(repoRoot, config);
     if (verbose) console.log(colors.info(`⏰ launch: ${formatElapsed(Date.now() - phaseStart)}`));
@@ -147,11 +147,11 @@ export async function runGo(opts: GoOpts): Promise<void> {
     if (verbose) console.log(colors.info(`⏰ watch: ${formatElapsed(Date.now() - totalStart)}`));
   }
 
-  console.log(pc.bold('\npaw merge\n'));
+  console.log(pc.bold('\nfleet merge\n'));
   let phaseStart = Date.now();
 
   // Remove before checkout to avoid "untracked files would be overwritten"
-  const runDir = resolve(repoRoot, '.paw', 'run');
+  const runDir = resolve(repoRoot, '.fleet', 'run');
   try {
     rmSync(runDir, { recursive: true });
   } catch {
@@ -164,36 +164,36 @@ export async function runGo(opts: GoOpts): Promise<void> {
     git(['checkout', config.target], { cwd: repoRoot });
   }
 
-  const mergeResult = runPawCommand(['merge']);
+  const mergeResult = runFleetCommand(['merge']);
   if (mergeResult.exitCode !== 0) {
-    console.log(colors.warn('\nMerge failed. Resolve the issue, then run: paw merge --continue'));
-    console.log(colors.warn('Worktrees left intact (skipping paw down).'));
+    console.log(colors.warn('\nMerge failed. Resolve the issue, then run: fleet merge --continue'));
+    console.log(colors.warn('Worktrees left intact (skipping fleet down).'));
     return;
   }
   if (verbose) console.log(colors.info(`⏰ merge: ${formatElapsed(Date.now() - phaseStart)}`));
 
-  console.log(pc.bold('\npaw down\n'));
+  console.log(pc.bold('\nfleet down\n'));
   phaseStart = Date.now();
-  const downResult = runPawCommand(['down']);
+  const downResult = runFleetCommand(['down']);
   if (downResult.exitCode !== 0) {
-    console.error(colors.error('\npaw down failed.'));
+    console.error(colors.error('\nfleet down failed.'));
     process.exit(downResult.exitCode);
   }
   if (verbose) console.log(colors.info(`⏰ down: ${formatElapsed(Date.now() - phaseStart)}`));
 
   if (verbose) console.log(colors.info(`⏰ total: ${formatElapsed(Date.now() - totalStart)}`));
   console.log(colors.success(`\nDone. Work merged to ${config.target}.`));
-  console.log(pc.dim(`Next: run \`paw shortcut finish-branch\``));
+  console.log(pc.dim(`Next: run \`fleet shortcut finish-branch\``));
 }
 
-function printDryRun(repoRoot: string, config: PawConfig): void {
+function printDryRun(repoRoot: string, config: FleetConfig): void {
   const state = detectSessionState(repoRoot);
   const useDetached = !isInsideTmux();
   const sessionName = tmuxSessionName(basename(repoRoot));
   const worktrees = planWorktrees(config, repoRoot);
   const syncState = readSyncState(repoRoot);
 
-  console.log(pc.bold('paw go (dry run)'));
+  console.log(pc.bold('fleet go (dry run)'));
   console.log(`  target:  ${config.target}`);
   console.log(`  tasks:   ${worktrees.length}`);
   console.log(`  state:   ${state}`);
@@ -250,7 +250,7 @@ function printDryRun(repoRoot: string, config: PawConfig): void {
   console.log(pc.dim('\nDry run -- no changes made.'));
 }
 
-/** Build the `paw go` CLI command. */
+/** Build the `fleet go` CLI command. */
 export function goCommand(): Command {
   return new Command('go')
     .description('Run the full workflow: up → launch → watch → merge → down')

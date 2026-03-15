@@ -79,8 +79,8 @@ export function createDocCommand(name: string, category: string, description: st
               console.log(pc.dim('  (fetched via gh CLI due to direct access restriction)'));
             }
 
-            success(name, `.paw/docs/${result.destPath}`);
-            console.log(pc.dim(`Run \`paw ${name} --list\` to verify.`));
+            success(name, `.fleet/docs/${result.destPath}`);
+            console.log(pc.dim(`Run \`fleet ${name} --list\` to verify.`));
             return;
           }
 
@@ -102,7 +102,7 @@ export function createDocCommand(name: string, category: string, description: st
           if (!doc) {
             const label = name.charAt(0).toUpperCase() + name.slice(1);
             console.error(colors.error(`${label} not found: ${docName}`));
-            console.error(pc.dim(`Run \`paw ${name} --list\` to see available ${category}.`));
+            console.error(pc.dim(`Run \`fleet ${name} --list\` to see available ${category}.`));
             process.exit(1);
           }
           console.log(doc.content);

@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { SyncState } from '../src/lib/sync.js';
-import type { PawPaneConfig } from '../src/lib/tmux.js';
+import type { FleetPaneConfig } from '../src/lib/tmux.js';
 import type { AgentLivenessResult } from '../src/lib/tmux.js';
 import { resolveSessionState } from '../src/commands/go.js';
 
-// Mock child_process — runPawCommand tests need this; integration tests restore real impl via vi.importActual
+// Mock child_process — runFleetCommand tests need this; integration tests restore real impl via vi.importActual
 vi.mock('node:child_process', () => ({
   execFileSync: vi.fn(),
 }));
@@ -16,12 +16,12 @@ vi.mock('../src/lib/tmux.js', async (importOriginal) => {
 });
 
 import { execFileSync } from 'node:child_process';
-import { runPawCommand, runGo } from '../src/commands/go.js';
+import { runFleetCommand, runGo } from '../src/commands/go.js';
 import { createFixtureRepo } from './helpers/fixture-repo.js';
 
 const mockExecFileSync = vi.mocked(execFileSync);
 
-describe('runPawCommand', () => {
+describe('runFleetCommand', () => {
   beforeEach(() => {
     mockExecFileSync.mockReset();
     vi.spyOn(console, 'log').mockImplementation(() => {});
@@ -34,7 +34,7 @@ describe('runPawCommand', () => {
 
   it('returns exitCode 0 on success', () => {
     mockExecFileSync.mockReturnValue(Buffer.from(''));
-    const result = runPawCommand(['up']);
+    const result = runFleetCommand(['up']);
     expect(result.exitCode).toBe(0);
   });
 
@@ -44,13 +44,13 @@ describe('runPawCommand', () => {
     mockExecFileSync.mockImplementation(() => {
       throw err;
     });
-    const result = runPawCommand(['merge']);
+    const result = runFleetCommand(['merge']);
     expect(result.exitCode).toBe(1);
   });
 
   it('passes args through to the subcommand', () => {
     mockExecFileSync.mockReturnValue(Buffer.from(''));
-    runPawCommand(['up', '--dry-run']);
+    runFleetCommand(['up', '--dry-run']);
     const call = mockExecFileSync.mock.calls[0]!;
     const args = call[1] as string[];
     expect(args).toContain('up');
@@ -106,8 +106,8 @@ describe('runGo dry-run integration', () => {
     // Verify target branch
     expect(output).toContain('target:  fix/test-target');
     // Verify worktree paths appear (planWorktrees generates sibling-directory paths)
-    expect(output).toMatch(/paw-auth/);
-    expect(output).toMatch(/paw-api/);
+    expect(output).toMatch(/fleet-auth/);
+    expect(output).toMatch(/fleet-api/);
   });
 });
 
@@ -121,25 +121,25 @@ describe('resolveSessionState', () => {
     lastCheck: {},
   };
 
-  const basePaneConfig: PawPaneConfig = {
+  const basePaneConfig: FleetPaneConfig = {
     mode: 'detached',
-    sessionName: 'paw-test',
+    sessionName: 'fleet-test',
     repoRoot: '/fake/repo',
     orchestratorPaneId: '',
     panes: [],
     detached: [
       {
-        id: 'paw-1',
-        sessionName: 'paw-test-auth',
+        id: 'fleet-1',
+        sessionName: 'fleet-test-auth',
         taskName: 'auth',
-        worktreePath: '/fake/repo-paw-auth',
+        worktreePath: '/fake/repo-fleet-auth',
         branchName: 'feature/x-auth',
       },
       {
-        id: 'paw-2',
-        sessionName: 'paw-test-api',
+        id: 'fleet-2',
+        sessionName: 'fleet-test-api',
         taskName: 'api',
-        worktreePath: '/fake/repo-paw-api',
+        worktreePath: '/fake/repo-fleet-api',
         branchName: 'feature/x-api',
       },
     ],

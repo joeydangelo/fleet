@@ -1,6 +1,6 @@
 ---
 name: summary-template
-description: Task summary template for paw worktree agents
+description: Task summary template for fleet worktree agents
 roles: [builder]
 ---
 
@@ -14,7 +14,7 @@ task: {your task name}
 
 <!-- 1-3 sentences: What does this PR add or change? -->
 
-**Spec**: <!-- .paw/specs/{spec-file}.md — if present -->
+**Spec**: <!-- .fleet/specs/{spec-file}.md — if present -->
 
 ## Changes
 

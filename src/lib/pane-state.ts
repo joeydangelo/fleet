@@ -2,13 +2,13 @@ import { existsSync, readFileSync, mkdirSync } from 'node:fs';
 import { resolve, dirname, basename } from 'node:path';
 import { writeFileSync } from 'atomically';
 import { z } from 'zod';
-import type { PawPaneConfig, PawPane, DetachedAgent, TmuxServiceApi } from './tmux.js';
+import type { FleetPaneConfig, FleetPane, DetachedAgent, TmuxServiceApi } from './tmux.js';
 import { tmuxSessionName } from './tmux.js';
 import { ORCHESTRATOR_ROLE } from './constants.js';
 
 const PANES_FILE = 'panes.json';
 
-const PawPaneSchema = z.object({
+const FleetPaneSchema = z.object({
   id: z.string(),
   paneId: z.string(),
   taskName: z.string(),
@@ -24,21 +24,21 @@ const DetachedAgentSchema = z.object({
   branchName: z.string(),
 });
 
-const PawPaneConfigBaseSchema = z.object({
+const FleetPaneConfigBaseSchema = z.object({
   sessionName: z.string(),
   repoRoot: z.string(),
   orchestratorPaneId: z.string(),
-  panes: z.array(PawPaneSchema),
+  panes: z.array(FleetPaneSchema),
   lastUpdated: z.string(),
 });
 
-export const PawPaneConfigSchema = z.union([
-  PawPaneConfigBaseSchema.extend({
+export const FleetPaneConfigSchema = z.union([
+  FleetPaneConfigBaseSchema.extend({
     mode: z.literal('detached'),
     detached: z.array(DetachedAgentSchema),
   }),
-  PawPaneConfigBaseSchema.extend({ mode: z.literal('attached') }),
-  PawPaneConfigBaseSchema,
+  FleetPaneConfigBaseSchema.extend({ mode: z.literal('attached') }),
+  FleetPaneConfigBaseSchema,
 ]);
 
 /** Tag a pane with the orchestrator role so it can be identified on restore. */
@@ -48,24 +48,24 @@ export function labelOrchestrator(tmux: TmuxServiceApi, paneId: string): void {
 }
 
 function panesPath(repoRoot: string): string {
-  return resolve(repoRoot, '.paw', 'run', PANES_FILE);
+  return resolve(repoRoot, '.fleet', 'run', PANES_FILE);
 }
 
 /** Read persisted pane config. Returns null if file is missing or corrupt. */
-export function readPaneConfig(repoRoot: string): PawPaneConfig | null {
+export function readPaneConfig(repoRoot: string): FleetPaneConfig | null {
   const p = panesPath(repoRoot);
   if (!existsSync(p)) return null;
   try {
-    const result = PawPaneConfigSchema.safeParse(JSON.parse(readFileSync(p, 'utf-8')));
+    const result = FleetPaneConfigSchema.safeParse(JSON.parse(readFileSync(p, 'utf-8')));
     if (!result.success) return null;
-    return result.data as PawPaneConfig;
+    return result.data as FleetPaneConfig;
   } catch {
     return null;
   }
 }
 
-/** Persist pane config to .paw/panes.json using atomic writes. */
-export function writePaneConfig(repoRoot: string, config: PawPaneConfig): void {
+/** Persist pane config to .fleet/panes.json using atomic writes. */
+export function writePaneConfig(repoRoot: string, config: FleetPaneConfig): void {
   const p = panesPath(repoRoot);
   const dir = dirname(p);
   mkdirSync(dir, { recursive: true });
@@ -76,10 +76,10 @@ export function writePaneConfig(repoRoot: string, config: PawPaneConfig): void {
 export function savePanes(
   repoRoot: string,
   sessionName: string,
-  panes: PawPane[],
+  panes: FleetPane[],
   orchestratorPaneId: string,
 ): void {
-  const config: PawPaneConfig = {
+  const config: FleetPaneConfig = {
     mode: 'attached',
     sessionName,
     repoRoot,
@@ -96,7 +96,7 @@ export function saveDetachedAgents(
   sessionName: string,
   agents: DetachedAgent[],
 ): void {
-  const config: PawPaneConfig = {
+  const config: FleetPaneConfig = {
     mode: 'detached',
     sessionName,
     repoRoot,
@@ -109,7 +109,7 @@ export function saveDetachedAgents(
 }
 
 /** Resolve the tmux target (session name or pane ID) for a task by name. */
-export function resolvePaneTarget(paneConfig: PawPaneConfig, taskName: string): string | null {
+export function resolvePaneTarget(paneConfig: FleetPaneConfig, taskName: string): string | null {
   if (paneConfig.mode === 'detached') {
     const agent = paneConfig.detached.find((a) => a.taskName === taskName);
     return agent?.sessionName ?? null;
@@ -120,7 +120,7 @@ export function resolvePaneTarget(paneConfig: PawPaneConfig, taskName: string): 
 
 /**
  * Kill all persisted task panes, then clear the panes array in panes.json.
- * Preserves orchestratorPaneId so the next `paw tui` run finds the surviving
+ * Preserves orchestratorPaneId so the next `fleet tui` run finds the surviving
  * orchestrator without creating a duplicate. Skips panes that no longer exist.
  */
 export function killPanes(tmux: TmuxServiceApi, repoRoot: string): void {
@@ -138,7 +138,7 @@ export function killPanes(tmux: TmuxServiceApi, repoRoot: string): void {
     ...config,
     panes: [],
     lastUpdated: new Date().toISOString(),
-  } as PawPaneConfig);
+  } as FleetPaneConfig);
 }
 
 /** Kill all detached agent sessions recorded in panes.json. */
@@ -161,7 +161,7 @@ export function killDetachedAgents(tmux: TmuxServiceApi, repoRoot: string): void
 
 /**
  * Kill tmux sessions matching this repo's prefix that aren't tracked in panes.json.
- * Catches orphans left behind when paw.yaml tasks change between runs.
+ * Catches orphans left behind when fleet.yaml tasks change between runs.
  */
 export function killOrphanedAgentSessions(tmux: TmuxServiceApi, repoRoot: string): void {
   const prefix = tmuxSessionName(basename(repoRoot));
@@ -194,7 +194,7 @@ export function restorePanes(
   tmux: TmuxServiceApi,
   sessionName: string,
   repoRoot: string,
-): { panes: PawPane[]; orchestratorPaneId: string } {
+): { panes: FleetPane[]; orchestratorPaneId: string } {
   const config = readPaneConfig(repoRoot);
   if (!config) {
     // No panes.json — check for a surviving orchestrator pane by title.
@@ -209,7 +209,7 @@ export function restorePanes(
   }
 
   const existingPanes = tmux.listPanes(sessionName);
-  const restored: PawPane[] = [];
+  const restored: FleetPane[] = [];
 
   if (config.panes.length > 0) {
     const titleMap = tmux.listPanesWithTitles(sessionName);
@@ -220,14 +220,14 @@ export function restorePanes(
         continue;
       }
 
-      const expectedTitle = `paw-${pane.taskName}`;
+      const expectedTitle = `fleet-${pane.taskName}`;
       const reboundId = titleMap.get(expectedTitle);
       if (reboundId) {
         restored.push({ ...pane, paneId: reboundId });
         continue;
       }
 
-      /** An empty shell here would block `paw launch` from detecting the missing agent. */
+      /** An empty shell here would block `fleet launch` from detecting the missing agent. */
     }
   }
 

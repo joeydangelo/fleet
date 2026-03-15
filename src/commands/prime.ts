@@ -11,10 +11,10 @@ import type { SyncState } from '../lib/sync.js';
 import { readSyncState, claimTask, writeSyncState, readSyncFile } from '../lib/sync.js';
 import { readMessagesForTask, getUnansweredThreadsForTask } from '../lib/messages.js';
 import { readPaneConfig } from '../lib/pane-state.js';
-import type { PawPaneConfig } from '../lib/tmux.js';
+import type { FleetPaneConfig } from '../lib/tmux.js';
 import { livenessMarker } from '../lib/tmux.js';
 import { tryGetLivenessMap } from '../lib/util.js';
-import type { PawConfig } from '../lib/config.js';
+import type { FleetConfig } from '../lib/config.js';
 import { ensureDocsFresh } from '../lib/doc-sync.js';
 import { handleError, formatFocusAreas, colors, success, formatTaskStatus } from '../lib/output.js';
 
@@ -34,7 +34,7 @@ function summarizeTasks(state: SyncState): { total: number; inProgress: number; 
   };
 }
 
-/** Build the `paw prime` CLI command. */
+/** Build the `fleet prime` CLI command. */
 export function primeCommand(): Command {
   return new Command('prime')
     .description('Context management — orchestrator dashboard or worktree orientation')
@@ -54,7 +54,7 @@ export function primeCommand(): Command {
           return;
         }
 
-        const taskFile = resolve(repoRoot, '.paw', 'tasks', `${taskName}.md`);
+        const taskFile = resolve(repoRoot, '.fleet', 'tasks', `${taskName}.md`);
         const taskContent = existsSync(taskFile) ? readFileSync(taskFile, 'utf-8') : null;
 
         const state = readSyncState(repoRoot);
@@ -75,24 +75,24 @@ export function primeCommand(): Command {
 /** Orchestrator dashboard — shown when prime runs in the main repo. */
 function printOrchestratorDashboard(repoRoot: string): void {
   const version = getVersion();
-  console.log(`paw v${version}\n`);
+  console.log(`fleet v${version}\n`);
 
   console.log('=== INSTALLATION ===');
-  success('paw installed', `v${version}`);
+  success('fleet installed', `v${version}`);
 
-  const pawDir = resolve(repoRoot, '.paw');
+  const fleetDir = resolve(repoRoot, '.fleet');
   const settingsPath = resolve(repoRoot, '.claude', 'settings.json');
-  if (existsSync(pawDir)) {
+  if (existsSync(fleetDir)) {
     success('Set up in this repo', '');
   } else {
-    console.log(colors.warn('  paw not set up — run `paw init`'));
+    console.log(colors.warn('  fleet not set up — run `fleet init`'));
   }
   if (existsSync(settingsPath)) {
     success('Hooks installed', '');
   }
 
   console.log('\n=== SESSION STATUS ===');
-  const yamlPath = resolve(repoRoot, '.paw', 'paw.yaml');
+  const yamlPath = resolve(repoRoot, '.fleet', 'fleet.yaml');
   const state = readSyncState(repoRoot);
   if (state) {
     const { total, inProgress, done } = summarizeTasks(state);
@@ -111,17 +111,17 @@ function printOrchestratorDashboard(repoRoot: string): void {
       // Template default — not a real config
       console.log('No active session');
     } else {
-      console.log('Session configured (.paw/paw.yaml found) — run `paw go` to start');
+      console.log('Session configured (.fleet/fleet.yaml found) — run `fleet go` to start');
     }
   } else {
-    console.log('No active session (.paw/paw.yaml not found)');
+    console.log('No active session (.fleet/fleet.yaml not found)');
   }
 }
 
 /** Brief orchestrator output — dynamic session status snapshot. */
 function printOrchestratorBrief(repoRoot: string): void {
   const version = getVersion();
-  console.log(`paw v${version}`);
+  console.log(`fleet v${version}`);
 
   const state = readSyncState(repoRoot);
   if (state) {
@@ -138,10 +138,14 @@ function printOrchestratorBrief(repoRoot: string): void {
 }
 
 /** Print a compact status snapshot for the orchestrator brief (PreCompact). */
-function printStatusSnapshot(repoRoot: string, state: SyncState, paneConfig: PawPaneConfig): void {
+function printStatusSnapshot(
+  repoRoot: string,
+  state: SyncState,
+  paneConfig: FleetPaneConfig,
+): void {
   const livenessMap = tryGetLivenessMap(paneConfig);
 
-  let configObj: PawConfig | undefined;
+  let configObj: FleetConfig | undefined;
   try {
     const configPath = resolveConfigPath(repoRoot);
     configObj = loadConfig(configPath);
@@ -201,7 +205,7 @@ function printBrief(
   state: SyncState | null,
   repoRoot: string,
 ): void {
-  console.log(pc.bold(`paw prime: ${taskName} (brief)\n`));
+  console.log(pc.bold(`fleet prime: ${taskName} (brief)\n`));
 
   if (taskContent) {
     // Extract just focus and instructions sections, skip full markdown
@@ -220,7 +224,7 @@ function printBrief(
   if (state) {
     printTeamStatus(taskName, state);
   } else {
-    console.log(pc.dim('No sync state found. Run `paw up` first.\n'));
+    console.log(pc.dim('No sync state found. Run `fleet up` first.\n'));
   }
 
   // Unanswered threads must survive compaction — re-surface them here
@@ -241,7 +245,7 @@ function printFull(
   state: SyncState | null,
   repoRoot: string,
 ): void {
-  console.log(pc.bold(`paw prime: ${taskName}\n`));
+  console.log(pc.bold(`fleet prime: ${taskName}\n`));
 
   if (taskContent) {
     console.log(taskContent);
@@ -250,7 +254,7 @@ function printFull(
   }
 
   if (!state) {
-    console.log(pc.dim('No sync state found. Run `paw up` first.\n'));
+    console.log(pc.dim('No sync state found. Run `fleet up` first.\n'));
     return;
   }
 

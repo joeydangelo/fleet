@@ -5,9 +5,9 @@ import { loadConfig, resolveConfigPath, topologicalSort } from '../src/lib/confi
 import { makeTempDir } from './helpers/temp.js';
 
 describe('loadConfig', () => {
-  it('parses a valid paw.yaml', () => {
+  it('parses a valid fleet.yaml', () => {
     const dir = makeTempDir();
-    const configPath = resolve(dir, 'paw.yaml');
+    const configPath = resolve(dir, 'fleet.yaml');
     writeFileSync(
       configPath,
       `
@@ -37,7 +37,7 @@ tasks:
 
   it('defaults base to main', () => {
     const dir = makeTempDir();
-    const configPath = resolve(dir, 'paw.yaml');
+    const configPath = resolve(dir, 'fleet.yaml');
     writeFileSync(
       configPath,
       `
@@ -55,12 +55,12 @@ tasks:
   });
 
   it('throws on missing config file', () => {
-    expect(() => loadConfig('/nonexistent/paw.yaml')).toThrow('Config file not found');
+    expect(() => loadConfig('/nonexistent/fleet.yaml')).toThrow('Config file not found');
   });
 
   it('throws on invalid config (missing target)', () => {
     const dir = makeTempDir();
-    const configPath = resolve(dir, 'paw.yaml');
+    const configPath = resolve(dir, 'fleet.yaml');
     writeFileSync(
       configPath,
       `
@@ -70,13 +70,13 @@ tasks:
 `,
     );
 
-    expect(() => loadConfig(configPath)).toThrow(/Invalid \.paw\/paw\.yaml/);
+    expect(() => loadConfig(configPath)).toThrow(/Invalid \.fleet\/fleet\.yaml/);
     rmSync(dir, { recursive: true });
   });
 
   it('throws a readable message on invalid config', () => {
     const dir = makeTempDir();
-    const configPath = resolve(dir, 'paw.yaml');
+    const configPath = resolve(dir, 'fleet.yaml');
     writeFileSync(
       configPath,
       `
@@ -87,13 +87,13 @@ tasks:
 `,
     );
 
-    expect(() => loadConfig(configPath)).toThrow(/Invalid \.paw\/paw\.yaml/);
+    expect(() => loadConfig(configPath)).toThrow(/Invalid \.fleet\/fleet\.yaml/);
     rmSync(dir, { recursive: true });
   });
 
   it('throws a clear error when file contains merge conflict markers', () => {
     const dir = makeTempDir();
-    const configPath = resolve(dir, 'paw.yaml');
+    const configPath = resolve(dir, 'fleet.yaml');
     writeFileSync(
       configPath,
       `
@@ -117,7 +117,7 @@ tasks:
 describe('agent config', () => {
   it('ignores unknown agent field in yaml', () => {
     const dir = makeTempDir();
-    const configPath = resolve(dir, 'paw.yaml');
+    const configPath = resolve(dir, 'fleet.yaml');
     writeFileSync(
       configPath,
       `
@@ -138,7 +138,7 @@ tasks:
 describe('include config', () => {
   it('parses include as array of strings', () => {
     const dir = makeTempDir();
-    const configPath = resolve(dir, 'paw.yaml');
+    const configPath = resolve(dir, 'fleet.yaml');
     writeFileSync(
       configPath,
       `
@@ -163,7 +163,7 @@ tasks:
 describe('task issue field', () => {
   it('parses tasks with issue field', () => {
     const dir = makeTempDir();
-    const configPath = resolve(dir, 'paw.yaml');
+    const configPath = resolve(dir, 'fleet.yaml');
     writeFileSync(
       configPath,
       `
@@ -171,13 +171,13 @@ target: feature/x
 tasks:
   auth:
     focus: src/auth/
-    issue: paw-za72
+    issue: fleet-za72
     prompt: Add OAuth2 login
 `,
     );
 
     const config = loadConfig(configPath);
-    expect(config.tasks['auth']?.issue).toBe('paw-za72');
+    expect(config.tasks['auth']?.issue).toBe('fleet-za72');
 
     rmSync(dir, { recursive: true });
   });
@@ -186,12 +186,12 @@ tasks:
 describe('top-level spec field', () => {
   it('parses config with top-level spec', () => {
     const dir = makeTempDir();
-    const configPath = resolve(dir, 'paw.yaml');
+    const configPath = resolve(dir, 'fleet.yaml');
     writeFileSync(
       configPath,
       `
 target: feature/x
-spec: .paw/specs/spec-2026-03-04-auth.md
+spec: .fleet/specs/spec-2026-03-04-auth.md
 tasks:
   auth:
     focus: src/auth/
@@ -200,7 +200,7 @@ tasks:
     );
 
     const config = loadConfig(configPath);
-    expect(config.spec).toBe('.paw/specs/spec-2026-03-04-auth.md');
+    expect(config.spec).toBe('.fleet/specs/spec-2026-03-04-auth.md');
 
     rmSync(dir, { recursive: true });
   });
@@ -209,7 +209,7 @@ tasks:
 describe('depends_on config', () => {
   it('accepts depends_on as a string', () => {
     const dir = makeTempDir();
-    const configPath = resolve(dir, 'paw.yaml');
+    const configPath = resolve(dir, 'fleet.yaml');
     writeFileSync(
       configPath,
       `
@@ -231,7 +231,7 @@ tasks:
 
   it('accepts depends_on as an array', () => {
     const dir = makeTempDir();
-    const configPath = resolve(dir, 'paw.yaml');
+    const configPath = resolve(dir, 'fleet.yaml');
     writeFileSync(
       configPath,
       `
@@ -257,7 +257,7 @@ tasks:
 
   it('throws when depends_on references a nonexistent task', () => {
     const dir = makeTempDir();
-    const configPath = resolve(dir, 'paw.yaml');
+    const configPath = resolve(dir, 'fleet.yaml');
     writeFileSync(
       configPath,
       `
@@ -276,7 +276,7 @@ tasks:
 
   it('throws when depends_on array references a nonexistent task', () => {
     const dir = makeTempDir();
-    const configPath = resolve(dir, 'paw.yaml');
+    const configPath = resolve(dir, 'fleet.yaml');
     writeFileSync(
       configPath,
       `
@@ -299,7 +299,7 @@ tasks:
 
   it('throws on a two-node cycle (A→B→A)', () => {
     const dir = makeTempDir();
-    const configPath = resolve(dir, 'paw.yaml');
+    const configPath = resolve(dir, 'fleet.yaml');
     writeFileSync(
       configPath,
       `
@@ -321,7 +321,7 @@ tasks:
 
   it('throws on a three-node cycle (A→B→C→A)', () => {
     const dir = makeTempDir();
-    const configPath = resolve(dir, 'paw.yaml');
+    const configPath = resolve(dir, 'fleet.yaml');
     writeFileSync(
       configPath,
       `
@@ -346,7 +346,7 @@ tasks:
 
   it('accepts a valid diamond dependency (no cycle)', () => {
     const dir = makeTempDir();
-    const configPath = resolve(dir, 'paw.yaml');
+    const configPath = resolve(dir, 'fleet.yaml');
     writeFileSync(
       configPath,
       `
@@ -376,7 +376,7 @@ tasks:
 
   it('throws when a task depends on itself', () => {
     const dir = makeTempDir();
-    const configPath = resolve(dir, 'paw.yaml');
+    const configPath = resolve(dir, 'fleet.yaml');
     writeFileSync(
       configPath,
       `
@@ -454,7 +454,7 @@ describe('topologicalSort', () => {
 describe('setup config', () => {
   it('parses config with setup field', () => {
     const dir = makeTempDir();
-    const configPath = resolve(dir, 'paw.yaml');
+    const configPath = resolve(dir, 'fleet.yaml');
     writeFileSync(
       configPath,
       `
@@ -474,7 +474,7 @@ tasks:
 
   it('accepts config without setup', () => {
     const dir = makeTempDir();
-    const configPath = resolve(dir, 'paw.yaml');
+    const configPath = resolve(dir, 'fleet.yaml');
     writeFileSync(
       configPath,
       `
@@ -493,31 +493,31 @@ tasks:
 });
 
 describe('resolveConfigPath', () => {
-  it('finds .paw/paw.yaml', () => {
+  it('finds .fleet/fleet.yaml', () => {
     const dir = makeTempDir();
-    mkdirSync(resolve(dir, '.paw'), { recursive: true });
-    writeFileSync(resolve(dir, '.paw/paw.yaml'), 'target: x\ntasks:\n  a:\n    focus: b\n');
+    mkdirSync(resolve(dir, '.fleet'), { recursive: true });
+    writeFileSync(resolve(dir, '.fleet/fleet.yaml'), 'target: x\ntasks:\n  a:\n    focus: b\n');
 
     const result = resolveConfigPath(dir);
-    expect(result).toBe(resolve(dir, '.paw/paw.yaml'));
+    expect(result).toBe(resolve(dir, '.fleet/fleet.yaml'));
 
     rmSync(dir, { recursive: true });
   });
 
-  it('finds .paw/paw.yml', () => {
+  it('finds .fleet/fleet.yml', () => {
     const dir = makeTempDir();
-    mkdirSync(resolve(dir, '.paw'), { recursive: true });
-    writeFileSync(resolve(dir, '.paw/paw.yml'), 'target: x\ntasks:\n  a:\n    focus: b\n');
+    mkdirSync(resolve(dir, '.fleet'), { recursive: true });
+    writeFileSync(resolve(dir, '.fleet/fleet.yml'), 'target: x\ntasks:\n  a:\n    focus: b\n');
 
     const result = resolveConfigPath(dir);
-    expect(result).toBe(resolve(dir, '.paw/paw.yml'));
+    expect(result).toBe(resolve(dir, '.fleet/fleet.yml'));
 
     rmSync(dir, { recursive: true });
   });
 
   it('throws when no config found', () => {
     const dir = makeTempDir();
-    expect(() => resolveConfigPath(dir)).toThrow('No .paw/paw.yaml found');
+    expect(() => resolveConfigPath(dir)).toThrow('No .fleet/fleet.yaml found');
     rmSync(dir, { recursive: true });
   });
 });

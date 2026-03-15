@@ -147,15 +147,15 @@ export function getHeadRef(cwd?: string): string {
   return git(['rev-parse', 'HEAD'], { cwd, stdio: 'pipe' });
 }
 
-/** Create a backup ref at refs/paw-backup/{taskName} pointing to the given commit. */
+/** Create a backup ref at refs/fleet-backup/{taskName} pointing to the given commit. */
 export function createBackupRef(taskName: string, commit: string, cwd?: string): void {
-  git(['update-ref', `refs/paw-backup/${taskName}`, commit], { cwd });
+  git(['update-ref', `refs/fleet-backup/${taskName}`, commit], { cwd });
 }
 
-/** Remove all `refs/paw-backup/*` refs created during merge. Best-effort. */
+/** Remove all `refs/fleet-backup/*` refs created during merge. Best-effort. */
 export function cleanupBackupRefs(cwd?: string): void {
   try {
-    const output = git(['for-each-ref', '--format=%(refname)', 'refs/paw-backup/'], {
+    const output = git(['for-each-ref', '--format=%(refname)', 'refs/fleet-backup/'], {
       cwd,
       stdio: 'pipe',
     });
@@ -172,7 +172,7 @@ export function cleanupBackupRefs(cwd?: string): void {
 export function stashWorkingTree(cwd: string): boolean {
   const status = git(['status', '--porcelain'], { cwd, stdio: 'pipe' });
   if (!status) return false;
-  git(['stash', 'push', '--include-untracked', '-m', 'paw: pre-merge stash'], { cwd });
+  git(['stash', 'push', '--include-untracked', '-m', 'fleet: pre-merge stash'], { cwd });
   return true;
 }
 

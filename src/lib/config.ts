@@ -13,7 +13,7 @@ const TaskSchema = z.object({
   model: z.string().optional(),
 });
 
-const PawConfigSchema = z.object({
+const FleetConfigSchema = z.object({
   base: z.string().default('main'),
   target: z.string(),
   model: z.string().optional(),
@@ -23,11 +23,11 @@ const PawConfigSchema = z.object({
   tasks: z.record(z.string(), TaskSchema),
 });
 
-/** Parsed paw.yaml configuration: target branch, task definitions, and file-copy patterns. */
-export type PawConfig = z.infer<typeof PawConfigSchema>;
+/** Parsed fleet.yaml configuration: target branch, task definitions, and file-copy patterns. */
+export type FleetConfig = z.infer<typeof FleetConfigSchema>;
 
-/** Parse and validate a paw.yaml file, including dependency-graph checks. */
-export function loadConfig(configPath: string): PawConfig {
+/** Parse and validate a fleet.yaml file, including dependency-graph checks. */
+export function loadConfig(configPath: string): FleetConfig {
   if (!existsSync(configPath)) {
     throw new NotFoundError(`Config file not found: ${configPath}`);
   }
@@ -36,16 +36,16 @@ export function loadConfig(configPath: string): PawConfig {
 
   if (/^<<<<<<< /m.test(raw) || /^=======/m.test(raw) || /^>>>>>>> /m.test(raw)) {
     throw new ValidationError(
-      `${configPath} contains unresolved git merge conflict markers. Resolve conflicts before running paw.`,
+      `${configPath} contains unresolved git merge conflict markers. Resolve conflicts before running fleet.`,
     );
   }
 
   const parsed = parseYaml(raw) as unknown;
 
-  const result = PawConfigSchema.safeParse(parsed);
+  const result = FleetConfigSchema.safeParse(parsed);
   if (!result.success) {
     const issues = result.error.issues.map((i) => `  ${i.path.join('.')}: ${i.message}`).join('\n');
-    throw new ValidationError(`Invalid .paw/paw.yaml:\n${issues}`);
+    throw new ValidationError(`Invalid .fleet/fleet.yaml:\n${issues}`);
   }
 
   validateDependsOn(result.data);
@@ -59,7 +59,7 @@ export function normalizeDeps(deps: string | string[] | undefined): string[] {
   return Array.isArray(deps) ? deps : [deps];
 }
 
-function validateDependsOn(config: PawConfig): void {
+function validateDependsOn(config: FleetConfig): void {
   const taskNames = new Set(Object.keys(config.tasks));
 
   for (const [name, task] of Object.entries(config.tasks)) {
@@ -67,12 +67,12 @@ function validateDependsOn(config: PawConfig): void {
     for (const dep of deps) {
       if (dep === name) {
         throw new ValidationError(
-          `Invalid .paw/paw.yaml:\n  tasks.${name}.depends_on references "${dep}" (itself)`,
+          `Invalid .fleet/fleet.yaml:\n  tasks.${name}.depends_on references "${dep}" (itself)`,
         );
       }
       if (!taskNames.has(dep)) {
         throw new ValidationError(
-          `Invalid .paw/paw.yaml:\n  tasks.${name}.depends_on references "${dep}" which does not exist in tasks`,
+          `Invalid .fleet/fleet.yaml:\n  tasks.${name}.depends_on references "${dep}" which does not exist in tasks`,
         );
       }
     }
@@ -84,7 +84,7 @@ function validateDependsOn(config: PawConfig): void {
   function visit(name: string): void {
     if (inStack.has(name)) {
       throw new ValidationError(
-        `Invalid .paw/paw.yaml:\n  Cycle detected in depends_on: ${[...inStack, name].join(' → ')}`,
+        `Invalid .fleet/fleet.yaml:\n  Cycle detected in depends_on: ${[...inStack, name].join(' → ')}`,
       );
     }
     if (visited.has(name)) return;
@@ -164,7 +164,7 @@ export function topologicalSort(
 export function loadRepoConfig(): {
   repoRoot: string;
   configPath: string;
-  config: PawConfig;
+  config: FleetConfig;
 } {
   const repoRoot = getRepoRoot();
   const configPath = resolveConfigPath(repoRoot);
@@ -172,12 +172,12 @@ export function loadRepoConfig(): {
   return { repoRoot, configPath, config };
 }
 
-/** Find the first existing paw config file (.yaml or .yml) under `cwd`. */
+/** Find the first existing fleet config file (.yaml or .yml) under `cwd`. */
 export function resolveConfigPath(cwd: string): string {
-  const candidates = ['.paw/paw.yaml', '.paw/paw.yml'];
+  const candidates = ['.fleet/fleet.yaml', '.fleet/fleet.yml'];
   for (const name of candidates) {
     const p = resolve(cwd, name);
     if (existsSync(p)) return p;
   }
-  throw new NotFoundError('No .paw/paw.yaml found. Run `paw init` first.');
+  throw new NotFoundError('No .fleet/fleet.yaml found. Run `fleet init` first.');
 }

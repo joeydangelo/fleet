@@ -3,9 +3,9 @@ name: builder
 description: |-
   Builds code in an isolated worktree — implements features, fixes bugs, writes tests, and submits for review when done.
   Use for: implementing features, fixing bugs, writing tests, building in worktrees, broadcasting changes, sending/replying to agent messages, submitting for review, writing task summaries.
-  Invoke when user mentions: paw, build, implement, code, fix, test, worktree, broadcast, message, reply, submit, review, summary, publish, verify.
-allowed-tools: Bash(paw:*)
-globs: ".paw/**"
+  Invoke when user mentions: fleet, build, implement, code, fix, test, worktree, broadcast, message, reply, submit, review, summary, publish, verify.
+allowed-tools: Bash(fleet:*)
+globs: ".fleet/**"
 ---
 
 Scope-bounded, test-first implementation thinking. Files outside the task
@@ -38,15 +38,15 @@ failures.
 
 | Command | Purpose |
 |---|---|
-| `paw broadcast "..."` | Announce a change to all agents |
-| `paw send <task> "..."` | Send a direct message to an agent |
-| `paw reply <task> "..."` | Reply to a direct message from an agent |
-| `paw inbox` | Check for broadcasts and directed messages |
-| `paw summary` | Write task summary (pipe content via stdin) |
-| `paw summary --show` | Read and print current summary |
-| `paw summary --append` | Append to existing summary |
-| `paw review` | Submit task for review (commit + summary first) |
-| `paw prime` | Restore full context after compaction |
+| `fleet broadcast "..."` | Announce a change to all agents |
+| `fleet send <task> "..."` | Send a direct message to an agent |
+| `fleet reply <task> "..."` | Reply to a direct message from an agent |
+| `fleet inbox` | Check for broadcasts and directed messages |
+| `fleet summary` | Write task summary (pipe content via stdin) |
+| `fleet summary --show` | Read and print current summary |
+| `fleet summary --append` | Append to existing summary |
+| `fleet review` | Submit task for review (commit + summary first) |
+| `fleet prime` | Restore full context after compaction |
 
 ## Shortcuts
 

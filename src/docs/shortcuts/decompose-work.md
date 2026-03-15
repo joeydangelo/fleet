@@ -1,6 +1,6 @@
 ---
 name: decompose-work
-description: Decompose a spec into parallel tasks with explicit file ownership and write .paw/paw.yaml
+description: Decompose a spec into parallel tasks with explicit file ownership and write .fleet/fleet.yaml
 roles: [orchestrator]
 ---
 
@@ -48,12 +48,12 @@ identified producer and consumer.
 
 ### Phase 2: Write
 
-**Objective:** Produce `.paw/paw.yaml` where every task passes the decomposition
+**Objective:** Produce `.fleet/fleet.yaml` where every task passes the decomposition
 quality checklist.
 **Tools:** Read, Write, Bash (mkdir only)
 
-1. Load `paw guidelines task-splitting` and `paw template paw-yaml`.
-2. Write `.paw/paw.yaml`. For each task:
+1. Load `fleet guidelines task-splitting` and `fleet template fleet-yaml`.
+2. Write `.fleet/fleet.yaml`. For each task:
    - `focus`: explicit file scope — no overlap between tasks.
    - `prompt`: self-contained builder briefing. Include the concrete deliverable,
      interface dependencies (what this task provides to or consumes from other tasks),
@@ -69,7 +69,7 @@ quality checklist.
    - [ ] Expected output format is specified
 
 **Gate:** Every task passes all five checklist items.
-**Artifact:** `.paw/paw.yaml` with decomposed tasks.
+**Artifact:** `.fleet/fleet.yaml` with decomposed tasks.
 
 ## Context Flow
 
@@ -81,7 +81,7 @@ quality checklist.
 
 Stop and report when ANY of these are true:
 
-- `.paw/paw.yaml` written and `paw go` invoked.
+- `.fleet/fleet.yaml` written and `fleet go` invoked.
 - Request is ambiguous with multiple valid interpretations — ask before decomposing.
 - Spec is missing or insufficient for decomposition — ask user to complete it.
 - File ownership cannot be made non-overlapping — explain the conflict and ask for
@@ -90,7 +90,7 @@ Stop and report when ANY of these are true:
 ## Output Format
 
 Present the task breakdown: task names, file ownership, interface contracts, and
-dependency order. Run `paw go`.
+dependency order. Run `fleet go`.
 
 Forbidden in output:
 

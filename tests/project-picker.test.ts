@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { buildDisplayItems } from '../src/components/tui-app.js';
-import type { TmuxPaneInfo, PawPane } from '../src/lib/tmux.js';
+import type { TmuxPaneInfo, FleetPane } from '../src/lib/tmux.js';
 
 function makeTmuxPane(
   paneId: string,
@@ -13,12 +13,12 @@ function makeTmuxPane(
   return { paneId, title, command, cwd, project, role };
 }
 
-function makeTaskPane(overrides: Partial<PawPane> = {}): PawPane {
+function makeTaskPane(overrides: Partial<FleetPane> = {}): FleetPane {
   return {
-    id: 'paw-1',
+    id: 'fleet-1',
     paneId: '%2',
     taskName: 'auth',
-    worktreePath: '/home/user/myapp/.paw/worktrees/auth',
+    worktreePath: '/home/user/myapp/.fleet/worktrees/auth',
     branchName: 'feature-auth',
     ...overrides,
   };
@@ -27,12 +27,12 @@ function makeTaskPane(overrides: Partial<PawPane> = {}): PawPane {
 describe('buildDisplayItems — single project', () => {
   it('shows no project headers for single-project session', () => {
     const tmuxPanes = [
-      makeTmuxPane('%1', 'paw-orchestrator', 'claude', '/home/user/myapp', '/home/user/myapp'),
+      makeTmuxPane('%1', 'fleet-orchestrator', 'claude', '/home/user/myapp', '/home/user/myapp'),
       makeTmuxPane(
         '%2',
-        'paw-auth',
+        'fleet-auth',
         'claude',
-        '/home/user/myapp/.paw/worktrees/auth',
+        '/home/user/myapp/.fleet/worktrees/auth',
         '/home/user/myapp',
       ),
     ];
@@ -52,12 +52,12 @@ describe('buildDisplayItems — single project', () => {
 
   it('preserves existing ordering: orchestrator, task panes, ad-hoc', () => {
     const tmuxPanes = [
-      makeTmuxPane('%1', 'paw-orchestrator', 'claude', '/home/user/myapp', '/home/user/myapp'),
+      makeTmuxPane('%1', 'fleet-orchestrator', 'claude', '/home/user/myapp', '/home/user/myapp'),
       makeTmuxPane(
         '%2',
-        'paw-auth',
+        'fleet-auth',
         'claude',
-        '/home/user/myapp/.paw/worktrees/auth',
+        '/home/user/myapp/.fleet/worktrees/auth',
         '/home/user/myapp',
       ),
       makeTmuxPane('%3', 'bash', 'bash', '/home/user/myapp', ''),
@@ -81,8 +81,8 @@ describe('buildDisplayItems — single project', () => {
 describe('buildDisplayItems — multi-project grouping', () => {
   it('adds project headers when 2+ projects exist', () => {
     const tmuxPanes = [
-      makeTmuxPane('%1', 'paw-orchestrator', 'claude', '/home/user/myapp', '/home/user/myapp'),
-      makeTmuxPane('%5', 'paw-orchestrator', 'claude', '/home/user/other', '/home/user/other'),
+      makeTmuxPane('%1', 'fleet-orchestrator', 'claude', '/home/user/myapp', '/home/user/myapp'),
+      makeTmuxPane('%5', 'fleet-orchestrator', 'claude', '/home/user/other', '/home/user/other'),
     ];
     const items = buildDisplayItems(tmuxPanes, [], null, '%0', '%1', '/home/user/myapp', null);
     expect(items).toHaveLength(2);
@@ -91,10 +91,10 @@ describe('buildDisplayItems — multi-project grouping', () => {
   });
 
   it('groups ad-hoc panes by resolved cwd git root', () => {
-    // Ad-hoc pane has no @paw_project but its cwd resolves to /home/user/myapp
+    // Ad-hoc pane has no @fleet_project but its cwd resolves to /home/user/myapp
     const tmuxPanes = [
-      makeTmuxPane('%1', 'paw-orchestrator', 'claude', '/home/user/myapp', '/home/user/myapp'),
-      makeTmuxPane('%5', 'paw-orchestrator', 'claude', '/home/user/other', '/home/user/other'),
+      makeTmuxPane('%1', 'fleet-orchestrator', 'claude', '/home/user/myapp', '/home/user/myapp'),
+      makeTmuxPane('%5', 'fleet-orchestrator', 'claude', '/home/user/other', '/home/user/other'),
       // Ad-hoc pane with project="" — will be resolved by resolveGitRoot(cwd)
       // In tests, cwd may not actually be a git repo, so it resolves to null → ungrouped
       makeTmuxPane('%6', 'bash', 'bash', '/tmp', ''),
@@ -108,12 +108,12 @@ describe('buildDisplayItems — multi-project grouping', () => {
     expect(items[2]!.headerColor).toBe('red');
   });
 
-  it('managed panes use @paw_project regardless of cwd', () => {
-    // Task pane's cwd is in a worktree, but @paw_project is the main repo
+  it('managed panes use @fleet_project regardless of cwd', () => {
+    // Task pane's cwd is in a worktree, but @fleet_project is the main repo
     const tmuxPanes = [
-      makeTmuxPane('%1', 'paw-orchestrator', 'claude', '/home/user/myapp', '/home/user/myapp'),
-      makeTmuxPane('%2', 'paw-auth', 'claude', '/some/worktree/path', '/home/user/myapp'),
-      makeTmuxPane('%5', 'paw-orchestrator', 'claude', '/home/user/other', '/home/user/other'),
+      makeTmuxPane('%1', 'fleet-orchestrator', 'claude', '/home/user/myapp', '/home/user/myapp'),
+      makeTmuxPane('%2', 'fleet-auth', 'claude', '/some/worktree/path', '/home/user/myapp'),
+      makeTmuxPane('%5', 'fleet-orchestrator', 'claude', '/home/user/other', '/home/user/other'),
     ];
     const taskPanes = [makeTaskPane()];
     const items = buildDisplayItems(
@@ -135,8 +135,8 @@ describe('buildDisplayItems — multi-project grouping', () => {
 
   it('excludes control pane from display', () => {
     const tmuxPanes = [
-      makeTmuxPane('%0', 'paw-tui', 'node', '/home/user/myapp', '/home/user/myapp'),
-      makeTmuxPane('%1', 'paw-orchestrator', 'claude', '/home/user/myapp', '/home/user/myapp'),
+      makeTmuxPane('%0', 'fleet-tui', 'node', '/home/user/myapp', '/home/user/myapp'),
+      makeTmuxPane('%1', 'fleet-orchestrator', 'claude', '/home/user/myapp', '/home/user/myapp'),
     ];
     const items = buildDisplayItems(tmuxPanes, [], null, '%0', '%1', '/home/user/myapp', null);
     expect(items).toHaveLength(1);
@@ -145,18 +145,18 @@ describe('buildDisplayItems — multi-project grouping', () => {
 });
 
 describe('buildDisplayItems — worktree panes group with primary project', () => {
-  it('task panes without @paw_project use primaryProject, not cwd resolution', () => {
+  it('task panes without @fleet_project use primaryProject, not cwd resolution', () => {
     // Worktree panes have cwd in sibling dirs with their own .git files.
-    // Without @paw_project, they must fall back to primaryProject — not
+    // Without @fleet_project, they must fall back to primaryProject — not
     // resolveGitRoot(cwd) which would treat each worktree as a separate project.
     const tmuxPanes = [
-      makeTmuxPane('%1', 'paw-orchestrator', 'claude', '/home/user/paw-test', ''),
-      makeTmuxPane('%2', 'paw-auth', 'claude', '/home/user/paw-test-paw-auth', ''),
-      makeTmuxPane('%3', 'paw-api', 'claude', '/home/user/paw-test-paw-api', ''),
+      makeTmuxPane('%1', 'fleet-orchestrator', 'claude', '/home/user/fleet-test', ''),
+      makeTmuxPane('%2', 'fleet-auth', 'claude', '/home/user/fleet-test-fleet-auth', ''),
+      makeTmuxPane('%3', 'fleet-api', 'claude', '/home/user/fleet-test-fleet-api', ''),
     ];
     const taskPanes = [
       makeTaskPane({ paneId: '%2', taskName: 'auth' }),
-      makeTaskPane({ id: 'paw-2', paneId: '%3', taskName: 'api' }),
+      makeTaskPane({ id: 'fleet-2', paneId: '%3', taskName: 'api' }),
     ];
     const items = buildDisplayItems(
       tmuxPanes,
@@ -164,7 +164,7 @@ describe('buildDisplayItems — worktree panes group with primary project', () =
       null,
       '%0',
       '%1',
-      '/home/user/paw-test',
+      '/home/user/fleet-test',
       null,
     );
     // All 3 panes should be in the same project group — no headers (single project)
@@ -172,21 +172,21 @@ describe('buildDisplayItems — worktree panes group with primary project', () =
     expect(items.every((item) => !item.projectHeader)).toBe(true);
   });
 
-  it('task panes with @paw_project set use that over cwd', () => {
+  it('task panes with @fleet_project set use that over cwd', () => {
     const tmuxPanes = [
       makeTmuxPane(
         '%1',
-        'paw-orchestrator',
+        'fleet-orchestrator',
         'claude',
-        '/home/user/paw-test',
-        '/home/user/paw-test',
+        '/home/user/fleet-test',
+        '/home/user/fleet-test',
       ),
       makeTmuxPane(
         '%2',
-        'paw-auth',
+        'fleet-auth',
         'claude',
-        '/home/user/paw-test-paw-auth',
-        '/home/user/paw-test',
+        '/home/user/fleet-test-fleet-auth',
+        '/home/user/fleet-test',
       ),
     ];
     const taskPanes = [makeTaskPane({ paneId: '%2', taskName: 'auth' })];
@@ -196,7 +196,7 @@ describe('buildDisplayItems — worktree panes group with primary project', () =
       null,
       '%0',
       '%1',
-      '/home/user/paw-test',
+      '/home/user/fleet-test',
       null,
     );
     expect(items).toHaveLength(2);
@@ -207,8 +207,8 @@ describe('buildDisplayItems — worktree panes group with primary project', () =
 describe('buildDisplayItems — addProject duplicate detection', () => {
   it('creates display items for new project panes', () => {
     const tmuxPanes = [
-      makeTmuxPane('%1', 'paw-orchestrator', 'claude', '/home/user/myapp', '/home/user/myapp'),
-      makeTmuxPane('%5', 'paw-orchestrator', 'claude', '/home/user/other', '/home/user/other'),
+      makeTmuxPane('%1', 'fleet-orchestrator', 'claude', '/home/user/myapp', '/home/user/myapp'),
+      makeTmuxPane('%5', 'fleet-orchestrator', 'claude', '/home/user/other', '/home/user/other'),
     ];
     const items = buildDisplayItems(tmuxPanes, [], null, '%0', '%1', '/home/user/myapp', null);
     expect(items).toHaveLength(2);
@@ -217,24 +217,24 @@ describe('buildDisplayItems — addProject duplicate detection', () => {
 });
 
 describe('buildDisplayItems — orchestrator role detection', () => {
-  it('labels ad-hoc pane as orchestrator when @paw_role is set, even if title is stomped', () => {
+  it('labels ad-hoc pane as orchestrator when @fleet_role is set, even if title is stomped', () => {
     const tmuxPanes = [
       makeTmuxPane(
         '%1',
-        'paw-orchestrator',
+        'fleet-orchestrator',
         'claude',
         '/home/user/myapp',
         '/home/user/myapp',
-        'paw-orchestrator',
+        'fleet-orchestrator',
       ),
-      // Added project: title stomped by Claude Code, but @paw_role is still set
+      // Added project: title stomped by Claude Code, but @fleet_role is still set
       makeTmuxPane(
         '%5',
         'Claude Code',
         'claude',
         '/home/user/other',
         '/home/user/other',
-        'paw-orchestrator',
+        'fleet-orchestrator',
       ),
     ];
     const items = buildDisplayItems(tmuxPanes, [], null, '%0', '%1', '/home/user/myapp', null);
@@ -243,15 +243,15 @@ describe('buildDisplayItems — orchestrator role detection', () => {
     expect(items[1]!.label).toBe('orchestrator'); // added project — detected by role
   });
 
-  it('labels ad-hoc pane by title when @paw_role is not set', () => {
+  it('labels ad-hoc pane by title when @fleet_role is not set', () => {
     const tmuxPanes = [
       makeTmuxPane(
         '%1',
-        'paw-orchestrator',
+        'fleet-orchestrator',
         'claude',
         '/home/user/myapp',
         '/home/user/myapp',
-        'paw-orchestrator',
+        'fleet-orchestrator',
       ),
       makeTmuxPane('%5', 'my-shell', 'bash', '/home/user/other', '/home/user/other'),
     ];

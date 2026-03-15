@@ -35,7 +35,7 @@ export function handleError(err: unknown): never {
   const message = toErrorMessage(err);
 
   if (message.includes('not a git repository')) {
-    console.error(colors.error('Not in a git repository. Run paw from inside a git repo.'));
+    console.error(colors.error('Not in a git repository. Run fleet from inside a git repo.'));
   } else {
     console.error(colors.error(message));
   }
@@ -86,7 +86,7 @@ export function unknown(taskName: string, detail: string): void {
 /** Guard that throws if no sync state is available. */
 export function requireSyncState<T>(state: T | null): asserts state is T {
   if (!state) {
-    throw new CLIError('No sync state found. Run `paw up` first.');
+    throw new CLIError('No sync state found. Run `fleet up` first.');
   }
 }
 

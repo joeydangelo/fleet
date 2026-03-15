@@ -11,7 +11,7 @@ export function heartbeatCommand(): Command {
       try {
         const cwd = process.cwd();
         const taskName = detectTaskName(cwd);
-        if (!taskName) return; // not in a paw worktree — exit silently
+        if (!taskName) return; // not in a fleet worktree — exit silently
         const mainRoot = resolveMainRoot(cwd);
         writeHeartbeat(mainRoot, taskName);
       } catch {

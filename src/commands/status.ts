@@ -29,7 +29,7 @@ export function statusCommand(): Command {
       const paneConfig = readPaneConfig(repoRoot);
       const livenessMap = tryGetLivenessMap(paneConfig);
 
-      console.log(pc.bold('paw status\n'));
+      console.log(pc.bold('fleet status\n'));
 
       for (const wt of worktrees) {
         const taskSync = syncState?.tasks[wt.taskName];

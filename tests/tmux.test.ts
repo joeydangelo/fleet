@@ -15,7 +15,7 @@ import {
   sendWakeSignal,
 } from '../src/lib/tmux.js';
 import type { BeaconOptions } from '../src/lib/tmux.js';
-import type { PawPane, PawPaneConfig, DetachedAgent } from '../src/lib/tmux.js';
+import type { FleetPane, FleetPaneConfig, DetachedAgent } from '../src/lib/tmux.js';
 import { createMockTmux } from './helpers/mock-tmux.js';
 
 const fastBeacon: BeaconOptions = {
@@ -46,27 +46,27 @@ function createMockExec(responses?: Map<string, string>) {
 
 describe('tmuxSessionName', () => {
   it('sanitizes a simple directory name', () => {
-    expect(tmuxSessionName('myapp')).toBe('paw-myapp');
+    expect(tmuxSessionName('myapp')).toBe('fleet-myapp');
   });
 
   it('replaces non-alphanumeric characters with hyphens', () => {
-    expect(tmuxSessionName('my_app.v2')).toBe('paw-my-app-v2');
+    expect(tmuxSessionName('my_app.v2')).toBe('fleet-my-app-v2');
   });
 
   it('collapses consecutive hyphens', () => {
-    expect(tmuxSessionName('my---app')).toBe('paw-my-app');
+    expect(tmuxSessionName('my---app')).toBe('fleet-my-app');
   });
 
   it('strips leading and trailing hyphens from the sanitized part', () => {
-    expect(tmuxSessionName('-myapp-')).toBe('paw-myapp');
+    expect(tmuxSessionName('-myapp-')).toBe('fleet-myapp');
   });
 
   it('handles directories with spaces', () => {
-    expect(tmuxSessionName('my app')).toBe('paw-my-app');
+    expect(tmuxSessionName('my app')).toBe('fleet-my-app');
   });
 
   it('handles complex directory names', () => {
-    expect(tmuxSessionName('My Project (v2.1)')).toBe('paw-My-Project-v2-1');
+    expect(tmuxSessionName('My Project (v2.1)')).toBe('fleet-My-Project-v2-1');
   });
 });
 
@@ -118,32 +118,32 @@ describe('TmuxService with mock exec', () => {
   it('createSession calls new-session with correct args', () => {
     const { fn, calls } = createMockExec();
     const svc = new TmuxService(fn);
-    svc.createSession('paw-myapp', '/home/user/myapp');
-    expect(calls[0]).toEqual(['new-session', '-d', '-s', 'paw-myapp', '-c', '/home/user/myapp']);
+    svc.createSession('fleet-myapp', '/home/user/myapp');
+    expect(calls[0]).toEqual(['new-session', '-d', '-s', 'fleet-myapp', '-c', '/home/user/myapp']);
   });
 
   it('killSession calls kill-session', () => {
     const { fn, calls } = createMockExec();
     const svc = new TmuxService(fn);
-    svc.killSession('paw-myapp');
-    expect(calls[0]).toEqual(['kill-session', '-t', 'paw-myapp']);
+    svc.killSession('fleet-myapp');
+    expect(calls[0]).toEqual(['kill-session', '-t', 'fleet-myapp']);
   });
 
   it('createPane calls split-window and returns pane ID', () => {
-    const responses = new Map([['split-window -t paw-myapp -c /tmp/wt -P -F #{pane_id}', '%42']]);
+    const responses = new Map([['split-window -t fleet-myapp -c /tmp/wt -P -F #{pane_id}', '%42']]);
     const { fn } = createMockExec(responses);
     const svc = new TmuxService(fn);
-    const paneId = svc.createPane('paw-myapp', '/tmp/wt');
+    const paneId = svc.createPane('fleet-myapp', '/tmp/wt');
     expect(paneId).toBe('%42');
   });
 
   it('createPane with horizontal:true appends -h flag', () => {
     const responses = new Map([
-      ['split-window -t paw-myapp -c /tmp/wt -P -F #{pane_id} -h', '%43'],
+      ['split-window -t fleet-myapp -c /tmp/wt -P -F #{pane_id} -h', '%43'],
     ]);
     const { fn } = createMockExec(responses);
     const svc = new TmuxService(fn);
-    const paneId = svc.createPane('paw-myapp', '/tmp/wt', { horizontal: true });
+    const paneId = svc.createPane('fleet-myapp', '/tmp/wt', { horizontal: true });
     expect(paneId).toBe('%43');
   });
 
@@ -155,16 +155,16 @@ describe('TmuxService with mock exec', () => {
   });
 
   it('listPanes returns array of pane IDs', () => {
-    const responses = new Map([['list-panes -s -t paw-myapp -F #{pane_id}', '%1\n%2\n%3']]);
+    const responses = new Map([['list-panes -s -t fleet-myapp -F #{pane_id}', '%1\n%2\n%3']]);
     const { fn } = createMockExec(responses);
     const svc = new TmuxService(fn);
-    expect(svc.listPanes('paw-myapp')).toEqual(['%1', '%2', '%3']);
+    expect(svc.listPanes('fleet-myapp')).toEqual(['%1', '%2', '%3']);
   });
 
   it('listPanes returns empty array for empty output', () => {
     const { fn } = createMockExec();
     const svc = new TmuxService(fn);
-    expect(svc.listPanes('paw-myapp')).toEqual([]);
+    expect(svc.listPanes('fleet-myapp')).toEqual([]);
   });
 
   it('paneExists returns true when display-message succeeds', () => {
@@ -205,7 +205,7 @@ describe('TmuxService with mock exec', () => {
 
   it('capturePane captures without line limit and returns content', () => {
     const responses = new Map([
-      ['capture-pane -t %42 -p', 'paw-auth: running tests\nAll 5 tests passed'],
+      ['capture-pane -t %42 -p', 'fleet-auth: running tests\nAll 5 tests passed'],
     ]);
     const { fn, calls } = createMockExec(responses);
     const svc = new TmuxService(fn);
@@ -217,49 +217,49 @@ describe('TmuxService with mock exec', () => {
   it('selectLayout applies layout', () => {
     const { fn, calls } = createMockExec();
     const svc = new TmuxService(fn);
-    svc.selectLayout('paw-myapp', 'tiled');
-    expect(calls[0]).toEqual(['select-layout', '-t', 'paw-myapp', 'tiled']);
+    svc.selectLayout('fleet-myapp', 'tiled');
+    expect(calls[0]).toEqual(['select-layout', '-t', 'fleet-myapp', 'tiled']);
   });
 
   it('setPaneTitle sets title via select-pane', () => {
     const { fn, calls } = createMockExec();
     const svc = new TmuxService(fn);
-    svc.setPaneTitle('%42', 'paw-auth');
-    expect(calls[0]).toEqual(['select-pane', '-t', '%42', '-T', 'paw-auth']);
+    svc.setPaneTitle('%42', 'fleet-auth');
+    expect(calls[0]).toEqual(['select-pane', '-t', '%42', '-T', 'fleet-auth']);
   });
 
   it('hasAttachedClient returns false when no clients', () => {
     const { fn } = createMockExec();
     const svc = new TmuxService(fn);
-    expect(svc.hasAttachedClient('paw-myapp')).toBe(false);
+    expect(svc.hasAttachedClient('fleet-myapp')).toBe(false);
   });
 
   it('hasAttachedClient returns true when clients listed', () => {
-    const responses = new Map([['list-clients -t paw-myapp -F #{client_name}', '/dev/pts/0']]);
+    const responses = new Map([['list-clients -t fleet-myapp -F #{client_name}', '/dev/pts/0']]);
     const { fn } = createMockExec(responses);
     const svc = new TmuxService(fn);
-    expect(svc.hasAttachedClient('paw-myapp')).toBe(true);
+    expect(svc.hasAttachedClient('fleet-myapp')).toBe(true);
   });
 
   it('switchClient calls switch-client', () => {
     const { fn, calls } = createMockExec();
     const svc = new TmuxService(fn);
-    svc.switchClient('paw-myapp');
-    expect(calls[0]).toEqual(['switch-client', '-t', 'paw-myapp']);
+    svc.switchClient('fleet-myapp');
+    expect(calls[0]).toEqual(['switch-client', '-t', 'fleet-myapp']);
   });
 
   it('listPanesWithTitles returns title-to-paneId map', () => {
     const responses = new Map([
       [
-        'list-panes -s -t paw-myapp -F #{pane_id} #{pane_title}',
-        '%1 paw-auth\n%2 paw-api\n%3 bash',
+        'list-panes -s -t fleet-myapp -F #{pane_id} #{pane_title}',
+        '%1 fleet-auth\n%2 fleet-api\n%3 bash',
       ],
     ]);
     const { fn } = createMockExec(responses);
     const svc = new TmuxService(fn);
-    const map = svc.listPanesWithTitles('paw-myapp');
-    expect(map.get('paw-auth')).toBe('%1');
-    expect(map.get('paw-api')).toBe('%2');
+    const map = svc.listPanesWithTitles('fleet-myapp');
+    expect(map.get('fleet-auth')).toBe('%1');
+    expect(map.get('fleet-api')).toBe('%2');
     expect(map.get('bash')).toBe('%3');
     expect(map.size).toBe(3);
   });
@@ -267,34 +267,34 @@ describe('TmuxService with mock exec', () => {
   it('listPanesWithTitles returns empty map for empty output', () => {
     const { fn } = createMockExec();
     const svc = new TmuxService(fn);
-    const map = svc.listPanesWithTitles('paw-myapp');
+    const map = svc.listPanesWithTitles('fleet-myapp');
     expect(map.size).toBe(0);
   });
 
   it('listPanesDetailed returns pane ID, title, command, cwd, project, and role for each pane', () => {
     const responses = new Map([
       [
-        'list-panes -s -t paw-myapp -F #{pane_id}\t#{pane_title}\t#{pane_current_command}\t#{pane_current_path}\t#{@paw_project}\t#{@paw_role}',
-        '%0\tpaw-orchestrator\tclaude\t/home/user/myapp\t/home/user/myapp\tpaw-orchestrator\n%1\tpaw-auth\tclaude\t/home/user/myapp/.paw/worktrees/auth\t/home/user/myapp\t\n%2\tbash\tbash\t/tmp\t\t',
+        'list-panes -s -t fleet-myapp -F #{pane_id}\t#{pane_title}\t#{pane_current_command}\t#{pane_current_path}\t#{@fleet_project}\t#{@fleet_role}',
+        '%0\tfleet-orchestrator\tclaude\t/home/user/myapp\t/home/user/myapp\tfleet-orchestrator\n%1\tfleet-auth\tclaude\t/home/user/myapp/.fleet/worktrees/auth\t/home/user/myapp\t\n%2\tbash\tbash\t/tmp\t\t',
       ],
     ]);
     const { fn } = createMockExec(responses);
     const svc = new TmuxService(fn);
-    const panes = svc.listPanesDetailed('paw-myapp');
+    const panes = svc.listPanesDetailed('fleet-myapp');
     expect(panes).toEqual([
       {
         paneId: '%0',
-        title: 'paw-orchestrator',
+        title: 'fleet-orchestrator',
         command: 'claude',
         cwd: '/home/user/myapp',
         project: '/home/user/myapp',
-        role: 'paw-orchestrator',
+        role: 'fleet-orchestrator',
       },
       {
         paneId: '%1',
-        title: 'paw-auth',
+        title: 'fleet-auth',
         command: 'claude',
-        cwd: '/home/user/myapp/.paw/worktrees/auth',
+        cwd: '/home/user/myapp/.fleet/worktrees/auth',
         project: '/home/user/myapp',
         role: '',
       },
@@ -305,7 +305,7 @@ describe('TmuxService with mock exec', () => {
   it('listPanesDetailed returns empty array for empty output', () => {
     const { fn } = createMockExec();
     const svc = new TmuxService(fn);
-    expect(svc.listPanesDetailed('paw-myapp')).toEqual([]);
+    expect(svc.listPanesDetailed('fleet-myapp')).toEqual([]);
   });
 });
 
@@ -313,19 +313,19 @@ describe('launchTmux', () => {
   it('creates session when it does not exist', async () => {
     const mock = createMockTmux();
     const worktrees = [{ taskName: 'auth', worktreePath: '/tmp/wt-auth', agentCommand: 'claude' }];
-    await launchTmux(mock, 'paw-myapp', '/home/user/myapp', worktrees, [], fastBeacon);
+    await launchTmux(mock, 'fleet-myapp', '/home/user/myapp', worktrees, [], fastBeacon);
     const createCall = mock.calls.find((c) => c.method === 'createSession');
-    expect(createCall!.args).toEqual(['paw-myapp', '/home/user/myapp']);
+    expect(createCall!.args).toEqual(['fleet-myapp', '/home/user/myapp']);
   });
 
   it('skips session creation when it already exists', async () => {
     const mock = createMockTmux();
     // Pre-create the session
-    mock.createSession('paw-myapp', '/tmp');
+    mock.createSession('fleet-myapp', '/tmp');
     mock.calls.length = 0; // Reset calls
 
     const worktrees = [{ taskName: 'auth', worktreePath: '/tmp/wt-auth', agentCommand: 'claude' }];
-    await launchTmux(mock, 'paw-myapp', '/home/user/myapp', worktrees, [], fastBeacon);
+    await launchTmux(mock, 'fleet-myapp', '/home/user/myapp', worktrees, [], fastBeacon);
     const createCalls = mock.calls.filter((c) => c.method === 'createSession');
     expect(createCalls).toHaveLength(0);
   });
@@ -339,7 +339,7 @@ describe('launchTmux', () => {
     ];
     const panes = await launchTmux(
       mock,
-      'paw-myapp',
+      'fleet-myapp',
       '/home/user/myapp',
       worktrees,
       [],
@@ -355,7 +355,7 @@ describe('launchTmux', () => {
     const worktrees = [
       { taskName: 'auth', worktreePath: '/tmp/wt-auth', agentCommand: 'claude --resume' },
     ];
-    await launchTmux(mock, 'paw-myapp', '/home/user/myapp', worktrees, [], fastBeacon);
+    await launchTmux(mock, 'fleet-myapp', '/home/user/myapp', worktrees, [], fastBeacon);
     const sendCall = mock.calls.find((c) => c.method === 'sendKeys');
     expect(sendCall!.args[1]).toBe('claude --resume');
   });
@@ -363,18 +363,18 @@ describe('launchTmux', () => {
   it('sets pane title for each pane', async () => {
     const mock = createMockTmux();
     const worktrees = [{ taskName: 'auth', worktreePath: '/tmp/wt-auth', agentCommand: 'claude' }];
-    await launchTmux(mock, 'paw-myapp', '/home/user/myapp', worktrees, [], fastBeacon);
+    await launchTmux(mock, 'fleet-myapp', '/home/user/myapp', worktrees, [], fastBeacon);
     const titleCall = mock.calls.find((c) => c.method === 'setPaneTitle');
-    expect(titleCall!.args[1]).toBe('paw-auth');
+    expect(titleCall!.args[1]).toBe('fleet-auth');
   });
 
-  it('sets @paw_project on each task pane', async () => {
+  it('sets @fleet_project on each task pane', async () => {
     const mock = createMockTmux();
     const worktrees = [
       { taskName: 'auth', worktreePath: '/tmp/wt-auth', agentCommand: 'claude' },
       { taskName: 'api', worktreePath: '/tmp/wt-api', agentCommand: 'claude' },
     ];
-    await launchTmux(mock, 'paw-myapp', '/home/user/myapp', worktrees, [], fastBeacon);
+    await launchTmux(mock, 'fleet-myapp', '/home/user/myapp', worktrees, [], fastBeacon);
     const projectCalls = mock.calls.filter((c) => c.method === 'setPaneProject');
     expect(projectCalls).toHaveLength(2);
     expect(projectCalls[0]!.args[1]).toBe('/home/user/myapp');
@@ -384,24 +384,24 @@ describe('launchTmux', () => {
   it('does not apply any layout (caller is responsible for sidebar layout)', async () => {
     const mock = createMockTmux();
     const worktrees = [{ taskName: 'auth', worktreePath: '/tmp/wt-auth', agentCommand: 'claude' }];
-    await launchTmux(mock, 'paw-myapp', '/home/user/myapp', worktrees, [], fastBeacon);
+    await launchTmux(mock, 'fleet-myapp', '/home/user/myapp', worktrees, [], fastBeacon);
     const layoutCalls = mock.calls.filter((c) => c.method === 'selectLayout');
     expect(layoutCalls).toHaveLength(0);
   });
 
-  it('returns PawPane objects with correct structure', async () => {
+  it('returns FleetPane objects with correct structure', async () => {
     const mock = createMockTmux();
     const worktrees = [{ taskName: 'auth', worktreePath: '/tmp/wt-auth', agentCommand: 'claude' }];
     const panes = await launchTmux(
       mock,
-      'paw-myapp',
+      'fleet-myapp',
       '/home/user/myapp',
       worktrees,
       [],
       fastBeacon,
     );
     expect(panes[0]).toMatchObject({
-      id: 'paw-1',
+      id: 'fleet-1',
       taskName: 'auth',
       worktreePath: '/tmp/wt-auth',
     });
@@ -417,7 +417,7 @@ describe('launchTmux', () => {
     ];
     const panes = await launchTmux(
       mock,
-      'paw-myapp',
+      'fleet-myapp',
       '/home/user/myapp',
       worktrees,
       [],
@@ -429,7 +429,7 @@ describe('launchTmux', () => {
 
   it('skips tasks that already have a live pane (by paneId)', async () => {
     const mock = createMockTmux();
-    mock.createSession('paw-myapp', '/tmp');
+    mock.createSession('fleet-myapp', '/tmp');
     // %10 is alive in tmux
     mock.listPanes = (sessionName: string) => {
       mock.calls.push({ method: 'listPanes', args: [sessionName] });
@@ -437,9 +437,9 @@ describe('launchTmux', () => {
     };
     mock.calls.length = 0;
 
-    const existingPanes: PawPane[] = [
+    const existingPanes: FleetPane[] = [
       {
-        id: 'paw-1',
+        id: 'fleet-1',
         paneId: '%10',
         taskName: 'auth',
         worktreePath: '/tmp/wt-auth',
@@ -452,7 +452,7 @@ describe('launchTmux', () => {
     ];
     const panes = await launchTmux(
       mock,
-      'paw-myapp',
+      'fleet-myapp',
       '/home/user/myapp',
       worktrees,
       existingPanes,
@@ -468,7 +468,7 @@ describe('launchTmux', () => {
 
   it('relaunches task when its saved pane no longer exists in tmux', async () => {
     const mock = createMockTmux();
-    mock.createSession('paw-myapp', '/tmp');
+    mock.createSession('fleet-myapp', '/tmp');
     // %10 is NOT in the live pane list (killed)
     mock.listPanes = (sessionName: string) => {
       mock.calls.push({ method: 'listPanes', args: [sessionName] });
@@ -476,9 +476,9 @@ describe('launchTmux', () => {
     };
     mock.calls.length = 0;
 
-    const existingPanes: PawPane[] = [
+    const existingPanes: FleetPane[] = [
       {
-        id: 'paw-1',
+        id: 'fleet-1',
         paneId: '%10',
         taskName: 'auth',
         worktreePath: '/tmp/wt-auth',
@@ -488,7 +488,7 @@ describe('launchTmux', () => {
     const worktrees = [{ taskName: 'auth', worktreePath: '/tmp/wt-auth', agentCommand: 'claude' }];
     const panes = await launchTmux(
       mock,
-      'paw-myapp',
+      'fleet-myapp',
       '/home/user/myapp',
       worktrees,
       existingPanes,
@@ -508,7 +508,7 @@ describe('launchTmux', () => {
     // No existingPanes argument — should behave as before
     const panes = await launchTmux(
       mock,
-      'paw-myapp',
+      'fleet-myapp',
       '/home/user/myapp',
       worktrees,
       [],
@@ -522,12 +522,12 @@ describe('launchTmux', () => {
 describe('TmuxService listSessions', () => {
   it('returns parsed session names from tmux output', () => {
     const responses = new Map([
-      ['list-sessions -F #{session_name}', 'paw-myapp\npaw-other\ndefault'],
+      ['list-sessions -F #{session_name}', 'fleet-myapp\nfleet-other\ndefault'],
     ]);
     const { fn } = createMockExec(responses);
     const svc = new TmuxService(fn);
     const sessions = svc.listSessions();
-    expect(sessions).toEqual(['paw-myapp', 'paw-other', 'default']);
+    expect(sessions).toEqual(['fleet-myapp', 'fleet-other', 'default']);
   });
 
   it('returns empty array when tmux is not running', () => {
@@ -568,11 +568,18 @@ describe('TmuxService capturePaneContent', () => {
 });
 
 describe('TmuxService setPaneProject', () => {
-  it('calls set-option with @paw_project', () => {
+  it('calls set-option with @fleet_project', () => {
     const { fn, calls } = createMockExec();
     const svc = new TmuxService(fn);
     svc.setPaneProject('%5', '/home/user/myapp');
-    expect(calls[0]).toEqual(['set-option', '-p', '-t', '%5', '@paw_project', '/home/user/myapp']);
+    expect(calls[0]).toEqual([
+      'set-option',
+      '-p',
+      '-t',
+      '%5',
+      '@fleet_project',
+      '/home/user/myapp',
+    ]);
   });
 });
 
@@ -598,11 +605,11 @@ describe('TmuxService getCurrentPaneId', () => {
 
 describe('TmuxService getCurrentSessionName', () => {
   it('returns the current session name from tmux', () => {
-    const responses = new Map([['display-message -p #{session_name}', 'paw-myapp']]);
+    const responses = new Map([['display-message -p #{session_name}', 'fleet-myapp']]);
     const { fn, calls } = createMockExec(responses);
     const svc = new TmuxService(fn);
     const name = svc.getCurrentSessionName();
-    expect(name).toBe('paw-myapp');
+    expect(name).toBe('fleet-myapp');
     expect(calls[0]).toEqual(['display-message', '-p', '#{session_name}']);
   });
 });
@@ -638,20 +645,20 @@ describe('TmuxService pinSidebarLayout', () => {
   it('sets main-pane-width then selects main-vertical layout', () => {
     const { fn, calls } = createMockExec();
     const svc = new TmuxService(fn);
-    svc.pinSidebarLayout('paw-test', 40);
-    expect(calls[0]).toEqual(['set-window-option', '-t', 'paw-test', 'main-pane-width', '40']);
-    expect(calls[1]).toEqual(['select-layout', '-t', 'paw-test', 'main-vertical']);
+    svc.pinSidebarLayout('fleet-test', 40);
+    expect(calls[0]).toEqual(['set-window-option', '-t', 'fleet-test', 'main-pane-width', '40']);
+    expect(calls[1]).toEqual(['select-layout', '-t', 'fleet-test', 'main-vertical']);
   });
 });
 
 describe('createDetachedSession', () => {
   it('creates a tmux session and sends the agent command', async () => {
     const mock = createMockTmux();
-    await createDetachedSession(mock, 'paw-myapp-auth', '/tmp/wt-auth', 'claude', fastBeacon);
+    await createDetachedSession(mock, 'fleet-myapp-auth', '/tmp/wt-auth', 'claude', fastBeacon);
 
     const createCall = mock.calls.find((c) => c.method === 'createSession');
     expect(createCall).toBeDefined();
-    expect(createCall!.args).toEqual(['paw-myapp-auth', '/tmp/wt-auth']);
+    expect(createCall!.args).toEqual(['fleet-myapp-auth', '/tmp/wt-auth']);
 
     const sendCall = mock.calls.find((c) => c.method === 'sendKeys');
     expect(sendCall).toBeDefined();
@@ -660,29 +667,35 @@ describe('createDetachedSession', () => {
 
   it('sends keys to the session name (first pane)', async () => {
     const mock = createMockTmux();
-    await createDetachedSession(mock, 'paw-myapp-api', '/tmp/wt-api', 'claude --flag', fastBeacon);
+    await createDetachedSession(
+      mock,
+      'fleet-myapp-api',
+      '/tmp/wt-api',
+      'claude --flag',
+      fastBeacon,
+    );
 
     const sendCall = mock.calls.find((c) => c.method === 'sendKeys');
-    expect(sendCall!.args[0]).toBe('paw-myapp-api');
+    expect(sendCall!.args[0]).toBe('fleet-myapp-api');
   });
 });
 
 describe('killDetachedSession', () => {
   it('kills a session that exists', () => {
     const mock = createMockTmux();
-    mock.createSession('paw-myapp-auth', '/tmp');
+    mock.createSession('fleet-myapp-auth', '/tmp');
     mock.calls.length = 0;
 
-    killDetachedSession(mock, 'paw-myapp-auth');
+    killDetachedSession(mock, 'fleet-myapp-auth');
 
     const killCall = mock.calls.find((c) => c.method === 'killSession');
     expect(killCall).toBeDefined();
-    expect(killCall!.args).toEqual(['paw-myapp-auth']);
+    expect(killCall!.args).toEqual(['fleet-myapp-auth']);
   });
 
   it('does nothing when session does not exist', () => {
     const mock = createMockTmux();
-    killDetachedSession(mock, 'paw-myapp-nonexistent');
+    killDetachedSession(mock, 'fleet-myapp-nonexistent');
 
     const killCalls = mock.calls.filter((c) => c.method === 'killSession');
     expect(killCalls).toHaveLength(0);
@@ -693,30 +706,30 @@ describe('listDetachedSessions', () => {
   it('returns session names matching the prefix', () => {
     const mock = createMockTmux();
     // Override sessionExists to simulate listing
-    mock.createSession('paw-myapp-auth', '/tmp');
-    mock.createSession('paw-myapp-api', '/tmp');
+    mock.createSession('fleet-myapp-auth', '/tmp');
+    mock.createSession('fleet-myapp-api', '/tmp');
     mock.calls.length = 0;
 
-    const names = ['paw-myapp-auth', 'paw-myapp-api'];
+    const names = ['fleet-myapp-auth', 'fleet-myapp-api'];
     const result = listDetachedSessions(mock, names);
 
-    expect(result).toEqual(['paw-myapp-auth', 'paw-myapp-api']);
+    expect(result).toEqual(['fleet-myapp-auth', 'fleet-myapp-api']);
   });
 
   it('filters out sessions that no longer exist', () => {
     const mock = createMockTmux();
-    mock.createSession('paw-myapp-auth', '/tmp');
+    mock.createSession('fleet-myapp-auth', '/tmp');
     mock.calls.length = 0;
 
-    const names = ['paw-myapp-auth', 'paw-myapp-gone'];
+    const names = ['fleet-myapp-auth', 'fleet-myapp-gone'];
     const result = listDetachedSessions(mock, names);
 
-    expect(result).toEqual(['paw-myapp-auth']);
+    expect(result).toEqual(['fleet-myapp-auth']);
   });
 
   it('returns empty array when no sessions exist', () => {
     const mock = createMockTmux();
-    const result = listDetachedSessions(mock, ['paw-myapp-auth']);
+    const result = listDetachedSessions(mock, ['fleet-myapp-auth']);
     expect(result).toEqual([]);
   });
 });
@@ -728,13 +741,13 @@ describe('launchDetached', () => {
       { taskName: 'auth', worktreePath: '/tmp/wt-auth', agentCommand: 'claude' },
       { taskName: 'api', worktreePath: '/tmp/wt-api', agentCommand: 'claude' },
     ];
-    const agents = await launchDetached(mock, 'paw-myapp', worktrees, [], fastBeacon);
+    const agents = await launchDetached(mock, 'fleet-myapp', worktrees, [], fastBeacon);
     expect(agents).toHaveLength(2);
 
     const createCalls = mock.calls.filter((c) => c.method === 'createSession');
     expect(createCalls).toHaveLength(2);
-    expect(createCalls[0]!.args[0]).toBe('paw-myapp-auth');
-    expect(createCalls[1]!.args[0]).toBe('paw-myapp-api');
+    expect(createCalls[0]!.args[0]).toBe('fleet-myapp-auth');
+    expect(createCalls[1]!.args[0]).toBe('fleet-myapp-api');
   });
 
   it('sends agent command into each session', async () => {
@@ -742,7 +755,7 @@ describe('launchDetached', () => {
     const worktrees = [
       { taskName: 'auth', worktreePath: '/tmp/wt-auth', agentCommand: 'claude --resume' },
     ];
-    await launchDetached(mock, 'paw-myapp', worktrees, [], fastBeacon);
+    await launchDetached(mock, 'fleet-myapp', worktrees, [], fastBeacon);
 
     const sendCall = mock.calls.find((c) => c.method === 'sendKeys');
     expect(sendCall).toBeDefined();
@@ -759,10 +772,10 @@ describe('launchDetached', () => {
         branchName: 'feat-auth',
       },
     ];
-    const agents = await launchDetached(mock, 'paw-myapp', worktrees, [], fastBeacon);
+    const agents = await launchDetached(mock, 'fleet-myapp', worktrees, [], fastBeacon);
     expect(agents[0]).toMatchObject({
-      id: 'paw-1',
-      sessionName: 'paw-myapp-auth',
+      id: 'fleet-1',
+      sessionName: 'fleet-myapp-auth',
       taskName: 'auth',
       worktreePath: '/tmp/wt-auth',
       branchName: 'feat-auth',
@@ -771,13 +784,13 @@ describe('launchDetached', () => {
 
   it('skips tasks that already have a live session', async () => {
     const mock = createMockTmux();
-    mock.createSession('paw-myapp-auth', '/tmp');
+    mock.createSession('fleet-myapp-auth', '/tmp');
     mock.calls.length = 0;
 
     const existing: DetachedAgent[] = [
       {
-        id: 'paw-1',
-        sessionName: 'paw-myapp-auth',
+        id: 'fleet-1',
+        sessionName: 'fleet-myapp-auth',
         taskName: 'auth',
         worktreePath: '/tmp/wt-auth',
         branchName: '',
@@ -787,7 +800,7 @@ describe('launchDetached', () => {
       { taskName: 'auth', worktreePath: '/tmp/wt-auth', agentCommand: 'claude' },
       { taskName: 'api', worktreePath: '/tmp/wt-api', agentCommand: 'claude' },
     ];
-    const agents = await launchDetached(mock, 'paw-myapp', worktrees, existing, fastBeacon);
+    const agents = await launchDetached(mock, 'fleet-myapp', worktrees, existing, fastBeacon);
 
     expect(agents).toHaveLength(1);
     expect(agents[0]!.taskName).toBe('api');
@@ -799,15 +812,15 @@ describe('launchDetached', () => {
 
     const existing: DetachedAgent[] = [
       {
-        id: 'paw-1',
-        sessionName: 'paw-myapp-auth',
+        id: 'fleet-1',
+        sessionName: 'fleet-myapp-auth',
         taskName: 'auth',
         worktreePath: '/tmp/wt-auth',
         branchName: '',
       },
     ];
     const worktrees = [{ taskName: 'auth', worktreePath: '/tmp/wt-auth', agentCommand: 'claude' }];
-    const agents = await launchDetached(mock, 'paw-myapp', worktrees, existing, fastBeacon);
+    const agents = await launchDetached(mock, 'fleet-myapp', worktrees, existing, fastBeacon);
 
     expect(agents).toHaveLength(1);
     expect(agents[0]!.taskName).toBe('auth');
@@ -817,26 +830,26 @@ describe('launchDetached', () => {
 describe('checkAgentLiveness', () => {
   it('checks detached sessions via sessionExists', () => {
     const mock = createMockTmux();
-    mock.createSession('paw-myapp-auth', '/tmp');
+    mock.createSession('fleet-myapp-auth', '/tmp');
     mock.calls.length = 0;
 
-    const config: PawPaneConfig = {
+    const config: FleetPaneConfig = {
       mode: 'detached',
-      sessionName: 'paw-myapp',
+      sessionName: 'fleet-myapp',
       repoRoot: '/home/user/myapp',
       orchestratorPaneId: '',
       panes: [],
       detached: [
         {
-          id: 'paw-1',
-          sessionName: 'paw-myapp-auth',
+          id: 'fleet-1',
+          sessionName: 'fleet-myapp-auth',
           taskName: 'auth',
           worktreePath: '/tmp/wt-auth',
           branchName: '',
         },
         {
-          id: 'paw-2',
-          sessionName: 'paw-myapp-api',
+          id: 'fleet-2',
+          sessionName: 'fleet-myapp-api',
           taskName: 'api',
           worktreePath: '/tmp/wt-api',
           branchName: '',
@@ -856,21 +869,21 @@ describe('checkAgentLiveness', () => {
     const mock = createMockTmux();
     mock.calls.length = 0;
 
-    const config: PawPaneConfig = {
+    const config: FleetPaneConfig = {
       mode: 'attached',
-      sessionName: 'paw-myapp',
+      sessionName: 'fleet-myapp',
       repoRoot: '/home/user/myapp',
       orchestratorPaneId: '%0',
       panes: [
         {
-          id: 'paw-1',
+          id: 'fleet-1',
           paneId: '%1',
           taskName: 'auth',
           worktreePath: '/tmp/wt-auth',
           branchName: '',
         },
         {
-          id: 'paw-2',
+          id: 'fleet-2',
           paneId: '%2',
           taskName: 'api',
           worktreePath: '/tmp/wt-api',
@@ -891,13 +904,13 @@ describe('checkAgentLiveness', () => {
   it('defaults to attached mode when mode field is missing', () => {
     const mock = createMockTmux();
 
-    const config: PawPaneConfig = {
-      sessionName: 'paw-myapp',
+    const config: FleetPaneConfig = {
+      sessionName: 'fleet-myapp',
       repoRoot: '/home/user/myapp',
       orchestratorPaneId: '%0',
       panes: [
         {
-          id: 'paw-1',
+          id: 'fleet-1',
           paneId: '%1',
           taskName: 'auth',
           worktreePath: '/tmp/wt-auth',
@@ -915,9 +928,9 @@ describe('checkAgentLiveness', () => {
   it('returns empty array when no agents are registered', () => {
     const mock = createMockTmux();
 
-    const config: PawPaneConfig = {
+    const config: FleetPaneConfig = {
       mode: 'detached',
-      sessionName: 'paw-myapp',
+      sessionName: 'fleet-myapp',
       repoRoot: '/home/user/myapp',
       orchestratorPaneId: '',
       panes: [],
@@ -938,7 +951,7 @@ describe('waitForTuiReady', () => {
       return 'Claude Code v1.0\n❯';
     };
 
-    const ready = await waitForTuiReady(mock, 'paw-test', 5000, 10);
+    const ready = await waitForTuiReady(mock, 'fleet-test', 5000, 10);
     expect(ready).toBe(true);
   });
 
@@ -953,9 +966,9 @@ describe('waitForTuiReady', () => {
       // Eventually the TUI renders with the ❯ prompt
       return 'Claude Code v1.0\n❯';
     };
-    mock.createSession('paw-test', '/tmp');
+    mock.createSession('fleet-test', '/tmp');
 
-    const ready = await waitForTuiReady(mock, 'paw-test', 5000, 10);
+    const ready = await waitForTuiReady(mock, 'fleet-test', 5000, 10);
     expect(ready).toBe(true);
     expect(callCount).toBe(3);
   });
@@ -968,9 +981,9 @@ describe('waitForTuiReady', () => {
       callCount++;
       return callCount >= 3 ? 'Welcome!\n❯' : null;
     };
-    mock.createSession('paw-test', '/tmp');
+    mock.createSession('fleet-test', '/tmp');
 
-    const ready = await waitForTuiReady(mock, 'paw-test', 5000, 10);
+    const ready = await waitForTuiReady(mock, 'fleet-test', 5000, 10);
     expect(ready).toBe(true);
     expect(callCount).toBe(3);
   });
@@ -981,9 +994,9 @@ describe('waitForTuiReady', () => {
       mock.calls.push({ method: 'capturePaneContent', args: [session] });
       return null;
     };
-    mock.createSession('paw-test', '/tmp');
+    mock.createSession('fleet-test', '/tmp');
 
-    const ready = await waitForTuiReady(mock, 'paw-test', 50, 10);
+    const ready = await waitForTuiReady(mock, 'fleet-test', 50, 10);
     expect(ready).toBe(false);
   });
 
@@ -995,7 +1008,7 @@ describe('waitForTuiReady', () => {
     };
     // Session doesn't exist — sessionExists returns false
 
-    const ready = await waitForTuiReady(mock, 'paw-nonexistent', 5000, 10);
+    const ready = await waitForTuiReady(mock, 'fleet-nonexistent', 5000, 10);
     expect(ready).toBe(false);
   });
 });
@@ -1018,7 +1031,7 @@ describe('isTuiPromptReady', () => {
   it('rejects plain shell output without prompt', () => {
     expect(isTuiPromptReady('$ claude --dangerously-skip-permissions')).toBe(false);
     expect(isTuiPromptReady('Loading...')).toBe(false);
-    expect(isTuiPromptReady('npm info paw@0.1.0')).toBe(false);
+    expect(isTuiPromptReady('npm info fleet@0.1.0')).toBe(false);
   });
 
   it('rejects > in the middle of a line (not a prompt)', () => {
@@ -1038,20 +1051,20 @@ describe('sendBeacon', () => {
 
   it('sends beacon message and follow-up Enters after TUI is ready', async () => {
     const mock = createMockTmux();
-    mock.createSession('paw-test', '/tmp');
+    mock.createSession('fleet-test', '/tmp');
     mock.capturePaneContent = (session: string) => {
       mock.calls.push({ method: 'capturePaneContent', args: [session] });
       return 'Claude Code output — agent is working\n❯';
     };
 
-    const result = await sendBeacon(mock, 'paw-test', fastOpts);
+    const result = await sendBeacon(mock, 'fleet-test', fastOpts);
     expect(result).toBe(true);
 
     const sendCalls = mock.calls.filter((c) => c.method === 'sendKeys');
     // Beacon message + 2 follow-up empty Enters (minimum)
     expect(sendCalls.length).toBeGreaterThanOrEqual(3);
     expect(sendCalls[0]!.args[1]).toBe(
-      'Run `paw shortcut build-task` and follow its instructions.',
+      'Run `fleet shortcut build-task` and follow its instructions.',
     );
     // Follow-up Enters are empty strings
     expect(sendCalls[1]!.args[1]).toBe('');
@@ -1062,13 +1075,13 @@ describe('sendBeacon', () => {
     const mock = createMockTmux();
     mock.capturePaneContent = () => null;
 
-    const result = await sendBeacon(mock, 'paw-nonexistent', fastOpts);
+    const result = await sendBeacon(mock, 'fleet-nonexistent', fastOpts);
     expect(result).toBe(false);
   });
 
   it('retries beacon when welcome screen is still showing', async () => {
     const mock = createMockTmux();
-    mock.createSession('paw-test', '/tmp');
+    mock.createSession('fleet-test', '/tmp');
 
     let captureCount = 0;
     mock.capturePaneContent = (session: string) => {
@@ -1079,7 +1092,7 @@ describe('sendBeacon', () => {
       return 'Agent is working on task\n❯';
     };
 
-    const result = await sendBeacon(mock, 'paw-test', fastOpts);
+    const result = await sendBeacon(mock, 'fleet-test', fastOpts);
     expect(result).toBe(true);
 
     const sendCalls = mock.calls.filter((c) => c.method === 'sendKeys');

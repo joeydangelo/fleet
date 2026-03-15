@@ -5,20 +5,20 @@ import { resolve } from 'node:path';
 
 import { readDoc, listDocs } from '../src/lib/docs.js';
 import { writeManifest } from '../src/lib/manifest.js';
-import type { PawManifest } from '../src/lib/manifest.js';
+import type { FleetManifest } from '../src/lib/manifest.js';
 import { makeTempDir } from './helpers/temp.js';
 
-function writeConfig(repoRoot: string, config: PawManifest): void {
-  mkdirSync(resolve(repoRoot, '.paw'), { recursive: true });
+function writeConfig(repoRoot: string, config: FleetManifest): void {
+  mkdirSync(resolve(repoRoot, '.fleet'), { recursive: true });
   writeManifest(repoRoot, config);
 }
 
-describe('docs (single .paw/docs/ directory)', () => {
+describe('docs (single .fleet/docs/ directory)', () => {
   let repoRoot: string;
 
   beforeEach(() => {
     repoRoot = makeTempDir();
-    vi.stubEnv('PAW_REPO_ROOT', repoRoot);
+    vi.stubEnv('FLEET_REPO_ROOT', repoRoot);
   });
 
   afterEach(() => {
@@ -26,8 +26,8 @@ describe('docs (single .paw/docs/ directory)', () => {
     vi.unstubAllEnvs();
   });
 
-  it('readDoc returns doc from .paw/docs/{category}/', () => {
-    const docsDir = resolve(repoRoot, '.paw', 'docs', 'shortcuts');
+  it('readDoc returns doc from .fleet/docs/{category}/', () => {
+    const docsDir = resolve(repoRoot, '.fleet', 'docs', 'shortcuts');
     mkdirSync(docsDir, { recursive: true });
     writeFileSync(
       resolve(docsDir, 'my-shortcut.md'),
@@ -41,18 +41,18 @@ describe('docs (single .paw/docs/ directory)', () => {
   });
 
   it('readDoc returns null when doc does not exist', () => {
-    mkdirSync(resolve(repoRoot, '.paw', 'docs', 'shortcuts'), { recursive: true });
+    mkdirSync(resolve(repoRoot, '.fleet', 'docs', 'shortcuts'), { recursive: true });
     const doc = readDoc('shortcuts', 'nonexistent');
     expect(doc).toBeNull();
   });
 
-  it('readDoc returns null when .paw/docs/ does not exist', () => {
+  it('readDoc returns null when .fleet/docs/ does not exist', () => {
     const doc = readDoc('shortcuts', 'anything');
     expect(doc).toBeNull();
   });
 
-  it('listDocs lists all docs in .paw/docs/{category}/', () => {
-    const docsDir = resolve(repoRoot, '.paw', 'docs', 'shortcuts');
+  it('listDocs lists all docs in .fleet/docs/{category}/', () => {
+    const docsDir = resolve(repoRoot, '.fleet', 'docs', 'shortcuts');
     mkdirSync(docsDir, { recursive: true });
     writeFileSync(
       resolve(docsDir, 'alpha.md'),
@@ -73,7 +73,7 @@ describe('docs (single .paw/docs/ directory)', () => {
   });
 
   it('listDocs returns empty array when category directory missing', () => {
-    mkdirSync(resolve(repoRoot, '.paw', 'docs'), { recursive: true });
+    mkdirSync(resolve(repoRoot, '.fleet', 'docs'), { recursive: true });
     const docs = listDocs('shortcuts');
     expect(docs).toHaveLength(0);
   });
@@ -84,7 +84,7 @@ describe('docs (lookup_path)', () => {
 
   beforeEach(() => {
     repoRoot = makeTempDir();
-    vi.stubEnv('PAW_REPO_ROOT', repoRoot);
+    vi.stubEnv('FLEET_REPO_ROOT', repoRoot);
   });
 
   afterEach(() => {
@@ -94,7 +94,7 @@ describe('docs (lookup_path)', () => {
 
   it('readDoc uses lookup_path in order — first match wins', () => {
     const dir1 = resolve(repoRoot, 'custom', 'shortcuts');
-    const dir2 = resolve(repoRoot, '.paw', 'docs', 'shortcuts');
+    const dir2 = resolve(repoRoot, '.fleet', 'docs', 'shortcuts');
     mkdirSync(dir1, { recursive: true });
     mkdirSync(dir2, { recursive: true });
 
@@ -104,7 +104,7 @@ describe('docs (lookup_path)', () => {
     writeConfig(repoRoot, {
       docs_cache: {
         files: {},
-        lookup_path: ['custom/shortcuts', '.paw/docs/shortcuts'],
+        lookup_path: ['custom/shortcuts', '.fleet/docs/shortcuts'],
       },
       settings: { doc_auto_sync_hours: 24 },
     });
@@ -116,7 +116,7 @@ describe('docs (lookup_path)', () => {
 
   it('readDoc falls back to later paths when first has no match', () => {
     const dir1 = resolve(repoRoot, 'custom', 'shortcuts');
-    const dir2 = resolve(repoRoot, '.paw', 'docs', 'shortcuts');
+    const dir2 = resolve(repoRoot, '.fleet', 'docs', 'shortcuts');
     mkdirSync(dir1, { recursive: true });
     mkdirSync(dir2, { recursive: true });
 
@@ -125,7 +125,7 @@ describe('docs (lookup_path)', () => {
     writeConfig(repoRoot, {
       docs_cache: {
         files: {},
-        lookup_path: ['custom/shortcuts', '.paw/docs/shortcuts'],
+        lookup_path: ['custom/shortcuts', '.fleet/docs/shortcuts'],
       },
       settings: { doc_auto_sync_hours: 24 },
     });
@@ -137,7 +137,7 @@ describe('docs (lookup_path)', () => {
 
   it('listDocs deduplicates by name — first occurrence wins (shadowing)', () => {
     const dir1 = resolve(repoRoot, 'custom', 'shortcuts');
-    const dir2 = resolve(repoRoot, '.paw', 'docs', 'shortcuts');
+    const dir2 = resolve(repoRoot, '.fleet', 'docs', 'shortcuts');
     mkdirSync(dir1, { recursive: true });
     mkdirSync(dir2, { recursive: true });
 
@@ -160,7 +160,7 @@ describe('docs (lookup_path)', () => {
     writeConfig(repoRoot, {
       docs_cache: {
         files: {},
-        lookup_path: ['custom/shortcuts', '.paw/docs/shortcuts'],
+        lookup_path: ['custom/shortcuts', '.fleet/docs/shortcuts'],
       },
       settings: { doc_auto_sync_hours: 24 },
     });
@@ -173,8 +173,8 @@ describe('docs (lookup_path)', () => {
   });
 
   it('listDocs filters lookup_path by category', () => {
-    const shortcutsDir = resolve(repoRoot, '.paw', 'docs', 'shortcuts');
-    const guidelinesDir = resolve(repoRoot, '.paw', 'docs', 'guidelines');
+    const shortcutsDir = resolve(repoRoot, '.fleet', 'docs', 'shortcuts');
+    const guidelinesDir = resolve(repoRoot, '.fleet', 'docs', 'guidelines');
     mkdirSync(shortcutsDir, { recursive: true });
     mkdirSync(guidelinesDir, { recursive: true });
 
@@ -192,7 +192,7 @@ describe('docs (lookup_path)', () => {
     writeConfig(repoRoot, {
       docs_cache: {
         files: {},
-        lookup_path: ['.paw/docs/shortcuts', '.paw/docs/guidelines'],
+        lookup_path: ['.fleet/docs/shortcuts', '.fleet/docs/guidelines'],
       },
       settings: { doc_auto_sync_hours: 24 },
     });
@@ -207,7 +207,7 @@ describe('docs (lookup_path)', () => {
   });
 
   it('falls back to default path when no lookup_path configured', () => {
-    const docsDir = resolve(repoRoot, '.paw', 'docs', 'shortcuts');
+    const docsDir = resolve(repoRoot, '.fleet', 'docs', 'shortcuts');
     mkdirSync(docsDir, { recursive: true });
     writeFileSync(resolve(docsDir, 'test.md'), '# Test', 'utf-8');
 

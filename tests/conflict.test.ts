@@ -20,7 +20,7 @@ import {
 } from '../src/lib/git.js';
 import { createSession } from '../src/lib/session.js';
 import { removeWorktree } from '../src/lib/git.js';
-import type { PawConfig } from '../src/lib/config.js';
+import type { FleetConfig } from '../src/lib/config.js';
 import { makeTempDir } from './helpers/temp.js';
 
 function gitInit(dir: string): void {
@@ -111,7 +111,7 @@ describe('generateConflictBrief', () => {
   let repoDir: string;
   let worktreePaths: string[];
 
-  const config: PawConfig = {
+  const config: FleetConfig = {
     base: 'main',
     target: 'feature/dash',
     tasks: {
@@ -160,7 +160,7 @@ describe('generateConflictBrief', () => {
     worktreePaths = worktrees.map((w) => w.worktreePath);
 
     // Init sync state
-    const state = initSyncState(config.target, Object.keys(config.tasks), 'paw.yaml');
+    const state = initSyncState(config.target, Object.keys(config.tasks), 'fleet.yaml');
     const withMerges = {
       ...state,
       merges: initMergeState(Object.keys(config.tasks)),
@@ -227,7 +227,7 @@ describe('generateConflictBrief', () => {
     const worktrees = createSession(config, repoDir);
     worktreePaths = worktrees.map((w) => w.worktreePath);
 
-    const state = initSyncState(config.target, Object.keys(config.tasks), 'paw.yaml');
+    const state = initSyncState(config.target, Object.keys(config.tasks), 'fleet.yaml');
     const withMerges = {
       ...state,
       merges: initMergeState(Object.keys(config.tasks)),
@@ -276,7 +276,7 @@ describe('generateConflictBrief', () => {
     const worktrees = createSession(config, repoDir);
     worktreePaths = worktrees.map((w) => w.worktreePath);
 
-    const state = initSyncState(config.target, Object.keys(config.tasks), 'paw.yaml');
+    const state = initSyncState(config.target, Object.keys(config.tasks), 'fleet.yaml');
     const withMerges = {
       ...state,
       merges: initMergeState(Object.keys(config.tasks)),

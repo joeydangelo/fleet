@@ -31,7 +31,7 @@ describe('appendMessage / readMessages', () => {
     repoDir = makeTempDir();
     gitInit(repoDir);
     initSyncWorktree(repoDir);
-    const state = initSyncState('feature/dash', ['auth', 'api'], 'paw.yaml');
+    const state = initSyncState('feature/dash', ['auth', 'api'], 'fleet.yaml');
     writeSyncState(state, repoDir);
   });
 
@@ -161,7 +161,7 @@ describe('Message thread field', () => {
     repoDir = makeTempDir();
     gitInit(repoDir);
     initSyncWorktree(repoDir);
-    const state = initSyncState('feature/dash', ['auth', 'api'], 'paw.yaml');
+    const state = initSyncState('feature/dash', ['auth', 'api'], 'fleet.yaml');
     writeSyncState(state, repoDir);
   });
 
@@ -200,7 +200,7 @@ describe('readMessagesForTask', () => {
     repoDir = makeTempDir();
     gitInit(repoDir);
     initSyncWorktree(repoDir);
-    const state = initSyncState('feature/dash', ['auth', 'api', 'dashboard'], 'paw.yaml');
+    const state = initSyncState('feature/dash', ['auth', 'api', 'dashboard'], 'fleet.yaml');
     writeSyncState(state, repoDir);
   });
 

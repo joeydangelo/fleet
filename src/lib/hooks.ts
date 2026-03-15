@@ -1,4 +1,4 @@
-/** Claude Code hook installation for paw agent sessions. */
+/** Claude Code hook installation for fleet agent sessions. */
 
 import { existsSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
 import { writeFileSync } from 'atomically';
@@ -6,10 +6,10 @@ import { resolve } from 'node:path';
 import { success, toErrorMessage } from './output.js';
 import { INBOX_DEBOUNCE_S } from './constants.js';
 
-/** Wrapper script that resolves PATH and ensures paw is installed before running paw commands. */
-const PAW_SESSION_SCRIPT = `#!/bin/bash
-# Ensure paw CLI is installed and run paw commands for Claude Code sessions
-# Installed by: paw init
+/** Wrapper script that resolves PATH and ensures fleet is installed before running fleet commands. */
+const FLEET_SESSION_SCRIPT = `#!/bin/bash
+# Ensure fleet CLI is installed and run fleet commands for Claude Code sessions
+# Installed by: fleet init
 # This script runs on SessionStart and PreCompact
 
 # Get npm global bin directory (if npm is available)
@@ -24,72 +24,72 @@ fi
 # Add common binary locations to PATH
 export PATH="$NPM_GLOBAL_BIN:$HOME/.local/bin:$HOME/bin:/usr/local/bin:$PATH"
 
-# Function to ensure paw is available
-ensure_paw() {
-    if command -v paw &> /dev/null; then
+# Function to ensure fleet is available
+ensure_fleet() {
+    if command -v fleet &> /dev/null; then
         return 0
     fi
 
-    echo "[paw] CLI not found, installing..." >&2
+    echo "[fleet] CLI not found, installing..." >&2
 
     if command -v npm &> /dev/null; then
-        npm install -g get-paw 2>/dev/null || {
+        npm install -g get-fleet 2>/dev/null || {
             mkdir -p ~/.local/bin
-            npm install --prefix ~/.local get-paw
-            if [ -f ~/.local/node_modules/.bin/paw ]; then
-                ln -sf ~/.local/node_modules/.bin/paw ~/.local/bin/paw
+            npm install --prefix ~/.local get-fleet
+            if [ -f ~/.local/node_modules/.bin/fleet ]; then
+                ln -sf ~/.local/node_modules/.bin/fleet ~/.local/bin/fleet
             fi
         }
     elif command -v pnpm &> /dev/null; then
-        pnpm add -g get-paw
+        pnpm add -g get-fleet
     elif command -v yarn &> /dev/null; then
-        yarn global add get-paw
+        yarn global add get-fleet
     else
-        echo "[paw] ERROR: No package manager found (npm, pnpm, or yarn required)" >&2
-        echo "[paw] Please install Node.js and npm, then run: npm install -g get-paw" >&2
+        echo "[fleet] ERROR: No package manager found (npm, pnpm, or yarn required)" >&2
+        echo "[fleet] Please install Node.js and npm, then run: npm install -g get-fleet" >&2
         return 1
     fi
 
-    if command -v paw &> /dev/null; then
+    if command -v fleet &> /dev/null; then
         return 0
     else
         for dir in "$NPM_GLOBAL_BIN" ~/.local/bin ~/.local/node_modules/.bin /usr/local/bin; do
-            if [ -n "$dir" ] && [ -x "$dir/paw" ]; then
+            if [ -n "$dir" ] && [ -x "$dir/fleet" ]; then
                 export PATH="$dir:$PATH"
                 return 0
             fi
         done
-        echo "[paw] Could not locate paw after installation" >&2
+        echo "[fleet] Could not locate fleet after installation" >&2
         return 1
     fi
 }
 
 # Main
-ensure_paw || exit 1
+ensure_fleet || exit 1
 
-# Reviewers get context via their prompt, not paw prime
-if [ "$PAW_ROLE" = "reviewer" ]; then
+# Reviewers get context via their prompt, not fleet prime
+if [ "$FLEET_ROLE" = "reviewer" ]; then
   exit 0
 fi
 
-# Run paw prime with any passed arguments (e.g., --brief for PreCompact)
-paw prime "$@"
+# Run fleet prime with any passed arguments (e.g., --brief for PreCompact)
+fleet prime "$@"
 
 # Signal that session hooks are complete — sendBeacon waits for this file
-mkdir -p .paw/run
-touch .paw/run/.session-ready
+mkdir -p .fleet/run
+touch .fleet/run/.session-ready
 `;
 
-/** PreToolUse hook that blocks dangerous commands and sync state access in paw worktrees. */
-const PAW_GUARD_SCRIPT = `#!/bin/bash
-# Block dangerous commands and sync state access in paw worktrees
-# Installed by: paw init
+/** PreToolUse hook that blocks dangerous commands and sync state access in fleet worktrees. */
+const FLEET_GUARD_SCRIPT = `#!/bin/bash
+# Block dangerous commands and sync state access in fleet worktrees
+# Installed by: fleet init
 # Fires on PreToolUse:Bash|Edit|Write, returns permissionDecision:"deny" to prevent execution
 
 input=$(cat)
 
 # Only guard worktrees with active tasks
-if ! ls .paw/tasks/*.md 1>/dev/null 2>&1; then
+if ! ls .fleet/tasks/*.md 1>/dev/null 2>&1; then
   exit 0
 fi
 
@@ -104,8 +104,8 @@ tool_name=$(echo "$input" | grep -o '"tool_name"[[:space:]]*:[[:space:]]*"[^"]*"
 # Edit/Write guard
 if [ "$tool_name" = "Edit" ] || [ "$tool_name" = "Write" ]; then
   file_path=$(echo "$input" | grep -o '"file_path"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"file_path"[[:space:]]*:[[:space:]]*"\\(.*\\)"/\\1/')
-  if echo "$file_path" | grep -qE '\\.paw/sync/|\\.paw\\\\\\\\sync\\\\\\\\'; then
-    deny "Do not edit files in .paw/sync/. The paw CLI manages all sync state. Manual edits corrupt coordination and break paw watch, paw merge, and paw go. Use paw commands (paw broadcast, paw send, paw reply, paw inbox, paw summary, paw review) instead."
+  if echo "$file_path" | grep -qE '\\.fleet/sync/|\\.fleet\\\\\\\\sync\\\\\\\\'; then
+    deny "Do not edit files in .fleet/sync/. The fleet CLI manages all sync state. Manual edits corrupt coordination and break fleet watch, fleet merge, and fleet go. Use fleet commands (fleet broadcast, fleet send, fleet reply, fleet inbox, fleet summary, fleet review) instead."
   fi
   exit 0
 fi
@@ -115,67 +115,67 @@ command=$(echo "$input" | grep -o '"command"[[:space:]]*:[[:space:]]*"[^"]*"' | 
 
 # Block git checkout / git switch (agents must stay on their task branch)
 if echo "$command" | grep -qE '\\bgit\\s+(checkout|switch)\\b'; then
-  deny "Do not switch branches in a paw worktree. You are on a dedicated task branch. Stay on it and commit your work here."
+  deny "Do not switch branches in a fleet worktree. You are on a dedicated task branch. Stay on it and commit your work here."
 fi
 
 # Block git merge (orchestrator's job)
 if echo "$command" | grep -qE '\\bgit\\s+merge\\b'; then
-  deny "Do not merge branches in a paw worktree. The orchestrator handles merging after all tasks are done."
+  deny "Do not merge branches in a fleet worktree. The orchestrator handles merging after all tasks are done."
 fi
 
 # Block git push (all work stays local until orchestrator merges)
 if echo "$command" | grep -qE '\\bgit\\s+push\\b'; then
-  deny "Do not push from a paw worktree. All work stays local until the orchestrator merges."
+  deny "Do not push from a fleet worktree. All work stays local until the orchestrator merges."
 fi
 
 # Block orchestrator commands from worktrees
-if echo "$command" | grep -qE '\\bpaw\\s+(up|down|merge|go|launch|init|watch|nudge)\\b'; then
-  deny "Do not run orchestrator commands from a paw worktree. These commands are for the orchestrator in the main repo."
+if echo "$command" | grep -qE '\\bfleet\\s+(up|down|merge|go|launch|init|watch|nudge)\\b'; then
+  deny "Do not run orchestrator commands from a fleet worktree. These commands are for the orchestrator in the main repo."
 fi
 
-# Block direct access to sync state (state.json, .paw/sync/, paw-sync branch)
-# The paw CLI manages all sync state. Manual edits corrupt coordination and break paw watch, merge, and go.
-if echo "$command" | grep -qE '\\.paw/sync/'; then
-  deny "Do not access .paw/sync/ directly. The paw CLI manages sync state. Manual edits corrupt coordination and break paw watch, paw merge, and paw go. Use paw commands (paw broadcast, paw send, paw reply, paw inbox, paw summary, paw review) instead."
+# Block direct access to sync state (state.json, .fleet/sync/, fleet-sync branch)
+# The fleet CLI manages all sync state. Manual edits corrupt coordination and break fleet watch, merge, and go.
+if echo "$command" | grep -qE '\\.fleet/sync/'; then
+  deny "Do not access .fleet/sync/ directly. The fleet CLI manages sync state. Manual edits corrupt coordination and break fleet watch, fleet merge, and fleet go. Use fleet commands (fleet broadcast, fleet send, fleet reply, fleet inbox, fleet summary, fleet review) instead."
 fi
-if echo "$command" | grep -qE '\\bgit\\s+(show|log|cat-file|diff).*paw-sync'; then
-  # Allow read-only git commands on paw-sync (paw-review-reminder uses git show)
+if echo "$command" | grep -qE '\\bgit\\s+(show|log|cat-file|diff).*fleet-sync'; then
+  # Allow read-only git commands on fleet-sync (fleet-review-reminder uses git show)
   :
-elif echo "$command" | grep -qE 'paw-sync'; then
-  deny "Do not interact with the paw-sync branch directly. The paw CLI manages this branch. Manual changes corrupt session state and break paw watch, paw merge, and paw go."
+elif echo "$command" | grep -qE 'fleet-sync'; then
+  deny "Do not interact with the fleet-sync branch directly. The fleet CLI manages this branch. Manual changes corrupt session state and break fleet watch, fleet merge, and fleet go."
 fi
 
 exit 0
 `;
 
 /** PreToolUse hook that blocks all tool calls when an agent has unanswered messages. */
-const PAW_INBOX_GATE_SCRIPT = `#!/bin/bash
+const FLEET_INBOX_GATE_SCRIPT = `#!/bin/bash
 # Block all tool calls when the agent has unanswered messages
-# Installed by: paw init
+# Installed by: fleet init
 # Fires on PreToolUse (all tools), uses exit 2 to block — works even in bypass-permissions mode
 
 input=$(cat)
 
 # Only gate worktrees with active tasks
-if ! ls .paw/tasks/*.md 1>/dev/null 2>&1; then
+if ! ls .fleet/tasks/*.md 1>/dev/null 2>&1; then
   exit 0
 fi
 
 # Read task name from the task file
-task_file=$(ls .paw/tasks/*.md 2>/dev/null | head -1)
+task_file=$(ls .fleet/tasks/*.md 2>/dev/null | head -1)
 task_name=$(basename "$task_file" .md)
 
 # Check for unanswered-message flag file
-FLAG_FILE=".paw/run/.unanswered-\${task_name}"
+FLAG_FILE=".fleet/run/.unanswered-\${task_name}"
 if [ ! -f "$FLAG_FILE" ]; then
   exit 0
 fi
 
-# Flag file exists — check if this is a paw Bash command (always allowed)
-# Extract the command value and check that a command segment starts with "paw "
+# Flag file exists — check if this is a fleet Bash command (always allowed)
+# Extract the command value and check that a command segment starts with "fleet "
 if echo "$input" | grep -q '"Bash"'; then
   cmd=$(echo "$input" | sed -n 's/.*"command"[[:space:]]*:[[:space:]]*"\\(.*\\)".*/\\1/p')
-  if echo "$cmd" | grep -qE '(^|&& |; )paw '; then
+  if echo "$cmd" | grep -qE '(^|&& |; )fleet '; then
     exit 0
   fi
 fi
@@ -187,27 +187,27 @@ exit 2
 `;
 
 /** PostToolUse hook that reminds agents to submit for review after committing. */
-const PAW_REVIEW_REMINDER_SCRIPT = `#!/bin/bash
+const FLEET_REVIEW_REMINDER_SCRIPT = `#!/bin/bash
 # Remind agents to submit for review after committing
-# Installed by: paw init
+# Installed by: fleet init
 # Fires on PostToolUse:Bash for git commit commands
 
 input=$(cat)
 
-# Remind about paw review on git commit
+# Remind about fleet review on git commit
 if [[ "$input" == *"git commit"* ]]; then
-  if ls .paw/tasks/*.md 1>/dev/null 2>&1; then
-    task_file=$(ls .paw/tasks/*.md 2>/dev/null | head -1)
+  if ls .fleet/tasks/*.md 1>/dev/null 2>&1; then
+    task_file=$(ls .fleet/tasks/*.md 2>/dev/null | head -1)
     task_name=$(basename "$task_file" .md)
 
     # Check if task is already in_review or done on sync branch
-    task_status=$(git show "paw-sync:state.json" 2>/dev/null | grep -A2 "\\"$task_name\\"" | grep -o '"status"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"\\([^"]*\\)"/\\1/')
+    task_status=$(git show "fleet-sync:state.json" 2>/dev/null | grep -A2 "\\"$task_name\\"" | grep -o '"status"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"\\([^"]*\\)"/\\1/')
     if [ "$task_status" != "in_review" ] && [ "$task_status" != "done" ]; then
       echo ""
-      echo "PAW REMINDER: You have not submitted for review yet."
+      echo "FLEET REMINDER: You have not submitted for review yet."
       echo "  After committing, follow the Publish phase:"
-      echo "    1. Write your summary: paw summary <<'EOF' ... EOF"
-      echo "    2. Submit for review: paw review"
+      echo "    1. Write your summary: fleet summary <<'EOF' ... EOF"
+      echo "    2. Submit for review: fleet review"
       echo ""
     fi
   fi
@@ -217,13 +217,13 @@ exit 0
 `;
 
 /** Inbox hook for SessionStart and UserPromptSubmit — no debounce, no heartbeat. */
-const PAW_INBOX_SCRIPT = `#!/bin/bash
+const FLEET_INBOX_SCRIPT = `#!/bin/bash
 # Check inbox for messages from orchestrator and other agents
-# Installed by: paw init
+# Installed by: fleet init
 # Fires on SessionStart and UserPromptSubmit
 
-# Only in paw worktrees with active tasks
-if ! ls .paw/tasks/*.md 1>/dev/null 2>&1; then
+# Only in fleet worktrees with active tasks
+if ! ls .fleet/tasks/*.md 1>/dev/null 2>&1; then
   exit 0
 fi
 
@@ -234,19 +234,19 @@ if [ -n "$NPM_PREFIX" ] && [ -d "$NPM_PREFIX/bin" ]; then
 fi
 export PATH="$HOME/.local/bin:$HOME/bin:/usr/local/bin:$PATH"
 
-paw inbox
+fleet inbox
 
 exit 0
 `;
 
 /** PostToolUse hook that records heartbeat and checks inbox on every tool use. */
-const PAW_HEARTBEAT_SCRIPT = `#!/bin/bash
+const FLEET_HEARTBEAT_SCRIPT = `#!/bin/bash
 # Record agent heartbeat and check inbox on every tool use
-# Installed by: paw init
+# Installed by: fleet init
 # Fires on PostToolUse (all tools)
 
-# Only in paw worktrees with active tasks
-if ! ls .paw/tasks/*.md 1>/dev/null 2>&1; then
+# Only in fleet worktrees with active tasks
+if ! ls .fleet/tasks/*.md 1>/dev/null 2>&1; then
   exit 0
 fi
 
@@ -258,10 +258,10 @@ fi
 export PATH="$HOME/.local/bin:$HOME/bin:/usr/local/bin:$PATH"
 
 # Record heartbeat (fast, fire-and-forget)
-paw heartbeat &
+fleet heartbeat &
 
 # Debounced inbox check (every 30s)
-LAST_CHECK_FILE=".paw/run/.last-inbox-check"
+LAST_CHECK_FILE=".fleet/run/.last-inbox-check"
 NOW=$(date +%s)
 LAST=0
 if [ -f "$LAST_CHECK_FILE" ]; then
@@ -270,26 +270,26 @@ fi
 ELAPSED=$((NOW - LAST))
 if [ "$ELAPSED" -ge ${INBOX_DEBOUNCE_S} ]; then
   echo "$NOW" > "$LAST_CHECK_FILE"
-  paw inbox
+  fleet inbox
 fi
 
 exit 0
 `;
 
 /** SessionStart hook that injects the role-specific SKILL.md content into agent context.
- * Detects role from .paw/tasks/ (builder) vs main repo (orchestrator).
+ * Detects role from .fleet/tasks/ (builder) vs main repo (orchestrator).
  * Stdout from SessionStart hooks is added directly to Claude's context —
  * the agent gets the full workflow without needing to invoke anything. */
-const PAW_SKILL_INJECT_SCRIPT = `#!/bin/bash
+const FLEET_SKILL_INJECT_SCRIPT = `#!/bin/bash
 # Inject role-specific skill content into agent context at session start
-# Installed by: paw init
+# Installed by: fleet init
 # Fires on SessionStart — ensures agents have their workflow in context
 
-# PAW_ROLE env var takes precedence (set by paw review for reviewer sessions)
-if [ -n "$PAW_ROLE" ]; then
-  ROLE="$PAW_ROLE"
-elif ls .paw/tasks/*.md 1>/dev/null 2>&1; then
-  TASK_COUNT=$(ls .paw/tasks/*.md 2>/dev/null | wc -l)
+# FLEET_ROLE env var takes precedence (set by fleet review for reviewer sessions)
+if [ -n "$FLEET_ROLE" ]; then
+  ROLE="$FLEET_ROLE"
+elif ls .fleet/tasks/*.md 1>/dev/null 2>&1; then
+  TASK_COUNT=$(ls .fleet/tasks/*.md 2>/dev/null | wc -l)
   if [ "$TASK_COUNT" -eq 1 ]; then
     ROLE="builder"
   else
@@ -310,13 +310,13 @@ sed '/^---$/,/^---$/d; /^<!-- DO NOT EDIT/,/-->/d' "$SKILL_FILE"
 exit 0
 `;
 
-const SCRIPT_RELATIVE = '.claude/scripts/paw-session.sh';
-const SKILL_INJECT_RELATIVE = '.claude/scripts/paw-skill-inject.sh';
-const GUARD_RELATIVE = '.claude/hooks/paw-guard.sh';
-const REMINDER_RELATIVE = '.claude/hooks/paw-review-reminder.sh';
-const HEARTBEAT_RELATIVE = '.claude/hooks/paw-heartbeat.sh';
-const INBOX_RELATIVE = '.claude/hooks/paw-inbox.sh';
-const GATE_RELATIVE = '.claude/hooks/paw-inbox-gate.sh';
+const SCRIPT_RELATIVE = '.claude/scripts/fleet-session.sh';
+const SKILL_INJECT_RELATIVE = '.claude/scripts/fleet-skill-inject.sh';
+const GUARD_RELATIVE = '.claude/hooks/fleet-guard.sh';
+const REMINDER_RELATIVE = '.claude/hooks/fleet-review-reminder.sh';
+const HEARTBEAT_RELATIVE = '.claude/hooks/fleet-heartbeat.sh';
+const INBOX_RELATIVE = '.claude/hooks/fleet-inbox.sh';
+const GATE_RELATIVE = '.claude/hooks/fleet-inbox-gate.sh';
 
 interface HookHandler {
   type: 'command';
@@ -332,25 +332,25 @@ interface MatcherGroup {
 export function installHooks(repoRoot: string): void {
   const scriptDir = resolve(repoRoot, '.claude', 'scripts');
   mkdirSync(scriptDir, { recursive: true });
-  writeFileSync(resolve(repoRoot, SCRIPT_RELATIVE), PAW_SESSION_SCRIPT, 'utf-8');
-  writeFileSync(resolve(repoRoot, SKILL_INJECT_RELATIVE), PAW_SKILL_INJECT_SCRIPT, 'utf-8');
+  writeFileSync(resolve(repoRoot, SCRIPT_RELATIVE), FLEET_SESSION_SCRIPT, 'utf-8');
+  writeFileSync(resolve(repoRoot, SKILL_INJECT_RELATIVE), FLEET_SKILL_INJECT_SCRIPT, 'utf-8');
 
   const hooksDir = resolve(repoRoot, '.claude', 'hooks');
   mkdirSync(hooksDir, { recursive: true });
-  writeFileSync(resolve(repoRoot, GUARD_RELATIVE), PAW_GUARD_SCRIPT, 'utf-8');
-  writeFileSync(resolve(repoRoot, REMINDER_RELATIVE), PAW_REVIEW_REMINDER_SCRIPT, 'utf-8');
-  writeFileSync(resolve(repoRoot, HEARTBEAT_RELATIVE), PAW_HEARTBEAT_SCRIPT, 'utf-8');
-  writeFileSync(resolve(repoRoot, INBOX_RELATIVE), PAW_INBOX_SCRIPT, 'utf-8');
-  writeFileSync(resolve(repoRoot, GATE_RELATIVE), PAW_INBOX_GATE_SCRIPT, 'utf-8');
+  writeFileSync(resolve(repoRoot, GUARD_RELATIVE), FLEET_GUARD_SCRIPT, 'utf-8');
+  writeFileSync(resolve(repoRoot, REMINDER_RELATIVE), FLEET_REVIEW_REMINDER_SCRIPT, 'utf-8');
+  writeFileSync(resolve(repoRoot, HEARTBEAT_RELATIVE), FLEET_HEARTBEAT_SCRIPT, 'utf-8');
+  writeFileSync(resolve(repoRoot, INBOX_RELATIVE), FLEET_INBOX_SCRIPT, 'utf-8');
+  writeFileSync(resolve(repoRoot, GATE_RELATIVE), FLEET_INBOX_GATE_SCRIPT, 'utf-8');
 
-  const oldReminderPath = resolve(hooksDir, 'paw-done-reminder.sh');
+  const oldReminderPath = resolve(hooksDir, 'fleet-done-reminder.sh');
   try {
     rmSync(oldReminderPath);
   } catch {
     /* already gone */
   }
 
-  const pawHooks: Record<string, MatcherGroup[]> = {
+  const fleetHooks: Record<string, MatcherGroup[]> = {
     SessionStart: [
       {
         matcher: '',
@@ -442,16 +442,16 @@ export function installHooks(repoRoot: string): void {
       settings = JSON.parse(readFileSync(settingsPath, 'utf-8')) as Record<string, unknown>;
     } catch (err) {
       console.warn(
-        `[paw] Corrupted settings.json, overwriting with defaults: ${toErrorMessage(err)}`,
+        `[fleet] Corrupted settings.json, overwriting with defaults: ${toErrorMessage(err)}`,
       );
     }
   }
 
   const existing = (settings.hooks ?? {}) as Record<string, unknown[]>;
 
-  for (const [event, newGroups] of Object.entries(pawHooks)) {
+  for (const [event, newGroups] of Object.entries(fleetHooks)) {
     const current = existing[event] ?? [];
-    const filtered = current.filter((entry) => !isPawHookEntry(entry));
+    const filtered = current.filter((entry) => !isFleetHookEntry(entry));
     existing[event] = [...filtered, ...newGroups];
   }
 
@@ -470,29 +470,29 @@ export function installHooks(repoRoot: string): void {
   success('script', GATE_RELATIVE);
 }
 
-/** Detect any paw-related hook entry (old flat format or correct matcher group). */
-function isPawHookEntry(entry: unknown): boolean {
+/** Detect any fleet-related hook entry (old flat format or correct matcher group). */
+function isFleetHookEntry(entry: unknown): boolean {
   if (typeof entry !== 'object' || entry === null) return false;
   const obj = entry as Record<string, unknown>;
 
-  /** Old flat format: `{ command: "paw prime --brief" }` */
-  if ('command' in obj && typeof obj.command === 'string' && isPawCommand(obj.command)) {
+  /** Old flat format: `{ command: "fleet prime --brief" }` */
+  if ('command' in obj && typeof obj.command === 'string' && isFleetCommand(obj.command)) {
     return true;
   }
 
-  /** Matcher group format: `{ matcher: "", hooks: [{ command: "...paw..." }] }` */
+  /** Matcher group format: `{ matcher: "", hooks: [{ command: "...fleet..." }] }` */
   if ('hooks' in obj && Array.isArray(obj.hooks)) {
     return obj.hooks.some((h: unknown) => {
       if (typeof h !== 'object' || h === null) return false;
       const rec = h as Record<string, unknown>;
-      return typeof rec.command === 'string' && isPawCommand(rec.command);
+      return typeof rec.command === 'string' && isFleetCommand(rec.command);
     });
   }
 
   return false;
 }
 
-/** Check if a hook command belongs to paw. */
-function isPawCommand(command: string): boolean {
-  return command.includes('paw');
+/** Check if a hook command belongs to fleet. */
+function isFleetCommand(command: string): boolean {
+  return command.includes('fleet');
 }

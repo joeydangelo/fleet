@@ -108,7 +108,7 @@ export function createMockTmux(opts: MockTmuxOptions = {}): MockTmuxService {
     },
     getCurrentSessionName() {
       calls.push({ method: 'getCurrentSessionName', args: [] });
-      return 'paw-myapp';
+      return 'fleet-myapp';
     },
     getPaneCurrentCommand(paneId: string) {
       calls.push({ method: 'getPaneCurrentCommand', args: [paneId] });

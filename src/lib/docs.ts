@@ -6,7 +6,7 @@ import { readManifest } from './manifest.js';
 
 /** Return the repo root or null when called outside a git repo. */
 function getRepoRootSafe(): string | null {
-  return process.env.PAW_REPO_ROOT || getRepoRootOrNull();
+  return process.env.FLEET_REPO_ROOT || getRepoRootOrNull();
 }
 
 /** A loaded doc file with its content and resolved filesystem path. */
@@ -25,7 +25,7 @@ export interface DocInfo {
 
 /**
  * Get lookup paths for a category, filtered from config.docs_cache.lookup_path.
- * Paths ending with `/{category}` match. Falls back to `.paw/docs/{category}/`.
+ * Paths ending with `/{category}` match. Falls back to `.fleet/docs/{category}/`.
  */
 function getLookupPaths(repoRoot: string, category: string): string[] {
   let lookupPath: string[];
@@ -37,7 +37,7 @@ function getLookupPaths(repoRoot: string, category: string): string[] {
   }
 
   if (lookupPath.length === 0) {
-    return [join(repoRoot, '.paw', 'docs', category)];
+    return [join(repoRoot, '.fleet', 'docs', category)];
   }
 
   const matching = lookupPath
@@ -50,7 +50,7 @@ function getLookupPaths(repoRoot: string, category: string): string[] {
     });
 
   if (matching.length === 0) {
-    return [join(repoRoot, '.paw', 'docs', category)];
+    return [join(repoRoot, '.fleet', 'docs', category)];
   }
 
   return matching;

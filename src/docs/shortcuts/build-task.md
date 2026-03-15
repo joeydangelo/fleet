@@ -1,6 +1,6 @@
 ---
 name: build-task
-description: Build, verify, and publish a paw task in an isolated worktree
+description: Build, verify, and publish a fleet task in an isolated worktree
 roles: [builder]
 ---
 
@@ -8,7 +8,7 @@ roles: [builder]
 
 | Variable | Source | Default |
 |---|---|---|
-| `TASK_FILE` | `.paw/tasks/*.md` in worktree | Read on entry |
+| `TASK_FILE` | `.fleet/tasks/*.md` in worktree | Read on entry |
 | `BRANCH` | `git branch --show-current` | Read on entry |
 | `MAX_VERIFY_RETRIES` | Static | `3` |
 
@@ -27,11 +27,11 @@ roles: [builder]
 ### Phase 1: Orient
 
 **Objective:** Establish plan and announce intent before writing code.
-**Tools:** Bash (paw commands only), Read
+**Tools:** Bash (fleet commands only), Read
 
 1. Read `TASK_FILE` and any linked spec or issue.
-2. Broadcast intent: `paw broadcast "Starting <task>. Will modify <files/interfaces>"`.
-3. Send dependency requests to other agents: `paw send <task> "..."`.
+2. Broadcast intent: `fleet broadcast "Starting <task>. Will modify <files/interfaces>"`.
+3. Send dependency requests to other agents: `fleet send <task> "..."`.
 4. Break the work into small, testable increments. Bugs first, then features.
 
 **Gate:** Plan exists (list of increments). Broadcast sent.
@@ -44,7 +44,7 @@ roles: [builder]
 **Objective:** Implement all increments using TDD with passing smoke tests.
 **Tools:** Read, Write, Edit, Bash, Glob, Grep
 
-1. Load `paw guidelines testing`.
+1. Load `fleet guidelines testing`.
 2. For each increment, follow Red-Green-Refactor:
    - Write a failing test.
    - Write minimal code to pass.
@@ -79,7 +79,7 @@ Run the verify loop (max `MAX_VERIFY_RETRIES` cycles):
    `MAX_VERIFY_RETRIES` per error). Pre-existing failures (not caused by your
    changes): document in the summary and proceed.
 5. Broadcast interface changes (types, exports, API, config):
-   `paw broadcast "Changed <interface>: <details>"`.
+   `fleet broadcast "Changed <interface>: <details>"`.
 
 **Gate:** Quality suite introduces no new failures. All task requirements covered.
 **Artifact:** Clean diff (all changes staged).
@@ -91,24 +91,24 @@ Run the verify loop (max `MAX_VERIFY_RETRIES` cycles):
 **Objective:** Commit, record evidence, and submit for review.
 **Tools:** Bash
 
-1. Commit with conventional format (see `paw guidelines commit-conventions`).
+1. Commit with conventional format (see `fleet guidelines commit-conventions`).
    Each commit: single logical unit with passing tests.
-2. Load `paw template summary-template`, then run:
+2. Load `fleet template summary-template`, then run:
 
    ```bash
-   paw summary <<'EOF'
+   fleet summary <<'EOF'
    (filled-in template here)
    EOF
    ```
 
-3. Run `paw review` to submit for review.
+3. Run `fleet review` to submit for review.
    - On PASS (exit 0): task is done.
    - On FAIL (exit 1): findings print to stdout. Restart from Phase 2 with
      findings as new requirements. Before resubmitting, append a fix table
-     using `paw summary --append`:
+     using `fleet summary --append`:
 
      ```bash
-     paw summary --append <<'EOF'
+     fleet summary --append <<'EOF'
      ## Fixed — Cycle N
 
      | Finding | Resolution |
@@ -119,7 +119,7 @@ Run the verify loop (max `MAX_VERIFY_RETRIES` cycles):
 
      Address every finding: **Fixed** (describe fix) or **Not applicable** (explain why).
 
-**Gate:** `paw review` exits 0.
+**Gate:** `fleet review` exits 0.
 **Artifact:** Committed branch with PR, submitted for review.
 
 ## Context Flow
@@ -133,19 +133,19 @@ Run the verify loop (max `MAX_VERIFY_RETRIES` cycles):
 
 Stop when ANY of these are true:
 
-- `paw review` returns PASS — task complete. Sync state is already updated; no
+- `fleet review` returns PASS — task complete. Sync state is already updated; no
   further action needed.
 - `MAX_VERIFY_RETRIES` exhausted for the same error:
   ```
-  paw send orchestrator "Blocked: <error> persists after 3 fix attempts. Need guidance."
+  fleet send orchestrator "Blocked: <error> persists after 3 fix attempts. Need guidance."
   ```
 - `SCOPE_DRIFT` detected — files changed outside task assignment:
   ```
-  paw send orchestrator "Scope issue: task requires changes to <files> outside my focus area."
+  fleet send orchestrator "Scope issue: task requires changes to <files> outside my focus area."
   ```
 - Blocked on another agent's output with no response:
   ```
-  paw send orchestrator "Blocked: waiting on <task> for <interface>. No response."
+  fleet send orchestrator "Blocked: waiting on <task> for <interface>. No response."
   ```
 
 ## Output Format
@@ -153,8 +153,8 @@ Stop when ANY of these are true:
 No standalone output. The workflow produces:
 
 1. Git commits on `BRANCH` (conventional format).
-2. Task summary via `paw summary` (with validation evidence).
-3. Review submission via `paw review`.
+2. Task summary via `fleet summary` (with validation evidence).
+3. Review submission via `fleet review`.
 
 Forbidden in output:
 

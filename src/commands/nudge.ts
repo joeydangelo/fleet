@@ -5,7 +5,7 @@ import { appendMessage } from '../lib/messages.js';
 import { handleError, success } from '../lib/output.js';
 import { getTaskIdentity } from '../lib/session.js';
 
-/** Build the `paw nudge` CLI command. */
+/** Build the `fleet nudge` CLI command. */
 export function nudgeCommand(): Command {
   return new Command('nudge')
     .description('Send a nudge message to an agent via the inbox')

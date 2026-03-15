@@ -9,10 +9,7 @@ import type { TaskState } from '../lib/sync.js';
 import { readMessages, appendMessage } from '../lib/messages.js';
 import type { Message } from '../lib/messages.js';
 import { readPaneConfig, resolvePaneTarget } from '../lib/pane-state.js';
-import {
-  createTmuxService,
-  sendWakeSignal,
-} from '../lib/tmux.js';
+import { createTmuxService, sendWakeSignal } from '../lib/tmux.js';
 import type { TmuxServiceApi } from '../lib/tmux.js';
 import { sleep, tryGetLivenessMap } from '../lib/util.js';
 import { DEFAULT_POLL_INTERVAL } from '../lib/constants.js';
@@ -241,7 +238,7 @@ export async function runWatchLoop(opts: {
     console.log(opts.header);
   } else {
     console.log(
-      pc.bold('paw watch') + pc.dim(` (polling every ${interval}s, ${taskNames.length} task(s))`),
+      pc.bold('fleet watch') + pc.dim(` (polling every ${interval}s, ${taskNames.length} task(s))`),
     );
   }
   console.log(pc.dim(`Tasks: ${taskNames.map((n, i) => assignColor(i)(n)).join(', ')}`));
@@ -348,7 +345,7 @@ export async function runWatchLoop(opts: {
               const msg =
                 `You appear stalled on task "${taskName}". ` +
                 `No tool activity for ${stalledMin}m. ` +
-                `If stuck, try a different approach or use paw broadcast to ask for help.`;
+                `If stuck, try a different approach or use fleet broadcast to ask for help.`;
 
               appendMessage('orchestrator', {
                 type: 'nudge',
@@ -391,7 +388,7 @@ export async function runWatchLoop(opts: {
                     );
                     const retryMsg =
                       `You appear stuck on task "${taskName}". ` +
-                      `Try a completely different approach, or use paw broadcast to ask for help.`;
+                      `Try a completely different approach, or use fleet broadcast to ask for help.`;
                     appendMessage('orchestrator', {
                       type: 'nudge',
                       to: taskName,
@@ -471,7 +468,7 @@ export async function runWatchLoop(opts: {
   }
 }
 
-/** Build the `paw watch` CLI command. */
+/** Build the `fleet watch` CLI command. */
 export function watchCommand(): Command {
   return new Command('watch')
     .description('Continuously monitor agent progress')

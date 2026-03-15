@@ -43,8 +43,8 @@ describe('inbox gate flag file management', () => {
   const taskName = 'shapes-task';
 
   beforeEach(() => {
-    tmpDir = join(tmpdir(), `paw-gate-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
-    mkdirSync(join(tmpDir, '.paw', 'run'), { recursive: true });
+    tmpDir = join(tmpdir(), `fleet-gate-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+    mkdirSync(join(tmpDir, '.fleet', 'run'), { recursive: true });
   });
 
   afterEach(() => {
@@ -83,7 +83,7 @@ describe('inbox gate flag file management', () => {
       expect(content).toContain('"What interface fields?"');
       expect(content).toContain('(xk9p) auth-task');
       expect(content).toContain('"What token format?"');
-      expect(content).toContain('paw reply <task> "your answer"');
+      expect(content).toContain('fleet reply <task> "your answer"');
     });
   });
 
@@ -108,8 +108,8 @@ describe('inbox gate flag file management', () => {
       expect(content).toContain('api-task');
     });
 
-    it('creates .paw/run/ directory if it does not exist', () => {
-      rmSync(join(tmpDir, '.paw', 'run'), { recursive: true, force: true });
+    it('creates .fleet/run/ directory if it does not exist', () => {
+      rmSync(join(tmpDir, '.fleet', 'run'), { recursive: true, force: true });
       const threads: OpenThread[] = [
         { send: sendMsg({ from: 'api-task', to: taskName, msg: 'Hello?', thread: 'abcd1234' }) },
       ];
@@ -138,7 +138,7 @@ describe('inbox gate flag file management', () => {
   });
 
   describe('inbox command flag lifecycle', () => {
-    it('paw inbox with unanswered messages creates flag file', () => {
+    it('fleet inbox with unanswered messages creates flag file', () => {
       const entries = [
         msg({ type: 'send', from: 'api-task', to: taskName, msg: 'What fields?', thread: 'th01' }),
       ];
@@ -153,7 +153,7 @@ describe('inbox gate flag file management', () => {
       expect(content).toContain('1 unanswered message(s)');
     });
 
-    it('paw inbox with no unanswered messages deletes flag file', () => {
+    it('fleet inbox with no unanswered messages deletes flag file', () => {
       // Pre-existing flag file
       writeFileSync(flagPath(), 'old content');
       expect(existsSync(flagPath())).toBe(true);

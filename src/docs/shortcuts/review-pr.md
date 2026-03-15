@@ -30,7 +30,7 @@ roles: [reviewer]
 ### Phase 1: Triage
 
 **Objective:** Classify the change and select which specialist domains apply.
-**Tools:** Read, Bash(git diff), Bash(git show paw-sync:*)
+**Tools:** Read, Bash(git diff), Bash(git show fleet-sync:*)
 
 1. Read the task file to understand scope and intent.
 2. Run the review file command. Note prior review cycles and unresolved findings.
@@ -39,9 +39,9 @@ roles: [reviewer]
 
 | Domain | Applies when | Agent | Model | Guideline |
 |---|---|---|---|---|
-| **Security** | input handling, auth, data exposure, credentials | Explore | opus | `paw guidelines security-review` |
-| **Performance** | algorithmic complexity, I/O and concurrency, unnecessary work | Explore | sonnet | `paw guidelines performance-review` |
-| **Style/Code Quality** | naming, codebase consistency, dead code, error handling quality | Explore | haiku | `paw guidelines code-quality-review` |
+| **Security** | input handling, auth, data exposure, credentials | Explore | opus | `fleet guidelines security-review` |
+| **Performance** | algorithmic complexity, I/O and concurrency, unnecessary work | Explore | sonnet | `fleet guidelines performance-review` |
+| **Style/Code Quality** | naming, codebase consistency, dead code, error handling quality | Explore | haiku | `fleet guidelines code-quality-review` |
 
 **Gate:** At least one domain applies. Domains identified.
 **Artifact:** Domain list with model tier and guideline per domain.
@@ -64,7 +64,7 @@ Explore specialist receives:
 - **`TASK_FILE`** — so it can read the builder's intent
 - **`DIFF_CMD`** — so it runs the diff in its own fresh context
 - **Domain scope** — what to examine, what to ignore
-- **Guideline** — `paw guidelines <name>` to load before reviewing
+- **Guideline** — `fleet guidelines <name>` to load before reviewing
 - **Finding format** — `SEVERITY/domain file:line -- what — why it matters`
 - **Calibration** — CRITICAL = bugs, security vulns, broken functionality;
   MAJOR = antipatterns, missing coverage, poor error handling;

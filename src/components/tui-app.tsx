@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Text, useApp, useInput, useStdout } from 'ink';
 import { basename, dirname } from 'node:path';
-import type { TmuxServiceApi, PawPane, TmuxPaneInfo } from '../lib/tmux.js';
+import type { TmuxServiceApi, FleetPane, TmuxPaneInfo } from '../lib/tmux.js';
 import { readPaneConfig } from '../lib/pane-state.js';
 import { readSyncState } from '../lib/sync.js';
 import type { SyncState } from '../lib/sync.js';
@@ -115,16 +115,16 @@ function PaneCard({ item, selected, isFirst, isLast, isNextSelected }: PaneCardP
 
 /**
  * Derives a human-readable label for a non-task pane from its tmux title.
- * Strips the "paw-" prefix if present; falls back to "pane %nn" for shell defaults.
+ * Strips the "fleet-" prefix if present; falls back to "pane %nn" for shell defaults.
  */
 function labelFromTitle(title: string, paneId: string): string {
   if (!title || title === 'bash' || title === 'zsh') return `pane ${paneId}`;
-  return title.startsWith('paw-') ? title.slice(4) : title;
+  return title.startsWith('fleet-') ? title.slice('fleet-'.length) : title;
 }
 
 /**
  * Resolve a pane's project root using the hybrid model:
- * 1. @paw_project metadata (stable, for managed panes)
+ * 1. @fleet_project metadata (stable, for managed panes)
  * 2. Live cwd resolved to a git root (dynamic, for ad-hoc panes)
  * 3. null if cwd isn't inside any git repo
  */
@@ -144,7 +144,7 @@ type TaggedItem = DisplayItem & { projectRoot: string | null };
  */
 export function buildDisplayItems(
   tmuxPanes: TmuxPaneInfo[],
-  taskPanes: PawPane[],
+  taskPanes: FleetPane[],
   syncState: SyncState | null,
   controlPaneId: string,
   orchestratorPaneId: string,
@@ -158,7 +158,7 @@ export function buildDisplayItems(
   const tagged: TaggedItem[] = [];
 
   // Orchestrator pane first.
-  // Use @paw_project if set, otherwise primaryProject directly — don't fall
+  // Use @fleet_project if set, otherwise primaryProject directly — don't fall
   // through to resolveGitRoot(cwd) because the orchestrator's cwd may be
   // inside a worktree whose .git file would resolve to the wrong root.
   if (orchestratorPaneId && orchestratorPaneId !== controlPaneId) {
@@ -176,7 +176,7 @@ export function buildDisplayItems(
   }
 
   // Task panes in panes.json order. These are known to belong to the primary
-  // project — use @paw_project or primaryProject, never resolveGitRoot(cwd)
+  // project — use @fleet_project or primaryProject, never resolveGitRoot(cwd)
   // which would resolve worktree .git files to the worktree path itself.
   for (const pane of taskPanes) {
     const tmuxInfo = tmuxPanes.find((t) => t.paneId === pane.paneId);
@@ -197,12 +197,12 @@ export function buildDisplayItems(
   }
 
   // Ad-hoc panes — includes task panes not yet in panes.json (timing) or
-  // whose pane IDs shifted. Recover task identity from @paw_role.
+  // whose pane IDs shifted. Recover task identity from @fleet_role.
   for (const tp of tmuxPanes) {
     if (seen.has(tp.paneId) || tp.paneId === controlPaneId) continue;
     const isOrchestrator = tp.role === ORCHESTRATOR_ROLE;
-    const isTaskPane = tp.role.startsWith('paw-') && !isOrchestrator;
-    const taskName = isTaskPane ? tp.role.slice(4) : null;
+    const isTaskPane = tp.role.startsWith('fleet-') && !isOrchestrator;
+    const taskName = isTaskPane ? tp.role.slice('fleet-'.length) : null;
 
     let label: string;
     let status: TuiStatus | null = null;
@@ -284,7 +284,7 @@ interface TuiAppProps {
   sessionName: string;
   repoRoot: string;
   tmux: TmuxServiceApi;
-  panes: PawPane[];
+  panes: FleetPane[];
   /** tmux pane ID of the sidebar pane, used to re-enforce width on terminal resize. */
   controlPaneId: string;
   onQuit: () => void;
@@ -293,7 +293,7 @@ interface TuiAppProps {
 }
 
 /**
- * Ink TUI for paw. Renders a fixed-width left panel listing every tmux pane
+ * Ink TUI for fleet. Renders a fixed-width left panel listing every tmux pane
  * in the session. Task panes show sync state icons; non-task panes show $.
  */
 export function TuiApp({
@@ -449,7 +449,7 @@ export function TuiApp({
     <Box flexDirection="column" height={terminalHeight}>
       <Box flexDirection="column" height={contentHeight} overflow="hidden">
         <Box marginBottom={1}>
-          <Text bold>paw</Text>
+          <Text bold>fleet</Text>
           <Text dimColor>{' — ' + sessionName}</Text>
         </Box>
 

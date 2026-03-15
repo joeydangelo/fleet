@@ -217,7 +217,7 @@ If two guidelines cover overlapping concerns, merge them or redraw the boundary.
 
 **When contradictions exist,** the book recommends a four-step process: verify the
 contradiction is real, document both approaches with a comparison, seek synthesis into a
-higher-level pattern, and mark for investigation if uncertain. In practice for paw
+higher-level pattern, and mark for investigation if uncertain. In practice for fleet
 guidelines:
 resolve contradictions before shipping by redrawing domain boundaries until each rule has
 exactly one authoritative source.

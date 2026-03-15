@@ -27,7 +27,7 @@ describe('prime cursor write', () => {
     repoDir = makeTempDir();
     gitInit(repoDir);
     initSyncWorktree(repoDir);
-    const state = initSyncState('feature/dash', ['auth', 'api'], 'paw.yaml');
+    const state = initSyncState('feature/dash', ['auth', 'api'], 'fleet.yaml');
     writeSyncState(state, repoDir);
   });
 
@@ -121,16 +121,16 @@ describe('prime from root — orchestrator dashboard', () => {
       stdio: 'pipe',
     });
     const stdout = result.toString();
-    expect(stdout).toContain('paw v');
+    expect(stdout).toContain('fleet v');
     expect(stdout).toContain('=== INSTALLATION ===');
     expect(stdout).toContain('=== SESSION STATUS ===');
   });
 
-  it('shows session status when paw.yaml exists', () => {
-    // Create a .paw directory with paw.yaml to simulate a configured session
-    mkdirSync(resolve(repoDir, '.paw'), { recursive: true });
+  it('shows session status when fleet.yaml exists', () => {
+    // Create a .fleet directory with fleet.yaml to simulate a configured session
+    mkdirSync(resolve(repoDir, '.fleet'), { recursive: true });
     writeFileSync(
-      resolve(repoDir, '.paw', 'paw.yaml'),
+      resolve(repoDir, '.fleet', 'fleet.yaml'),
       'target: feature/test\ntasks:\n  auth:\n    focus: src/auth/\n',
     );
 
@@ -150,7 +150,7 @@ describe('prime from root — orchestrator dashboard', () => {
       stdio: 'pipe',
     });
     const stdout = briefResult.toString();
-    expect(stdout).toContain('paw v');
+    expect(stdout).toContain('fleet v');
     expect(stdout).not.toContain('=== INSTALLATION ===');
   });
 });

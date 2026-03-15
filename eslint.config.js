@@ -29,7 +29,7 @@ export default [
       '**/dist/**',
       '**/node_modules/**',
       '**/attic/**',
-      '**/.paw/**',
+      '**/.fleet/**',
       '**/.tbd/**',
       '*.config.*',
       'scripts/**',
@@ -42,7 +42,7 @@ export default [
   // Type-aware TypeScript rules
   ...typedRecommended,
 
-  // Paw-specific rules
+  // Fleet-specific rules
   {
     files: ['**/*.ts', '**/*.tsx'],
     rules: {
@@ -56,7 +56,7 @@ export default [
         },
       ],
 
-      // Enforce `import type` for type-only imports (paw uses this pattern throughout)
+      // Enforce `import type` for type-only imports (fleet uses this pattern throughout)
       '@typescript-eslint/consistent-type-imports': [
         'error',
         {

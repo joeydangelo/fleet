@@ -2,7 +2,7 @@ import { describe, it, expect, afterEach } from 'vitest';
 import { resolve } from 'node:path';
 import { mkdirSync, readFileSync, writeFileSync, existsSync, rmSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
-import type { PawConfig } from '../src/lib/config.js';
+import type { FleetConfig } from '../src/lib/config.js';
 import {
   planWorktrees,
   generateTaskFile,
@@ -14,7 +14,7 @@ import {
 } from '../src/lib/session.js';
 import { makeTempDir } from './helpers/temp.js';
 
-const baseConfig: PawConfig = {
+const baseConfig: FleetConfig = {
   base: 'main',
   target: 'feature/dashboard',
   tasks: {
@@ -28,8 +28,8 @@ describe('planWorktrees', () => {
     const result = planWorktrees(baseConfig, '/projects/acme-app');
 
     expect(result).toHaveLength(2);
-    expect(result[0]?.worktreePath).toBe(resolve('/projects', 'acme-app-paw-auth'));
-    expect(result[1]?.worktreePath).toBe(resolve('/projects', 'acme-app-paw-api'));
+    expect(result[0]?.worktreePath).toBe(resolve('/projects', 'acme-app-fleet-auth'));
+    expect(result[1]?.worktreePath).toBe(resolve('/projects', 'acme-app-fleet-api'));
   });
 
   it('computes branch names as target/taskName', () => {
@@ -51,7 +51,7 @@ describe('generateTaskFile', () => {
     const worktree = {
       taskName: 'auth',
       branch: 'feature/dashboard-auth',
-      worktreePath: '/projects/acme-app-paw-auth',
+      worktreePath: '/projects/acme-app-fleet-auth',
     };
 
     const result = generateTaskFile(baseConfig, worktree);
@@ -59,7 +59,7 @@ describe('generateTaskFile', () => {
     expect(result).toContain('# Task: auth');
     expect(result).toContain('**Branch:** feature/dashboard-auth');
     expect(result).toContain('**Target:** feature/dashboard');
-    expect(result).toContain('**Worktree:** /projects/acme-app-paw-auth');
+    expect(result).toContain('**Worktree:** /projects/acme-app-fleet-auth');
     expect(result).toContain('- src/auth/');
   });
 
@@ -67,7 +67,7 @@ describe('generateTaskFile', () => {
     const worktree = {
       taskName: 'api',
       branch: 'feature/dashboard-api',
-      worktreePath: '/projects/acme-app-paw-api',
+      worktreePath: '/projects/acme-app-fleet-api',
     };
 
     const result = generateTaskFile(baseConfig, worktree);
@@ -77,7 +77,7 @@ describe('generateTaskFile', () => {
   });
 
   it('includes instructions when prompt is set, omits when absent', () => {
-    const configWithPrompt: PawConfig = {
+    const configWithPrompt: FleetConfig = {
       ...baseConfig,
       tasks: {
         auth: { focus: 'src/auth/', prompt: 'Implement OAuth2 login.' },
@@ -86,7 +86,7 @@ describe('generateTaskFile', () => {
     const worktree = {
       taskName: 'auth',
       branch: 'feature/dashboard-auth',
-      worktreePath: '/projects/acme-app-paw-auth',
+      worktreePath: '/projects/acme-app-fleet-auth',
     };
 
     const withPrompt = generateTaskFile(configWithPrompt, worktree);
@@ -98,7 +98,7 @@ describe('generateTaskFile', () => {
   });
 
   it('includes issue in header when issue field is set', () => {
-    const config: PawConfig = {
+    const config: FleetConfig = {
       ...baseConfig,
       tasks: {
         auth: { focus: 'src/auth/', issue: 'GH#123' },
@@ -107,7 +107,7 @@ describe('generateTaskFile', () => {
     const worktree = {
       taskName: 'auth',
       branch: 'feature/dashboard-auth',
-      worktreePath: '/projects/acme-app-paw-auth',
+      worktreePath: '/projects/acme-app-fleet-auth',
     };
 
     const result = generateTaskFile(config, worktree);
@@ -119,7 +119,7 @@ describe('generateTaskFile', () => {
     const worktree = {
       taskName: 'auth',
       branch: 'feature/dashboard-auth',
-      worktreePath: '/projects/acme-app-paw-auth',
+      worktreePath: '/projects/acme-app-fleet-auth',
     };
 
     const result = generateTaskFile(baseConfig, worktree);
@@ -128,26 +128,26 @@ describe('generateTaskFile', () => {
   });
 
   it('includes spec path in header when top-level spec is set', () => {
-    const config: PawConfig = {
+    const config: FleetConfig = {
       ...baseConfig,
-      spec: '.paw/specs/spec-2026-03-04-auth.md',
+      spec: '.fleet/specs/spec-2026-03-04-auth.md',
     };
     const worktree = {
       taskName: 'auth',
       branch: 'feature/dashboard-auth',
-      worktreePath: '/projects/acme-app-paw-auth',
+      worktreePath: '/projects/acme-app-fleet-auth',
     };
 
     const result = generateTaskFile(config, worktree);
 
-    expect(result).toContain('**Spec:** .paw/specs/spec-2026-03-04-auth.md');
+    expect(result).toContain('**Spec:** .fleet/specs/spec-2026-03-04-auth.md');
   });
 
   it('omits spec line when no spec is set', () => {
     const worktree = {
       taskName: 'auth',
       branch: 'feature/dashboard-auth',
-      worktreePath: '/projects/acme-app-paw-auth',
+      worktreePath: '/projects/acme-app-fleet-auth',
     };
 
     const result = generateTaskFile(baseConfig, worktree);
@@ -156,7 +156,7 @@ describe('generateTaskFile', () => {
   });
 
   it('includes depends_on in header when depends_on is a string', () => {
-    const config: PawConfig = {
+    const config: FleetConfig = {
       ...baseConfig,
       tasks: {
         auth: { focus: 'src/auth/' },
@@ -166,7 +166,7 @@ describe('generateTaskFile', () => {
     const worktree = {
       taskName: 'api',
       branch: 'feature/dashboard-api',
-      worktreePath: '/projects/acme-app-paw-api',
+      worktreePath: '/projects/acme-app-fleet-api',
     };
 
     const result = generateTaskFile(config, worktree);
@@ -175,7 +175,7 @@ describe('generateTaskFile', () => {
   });
 
   it('includes depends_on in header when depends_on is an array', () => {
-    const config: PawConfig = {
+    const config: FleetConfig = {
       ...baseConfig,
       tasks: {
         auth: { focus: 'src/auth/' },
@@ -186,7 +186,7 @@ describe('generateTaskFile', () => {
     const worktree = {
       taskName: 'tests',
       branch: 'feature/dashboard-tests',
-      worktreePath: '/projects/acme-app-paw-tests',
+      worktreePath: '/projects/acme-app-fleet-tests',
     };
 
     const result = generateTaskFile(config, worktree);
@@ -198,7 +198,7 @@ describe('generateTaskFile', () => {
     const worktree = {
       taskName: 'auth',
       branch: 'feature/dashboard-auth',
-      worktreePath: '/projects/acme-app-paw-auth',
+      worktreePath: '/projects/acme-app-fleet-auth',
     };
 
     const result = generateTaskFile(baseConfig, worktree);
@@ -210,7 +210,7 @@ describe('generateTaskFile', () => {
     const worktree = {
       taskName: 'nope',
       branch: 'feature/dashboard-nope',
-      worktreePath: '/projects/acme-app-paw-nope',
+      worktreePath: '/projects/acme-app-fleet-nope',
     };
 
     expect(() => generateTaskFile(baseConfig, worktree)).toThrow('Task not found: nope');
@@ -218,7 +218,7 @@ describe('generateTaskFile', () => {
 });
 
 describe('writeTaskFiles', () => {
-  it('creates .paw/tasks/<name>.md in each worktree dir', () => {
+  it('creates .fleet/tasks/<name>.md in each worktree dir', () => {
     const dir = makeTempDir();
     const wt1 = resolve(dir, 'wt-auth');
     const wt2 = resolve(dir, 'wt-api');
@@ -232,8 +232,8 @@ describe('writeTaskFiles', () => {
 
     writeTaskFiles(baseConfig, worktrees);
 
-    const authFile = resolve(wt1, '.paw', 'tasks', 'auth.md');
-    const apiFile = resolve(wt2, '.paw', 'tasks', 'api.md');
+    const authFile = resolve(wt1, '.fleet', 'tasks', 'auth.md');
+    const apiFile = resolve(wt2, '.fleet', 'tasks', 'api.md');
 
     expect(existsSync(authFile)).toBe(true);
     expect(existsSync(apiFile)).toBe(true);
@@ -249,7 +249,7 @@ describe('writeTaskFiles', () => {
     rmSync(dir, { recursive: true });
   });
 
-  it('adds .paw/ to .gitignore in each worktree', () => {
+  it('adds .fleet/ to .gitignore in each worktree', () => {
     const dir = makeTempDir();
     const wt = resolve(dir, 'wt-auth');
     mkdirSync(wt, { recursive: true });
@@ -259,16 +259,16 @@ describe('writeTaskFiles', () => {
     writeTaskFiles(baseConfig, worktrees);
 
     const gitignore = readFileSync(resolve(wt, '.gitignore'), 'utf-8');
-    expect(gitignore).toContain('.paw/');
+    expect(gitignore).toContain('.fleet/');
 
     rmSync(dir, { recursive: true });
   });
 });
 
 describe('detectTaskName', () => {
-  it('finds task name from single file in .paw/tasks/', () => {
+  it('finds task name from single file in .fleet/tasks/', () => {
     const dir = makeTempDir();
-    const tasksDir = resolve(dir, '.paw', 'tasks');
+    const tasksDir = resolve(dir, '.fleet', 'tasks');
     mkdirSync(tasksDir, { recursive: true });
     writeFileSync(resolve(tasksDir, 'auth.md'), '# Task: auth\n');
 
@@ -277,7 +277,7 @@ describe('detectTaskName', () => {
     rmSync(dir, { recursive: true });
   });
 
-  it('returns null when .paw/tasks/ does not exist', () => {
+  it('returns null when .fleet/tasks/ does not exist', () => {
     const dir = makeTempDir();
 
     expect(detectTaskName(dir)).toBeNull();
@@ -285,9 +285,9 @@ describe('detectTaskName', () => {
     rmSync(dir, { recursive: true });
   });
 
-  it('returns null when .paw/tasks/ has multiple files', () => {
+  it('returns null when .fleet/tasks/ has multiple files', () => {
     const dir = makeTempDir();
-    const tasksDir = resolve(dir, '.paw', 'tasks');
+    const tasksDir = resolve(dir, '.fleet', 'tasks');
     mkdirSync(tasksDir, { recursive: true });
     writeFileSync(resolve(tasksDir, 'auth.md'), '# auth\n');
     writeFileSync(resolve(tasksDir, 'api.md'), '# api\n');
@@ -297,9 +297,9 @@ describe('detectTaskName', () => {
     rmSync(dir, { recursive: true });
   });
 
-  it('returns null when .paw/tasks/ is empty', () => {
+  it('returns null when .fleet/tasks/ is empty', () => {
     const dir = makeTempDir();
-    const tasksDir = resolve(dir, '.paw', 'tasks');
+    const tasksDir = resolve(dir, '.fleet', 'tasks');
     mkdirSync(tasksDir, { recursive: true });
 
     expect(detectTaskName(dir)).toBeNull();
@@ -309,18 +309,18 @@ describe('detectTaskName', () => {
 });
 
 describe('ensureGitignore', () => {
-  it('creates .gitignore with .paw/ when none exists', () => {
+  it('creates .gitignore with .fleet/ when none exists', () => {
     const dir = makeTempDir();
 
     ensureGitignore(dir);
 
     const content = readFileSync(resolve(dir, '.gitignore'), 'utf-8');
-    expect(content).toBe('.paw/\n');
+    expect(content).toBe('.fleet/\n');
 
     rmSync(dir, { recursive: true });
   });
 
-  it('appends .paw/ to existing .gitignore', () => {
+  it('appends .fleet/ to existing .gitignore', () => {
     const dir = makeTempDir();
     writeFileSync(resolve(dir, '.gitignore'), 'node_modules/\ndist/\n');
 
@@ -328,24 +328,24 @@ describe('ensureGitignore', () => {
 
     const content = readFileSync(resolve(dir, '.gitignore'), 'utf-8');
     expect(content).toContain('node_modules/');
-    expect(content).toContain('.paw/');
+    expect(content).toContain('.fleet/');
   });
 
-  it('does not duplicate .paw/ if already present', () => {
+  it('does not duplicate .fleet/ if already present', () => {
     const dir = makeTempDir();
-    writeFileSync(resolve(dir, '.gitignore'), 'node_modules/\n.paw/\n');
+    writeFileSync(resolve(dir, '.gitignore'), 'node_modules/\n.fleet/\n');
 
     ensureGitignore(dir);
 
     const content = readFileSync(resolve(dir, '.gitignore'), 'utf-8');
-    const matches = content.match(/\.paw\//g);
+    const matches = content.match(/\.fleet\//g);
     expect(matches).toHaveLength(1);
 
     rmSync(dir, { recursive: true });
   });
 });
 
-describe('ensureGitignore with baseBranch (paw-numd)', () => {
+describe('ensureGitignore with baseBranch (fleet-numd)', () => {
   let repoDir: string;
 
   function gitInit(dir: string): void {
@@ -369,10 +369,10 @@ describe('ensureGitignore with baseBranch (paw-numd)', () => {
     if (repoDir) rmSync(repoDir, { recursive: true, force: true });
   });
 
-  it('skips adding .paw/ when base branch already has it', () => {
+  it('skips adding .fleet/ when base branch already has it', () => {
     repoDir = makeTempDir();
     gitInit(repoDir);
-    commitFile(repoDir, '.gitignore', 'node_modules/\n.paw/\n', 'add gitignore');
+    commitFile(repoDir, '.gitignore', 'node_modules/\n.fleet/\n', 'add gitignore');
 
     // Create a feature branch (simulating a worktree branch)
     execFileSync('git', ['checkout', '-b', 'feature-branch'], {
@@ -380,17 +380,17 @@ describe('ensureGitignore with baseBranch (paw-numd)', () => {
       stdio: 'pipe',
     });
 
-    // Remove .paw/ locally to simulate it not being in the local file
+    // Remove .fleet/ locally to simulate it not being in the local file
     writeFileSync(resolve(repoDir, '.gitignore'), 'node_modules/\n');
 
     ensureGitignore(repoDir, 'main');
 
-    // Should NOT have added .paw/ because base branch has it
+    // Should NOT have added .fleet/ because base branch has it
     const content = readFileSync(resolve(repoDir, '.gitignore'), 'utf-8');
-    expect(content).not.toContain('.paw/');
+    expect(content).not.toContain('.fleet/');
   });
 
-  it('adds .paw/ when base branch does not have it', () => {
+  it('adds .fleet/ when base branch does not have it', () => {
     repoDir = makeTempDir();
     gitInit(repoDir);
     commitFile(repoDir, '.gitignore', 'node_modules/\n', 'add gitignore');
@@ -403,10 +403,10 @@ describe('ensureGitignore with baseBranch (paw-numd)', () => {
     ensureGitignore(repoDir, 'main');
 
     const content = readFileSync(resolve(repoDir, '.gitignore'), 'utf-8');
-    expect(content).toContain('.paw/');
+    expect(content).toContain('.fleet/');
   });
 
-  it('adds .paw/ when base branch has no .gitignore at all', () => {
+  it('adds .fleet/ when base branch has no .gitignore at all', () => {
     repoDir = makeTempDir();
     gitInit(repoDir);
 
@@ -418,7 +418,7 @@ describe('ensureGitignore with baseBranch (paw-numd)', () => {
     ensureGitignore(repoDir, 'main');
 
     const content = readFileSync(resolve(repoDir, '.gitignore'), 'utf-8');
-    expect(content).toContain('.paw/');
+    expect(content).toContain('.fleet/');
   });
 
   it('falls back to local check when no baseBranch provided', () => {
@@ -429,7 +429,7 @@ describe('ensureGitignore with baseBranch (paw-numd)', () => {
     ensureGitignore(repoDir);
 
     const content = readFileSync(resolve(repoDir, '.gitignore'), 'utf-8');
-    expect(content).toBe('.paw/\n');
+    expect(content).toBe('.fleet/\n');
   });
 });
 

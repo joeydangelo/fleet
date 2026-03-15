@@ -70,7 +70,7 @@ export function computeThreads(entries: Message[]): ThreadResult {
 /** Formats a Message entry as a display string; layout varies by type: nudge, broadcast, directed, or plain. */
 export function formatMessage(entry: Message): string {
   if (entry.type === 'nudge') {
-    return `[paw] Warning: ${entry.msg}`;
+    return `[fleet] Warning: ${entry.msg}`;
   }
   if (entry.type === 'broadcast') {
     return `[${entry.from}] broadcast: ${entry.msg}`;
@@ -92,14 +92,14 @@ export function formatGateContent(unanswered: OpenThread[]): string {
     lines.push(`  (${id}) ${send.from} → ${send.to}: "${send.msg}"`);
   }
   lines.push('');
-  lines.push('Reply with: paw reply <task> "your answer"');
+  lines.push('Reply with: fleet reply <task> "your answer"');
   return lines.join('\n');
 }
 
 /** Write the inbox gate flag file for a task with unanswered messages. */
 export function writeGateFlag(cwd: string, taskName: string, unanswered: OpenThread[]): void {
   const flagPath = join(cwd, `${INBOX_GATE_PREFIX}${taskName}`);
-  mkdirSync(join(cwd, '.paw', 'run'), { recursive: true });
+  mkdirSync(join(cwd, '.fleet', 'run'), { recursive: true });
   writeFileSync(flagPath, formatGateContent(unanswered));
 }
 
@@ -131,7 +131,7 @@ export function inboxCommand(): Command {
         const relevant = entries.filter((e) => e.from !== taskName);
 
         if (relevant.length > 0) {
-          console.log(`\n[paw] ${relevant.length} new message(s) from other agents:`);
+          console.log(`\n[fleet] ${relevant.length} new message(s) from other agents:`);
           for (const entry of relevant) {
             console.log(`  ${formatMessage(entry)}`);
           }
@@ -140,12 +140,12 @@ export function inboxCommand(): Command {
 
         const unanswered = getUnansweredThreadsForTask(taskName, cwd);
         if (unanswered.length > 0) {
-          console.log(`[paw] ${unanswered.length} unanswered message(s):`);
+          console.log(`[fleet] ${unanswered.length} unanswered message(s):`);
           for (const { send } of unanswered) {
             const id = send.thread.slice(0, 4);
             console.log(`  (${id}) ${send.from} → ${send.to}: "${send.msg}"`);
           }
-          console.log(`  Reply with: paw reply <task> "your answer"\n`);
+          console.log(`  Reply with: fleet reply <task> "your answer"\n`);
           writeGateFlag(cwd, taskName, unanswered);
         } else {
           clearGateFlag(cwd, taskName);

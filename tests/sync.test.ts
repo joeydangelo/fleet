@@ -36,7 +36,7 @@ function gitInit(dir: string): void {
 
 describe('initSyncState', () => {
   it('stores focus areas when focusMap is provided', () => {
-    const state = initSyncState('feature/dash', ['auth', 'api'], 'paw.yaml', {
+    const state = initSyncState('feature/dash', ['auth', 'api'], 'fleet.yaml', {
       auth: ['src/auth/', 'src/middleware/auth.ts'],
       api: ['src/api/'],
     });
@@ -46,7 +46,7 @@ describe('initSyncState', () => {
   });
 
   it('omits focus when focusMap is not provided', () => {
-    const state = initSyncState('feature/dash', ['auth'], 'paw.yaml');
+    const state = initSyncState('feature/dash', ['auth'], 'fleet.yaml');
 
     expect(state.tasks['auth']?.focus).toBeUndefined();
   });
@@ -54,7 +54,7 @@ describe('initSyncState', () => {
 
 describe('claimTask', () => {
   it('sets status to in_progress with timestamp', () => {
-    const state = initSyncState('feature/dash', ['auth', 'api'], 'paw.yaml');
+    const state = initSyncState('feature/dash', ['auth', 'api'], 'fleet.yaml');
     const claimed = claimTask(state, 'auth');
 
     expect(claimed.tasks['auth']?.status).toBe('in_progress');
@@ -63,7 +63,7 @@ describe('claimTask', () => {
   });
 
   it('throws on unknown task', () => {
-    const state = initSyncState('feature/dash', ['auth'], 'paw.yaml');
+    const state = initSyncState('feature/dash', ['auth'], 'fleet.yaml');
 
     expect(() => claimTask(state, 'nope')).toThrow('Task not found in sync state: nope');
   });
@@ -71,7 +71,7 @@ describe('claimTask', () => {
 
 describe('completeTask', () => {
   it('sets status to done with timestamp', () => {
-    const state = initSyncState('feature/dash', ['auth', 'api'], 'paw.yaml');
+    const state = initSyncState('feature/dash', ['auth', 'api'], 'fleet.yaml');
     const completed = completeTask(state, 'auth');
 
     expect(completed.tasks['auth']?.status).toBe('done');
@@ -80,7 +80,7 @@ describe('completeTask', () => {
   });
 
   it('throws on unknown task', () => {
-    const state = initSyncState('feature/dash', ['auth'], 'paw.yaml');
+    const state = initSyncState('feature/dash', ['auth'], 'fleet.yaml');
 
     expect(() => completeTask(state, 'nope')).toThrow('Task not found in sync state: nope');
   });
@@ -88,7 +88,7 @@ describe('completeTask', () => {
 
 describe('submitForReview', () => {
   it('sets status to in_review', () => {
-    const state = initSyncState('feature/dash', ['auth', 'api'], 'paw.yaml');
+    const state = initSyncState('feature/dash', ['auth', 'api'], 'fleet.yaml');
     const claimed = claimTask(state, 'auth');
     const reviewed = submitForReview(claimed, 'auth');
 
@@ -97,7 +97,7 @@ describe('submitForReview', () => {
   });
 
   it('throws on unknown task', () => {
-    const state = initSyncState('feature/dash', ['auth'], 'paw.yaml');
+    const state = initSyncState('feature/dash', ['auth'], 'fleet.yaml');
 
     expect(() => submitForReview(state, 'nope')).toThrow('Task not found in sync state: nope');
   });
@@ -123,7 +123,7 @@ describe('isTerminalStatus', () => {
 
 describe('submitForReview reviewCycle', () => {
   it('increments reviewCycle from 0 to 1', () => {
-    const state = initSyncState('feature/dash', ['auth'], 'paw.yaml');
+    const state = initSyncState('feature/dash', ['auth'], 'fleet.yaml');
     const claimed = claimTask(state, 'auth');
     const reviewed = submitForReview(claimed, 'auth');
 
@@ -131,7 +131,7 @@ describe('submitForReview reviewCycle', () => {
   });
 
   it('increments reviewCycle from 1 to 2', () => {
-    const state = initSyncState('feature/dash', ['auth'], 'paw.yaml');
+    const state = initSyncState('feature/dash', ['auth'], 'fleet.yaml');
     const claimed = claimTask(state, 'auth');
     const cycle1 = submitForReview(claimed, 'auth');
     const reopened = reopenTask(cycle1, 'auth');
@@ -143,7 +143,7 @@ describe('submitForReview reviewCycle', () => {
 
 describe('reopenTask', () => {
   it('transitions in_review back to in_progress', () => {
-    const state = initSyncState('feature/dash', ['auth'], 'paw.yaml');
+    const state = initSyncState('feature/dash', ['auth'], 'fleet.yaml');
     const reviewed = submitForReview(claimTask(state, 'auth'), 'auth');
     const reopened = reopenTask(reviewed, 'auth');
 
@@ -151,7 +151,7 @@ describe('reopenTask', () => {
   });
 
   it('preserves reviewCycle on reopen', () => {
-    const state = initSyncState('feature/dash', ['auth'], 'paw.yaml');
+    const state = initSyncState('feature/dash', ['auth'], 'fleet.yaml');
     const claimed = claimTask(state, 'auth');
     const reviewed = submitForReview(claimed, 'auth');
     const reopened = reopenTask(reviewed, 'auth');
@@ -160,7 +160,7 @@ describe('reopenTask', () => {
   });
 
   it('throws on unknown task', () => {
-    const state = initSyncState('feature/dash', ['auth'], 'paw.yaml');
+    const state = initSyncState('feature/dash', ['auth'], 'fleet.yaml');
 
     expect(() => reopenTask(state, 'nope')).toThrow('Task not found in sync state: nope');
   });
@@ -185,19 +185,19 @@ describe('writeSyncState / readSyncState', () => {
   });
 
   it('round-trips sync state through the worktree', () => {
-    const state = initSyncState('feature/dash', ['auth', 'api'], 'paw.yaml');
+    const state = initSyncState('feature/dash', ['auth', 'api'], 'fleet.yaml');
     writeSyncState(state, repoDir);
 
     const read = readSyncState(repoDir);
     expect(read).not.toBeNull();
     expect(read!.target).toBe('feature/dash');
-    expect(read!.config).toBe('paw.yaml');
+    expect(read!.config).toBe('fleet.yaml');
     expect(Object.keys(read!.tasks)).toEqual(['auth', 'api']);
     expect(read!.tasks['auth']?.status).toBe('pending');
   });
 
   it('overwrites previous state on second write', () => {
-    const state = initSyncState('feature/dash', ['auth'], 'paw.yaml');
+    const state = initSyncState('feature/dash', ['auth'], 'fleet.yaml');
     writeSyncState(state, repoDir);
 
     const updated = claimTask(state, 'auth');
@@ -258,7 +258,7 @@ describe('writeSyncStateAndFiles', () => {
   });
 
   it('writes state and files atomically', () => {
-    const state = initSyncState('feature/dash', ['auth'], 'paw.yaml');
+    const state = initSyncState('feature/dash', ['auth'], 'fleet.yaml');
     const completed = completeTask(state, 'auth');
 
     writeSyncStateAndFiles(completed, [{ path: 'review/auth.md', content: 'auth done' }], repoDir);
@@ -300,7 +300,7 @@ describe('listSyncDir', () => {
   });
 });
 
-describe('session leak (paw-pm8q)', () => {
+describe('session leak (fleet-pm8q)', () => {
   let repoDir: string;
 
   beforeEach(() => {
@@ -319,7 +319,7 @@ describe('session leak (paw-pm8q)', () => {
 
   it('does not carry inbox entries across remove + re-init', () => {
     initSyncWorktree(repoDir);
-    const state1 = initSyncState('feature/dash', ['auth', 'api'], 'paw.yaml');
+    const state1 = initSyncState('feature/dash', ['auth', 'api'], 'fleet.yaml');
     writeSyncStateAndFiles(
       state1,
       [
@@ -332,10 +332,10 @@ describe('session leak (paw-pm8q)', () => {
     expect(readSyncFile('inbox/auth.jsonl', repoDir)).toBe('{"msg":"old entry"}');
 
     removeSyncWorktree(repoDir);
-    deleteBranch('paw-sync', repoDir);
+    deleteBranch('fleet-sync', repoDir);
 
     initSyncWorktree(repoDir);
-    const state2 = initSyncState('feature/dash', ['auth', 'api'], 'paw.yaml');
+    const state2 = initSyncState('feature/dash', ['auth', 'api'], 'fleet.yaml');
     writeSyncStateAndFiles(state2, [{ path: 'inbox/.gitkeep', content: '' }], repoDir);
 
     expect(readSyncFile('inbox/auth.jsonl', repoDir)).toBeNull();
@@ -364,16 +364,16 @@ describe('initSyncWorktree / removeSyncWorktree', () => {
     rmSync(repoDir, { recursive: true, force: true });
   });
 
-  it('creates orphan worktree when no paw-sync branch exists', () => {
+  it('creates orphan worktree when no fleet-sync branch exists', () => {
     const wtPath = initSyncWorktree(repoDir);
 
-    expect(wtPath).toBe(resolve(repoDir, '.paw', 'sync'));
+    expect(wtPath).toBe(resolve(repoDir, '.fleet', 'sync'));
     expect(existsSync(resolve(wtPath, '.git'))).toBe(true);
   });
 
-  it('creates worktree from existing paw-sync branch', () => {
+  it('creates worktree from existing fleet-sync branch', () => {
     initSyncWorktree(repoDir);
-    const state = initSyncState('feature/dash', ['auth'], 'paw.yaml');
+    const state = initSyncState('feature/dash', ['auth'], 'fleet.yaml');
     writeSyncState(state, repoDir);
     removeSyncWorktree(repoDir);
 
@@ -412,7 +412,7 @@ describe('resolveSyncDir', () => {
     repoDir = makeTempDir();
     gitInit(repoDir);
     createBranch('feature-auth', 'HEAD', repoDir);
-    taskWorktreePath = resolve(repoDir, '..', `${repoDir.split(/[\\/]/).pop()}-paw-auth`);
+    taskWorktreePath = resolve(repoDir, '..', `${repoDir.split(/[\\/]/).pop()}-fleet-auth`);
     createWorktree(taskWorktreePath, 'feature-auth', repoDir);
   });
 
@@ -428,14 +428,14 @@ describe('resolveSyncDir', () => {
 
   it('resolves from the main repo directory', () => {
     const syncDir = resolveSyncDir(repoDir);
-    expect(syncDir).toBe(resolve(repoDir, '.paw', 'sync'));
+    expect(syncDir).toBe(resolve(repoDir, '.fleet', 'sync'));
   });
 
-  it('resolves from a task worktree to the main repo .paw/sync/', () => {
+  it('resolves from a task worktree to the main repo .fleet/sync/', () => {
     const syncDir = resolveSyncDir(taskWorktreePath);
     // On Windows, git worktree list may return 8.3 short names.
     // Match the suffix to avoid path normalization issues.
-    expect(syncDir).toMatch(/\.paw[\\/]sync$/);
+    expect(syncDir).toMatch(/\.fleet[\\/]sync$/);
   });
 });
 
@@ -462,7 +462,7 @@ describe('archiveSession', () => {
 
   it('archives state.json, inbox, and review findings', () => {
     initSyncWorktree(repoDir);
-    const state = initSyncState('feature/dash', ['auth', 'api'], 'paw.yaml');
+    const state = initSyncState('feature/dash', ['auth', 'api'], 'fleet.yaml');
     writeSyncState(state, repoDir);
     writeSyncFile('inbox/auth.jsonl', '{"type":"broadcast"}\n', repoDir);
     writeSyncFile('review/auth.md', '# Review findings\n', repoDir);
@@ -476,24 +476,26 @@ describe('archiveSession', () => {
     expect(existsSync(resolve(archivePath!, 'review', 'auth.md'))).toBe(true);
   });
 
-  it('copies paw.yaml from .paw/ into archive', () => {
+  it('copies fleet.yaml from .fleet/ into archive', () => {
     initSyncWorktree(repoDir);
-    const state = initSyncState('feature/dash', ['auth'], 'paw.yaml');
+    const state = initSyncState('feature/dash', ['auth'], 'fleet.yaml');
     writeSyncState(state, repoDir);
 
-    // Write a paw.yaml in .paw/
-    const configDir = resolve(repoDir, '.paw');
-    writeFileSync(resolve(configDir, 'paw.yaml'), 'target: feature/dash\n');
+    // Write a fleet.yaml in .fleet/
+    const configDir = resolve(repoDir, '.fleet');
+    writeFileSync(resolve(configDir, 'fleet.yaml'), 'target: feature/dash\n');
 
     const archivePath = archiveSession(repoDir, 'feature/dash');
 
-    expect(existsSync(resolve(archivePath!, 'paw.yaml'))).toBe(true);
-    expect(readFileSync(resolve(archivePath!, 'paw.yaml'), 'utf-8')).toBe('target: feature/dash\n');
+    expect(existsSync(resolve(archivePath!, 'fleet.yaml'))).toBe(true);
+    expect(readFileSync(resolve(archivePath!, 'fleet.yaml'), 'utf-8')).toBe(
+      'target: feature/dash\n',
+    );
   });
 
   it('uses session date from state.json for folder name', () => {
     initSyncWorktree(repoDir);
-    const state = initSyncState('feature/dash', ['auth'], 'paw.yaml');
+    const state = initSyncState('feature/dash', ['auth'], 'fleet.yaml');
     writeSyncState(state, repoDir);
 
     const archivePath = archiveSession(repoDir, 'feature/dash');
@@ -519,7 +521,7 @@ describe('readRequiredSyncState', () => {
   });
 
   it('returns state when it exists', () => {
-    const state = initSyncState('feature/dash', ['auth'], 'paw.yaml');
+    const state = initSyncState('feature/dash', ['auth'], 'fleet.yaml');
     writeSyncState(state, repoDir);
 
     const result = readRequiredSyncState(repoDir);
@@ -549,17 +551,17 @@ describe('reviewFilePath', () => {
 });
 
 describe('requireWorktreeTask', () => {
-  it('returns task name when .paw/tasks/ has exactly one .md file', () => {
+  it('returns task name when .fleet/tasks/ has exactly one .md file', () => {
     const dir = makeTempDir();
-    mkdirSync(resolve(dir, '.paw', 'tasks'), { recursive: true });
-    writeFileSync(resolve(dir, '.paw', 'tasks', 'auth.md'), '# auth');
+    mkdirSync(resolve(dir, '.fleet', 'tasks'), { recursive: true });
+    writeFileSync(resolve(dir, '.fleet', 'tasks', 'auth.md'), '# auth');
     expect(requireWorktreeTask(dir)).toBe('auth');
     rmSync(dir, { recursive: true, force: true });
   });
 
   it('throws when not in a worktree', () => {
     const dir = makeTempDir();
-    expect(() => requireWorktreeTask(dir)).toThrow('Not in a paw worktree');
+    expect(() => requireWorktreeTask(dir)).toThrow('Not in a fleet worktree');
     rmSync(dir, { recursive: true, force: true });
   });
 });

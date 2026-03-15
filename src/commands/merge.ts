@@ -12,7 +12,7 @@ import {
   createBackupRef,
 } from '../lib/git.js';
 import { loadRepoConfig, topologicalSort } from '../lib/config.js';
-import type { PawConfig } from '../lib/config.js';
+import type { FleetConfig } from '../lib/config.js';
 import { planWorktrees } from '../lib/session.js';
 import type { WorktreeInfo } from '../lib/session.js';
 import {
@@ -27,7 +27,7 @@ import { generateConflictBrief } from '../lib/conflict.js';
 import { success, warn, skip, handleError } from '../lib/output.js';
 import { ValidationError } from '../lib/errors.js';
 
-/** Build the `paw merge` CLI command. */
+/** Build the `fleet merge` CLI command. */
 export function mergeCommand(): Command {
   return new Command('merge')
     .description('Merge done task branches into the target branch')
@@ -65,7 +65,7 @@ export function mergeCommand(): Command {
           writeSyncState(state, repoRoot);
         }
 
-        console.log(pc.bold('paw merge\n'));
+        console.log(pc.bold('fleet merge\n'));
         runMergeLoop(state, worktrees, config, repoRoot);
       } catch (err) {
         handleError(err);
@@ -91,13 +91,13 @@ function handleMergeContinue(
   const conflictTask = worktrees.find((wt) => state.merges[wt.taskName]?.status === 'conflict');
 
   if (!conflictTask) {
-    throw new ValidationError('No conflicting or failed merge found. Run `paw merge` first.');
+    throw new ValidationError('No conflicting or failed merge found. Run `fleet merge` first.');
   }
 
   if (!isAncestor(conflictTask.branch, 'HEAD', repoRoot)) {
     throw new ValidationError(
       `Branch '${conflictTask.branch}' was not merged into the target. ` +
-        `Its commits are not in HEAD. Re-run \`paw merge\` to retry.`,
+        `Its commits are not in HEAD. Re-run \`fleet merge\` to retry.`,
     );
   }
 
@@ -107,7 +107,7 @@ function handleMergeContinue(
   });
   writeSyncState(updated, repoRoot);
 
-  console.log(pc.bold('paw merge --continue\n'));
+  console.log(pc.bold('fleet merge --continue\n'));
   success(conflictTask.taskName, 'conflict resolved');
 
   return updated;
@@ -120,7 +120,7 @@ function handleMergeContinue(
 function runMergeLoop(
   initialState: SyncState,
   worktrees: WorktreeInfo[],
-  config: PawConfig,
+  config: FleetConfig,
   repoRoot: string,
 ): void {
   let state = initialState;
@@ -142,7 +142,7 @@ function runMergeLoop(
       }
       if (mergeEntry?.status === 'conflict') {
         warn(wt.taskName, 'unresolved conflict');
-        console.log(pc.dim(`\nNext: run \`paw shortcut resolve-merge-conflict\``));
+        console.log(pc.dim(`\nNext: run \`fleet shortcut resolve-merge-conflict\``));
         return;
       }
       const commits = getCommitCount(wt.branch, target, repoRoot);
@@ -185,7 +185,7 @@ function runMergeLoop(
           result.message.split('\n')[0]?.trim() || result.message || 'Merge completed';
         console.log(pc.dim(`    ${firstLine}`));
         console.log(pc.dim(`    Brief written to ${briefPath} on sync branch`));
-        console.log(pc.dim(`\nNext: run \`paw shortcut resolve-merge-conflict\``));
+        console.log(pc.dim(`\nNext: run \`fleet shortcut resolve-merge-conflict\``));
         return;
       }
     }

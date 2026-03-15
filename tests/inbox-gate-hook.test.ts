@@ -19,14 +19,14 @@ describe('inbox gate hook script', () => {
   it('installs the inbox gate script file', () => {
     installHooks(repoRoot);
 
-    const scriptPath = resolve(repoRoot, '.claude', 'hooks', 'paw-inbox-gate.sh');
+    const scriptPath = resolve(repoRoot, '.claude', 'hooks', 'fleet-inbox-gate.sh');
     expect(existsSync(scriptPath)).toBe(true);
 
     const content = readFileSync(scriptPath, 'utf-8');
     expect(content).toContain('#!/bin/bash');
-    expect(content).toContain('.paw/tasks/*.md');
+    expect(content).toContain('.fleet/tasks/*.md');
     expect(content).toContain('exit 2');
-    expect(content).toContain('.paw/run/.unanswered-');
+    expect(content).toContain('.fleet/run/.unanswered-');
   });
 
   it('registers inbox gate as PreToolUse with empty matcher (all tools)', () => {
@@ -42,11 +42,11 @@ describe('inbox gate hook script', () => {
 
     // First is the existing guard with specific matcher
     expect(preToolUse[0]).toHaveProperty('matcher', 'Bash|Edit|Write');
-    expect(preToolUse[0].hooks[0].command).toContain('paw-guard.sh');
+    expect(preToolUse[0].hooks[0].command).toContain('fleet-guard.sh');
 
     // Second is inbox gate with empty matcher (fires on all tools)
     expect(preToolUse[1]).toHaveProperty('matcher', '');
-    expect(preToolUse[1].hooks[0].command).toContain('paw-inbox-gate.sh');
+    expect(preToolUse[1].hooks[0].command).toContain('fleet-inbox-gate.sh');
   });
 
   it('is idempotent — does not duplicate inbox gate hooks', () => {
@@ -67,9 +67,9 @@ describe('inbox gate bash script execution', () => {
   beforeEach(() => {
     repoRoot = makeTempDir();
     installHooks(repoRoot);
-    // Create a task file to make it look like a paw worktree
-    mkdirSync(resolve(repoRoot, '.paw', 'tasks'), { recursive: true });
-    writeFileSync(resolve(repoRoot, '.paw', 'tasks', 'my-task.md'), '# Task');
+    // Create a task file to make it look like a fleet worktree
+    mkdirSync(resolve(repoRoot, '.fleet', 'tasks'), { recursive: true });
+    writeFileSync(resolve(repoRoot, '.fleet', 'tasks', 'my-task.md'), '# Task');
   });
 
   afterEach(() => {
@@ -78,7 +78,7 @@ describe('inbox gate bash script execution', () => {
 
   it('allows when flag file is missing (exit 0, no output)', () => {
     const input = JSON.stringify({ tool_name: 'Read', tool_input: {} });
-    const result = execSync(`echo '${input}' | bash .claude/hooks/paw-inbox-gate.sh`, {
+    const result = execSync(`echo '${input}' | bash .claude/hooks/fleet-inbox-gate.sh`, {
       cwd: repoRoot,
       encoding: 'utf-8',
     });
@@ -87,12 +87,12 @@ describe('inbox gate bash script execution', () => {
 
   it('denies Read tool when flag file exists (exit 2, stderr has exact denial text)', () => {
     const denialText = 'You have 1 unanswered message';
-    mkdirSync(resolve(repoRoot, '.paw', 'run'), { recursive: true });
-    writeFileSync(resolve(repoRoot, '.paw', 'run', '.unanswered-my-task'), denialText);
+    mkdirSync(resolve(repoRoot, '.fleet', 'run'), { recursive: true });
+    writeFileSync(resolve(repoRoot, '.fleet', 'run', '.unanswered-my-task'), denialText);
 
     const input = JSON.stringify({ tool_name: 'Read', tool_input: {} });
     try {
-      execSync(`echo '${input}' | bash .claude/hooks/paw-inbox-gate.sh`, {
+      execSync(`echo '${input}' | bash .claude/hooks/fleet-inbox-gate.sh`, {
         cwd: repoRoot,
         encoding: 'utf-8',
       });
@@ -105,15 +105,15 @@ describe('inbox gate bash script execution', () => {
   });
 
   it('denies Edit tool when flag file exists (exit 2, stderr has reason)', () => {
-    mkdirSync(resolve(repoRoot, '.paw', 'run'), { recursive: true });
+    mkdirSync(resolve(repoRoot, '.fleet', 'run'), { recursive: true });
     writeFileSync(
-      resolve(repoRoot, '.paw', 'run', '.unanswered-my-task'),
+      resolve(repoRoot, '.fleet', 'run', '.unanswered-my-task'),
       'You have 1 unanswered message',
     );
 
     const input = JSON.stringify({ tool_name: 'Edit', tool_input: { file_path: 'foo.ts' } });
     try {
-      execSync(`echo '${input}' | bash .claude/hooks/paw-inbox-gate.sh`, {
+      execSync(`echo '${input}' | bash .claude/hooks/fleet-inbox-gate.sh`, {
         cwd: repoRoot,
         encoding: 'utf-8',
       });
@@ -126,15 +126,15 @@ describe('inbox gate bash script execution', () => {
   });
 
   it('denies Write tool when flag file exists (exit 2, stderr has reason)', () => {
-    mkdirSync(resolve(repoRoot, '.paw', 'run'), { recursive: true });
+    mkdirSync(resolve(repoRoot, '.fleet', 'run'), { recursive: true });
     writeFileSync(
-      resolve(repoRoot, '.paw', 'run', '.unanswered-my-task'),
+      resolve(repoRoot, '.fleet', 'run', '.unanswered-my-task'),
       'You have 1 unanswered message',
     );
 
     const input = JSON.stringify({ tool_name: 'Write', tool_input: { file_path: 'bar.ts' } });
     try {
-      execSync(`echo '${input}' | bash .claude/hooks/paw-inbox-gate.sh`, {
+      execSync(`echo '${input}' | bash .claude/hooks/fleet-inbox-gate.sh`, {
         cwd: repoRoot,
         encoding: 'utf-8',
       });
@@ -146,28 +146,28 @@ describe('inbox gate bash script execution', () => {
     }
   });
 
-  it('allows paw commands even when flag file exists', () => {
-    mkdirSync(resolve(repoRoot, '.paw', 'run'), { recursive: true });
+  it('allows fleet commands even when flag file exists', () => {
+    mkdirSync(resolve(repoRoot, '.fleet', 'run'), { recursive: true });
     writeFileSync(
-      resolve(repoRoot, '.paw', 'run', '.unanswered-my-task'),
+      resolve(repoRoot, '.fleet', 'run', '.unanswered-my-task'),
       'You have 1 unanswered message',
     );
 
     const input = JSON.stringify({
       tool_name: 'Bash',
-      tool_input: { command: 'paw reply other-task "here is the answer"' },
+      tool_input: { command: 'fleet reply other-task "here is the answer"' },
     });
-    const result = execSync(`echo '${input}' | bash .claude/hooks/paw-inbox-gate.sh`, {
+    const result = execSync(`echo '${input}' | bash .claude/hooks/fleet-inbox-gate.sh`, {
       cwd: repoRoot,
       encoding: 'utf-8',
     });
     expect(result.trim()).toBe('');
   });
 
-  it('denies non-paw Bash commands when flag file exists (exit 2)', () => {
-    mkdirSync(resolve(repoRoot, '.paw', 'run'), { recursive: true });
+  it('denies non-fleet Bash commands when flag file exists (exit 2)', () => {
+    mkdirSync(resolve(repoRoot, '.fleet', 'run'), { recursive: true });
     writeFileSync(
-      resolve(repoRoot, '.paw', 'run', '.unanswered-my-task'),
+      resolve(repoRoot, '.fleet', 'run', '.unanswered-my-task'),
       'You have 1 unanswered message',
     );
 
@@ -176,7 +176,7 @@ describe('inbox gate bash script execution', () => {
       tool_input: { command: 'cat file.txt' },
     });
     try {
-      execSync(`echo '${input}' | bash .claude/hooks/paw-inbox-gate.sh`, {
+      execSync(`echo '${input}' | bash .claude/hooks/fleet-inbox-gate.sh`, {
         cwd: repoRoot,
         encoding: 'utf-8',
       });
@@ -188,18 +188,18 @@ describe('inbox gate bash script execution', () => {
     }
   });
 
-  it('allows all tools when no task file exists (not a paw worktree)', () => {
+  it('allows all tools when no task file exists (not a fleet worktree)', () => {
     // Remove the task file
-    rmSync(resolve(repoRoot, '.paw', 'tasks'), { recursive: true, force: true });
+    rmSync(resolve(repoRoot, '.fleet', 'tasks'), { recursive: true, force: true });
 
-    mkdirSync(resolve(repoRoot, '.paw', 'run'), { recursive: true });
+    mkdirSync(resolve(repoRoot, '.fleet', 'run'), { recursive: true });
     writeFileSync(
-      resolve(repoRoot, '.paw', 'run', '.unanswered-my-task'),
+      resolve(repoRoot, '.fleet', 'run', '.unanswered-my-task'),
       'You have 1 unanswered message',
     );
 
     const input = JSON.stringify({ tool_name: 'Read', tool_input: {} });
-    const result = execSync(`echo '${input}' | bash .claude/hooks/paw-inbox-gate.sh`, {
+    const result = execSync(`echo '${input}' | bash .claude/hooks/fleet-inbox-gate.sh`, {
       cwd: repoRoot,
       encoding: 'utf-8',
     });

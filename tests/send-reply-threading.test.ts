@@ -32,7 +32,7 @@ describe('send command threading', () => {
     repoDir = makeTempDir();
     gitInit(repoDir);
     initSyncWorktree(repoDir);
-    const state = initSyncState('feature/dash', ['orchestrator', 'api', 'auth'], 'paw.yaml');
+    const state = initSyncState('feature/dash', ['orchestrator', 'api', 'auth'], 'fleet.yaml');
     writeSyncState(state, repoDir);
   });
 
@@ -64,7 +64,7 @@ describe('reply targets unanswered messages', () => {
     repoDir = makeTempDir();
     gitInit(repoDir);
     initSyncWorktree(repoDir);
-    const state = initSyncState('feature/dash', ['orchestrator', 'api', 'auth'], 'paw.yaml');
+    const state = initSyncState('feature/dash', ['orchestrator', 'api', 'auth'], 'fleet.yaml');
     writeSyncState(state, repoDir);
   });
 

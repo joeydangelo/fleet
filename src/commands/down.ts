@@ -19,11 +19,11 @@ import {
   handleError,
   colors,
 } from '../lib/output.js';
-import { writeDefaultPawYaml } from '../lib/util.js';
+import { writeDefaultFleetYaml } from '../lib/util.js';
 
 /**
- * State files cleaned up during `paw down`. Must be updated when new
- * session-scoped state files are added to .paw/.
+ * State files cleaned up during `fleet down`. Must be updated when new
+ * session-scoped state files are added to .fleet/.
  */
 const SESSION_STATE_FILES = [
   '.last-inbox-check',
@@ -39,7 +39,7 @@ const INBOX_CURSOR_PREFIX = '.inbox-cursor-';
 /** Subdirectories removed during cleanup. */
 const SESSION_STATE_DIRS = ['heartbeats', 'nudges', 'triage'] as const;
 
-/** CLI command: tear down a paw session (remove worktrees, kill agents, archive, reset config). */
+/** CLI command: tear down a fleet session (remove worktrees, kill agents, archive, reset config). */
 export function downCommand(): Command {
   return new Command('down')
     .description('Remove all task worktrees and clean up')
@@ -49,7 +49,7 @@ export function downCommand(): Command {
         const { repoRoot, config } = loadRepoConfig();
         const worktrees = planWorktrees(config, repoRoot);
 
-        console.log(pc.bold(`paw down${opts.dryRun ? ' (dry run)' : ''}\n`));
+        console.log(pc.bold(`fleet down${opts.dryRun ? ' (dry run)' : ''}\n`));
 
         if (opts.dryRun) {
           for (const wt of worktrees) {
@@ -87,7 +87,7 @@ export function downCommand(): Command {
           console.log(
             colors.warn(
               `\n${failed} worktree(s) could not be removed (files may be in use).` +
-                '\nClose terminals and editors in the worktree directories, then retry `paw down`.' +
+                '\nClose terminals and editors in the worktree directories, then retry `fleet down`.' +
                 '\nConfig and sync branch left intact for retry.',
             ),
           );
@@ -106,22 +106,22 @@ export function downCommand(): Command {
 
         cleanupBackupRefs(repoRoot);
 
-        const runDir = resolve(repoRoot, '.paw', 'run');
+        const runDir = resolve(repoRoot, '.fleet', 'run');
         try {
           rmSync(runDir, { recursive: true });
         } catch {
           /* already gone */
         }
         try {
-          const pawDir = resolve(repoRoot, '.paw');
+          const fleetDir = resolve(repoRoot, '.fleet');
           const stateFileSet = new Set<string>(SESSION_STATE_FILES);
-          for (const f of readdirSync(pawDir)) {
+          for (const f of readdirSync(fleetDir)) {
             if (f.startsWith(INBOX_CURSOR_PREFIX) || stateFileSet.has(f)) {
-              rmSync(resolve(pawDir, f), { force: true });
+              rmSync(resolve(fleetDir, f), { force: true });
             }
           }
           for (const d of SESSION_STATE_DIRS) {
-            const p = resolve(pawDir, d);
+            const p = resolve(fleetDir, d);
             if (existsSync(p)) rmSync(p, { recursive: true });
           }
         } catch {
@@ -139,8 +139,8 @@ export function downCommand(): Command {
         }
 
         try {
-          if (writeDefaultPawYaml(repoRoot)) {
-            success('config', 'reset .paw/paw.yaml to template');
+          if (writeDefaultFleetYaml(repoRoot)) {
+            success('config', 'reset .fleet/fleet.yaml to template');
           }
         } catch {
           // Non-critical -- skip silently

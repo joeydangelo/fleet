@@ -25,7 +25,7 @@ interface SyncResult {
  */
 function getDocsBasePath(): string {
   const result = findBundledDir(__dirname, 'docs');
-  if (!result) throw new Error('paw docs not found');
+  if (!result) throw new Error('fleet docs not found');
   return result;
 }
 
@@ -84,11 +84,11 @@ export function pruneStaleInternals(manifest: Record<string, string>): Record<st
 }
 
 /**
- * Sync bundled docs to .paw/docs/, preserving user-added and dropped-in docs.
+ * Sync bundled docs to .fleet/docs/, preserving user-added and dropped-in docs.
  * Writes doc entries to manifest.yml.
  */
 export function syncDocs(repoRoot: string): SyncResult {
-  const docsDir = join(repoRoot, '.paw', 'docs');
+  const docsDir = join(repoRoot, '.fleet', 'docs');
   mkdirSync(docsDir, { recursive: true });
 
   const manifest = readManifest(repoRoot);
@@ -175,7 +175,7 @@ export function isDocsStale(lastSyncAt: string | undefined, autoSyncHours: numbe
 /** Re-fetch URL-sourced docs and update on-disk copies if changed. Returns keys that failed. */
 async function refreshUrlDocs(repoRoot: string): Promise<string[]> {
   const manifest = readManifest(repoRoot);
-  const docsDir = join(repoRoot, '.paw', 'docs');
+  const docsDir = join(repoRoot, '.fleet', 'docs');
 
   const urlEntries = Object.entries(manifest.docs_cache.files).filter(
     ([, source]) => !source.startsWith(INTERNAL_PREFIX),
@@ -201,7 +201,7 @@ async function refreshUrlDocs(repoRoot: string): Promise<string[]> {
     if (result.status === 'rejected') {
       const key = urlEntries[i]![0];
       const msg = toErrorMessage(result.reason);
-      console.warn(`[paw] Failed to refresh URL doc "${key}": ${msg}`);
+      console.warn(`[fleet] Failed to refresh URL doc "${key}": ${msg}`);
     }
   }
 
@@ -225,7 +225,7 @@ export async function ensureDocsFresh(repoRoot: string): Promise<void> {
   const now = new Date().toISOString();
   if (failed.length > 0) {
     console.warn(
-      `[paw] URL doc sync partially failed (${failed.length} entries). Updating timestamp despite failures.`,
+      `[fleet] URL doc sync partially failed (${failed.length} entries). Updating timestamp despite failures.`,
     );
   }
   writeLocalState(repoRoot, { ...state, last_doc_sync_at: now });

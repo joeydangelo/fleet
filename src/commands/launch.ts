@@ -3,7 +3,7 @@ import { existsSync } from 'node:fs';
 import { basename } from 'node:path';
 import pc from 'picocolors';
 import { loadRepoConfig } from '../lib/config.js';
-import type { PawConfig } from '../lib/config.js';
+import type { FleetConfig } from '../lib/config.js';
 import { planWorktrees } from '../lib/session.js';
 import { readSyncState } from '../lib/sync.js';
 import {
@@ -49,7 +49,7 @@ export function printLaunchPreview(
     if (taskState?.status === 'done' || taskState?.status === 'in_review') {
       skip(wt.taskName, formatTaskStatus(taskState.status));
     } else if (!existsSync(wt.worktreePath)) {
-      error(wt.taskName, 'worktree not found -- run paw up first');
+      error(wt.taskName, 'worktree not found -- run fleet up first');
     } else {
       const verb = useDetached ? 'tmux new-session -d' : 'tmux split-window';
       pending(wt.taskName, `${verb} -c ${wt.worktreePath} → claude`);
@@ -58,7 +58,7 @@ export function printLaunchPreview(
 }
 
 /** Spawn agents for tasks that aren't done (detached by default; attached when inside tmux). */
-export async function runLaunch(repoRoot: string, config: PawConfig): Promise<void> {
+export async function runLaunch(repoRoot: string, config: FleetConfig): Promise<void> {
   const worktrees = planWorktrees(config, repoRoot);
   const syncState = readSyncState(repoRoot);
   const sessionName = tmuxSessionName(basename(repoRoot));
@@ -66,7 +66,7 @@ export async function runLaunch(repoRoot: string, config: PawConfig): Promise<vo
   const useDetached = !isInsideTmux();
   const modeLabel = useDetached ? 'detached' : 'attached';
 
-  console.log(pc.bold(`paw launch: ${worktrees.length} task(s)`));
+  console.log(pc.bold(`fleet launch: ${worktrees.length} task(s)`));
   console.log(`  agent: claude`);
   console.log(`  session: ${sessionName}`);
   console.log(`  mode: ${modeLabel}\n`);
@@ -82,7 +82,7 @@ export async function runLaunch(repoRoot: string, config: PawConfig): Promise<vo
     }
 
     if (!existsSync(wt.worktreePath)) {
-      error(wt.taskName, 'worktree not found -- run paw up first');
+      error(wt.taskName, 'worktree not found -- run fleet up first');
       continue;
     }
 
@@ -153,7 +153,7 @@ export async function runLaunch(repoRoot: string, config: PawConfig): Promise<vo
   }
 }
 
-/** Build the `paw launch` CLI command. */
+/** Build the `fleet launch` CLI command. */
 export function launchCommand(): Command {
   return new Command('launch')
     .description('Spawn agents for each task worktree (detached by default, attached in tmux)')
@@ -169,7 +169,7 @@ export function launchCommand(): Command {
           const useDetached = !isInsideTmux();
           const sessionName = tmuxSessionName(basename(repoRoot));
 
-          console.log(pc.bold(`paw launch: ${worktrees.length} task(s) (dry run)`));
+          console.log(pc.bold(`fleet launch: ${worktrees.length} task(s) (dry run)`));
           console.log(`  agent: claude`);
           console.log(`  session: ${sessionName}`);
           console.log(`  mode: ${useDetached ? 'detached' : 'attached'}\n`);

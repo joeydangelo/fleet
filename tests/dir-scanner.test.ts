@@ -9,7 +9,7 @@ import {
   resolveGitRoot,
 } from '../src/lib/dir-scanner.js';
 
-const TEST_ROOT = join(tmpdir(), 'paw-dir-scanner-test');
+const TEST_ROOT = join(tmpdir(), 'fleet-dir-scanner-test');
 
 function setup() {
   rmSync(TEST_ROOT, { recursive: true, force: true });

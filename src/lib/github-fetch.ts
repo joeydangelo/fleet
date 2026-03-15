@@ -24,7 +24,7 @@ export async function directFetch(url: string, timeout = DEFAULT_FETCH_TIMEOUT):
     const response = await fetch(url, {
       signal: controller.signal,
       headers: {
-        'User-Agent': 'get-paw/1.0',
+        'User-Agent': 'get-fleet/1.0',
         Accept: 'text/plain, text/markdown, */*',
       },
     });

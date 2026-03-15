@@ -8,7 +8,7 @@ roles: [orchestrator]
 
 | Variable | Source | Default |
 |---|---|---|
-| `TARGET_BRANCH` | `paw merge` output (required) | — |
+| `TARGET_BRANCH` | `fleet merge` output (required) | — |
 | `BASE_BRANCH` | git default branch | `main` |
 | `MAX_FIX_ATTEMPTS` | static | `3` |
 
@@ -73,7 +73,7 @@ integration path.
    validation at the same level. Delete `TARGET_BRANCH` after successful merge.
 
    **Option 2 — Create PR:**
-   Push `TARGET_BRANCH`. Scan `paw.yaml` `issue` fields for GitHub issue numbers.
+   Push `TARGET_BRANCH`. Scan `fleet.yaml` `issue` fields for GitHub issue numbers.
    Create PR with structured body: summary, changes, validation evidence (level,
    commands run, results), `Closes #N` links. Wait for CI:
    `gh pr checks <TARGET_BRANCH> --watch 2>&1`. If CI fails, fix, push, wait again.
@@ -92,7 +92,7 @@ integration path.
 
 ## Context Flow
 
-- Upstream (paw merge / resolve-merge-conflict) → Phase 1: merged target branch
+- Upstream (fleet merge / resolve-merge-conflict) → Phase 1: merged target branch
 - Phase 1 → Phase 2: validation level, results, must_haves status, change summary
 
 ## Stopping Conditions

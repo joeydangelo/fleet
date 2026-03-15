@@ -105,7 +105,7 @@ describe('computeThreads', () => {
 describe('formatMessage', () => {
   it('formats nudge with warning prefix', () => {
     const nudge = entry({ type: 'nudge', from: 'orchestrator', msg: 'Finish task' });
-    expect(formatMessage(nudge)).toBe('[paw] Warning: Finish task');
+    expect(formatMessage(nudge)).toBe('[fleet] Warning: Finish task');
   });
 
   it('formats broadcast as [from] broadcast: msg', () => {
@@ -114,7 +114,12 @@ describe('formatMessage', () => {
   });
 
   it('formats directed message (with to) as [from → to] msg', () => {
-    const directed = entry({ type: 'send', from: 'orchestrator', to: 'auth', msg: 'Are you done?' });
+    const directed = entry({
+      type: 'send',
+      from: 'orchestrator',
+      to: 'auth',
+      msg: 'Are you done?',
+    });
     expect(formatMessage(directed)).toBe('[orchestrator → auth] Are you done?');
   });
 

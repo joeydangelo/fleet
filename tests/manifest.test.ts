@@ -9,7 +9,7 @@ import {
   readLocalState,
   writeLocalState,
 } from '../src/lib/manifest.js';
-import type { PawManifest, LocalState } from '../src/lib/manifest.js';
+import type { FleetManifest, LocalState } from '../src/lib/manifest.js';
 import { makeTempDir } from './helpers/temp.js';
 
 describe('readManifest', () => {
@@ -17,7 +17,7 @@ describe('readManifest', () => {
 
   beforeEach(() => {
     repoRoot = makeTempDir();
-    mkdirSync(resolve(repoRoot, '.paw'), { recursive: true });
+    mkdirSync(resolve(repoRoot, '.fleet'), { recursive: true });
   });
 
   afterEach(() => {
@@ -28,16 +28,16 @@ describe('readManifest', () => {
     const manifest = readManifest(repoRoot);
     expect(manifest.docs_cache.files).toEqual({});
     expect(manifest.docs_cache.lookup_path).toEqual([
-      '.paw/docs/shortcuts',
-      '.paw/docs/guidelines',
-      '.paw/docs/templates',
+      '.fleet/docs/shortcuts',
+      '.fleet/docs/guidelines',
+      '.fleet/docs/templates',
     ]);
     expect(manifest.settings.doc_auto_sync_hours).toBe(24);
   });
 
   it('reads existing manifest.yml', () => {
     writeFileSync(
-      resolve(repoRoot, '.paw', 'manifest.yml'),
+      resolve(repoRoot, '.fleet', 'manifest.yml'),
       'docs_cache:\n  files:\n    shortcuts/foo.md: "https://example.com/foo.md"\nsettings:\n  doc_auto_sync_hours: 12\n',
       'utf-8',
     );
@@ -48,7 +48,7 @@ describe('readManifest', () => {
 
   it('fills in defaults for partial manifest', () => {
     writeFileSync(
-      resolve(repoRoot, '.paw', 'manifest.yml'),
+      resolve(repoRoot, '.fleet', 'manifest.yml'),
       'docs_cache:\n  files:\n    a.md: internal:a.md\n',
       'utf-8',
     );
@@ -63,7 +63,7 @@ describe('writeManifest + readManifest round-trip', () => {
 
   beforeEach(() => {
     repoRoot = makeTempDir();
-    mkdirSync(resolve(repoRoot, '.paw'), { recursive: true });
+    mkdirSync(resolve(repoRoot, '.fleet'), { recursive: true });
   });
 
   afterEach(() => {
@@ -71,13 +71,13 @@ describe('writeManifest + readManifest round-trip', () => {
   });
 
   it('round-trips correctly', () => {
-    const manifest: PawManifest = {
+    const manifest: FleetManifest = {
       docs_cache: {
         files: {
           'shortcuts/build-task.md': 'internal:shortcuts/build-task.md',
           'guidelines/custom.md': 'https://example.com/custom.md',
         },
-        lookup_path: ['.paw/docs/shortcuts', '.paw/docs/guidelines', '.paw/docs/templates'],
+        lookup_path: ['.fleet/docs/shortcuts', '.fleet/docs/guidelines', '.fleet/docs/templates'],
       },
       settings: { doc_auto_sync_hours: 48 },
     };
@@ -90,16 +90,16 @@ describe('writeManifest + readManifest round-trip', () => {
   });
 
   it('writes valid YAML to manifest.yml', () => {
-    const manifest: PawManifest = {
+    const manifest: FleetManifest = {
       docs_cache: {
         files: { 'a.md': 'internal:a.md' },
-        lookup_path: ['.paw/docs/shortcuts'],
+        lookup_path: ['.fleet/docs/shortcuts'],
       },
       settings: { doc_auto_sync_hours: 24 },
     };
     writeManifest(repoRoot, manifest);
 
-    const raw = readFileSync(resolve(repoRoot, '.paw', 'manifest.yml'), 'utf-8');
+    const raw = readFileSync(resolve(repoRoot, '.fleet', 'manifest.yml'), 'utf-8');
     expect(raw).toContain('docs_cache');
     expect(raw).toContain('a.md');
   });
@@ -110,7 +110,7 @@ describe('readLocalState', () => {
 
   beforeEach(() => {
     repoRoot = makeTempDir();
-    mkdirSync(resolve(repoRoot, '.paw'), { recursive: true });
+    mkdirSync(resolve(repoRoot, '.fleet'), { recursive: true });
   });
 
   afterEach(() => {
@@ -122,10 +122,10 @@ describe('readLocalState', () => {
     expect(state.last_doc_sync_at).toBeUndefined();
   });
 
-  it('reads existing state.yml from .paw/run/', () => {
-    mkdirSync(resolve(repoRoot, '.paw', 'run'), { recursive: true });
+  it('reads existing state.yml from .fleet/run/', () => {
+    mkdirSync(resolve(repoRoot, '.fleet', 'run'), { recursive: true });
     writeFileSync(
-      resolve(repoRoot, '.paw', 'run', 'state.yml'),
+      resolve(repoRoot, '.fleet', 'run', 'state.yml'),
       'last_doc_sync_at: "2026-02-24T12:00:00Z"\n',
       'utf-8',
     );
@@ -139,7 +139,7 @@ describe('writeLocalState + readLocalState round-trip', () => {
 
   beforeEach(() => {
     repoRoot = makeTempDir();
-    mkdirSync(resolve(repoRoot, '.paw'), { recursive: true });
+    mkdirSync(resolve(repoRoot, '.fleet'), { recursive: true });
   });
 
   afterEach(() => {

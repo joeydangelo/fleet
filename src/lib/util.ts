@@ -2,18 +2,14 @@ import { existsSync, mkdirSync } from 'node:fs';
 import { writeFileSync } from 'atomically';
 import { join, resolve } from 'node:path';
 import { readDoc } from './docs.js';
-import {
-  createTmuxService,
-  checkAgentLiveness,
-  buildLivenessMap,
-} from './tmux.js';
-import type { PawPaneConfig } from './tmux.js';
+import { createTmuxService, checkAgentLiveness, buildLivenessMap } from './tmux.js';
+import type { FleetPaneConfig } from './tmux.js';
 
 /**
  * Try to build a liveness map from tmux pane config.
  * Returns an empty map if paneConfig is null or if tmux is unavailable.
  */
-export function tryGetLivenessMap(paneConfig: PawPaneConfig | null): Map<string, boolean> {
+export function tryGetLivenessMap(paneConfig: FleetPaneConfig | null): Map<string, boolean> {
   if (!paneConfig) return new Map();
   try {
     const tmux = createTmuxService();
@@ -55,16 +51,16 @@ export function findBundledDir(base: string, name: string): string | null {
 }
 
 /**
- * Read the paw-yaml template doc, extract the YAML block, and write .paw/paw.yaml.
+ * Read the fleet-yaml template doc, extract the YAML block, and write .fleet/fleet.yaml.
  * Returns true on success, false if template not found or extraction fails.
  */
-export function writeDefaultPawYaml(repoRoot: string): boolean {
-  const doc = readDoc('templates', 'paw-yaml');
+export function writeDefaultFleetYaml(repoRoot: string): boolean {
+  const doc = readDoc('templates', 'fleet-yaml');
   if (!doc) return false;
   const yamlMatch = doc.content.match(/```yaml\r?\n([\s\S]*?)```/);
   if (!yamlMatch) return false;
-  const configDir = resolve(repoRoot, '.paw');
+  const configDir = resolve(repoRoot, '.fleet');
   mkdirSync(configDir, { recursive: true });
-  writeFileSync(resolve(configDir, 'paw.yaml'), yamlMatch[1]);
+  writeFileSync(resolve(configDir, 'fleet.yaml'), yamlMatch[1]);
   return true;
 }

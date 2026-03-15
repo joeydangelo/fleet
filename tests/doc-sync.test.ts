@@ -102,7 +102,7 @@ describe('syncDocs', () => {
     expect(Object.keys(config.docs_cache.files).length).toBeGreaterThan(0);
 
     const firstKey = Object.keys(config.docs_cache.files)[0]!;
-    expect(existsSync(resolve(repoRoot, '.paw', 'docs', firstKey))).toBe(true);
+    expect(existsSync(resolve(repoRoot, '.fleet', 'docs', firstKey))).toBe(true);
   });
 
   it('is idempotent — second run produces no changes', () => {
@@ -122,7 +122,7 @@ describe('syncDocs', () => {
     const internalKey = Object.keys(config.docs_cache.files).find((k) =>
       config.docs_cache.files[k]!.startsWith('internal:'),
     )!;
-    const filePath = resolve(repoRoot, '.paw', 'docs', internalKey);
+    const filePath = resolve(repoRoot, '.fleet', 'docs', internalKey);
     writeFileSync(filePath, 'old content that differs from bundled', 'utf-8');
 
     const result = syncDocs(repoRoot);
@@ -132,7 +132,7 @@ describe('syncDocs', () => {
   it('preserves user URL-sourced docs', () => {
     syncDocs(repoRoot);
 
-    const userFile = resolve(repoRoot, '.paw', 'docs', 'shortcuts', 'user-doc.md');
+    const userFile = resolve(repoRoot, '.fleet', 'docs', 'shortcuts', 'user-doc.md');
     writeFileSync(userFile, '# User Doc\nContent here.', 'utf-8');
     const config = readManifest(repoRoot);
     config.docs_cache.files['shortcuts/user-doc.md'] = 'https://example.com/user-doc.md';
@@ -146,7 +146,7 @@ describe('syncDocs', () => {
   it('preserves manual drop-ins with no config entry', () => {
     syncDocs(repoRoot);
 
-    const dropIn = resolve(repoRoot, '.paw', 'docs', 'shortcuts', 'dropped.md');
+    const dropIn = resolve(repoRoot, '.fleet', 'docs', 'shortcuts', 'dropped.md');
     writeFileSync(dropIn, '# Dropped\nManually placed.', 'utf-8');
 
     const result = syncDocs(repoRoot);
@@ -160,7 +160,7 @@ describe('syncDocs', () => {
     const config = readManifest(repoRoot);
     config.docs_cache.files['shortcuts/old-removed.md'] = 'internal:shortcuts/old-removed.md';
     writeManifest(repoRoot, config);
-    const fakeFile = resolve(repoRoot, '.paw', 'docs', 'shortcuts', 'old-removed.md');
+    const fakeFile = resolve(repoRoot, '.fleet', 'docs', 'shortcuts', 'old-removed.md');
     writeFileSync(fakeFile, '# Old doc', 'utf-8');
 
     const result = syncDocs(repoRoot);

@@ -23,19 +23,19 @@ export interface TmuxPaneInfo {
   command: string;
   /** Live working directory from #{pane_current_path}. */
   cwd: string;
-  /** Project root from @paw_project custom option. Empty string if not set. */
+  /** Project root from @fleet_project custom option. Empty string if not set. */
   project: string;
-  /** Pane role from @paw_role custom option. Empty string if not set. */
+  /** Pane role from @fleet_role custom option. Empty string if not set. */
   role: string;
 }
 
-/** Per-pane metadata persisted to .paw/panes.json. */
-export interface PawPane {
-  /** Unique pane identifier (paw-1, paw-2, ...). */
+/** Per-pane metadata persisted to .fleet/panes.json. */
+export interface FleetPane {
+  /** Unique pane identifier (fleet-1, fleet-2, ...). */
   id: string;
   /** tmux pane ID (%nn). */
   paneId: string;
-  /** Task name from paw.yaml. */
+  /** Task name from fleet.yaml. */
   taskName: string;
   /** Full path to the git worktree. */
   worktreePath: string;
@@ -46,7 +46,7 @@ export interface PawPane {
 /** Agent running in a detached tmux session. */
 export interface DetachedAgent {
   id: string;
-  /** tmux session name: paw-{project}-{task}. */
+  /** tmux session name: fleet-{project}-{task}. */
   sessionName: string;
   taskName: string;
   worktreePath: string;
@@ -54,7 +54,7 @@ export interface DetachedAgent {
 }
 
 /** Persisted session state — discriminated by mode. */
-export type PawPaneConfig =
+export type FleetPaneConfig =
   | {
       /** 'attached' when inside a shared tmux session (default when absent). */
       mode?: 'attached';
@@ -68,7 +68,7 @@ export type PawPaneConfig =
        */
       orchestratorPaneId: string;
       /** Active agent panes (panes 2+). */
-      panes: PawPane[];
+      panes: FleetPane[];
       /** Not present in attached mode. */
       detached?: never;
       /** ISO timestamp of last update. */
@@ -87,7 +87,7 @@ export type PawPaneConfig =
        */
       orchestratorPaneId: string;
       /** Active agent panes (panes 2+). */
-      panes: PawPane[];
+      panes: FleetPane[];
       /** Detached tmux sessions — only present when mode is 'detached'. */
       detached: DetachedAgent[];
       /** ISO timestamp of last update. */
@@ -112,9 +112,9 @@ export interface TmuxServiceApi {
   selectLayout(sessionName: string, layout: string): void;
   selectPane(paneId: string): void;
   setPaneTitle(paneId: string, title: string): void;
-  /** Sets a permanent paw role label via a custom tmux user option (@paw_role). */
+  /** Sets a permanent fleet role label via a custom tmux user option (@fleet_role). */
   setPaneRole(paneId: string, role: string): void;
-  /** Sets the project root on a pane via @paw_project custom user option. */
+  /** Sets the project root on a pane via @fleet_project custom user option. */
   setPaneProject(paneId: string, projectRoot: string): void;
   getCurrentPaneId(): string;
   getCurrentSessionName(): string;
@@ -194,7 +194,7 @@ export class TmuxService implements TmuxServiceApi {
       '-t',
       sessionName,
       '-F',
-      '#{pane_id}\t#{pane_title}\t#{pane_current_command}\t#{pane_current_path}\t#{@paw_project}\t#{@paw_role}',
+      '#{pane_id}\t#{pane_title}\t#{pane_current_command}\t#{pane_current_path}\t#{@fleet_project}\t#{@fleet_role}',
     ]);
     return output
       .split('\n')
@@ -282,7 +282,7 @@ export class TmuxService implements TmuxServiceApi {
    * Pins the sidebar at a fixed width using tmux's main-vertical layout.
    * Sets main-pane-width then applies main-vertical, which places the invoking
    * pane full-height on the left with all other panes stacked on the right.
-   * Also sets pane-border-format to read from @paw_role so paw-managed pane
+   * Also sets pane-border-format to read from @fleet_role so fleet-managed pane
    * labels are permanent and cannot be stomped by app escape sequences.
    */
   pinSidebarLayout(sessionName: string, width: number): void {
@@ -294,7 +294,7 @@ export class TmuxService implements TmuxServiceApi {
       '-t',
       sessionName,
       'pane-border-format',
-      ' #{?#{@paw_role},#{@paw_role},#{pane_current_command}} ',
+      ' #{?#{@fleet_role},#{@fleet_role},#{pane_current_command}} ',
     ]);
   }
 
@@ -303,16 +303,16 @@ export class TmuxService implements TmuxServiceApi {
   }
 
   /**
-   * Sets a permanent paw role label on a pane via a custom tmux user option (@paw_role).
+   * Sets a permanent fleet role label on a pane via a custom tmux user option (@fleet_role).
    * Unlike pane titles set via select-pane -T, custom user options cannot be
    * overwritten by application escape sequences (e.g. Claude Code's title updates).
    */
   setPaneRole(paneId: string, role: string): void {
-    this.exec(['set-option', '-p', '-t', paneId, '@paw_role', role]);
+    this.exec(['set-option', '-p', '-t', paneId, '@fleet_role', role]);
   }
 
   setPaneProject(paneId: string, projectRoot: string): void {
-    this.exec(['set-option', '-p', '-t', paneId, '@paw_project', projectRoot]);
+    this.exec(['set-option', '-p', '-t', paneId, '@fleet_project', projectRoot]);
   }
 
   listClients(): string[] {
@@ -365,7 +365,7 @@ export class TmuxService implements TmuxServiceApi {
  * strip leading/trailing hyphens.
  */
 export function tmuxSessionName(dirname: string): string {
-  return `paw-${dirname
+  return `fleet-${dirname
     .replace(/[^a-zA-Z0-9]/g, '-')
     .replace(/-+/g, '-')
     .replace(/^-|-$/g, '')}`;
@@ -407,10 +407,10 @@ function printWindowsTmuxError(): void {
     const wslPath = tryExec('wsl', ['-e', 'wslpath', process.cwd()]);
     const cdPath = wslPath ?? '/mnt/c/.../' + basename(process.cwd());
     const msg = [
-      `paw requires tmux — run paw from inside WSL.\n`,
+      `fleet requires tmux — run fleet from inside WSL.\n`,
       `  ${wslTmux} found in WSL.\n`,
       '  From this terminal:',
-      `    wsl bash -c "cd '${cdPath}' && paw go"`,
+      `    wsl bash -c "cd '${cdPath}' && fleet go"`,
     ];
     console.error(msg.join('\n'));
     return;
@@ -421,18 +421,18 @@ function printWindowsTmuxError(): void {
 
   if (wslCheck !== null) {
     const msg = [
-      'paw requires tmux.\n',
+      'fleet requires tmux.\n',
       '  WSL detected but tmux is not installed. Inside a WSL terminal:',
       '    sudo apt install tmux\n',
-      '  Then run paw go from WSL.',
+      '  Then run fleet go from WSL.',
       '',
       '  More info: https://tmux.info/docs/installation',
     ];
     console.error(msg.join('\n'));
   } else {
     const msg = [
-      'paw requires tmux.\n',
-      '  On Windows, paw runs inside WSL. Install WSL2 first:\n',
+      'fleet requires tmux.\n',
+      '  On Windows, fleet runs inside WSL. Install WSL2 first:\n',
       '    wsl --install          (PowerShell as Admin)\n',
       '  Then inside WSL:',
       '    sudo apt install tmux\n',
@@ -457,7 +457,7 @@ function detectLinuxDistro(): 'debian' | 'fedora' | 'arch' | 'unknown' {
 }
 
 function printUnixTmuxError(): void {
-  const lines = ['paw requires tmux.\n'];
+  const lines = ['fleet requires tmux.\n'];
 
   if (process.platform === 'darwin') {
     lines.push('  Install with Homebrew:');
@@ -518,15 +518,15 @@ export async function launchTmux(
   sessionName: string,
   repoRoot: string,
   worktrees: Array<{ taskName: string; worktreePath: string; agentCommand: string }>,
-  existingPanes: PawPane[] = [],
+  existingPanes: FleetPane[] = [],
   beaconOpts?: BeaconOptions,
-): Promise<PawPane[]> {
+): Promise<FleetPane[]> {
   if (!tmux.sessionExists(sessionName)) {
     tmux.createSession(sessionName, repoRoot);
   }
 
   const livePaneIds = new Set(tmux.listPanes(sessionName));
-  const liveByTask = new Map<string, PawPane>();
+  const liveByTask = new Map<string, FleetPane>();
   for (const ep of existingPanes) {
     if (livePaneIds.has(ep.paneId)) {
       liveByTask.set(ep.taskName, ep);
@@ -538,15 +538,15 @@ export async function launchTmux(
   const launchedPanes = await Promise.all(
     pendingWorktrees.map(async (wt, idx) => {
       const paneId = tmux.createPane(sessionName, wt.worktreePath);
-      const pane: PawPane = {
-        id: `paw-${idx + 1}`,
+      const pane: FleetPane = {
+        id: `fleet-${idx + 1}`,
         paneId,
         taskName: wt.taskName,
         worktreePath: wt.worktreePath,
         branchName: '',
       };
-      tmux.setPaneTitle(paneId, `paw-${wt.taskName}`);
-      tmux.setPaneRole(paneId, `paw-${wt.taskName}`);
+      tmux.setPaneTitle(paneId, `fleet-${wt.taskName}`);
+      tmux.setPaneRole(paneId, `fleet-${wt.taskName}`);
       tmux.setPaneProject(paneId, repoRoot);
       tmux.sendKeys(paneId, wt.agentCommand);
       await sendBeacon(tmux, paneId, { ...beaconOpts, worktreePath: wt.worktreePath });
@@ -598,7 +598,7 @@ export interface BeaconOptions {
   verifyDelayMs?: number;
   /** Delays (ms) for follow-up empty Enters after initial beacon send. */
   followUpDelays?: number[];
-  /** Worktree path — if set, beacon waits for .paw/.session-ready before sending. */
+  /** Worktree path — if set, beacon waits for .fleet/.session-ready before sending. */
   worktreePath?: string;
   /** Max time (ms) to wait for session-ready sentinel. Default: 60_000. */
   sessionReadyTimeoutMs?: number;
@@ -622,9 +622,9 @@ export async function sendBeacon(
   if (!ready) return false;
 
   // Wait for SessionStart hooks to complete before sending the beacon.
-  // paw-session.sh writes .paw/run/.session-ready when paw prime finishes.
+  // fleet-session.sh writes .fleet/run/.session-ready when fleet prime finishes.
   if (opts.worktreePath && sessionReadyTimeoutMs > 0) {
-    const sentinel = resolve(opts.worktreePath, '.paw', 'run', '.session-ready');
+    const sentinel = resolve(opts.worktreePath, '.fleet', 'run', '.session-ready');
     const pollMs = Math.max(tuiPollIntervalMs, 500);
     const maxAttempts = Math.ceil(sessionReadyTimeoutMs / pollMs);
     for (let i = 0; i < maxAttempts; i++) {
@@ -671,7 +671,7 @@ export interface AgentLivenessResult {
 /** Check whether each agent is still alive in tmux. Works for both attached and detached modes. */
 export function checkAgentLiveness(
   tmux: TmuxServiceApi,
-  config: PawPaneConfig,
+  config: FleetPaneConfig,
 ): AgentLivenessResult[] {
   if (config.mode === 'detached') {
     return config.detached.map((agent) => ({
@@ -759,7 +759,7 @@ export async function launchDetached(
         worktreePath: wt.worktreePath,
       });
       return {
-        id: `paw-${idx + 1}`,
+        id: `fleet-${idx + 1}`,
         sessionName,
         taskName: wt.taskName,
         worktreePath: wt.worktreePath,

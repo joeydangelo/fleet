@@ -51,14 +51,14 @@ export type MergeEntry =
   | { status: 'merged'; merged: string }
   | { status: 'conflict'; brief: string };
 
-/** Session coordination state on the paw-sync branch. Tracks task statuses, merge progress, and inbox cursors. */
+/** Session coordination state on the fleet-sync branch. Tracks task statuses, merge progress, and inbox cursors. */
 export interface SyncState {
   session: string;
   config: string;
   target: string;
   tasks: Record<string, TaskState>;
   merges: Record<string, MergeEntry>;
-  /** Per-task timestamp of last message read, written by `paw prime`. */
+  /** Per-task timestamp of last message read, written by `fleet prime`. */
   lastCheck: Record<string, string>;
 }
 
@@ -95,12 +95,12 @@ function syncBranchExists(repoRoot?: string): boolean {
 }
 
 /**
- * Create a git worktree at .paw/sync/ for the paw-sync branch.
+ * Create a git worktree at .fleet/sync/ for the fleet-sync branch.
  * If no branch exists, creates an orphan worktree.
  * Idempotent: returns immediately if the worktree already exists.
  */
 export function initSyncWorktree(repoRoot: string): string {
-  const worktreePath = resolve(repoRoot, '.paw', 'sync');
+  const worktreePath = resolve(repoRoot, '.fleet', 'sync');
 
   if (existsSync(join(worktreePath, '.git'))) {
     return worktreePath;
@@ -124,12 +124,12 @@ export function initSyncWorktree(repoRoot: string): string {
 }
 
 /**
- * Resolve the absolute path to .paw/sync/ from any worktree.
- * Agents run in task worktrees (-paw-auth, -paw-api) but the sync
+ * Resolve the absolute path to .fleet/sync/ from any worktree.
+ * Agents run in task worktrees (-fleet-auth, -fleet-api) but the sync
  * worktree lives in the main repo. This uses git-common-dir to find
  * the shared .git path and derives the main worktree from it.
  *
- * Memoized per-process — safe because paw runs as a short-lived CLI.
+ * Memoized per-process — safe because fleet runs as a short-lived CLI.
  */
 const syncDirCache = new Map<string, string>();
 
@@ -142,17 +142,17 @@ export function resolveSyncDir(repoRoot: string): string {
     stdio: 'pipe',
   });
   const mainRoot = resolve(repoRoot, gitCommonDir, '..');
-  const result = resolve(mainRoot, '.paw', 'sync');
+  const result = resolve(mainRoot, '.fleet', 'sync');
   syncDirCache.set(repoRoot, result);
   return result;
 }
 
 /**
- * Remove the sync worktree at .paw/sync/.
+ * Remove the sync worktree at .fleet/sync/.
  * Idempotent: no error if no worktree exists.
  */
 export function removeSyncWorktree(repoRoot: string): void {
-  const worktreePath = resolve(repoRoot, '.paw', 'sync');
+  const worktreePath = resolve(repoRoot, '.fleet', 'sync');
 
   try {
     git(['worktree', 'remove', '--force', worktreePath], {
@@ -235,7 +235,7 @@ export function listSyncDir(prefix: string, repoRoot?: string): string[] {
 export function writeSyncState(state: SyncState, repoRoot?: string): void {
   const syncDir = resolveSyncDir(repoRoot ?? process.cwd());
   writeFileSync(resolve(syncDir, STATE_FILE), JSON.stringify(state, null, 2) + '\n');
-  commitSyncChanges(syncDir, 'paw: update sync state');
+  commitSyncChanges(syncDir, 'fleet: update sync state');
 }
 
 /** Write sync state and additional files in one atomic commit. */
@@ -251,7 +251,7 @@ export function writeSyncStateAndFiles(
     mkdirSync(dirname(filePath), { recursive: true });
     writeFileSync(filePath, file.content);
   }
-  commitSyncChanges(syncDir, 'paw: update sync state');
+  commitSyncChanges(syncDir, 'fleet: update sync state');
 }
 
 /** Write a single file to the sync worktree and commit. */
@@ -260,7 +260,7 @@ export function writeSyncFile(path: string, content: string, repoRoot?: string):
   const filePath = resolve(syncDir, path);
   mkdirSync(dirname(filePath), { recursive: true });
   writeFileSync(filePath, content);
-  commitSyncChanges(syncDir, `paw: update ${path}`);
+  commitSyncChanges(syncDir, `fleet: update ${path}`);
 }
 
 /** Build the initial `SyncState` for a new session from task names and config. */
@@ -379,12 +379,12 @@ export function updateMergeEntry(state: SyncState, taskName: string, entry: Merg
 }
 
 /**
- * Archive the sync worktree contents to .paw/sessions/<date>-<target>/.
- * Copies state.json, inbox/, conflicts/, and paw.yaml.
+ * Archive the sync worktree contents to .fleet/sessions/<date>-<target>/.
+ * Copies state.json, inbox/, conflicts/, and fleet.yaml.
  * Returns the archive path, or null if nothing to archive.
  */
 export function archiveSession(repoRoot: string, target: string): string | null {
-  const syncDir = resolve(repoRoot, '.paw', 'sync');
+  const syncDir = resolve(repoRoot, '.fleet', 'sync');
   if (!existsSync(syncDir)) return null;
 
   const stateFile = resolve(syncDir, STATE_FILE);
@@ -399,7 +399,7 @@ export function archiveSession(repoRoot: string, target: string): string | null 
   }
 
   const sanitized = target.replace(/\//g, '-');
-  const archiveDir = resolve(repoRoot, '.paw', 'sessions', `${datePrefix}-${sanitized}`);
+  const archiveDir = resolve(repoRoot, '.fleet', 'sessions', `${datePrefix}-${sanitized}`);
   mkdirSync(archiveDir, { recursive: true });
 
   copyFileSync(stateFile, resolve(archiveDir, 'state.json'));
@@ -411,9 +411,9 @@ export function archiveSession(repoRoot: string, target: string): string | null 
     }
   }
 
-  const configPath = resolve(repoRoot, '.paw', 'paw.yaml');
+  const configPath = resolve(repoRoot, '.fleet', 'fleet.yaml');
   if (existsSync(configPath)) {
-    copyFileSync(configPath, resolve(archiveDir, 'paw.yaml'));
+    copyFileSync(configPath, resolve(archiveDir, 'fleet.yaml'));
   }
 
   return archiveDir;
@@ -437,7 +437,7 @@ export function requireWorktreeTask(repoRoot: string): string {
   const taskName = detectTaskName(repoRoot);
   if (!taskName) {
     throw new CLIError(
-      'Not in a paw worktree. This command must be run from a task worktree (with .paw/tasks/<name>.md).',
+      'Not in a fleet worktree. This command must be run from a task worktree (with .fleet/tasks/<name>.md).',
     );
   }
   return taskName;
