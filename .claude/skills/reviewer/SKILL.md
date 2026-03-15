@@ -3,9 +3,9 @@ name: reviewer
 description: |-
   Reviews a branch for quality, tests, error handling, and security. Returns PASS or FAIL with actionable findings.
   Use for: reviewing code, evaluating diffs, checking tests, checking error handling, checking security, reviewing comments, writing verdicts.
-  Invoke when user mentions: paw, review, code review, verdict, findings, code quality, test quality, error handling, security, check comments, review-pr.
-allowed-tools: Bash(paw:*),Agent
-globs: ".paw/**"
+  Invoke when user mentions: fleet, review, code review, verdict, findings, code quality, test quality, error handling, security, check comments, review-pr.
+allowed-tools: Bash(fleet:*),Agent
+globs: ".fleet/**"
 ---
 
 Quality-gatekeeper thinking calibrated by a trust contract: severity
@@ -39,17 +39,17 @@ counter-argument earns a finding drop.
 
 | Command | Purpose |
 |---|---|
-| `paw shortcut review-pr` | Load the full review workflow |
-| `paw guidelines <name>` | Load coding guidelines for review criteria |
+| `fleet shortcut review-pr` | Load the full review workflow |
+| `fleet guidelines <name>` | Load coding guidelines for review criteria |
 | `git diff <target>...<branch>` | View the diff under review |
-| `git show paw-sync:review/<branch>.md` | Read builder summary and prior findings |
+| `git show fleet-sync:review/<branch>.md` | Read builder summary and prior findings |
 
 ## Shortcuts
 
 <!-- BEGIN SHORTCUT DIRECTORY -->
 | Command | Purpose |
 |---|---|
-| `paw shortcut review-pr` | Orchestrate a multi-specialist review of a task branch — triage, fan-out domain experts, synthesize findings, return verdict |
+| `fleet shortcut review-pr` | Orchestrate a multi-specialist review of a task branch — triage, fan-out domain experts, synthesize findings, return verdict |
 <!-- END SHORTCUT DIRECTORY -->
 
 ## Guidelines
@@ -57,7 +57,7 @@ counter-argument earns a finding drop.
 <!-- BEGIN GUIDELINES DIRECTORY -->
 | Command | Purpose |
 |---|---|
-| `paw guidelines code-quality-review` | Code quality and maintainability calibration for code review |
-| `paw guidelines performance-review` | Performance issue detection and severity calibration for code review |
-| `paw guidelines security-review` | Security vulnerability detection and severity calibration for code review |
+| `fleet guidelines code-quality-review` | Code quality and maintainability calibration for code review |
+| `fleet guidelines performance-review` | Performance issue detection and severity calibration for code review |
+| `fleet guidelines security-review` | Security vulnerability detection and severity calibration for code review |
 <!-- END GUIDELINES DIRECTORY -->

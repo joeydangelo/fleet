@@ -1,10 +1,10 @@
 #!/bin/bash
 # Record agent heartbeat and check inbox on every tool use
-# Installed by: paw init
+# Installed by: fleet init
 # Fires on PostToolUse (all tools)
 
-# Only in paw worktrees with active tasks
-if ! ls .paw/tasks/*.md 1>/dev/null 2>&1; then
+# Only in fleet worktrees with active tasks
+if ! ls .fleet/tasks/*.md 1>/dev/null 2>&1; then
   exit 0
 fi
 
@@ -16,10 +16,10 @@ fi
 export PATH="$HOME/.local/bin:$HOME/bin:/usr/local/bin:$PATH"
 
 # Record heartbeat (fast, fire-and-forget)
-paw heartbeat &
+fleet heartbeat &
 
 # Debounced inbox check (every 30s)
-LAST_CHECK_FILE=".paw/run/.last-inbox-check"
+LAST_CHECK_FILE=".fleet/run/.last-inbox-check"
 NOW=$(date +%s)
 LAST=0
 if [ -f "$LAST_CHECK_FILE" ]; then
@@ -28,7 +28,7 @@ fi
 ELAPSED=$((NOW - LAST))
 if [ "$ELAPSED" -ge 30 ]; then
   echo "$NOW" > "$LAST_CHECK_FILE"
-  paw inbox
+  fleet inbox
 fi
 
 exit 0

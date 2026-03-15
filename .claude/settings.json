@@ -15,7 +15,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/scripts/paw-session.sh"
+            "command": "bash .claude/scripts/fleet-session.sh"
           }
         ]
       },
@@ -24,7 +24,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/scripts/paw-skill-inject.sh"
+            "command": "bash .claude/scripts/fleet-skill-inject.sh"
           }
         ]
       }
@@ -44,7 +44,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/scripts/paw-session.sh --brief"
+            "command": "bash .claude/scripts/fleet-session.sh --brief"
           }
         ]
       }
@@ -64,7 +64,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/hooks/paw-review-reminder.sh"
+            "command": "bash .claude/hooks/fleet-review-reminder.sh"
           }
         ]
       },
@@ -73,7 +73,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/hooks/paw-heartbeat.sh"
+            "command": "bash .claude/hooks/fleet-heartbeat.sh"
           }
         ]
       }
@@ -84,7 +84,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/hooks/paw-guard.sh"
+            "command": "bash .claude/hooks/fleet-guard.sh"
           }
         ]
       },
@@ -93,7 +93,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/hooks/paw-inbox-gate.sh"
+            "command": "bash .claude/hooks/fleet-inbox-gate.sh"
           }
         ]
       }
@@ -104,7 +104,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/hooks/paw-inbox.sh"
+            "command": "bash .claude/hooks/fleet-inbox.sh"
           }
         ]
       }

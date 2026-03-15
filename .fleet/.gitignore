@@ -3,7 +3,7 @@ run/
 # Installed documentation (regenerated on sync)
 docs/
 # Session runtime data
-paw.yaml
+fleet.yaml
 tasks/
 sync/
 sessions/

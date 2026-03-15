@@ -3,9 +3,9 @@ name: orchestrator
 description: |-
   Splits work into parallel tasks and swarms agents across worktrees. Plans, decomposes, monitors, merges, and ships.
   Use for: planning features, writing specs, decomposing tasks, splitting issues, running parallel agents, swarming worktrees, monitoring progress, merging branches, resolving conflicts, finishing branches, creating PRs.
-  Invoke when user mentions: paw, swarm, orchestrate, decompose, parallel, worktrees, split work, break into tasks, spawn agents, paw go, merge, conflicts, finish branch, PR, plan, spec, commit.
-allowed-tools: Bash(paw:*)
-globs: ".paw/**"
+  Invoke when user mentions: fleet, swarm, orchestrate, decompose, parallel, worktrees, split work, break into tasks, spawn agents, fleet go, merge, conflicts, finish branch, PR, plan, spec, commit.
+allowed-tools: Bash(fleet:*)
+globs: ".fleet/**"
 ---
 
 Coordinate by reasoning about change shape — which files move, which modules
@@ -45,48 +45,48 @@ erodes trust; skipped validation on risky changes introduces defects.
 
 | Command | Purpose |
 |---|---|
-| `paw go` | Full lifecycle: up, launch, watch, review, merge, down |
-| `paw go --dry-run` | Preview what would happen without executing |
-| `paw status` | Check progress across all tasks |
-| `paw down` | Archive session, remove worktrees, reset config |
+| `fleet go` | Full lifecycle: up, launch, watch, review, merge, down |
+| `fleet go --dry-run` | Preview what would happen without executing |
+| `fleet status` | Check progress across all tasks |
+| `fleet down` | Archive session, remove worktrees, reset config |
 
 **Manual recovery — step-by-step control:**
 
 | Command | Purpose |
 |---|---|
-| `paw up` | Create worktrees and branches for all tasks |
-| `paw launch` | Spawn agents (detached by default; attached in tmux) |
-| `paw watch` | Continuous terminal monitor (auto-exits when done) |
-| `paw merge` | Merge completed task branches (respects `depends_on` order) |
-| `paw merge --continue` | Resume after conflict resolution |
+| `fleet up` | Create worktrees and branches for all tasks |
+| `fleet launch` | Spawn agents (detached by default; attached in tmux) |
+| `fleet watch` | Continuous terminal monitor (auto-exits when done) |
+| `fleet merge` | Merge completed task branches (respects `depends_on` order) |
+| `fleet merge --continue` | Resume after conflict resolution |
 
 **Context:**
 
 | Command | Purpose |
 |---|---|
-| `paw prime` | Restore full context after compaction |
-| `paw summary --show` | Read a builder's task summary |
+| `fleet prime` | Restore full context after compaction |
+| `fleet summary --show` | Read a builder's task summary |
 
 **Coordination:**
 
 | Command | Purpose |
 |---|---|
-| `paw broadcast "..."` | Announce a message to all agents |
-| `paw send <task> "..."` | Send a direct message to an agent |
-| `paw reply <task> "..."` | Reply to a direct message from an agent |
-| `paw nudge <task> "..."` | Send a nudge message to wake a stalled agent |
-| `paw inbox` | Check for broadcasts and unanswered messages |
+| `fleet broadcast "..."` | Announce a message to all agents |
+| `fleet send <task> "..."` | Send a direct message to an agent |
+| `fleet reply <task> "..."` | Reply to a direct message from an agent |
+| `fleet nudge <task> "..."` | Send a nudge message to wake a stalled agent |
+| `fleet inbox` | Check for broadcasts and unanswered messages |
 
 ## Shortcuts
 
 <!-- BEGIN SHORTCUT DIRECTORY -->
 | Command | Purpose |
 |---|---|
-| `paw shortcut assess-work` | Scout the codebase, assess task complexity, and route to the optimal workflow |
-| `paw shortcut decompose-work` | Decompose a spec into parallel tasks with explicit file ownership and write .paw/paw.yaml |
-| `paw shortcut finish-branch` | Verify the merged target branch and integrate via the user's chosen path |
-| `paw shortcut resolve-merge-conflict` | Read a conflict brief, resolve the merge conflict, and continue merging |
-| `paw shortcut write-spec` | Write a feature spec grounded in scout findings, clarify gaps with the user, and hand off to task decomposition |
+| `fleet shortcut assess-work` | Scout the codebase, assess task complexity, and route to the optimal workflow |
+| `fleet shortcut decompose-work` | Decompose a spec into parallel tasks with explicit file ownership and write .fleet/fleet.yaml |
+| `fleet shortcut finish-branch` | Verify the merged target branch and integrate via the user's chosen path |
+| `fleet shortcut resolve-merge-conflict` | Read a conflict brief, resolve the merge conflict, and continue merging |
+| `fleet shortcut write-spec` | Write a feature spec grounded in scout findings, clarify gaps with the user, and hand off to task decomposition |
 <!-- END SHORTCUT DIRECTORY -->
 
 ## Guidelines
@@ -94,10 +94,10 @@ erodes trust; skipped validation on risky changes introduces defects.
 <!-- BEGIN GUIDELINES DIRECTORY -->
 | Command | Purpose |
 |---|---|
-| `paw guidelines codebase-research` | Research quality calibration for the orchestrator's scout phase — what makes findings trustworthy enough to route from |
-| `paw guidelines commit-conventions` | Conventional Commits format with scope, body, and multi-agent extensions |
-| `paw guidelines spec-design` | Calibration rules for writing executable feature specs — testability, scope, and agent-readiness |
-| `paw guidelines task-splitting` | Calibration rules for splitting specs into parallel tasks with non-overlapping file ownership |
+| `fleet guidelines codebase-research` | Research quality calibration for the orchestrator's scout phase — what makes findings trustworthy enough to route from |
+| `fleet guidelines commit-conventions` | Conventional Commits format with scope, body, and multi-agent extensions |
+| `fleet guidelines spec-design` | Calibration rules for writing executable feature specs — testability, scope, and agent-readiness |
+| `fleet guidelines task-splitting` | Calibration rules for splitting specs into parallel tasks with non-overlapping file ownership |
 <!-- END GUIDELINES DIRECTORY -->
 
 ## Templates
@@ -105,6 +105,6 @@ erodes trust; skipped validation on risky changes introduces defects.
 <!-- BEGIN TEMPLATE DIRECTORY -->
 | Command | Purpose |
 |---|---|
-| `paw template paw-yaml` | Annotated config structure for .paw/paw.yaml |
-| `paw template plan-spec` | Template for feature planning specification documents |
+| `fleet template fleet-yaml` | Annotated config structure for .fleet/fleet.yaml |
+| `fleet template plan-spec` | Template for feature planning specification documents |
 <!-- END TEMPLATE DIRECTORY -->

@@ -1,10 +1,10 @@
 #!/bin/bash
 # Check inbox for messages from orchestrator and other agents
-# Installed by: paw init
+# Installed by: fleet init
 # Fires on SessionStart and UserPromptSubmit
 
-# Only in paw worktrees with active tasks
-if ! ls .paw/tasks/*.md 1>/dev/null 2>&1; then
+# Only in fleet worktrees with active tasks
+if ! ls .fleet/tasks/*.md 1>/dev/null 2>&1; then
   exit 0
 fi
 
@@ -15,6 +15,6 @@ if [ -n "$NPM_PREFIX" ] && [ -d "$NPM_PREFIX/bin" ]; then
 fi
 export PATH="$HOME/.local/bin:$HOME/bin:/usr/local/bin:$PATH"
 
-paw inbox
+fleet inbox
 
 exit 0
