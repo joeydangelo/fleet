@@ -1,6 +1,5 @@
 import { resolve, dirname, basename } from 'node:path';
 import { mkdirSync, readFileSync, existsSync, readdirSync, copyFileSync } from 'node:fs';
-import { execSync } from 'node:child_process';
 import { writeFileSync } from 'atomically';
 import fg from 'fast-glob';
 import type { FleetConfig } from './config.js';
@@ -141,14 +140,6 @@ export async function copyIncludes(
   }
 
   return copied;
-}
-
-/** Run a shell command in a worktree directory. Throws on non-zero exit. */
-export function runSetup(worktreePath: string, command: string): void {
-  execSync(command, {
-    cwd: worktreePath,
-    stdio: 'inherit',
-  });
 }
 
 /** Write .fleet/tasks/{name}.md into each worktree and ensure .fleet/ is gitignored. */

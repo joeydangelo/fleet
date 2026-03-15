@@ -451,47 +451,6 @@ describe('topologicalSort', () => {
   });
 });
 
-describe('setup config', () => {
-  it('parses config with setup field', () => {
-    const dir = makeTempDir();
-    const configPath = resolve(dir, 'fleet.yaml');
-    writeFileSync(
-      configPath,
-      `
-target: feature/x
-setup: pnpm install
-tasks:
-  a:
-    focus: src/
-`,
-    );
-
-    const config = loadConfig(configPath);
-    expect(config.setup).toBe('pnpm install');
-
-    rmSync(dir, { recursive: true });
-  });
-
-  it('accepts config without setup', () => {
-    const dir = makeTempDir();
-    const configPath = resolve(dir, 'fleet.yaml');
-    writeFileSync(
-      configPath,
-      `
-target: feature/x
-tasks:
-  a:
-    focus: src/
-`,
-    );
-
-    const config = loadConfig(configPath);
-    expect(config.setup).toBeUndefined();
-
-    rmSync(dir, { recursive: true });
-  });
-});
-
 describe('resolveConfigPath', () => {
   it('finds .fleet/fleet.yaml', () => {
     const dir = makeTempDir();

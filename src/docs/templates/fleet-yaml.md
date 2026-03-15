@@ -10,7 +10,6 @@ target: feature/my-feature
 # base: main                              # default: main
 model: sonnet                             # sonnet or opus
 # spec: .fleet/specs/spec-2026-03-04-my-feature.md
-# setup: pnpm install                     # shell command run per worktree during fleet up
 
 # include:                                # gitignored files to copy into each worktree
 #   - .env

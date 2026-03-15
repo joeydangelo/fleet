@@ -4,13 +4,7 @@ import { resolve, basename, dirname } from 'node:path';
 import pc from 'picocolors';
 import { loadRepoConfig } from '../lib/config.js';
 import type { FleetConfig } from '../lib/config.js';
-import {
-  createSession,
-  planWorktrees,
-  writeTaskFiles,
-  copyIncludes,
-  runSetup,
-} from '../lib/session.js';
+import { createSession, planWorktrees, writeTaskFiles, copyIncludes } from '../lib/session.js';
 import type { WorktreeInfo } from '../lib/session.js';
 import { initSyncState, writeSyncStateAndFiles, initSyncWorktree } from '../lib/sync.js';
 import { installHooks } from '../lib/hooks.js';
@@ -72,14 +66,6 @@ export async function runUp(
     }
   }
 
-  if (config.setup) {
-    for (const wt of worktrees) {
-      pending(wt.taskName, `running setup: ${config.setup}`);
-      runSetup(wt.worktreePath, config.setup);
-      success(wt.taskName, 'setup complete');
-    }
-  }
-
   const taskNames = Object.keys(config.tasks);
   initSyncWorktree(repoRoot);
   const focusMap: Record<string, string[]> = {};
@@ -132,9 +118,6 @@ export function upCommand(): Command {
           const claudeDirExists = existsSync(resolve(repoRoot, '.claude'));
           if (claudeDirExists) {
             console.log(pc.dim('\n  .claude/ will be copied into each worktree'));
-          }
-          if (config.setup) {
-            console.log(pc.dim(`\n  setup: ${config.setup}`));
           }
           if (config.include?.length) {
             console.log(pc.dim(`\n  include: ${config.include.join(', ')}`));

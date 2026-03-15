@@ -10,7 +10,6 @@ import {
   ensureGitignore,
   detectTaskName,
   copyIncludes,
-  runSetup,
 } from '../src/lib/session.js';
 import { makeTempDir } from './helpers/temp.js';
 
@@ -430,43 +429,6 @@ describe('ensureGitignore with baseBranch (fleet-numd)', () => {
 
     const content = readFileSync(resolve(repoDir, '.gitignore'), 'utf-8');
     expect(content).toBe('.fleet/\n');
-  });
-});
-
-describe('runSetup', () => {
-  it('runs command in the specified directory', () => {
-    const dir = makeTempDir();
-
-    runSetup(dir, 'echo hello > output.txt');
-
-    expect(readFileSync(resolve(dir, 'output.txt'), 'utf-8').trim()).toBe('hello');
-
-    rmSync(dir, { recursive: true });
-  });
-
-  it('verifies command runs in the specified working directory', () => {
-    const dir = makeTempDir();
-
-    runSetup(dir, 'pwd > cwd-output.txt');
-
-    const output = readFileSync(resolve(dir, 'cwd-output.txt'), 'utf-8').trim().toLowerCase();
-    // Normalize both paths: pwd on Windows/Git Bash returns /c/... while Node
-    // returns C:\... — lowercase and strip drive-letter prefix differences
-    const normalizedDir = dir.replace(/\\/g, '/').toLowerCase();
-    // Strip leading drive letter format difference: "/c/" vs "C:/"
-    const stripDrive = (p: string) =>
-      p.replace(/^\/([a-z])\//, '$1:/').replace(/^([a-z]):\//, '$1:/');
-    expect(stripDrive(output)).toBe(stripDrive(normalizedDir));
-
-    rmSync(dir, { recursive: true });
-  });
-
-  it('throws on non-zero exit code', () => {
-    const dir = makeTempDir();
-
-    expect(() => runSetup(dir, 'exit 1')).toThrow();
-
-    rmSync(dir, { recursive: true });
   });
 });
 

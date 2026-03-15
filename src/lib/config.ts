@@ -19,7 +19,6 @@ const FleetConfigSchema = z.object({
   model: z.string().optional(),
   spec: z.string().optional(),
   include: z.array(z.string()).optional(),
-  setup: z.string().optional(),
   tasks: z.record(z.string(), TaskSchema),
 });
 
