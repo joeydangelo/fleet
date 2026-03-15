@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import type { ExecFileSyncOptions } from 'node:child_process';
-import { rmSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { mkdirSync, rmSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
 import { toErrorMessage } from './output.js';
 
 /** Runs a git command synchronously. Strips trailing whitespace and throws on non-zero exit. */
@@ -66,6 +66,7 @@ export function createBranch(branch: string, from: string, cwd?: string): void {
 
 /** Create a git worktree at `worktreePath` checked out to `branch`. */
 export function createWorktree(worktreePath: string, branch: string, cwd?: string): void {
+  mkdirSync(dirname(worktreePath), { recursive: true });
   git(['worktree', 'add', worktreePath, branch], { cwd });
 }
 
