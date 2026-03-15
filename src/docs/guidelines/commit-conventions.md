@@ -10,7 +10,7 @@ Commits syntax balances brevity for humans with structure for machines.
 
 ## Format
 
-- Structure: `<type>(<scope>): <description>` — scope is optional, use only when it
+- Structure: `<type>[optional scope]: <description>` — scope is optional, use only when it
   disambiguates (e.g., `fix(parser):` when multiple modules could apply).
 - First line: imperative mood, 72 characters or fewer.
 - Body: optional. Explain *why*, not *what* — the diff shows what changed.
@@ -22,9 +22,9 @@ Commits syntax balances brevity for humans with structure for machines.
 
 | Type | Artifact Category |
 |---|---|
-| `feat` | New capability or behavior |
-| `fix` | Bug correction |
-| `refactor` | Code restructuring (no behavior change) |
+| `feat` | New feature |
+| `fix` | Bug fix |
+| `refactor` | Non-functional code change |
 | `perf` | Performance improvement |
 | `test` | Test additions or updates |
 | `docs` | Documentation (README, API docs, help text) |
