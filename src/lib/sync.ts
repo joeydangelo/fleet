@@ -305,6 +305,71 @@ export function claimTask(state: SyncState, taskName: string): SyncState {
   };
 }
 
+/**
+ * Atomically claim a task with fresh-read retry. Avoids the stale-read race
+ * where concurrent agents overwrite each other's claims.
+ * Each retry re-reads state.json so it sees other agents' writes.
+ */
+export function claimTaskAtomic(taskName: string, repoRoot: string): void {
+  const syncDir = resolveSyncDir(repoRoot);
+  const filePath = resolve(syncDir, STATE_FILE);
+
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    const raw = readFileSync(filePath, 'utf-8');
+    const state = SyncStateSchema.parse(JSON.parse(raw));
+    const task = state.tasks[taskName];
+    if (!task || task.status !== 'pending') return;
+
+    state.tasks[taskName] = {
+      ...task,
+      status: 'in_progress',
+      claimed: new Date().toISOString(),
+    };
+
+    writeFileSync(resolve(syncDir, STATE_FILE), JSON.stringify(state, null, 2) + '\n');
+    try {
+      git(['add', '-A'], { cwd: syncDir, stdio: 'pipe' });
+      git(['commit', '-m', `fleet: claim ${taskName}`], { cwd: syncDir, stdio: 'pipe' });
+      return;
+    } catch {
+      const delayMs = 50 * attempt + Math.random() * 100;
+      const end = Date.now() + delayMs;
+      while (Date.now() < end) {
+        /* spin — acceptable for short CLI retry backoff */
+      }
+    }
+  }
+}
+
+/**
+ * Atomically update the lastCheck cursor for a task. Same fresh-read pattern
+ * as claimTaskAtomic to avoid clobbering concurrent writes.
+ */
+export function updateLastCheck(taskName: string, repoRoot: string): void {
+  const syncDir = resolveSyncDir(repoRoot);
+  const filePath = resolve(syncDir, STATE_FILE);
+
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    const raw = readFileSync(filePath, 'utf-8');
+    const state = SyncStateSchema.parse(JSON.parse(raw));
+
+    state.lastCheck = { ...state.lastCheck, [taskName]: new Date().toISOString() };
+
+    writeFileSync(resolve(syncDir, STATE_FILE), JSON.stringify(state, null, 2) + '\n');
+    try {
+      git(['add', '-A'], { cwd: syncDir, stdio: 'pipe' });
+      git(['commit', '-m', `fleet: update lastCheck ${taskName}`], { cwd: syncDir, stdio: 'pipe' });
+      return;
+    } catch {
+      const delayMs = 50 * attempt + Math.random() * 100;
+      const end = Date.now() + delayMs;
+      while (Date.now() < end) {
+        /* spin */
+      }
+    }
+  }
+}
+
 /** Transition a task to `in_review` and increment its review cycle counter. */
 export function submitForReview(state: SyncState, taskName: string): SyncState {
   const task = state.tasks[taskName];

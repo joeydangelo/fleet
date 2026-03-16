@@ -8,7 +8,7 @@ import { getWorktreeProgress } from '../lib/worktree-stats.js';
 import { detectTaskName, planWorktrees } from '../lib/session.js';
 import { loadConfig, resolveConfigPath } from '../lib/config.js';
 import type { SyncState } from '../lib/sync.js';
-import { readSyncState, claimTask, writeSyncState, readSyncFile } from '../lib/sync.js';
+import { readSyncState, claimTaskAtomic, updateLastCheck, readSyncFile } from '../lib/sync.js';
 import { readMessagesForTask, getUnansweredThreadsForTask } from '../lib/messages.js';
 import { readPaneConfig } from '../lib/pane-state.js';
 import type { FleetPaneConfig } from '../lib/tmux.js';
@@ -57,14 +57,17 @@ export function primeCommand(): Command {
         const taskFile = resolve(repoRoot, '.fleet', 'tasks', `${taskName}.md`);
         const taskContent = existsSync(taskFile) ? readFileSync(taskFile, 'utf-8') : null;
 
+        try {
+          claimTaskAtomic(taskName, repoRoot);
+        } catch {
+          // Claim failure is non-fatal — agent proceeds with context output
+        }
         const state = readSyncState(repoRoot);
-        const updated = state && state.tasks[taskName] ? claimTask(state, taskName) : null;
-        if (updated) writeSyncState(updated, repoRoot);
 
         if (opts.brief) {
-          printBrief(taskName, taskContent, updated, repoRoot);
+          printBrief(taskName, taskContent, state, repoRoot);
         } else {
-          printFull(taskName, taskContent, updated, repoRoot);
+          printFull(taskName, taskContent, state, repoRoot);
         }
       } catch (err) {
         handleError(err);
@@ -288,8 +291,11 @@ function printFull(
     console.log();
   }
 
-  const now = new Date().toISOString();
-  writeSyncState({ ...state, lastCheck: { ...state.lastCheck, [taskName]: now } }, repoRoot);
+  try {
+    updateLastCheck(taskName, repoRoot);
+  } catch {
+    // Non-fatal — cursor will catch up on next prime
+  }
 
   const conflictEntries = Object.entries(state.merges).filter(
     ([, entry]) => entry.status === 'conflict',
