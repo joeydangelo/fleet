@@ -1,5 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync, rmSync } from 'node:fs';
+import { homedir } from 'node:os';
 import { basename, resolve } from 'node:path';
 import pc from 'picocolors';
 import {
@@ -371,6 +372,71 @@ export function tmuxSessionName(dirname: string): string {
     .replace(/^-|-$/g, '')}`;
 }
 
+/** Detect whether running inside WSL (Windows Subsystem for Linux). */
+function isWSL(): boolean {
+  try {
+    const release = readFileSync('/proc/version', 'utf-8');
+    return /microsoft|wsl/i.test(release);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Fail fast when a WSL repo lives on /mnt/ (Windows NTFS mounted in WSL).
+ * Git worktree pointers, lefthook binaries, and pnpm hardlinks all break
+ * across the NTFS/Linux filesystem boundary. Agents must run on a native FS.
+ */
+export function ensureNativeFilesystem(repoRoot: string): void {
+  if (!isWSL()) return;
+  if (!repoRoot.startsWith('/mnt/')) return;
+
+  const repoName = basename(repoRoot);
+  const home = homedir();
+  const tilde = (p: string) => (p.startsWith(home) ? p.replace(home, '~') : p);
+
+  // Mirror the Windows parent dir: /mnt/c/Users/<user>/repos/foo → ~/repos/foo
+  const windowsParent = basename(resolve(repoRoot, '..'));
+  const parentDir = /^[a-zA-Z]$|^Users$/i.test(windowsParent) ? 'repos' : windowsParent;
+
+  // Check common dev directories for an existing clone
+  const candidates = [
+    resolve(home, parentDir, repoName),
+    resolve(home, 'repos', repoName),
+    resolve(home, 'src', repoName),
+    resolve(home, 'dev', repoName),
+    resolve(home, 'projects', repoName),
+    resolve(home, 'code', repoName),
+    resolve(home, repoName),
+  ];
+  const existing = candidates.find((p) => existsSync(resolve(p, '.git')));
+  const dest = existing ?? resolve(home, parentDir, repoName);
+
+  const msg = [
+    `This repo is on /mnt/ (Windows NTFS mounted in WSL).`,
+    `Fleet agents cannot run reliably on NTFS — git worktrees, pre-commit`,
+    `hooks, and native binaries break across the filesystem boundary.\n`,
+  ];
+
+  if (existing) {
+    msg.push(`Found existing clone at ${tilde(existing)}:\n`, `  cd ${tilde(existing)}\n`);
+  } else {
+    msg.push(
+      `Clone your repo onto the native WSL filesystem:\n`,
+      `  git clone ${repoRoot} ${tilde(dest)}`,
+      `  cd ${tilde(dest)}\n`,
+    );
+  }
+
+  msg.push(
+    `Your Windows editor can access WSL files at:`,
+    `  \\\\wsl$\\<distro>${dest}`,
+    `  or: code .   (VS Code Remote-WSL)`,
+  );
+  console.error(msg.join('\n'));
+  throw new Error('Repo must be on the native WSL filesystem, not /mnt/.');
+}
+
 /**
  * Verify tmux is installed (but not necessarily that we're inside a session).
  * Use this in commands that need tmux as a background process manager (go, launch).
@@ -403,14 +469,16 @@ function printWindowsTmuxError(): void {
   // Check if tmux exists inside WSL
   const wslTmux = tryExec('wsl', ['-e', 'tmux', '-V']);
 
+  const repoName = basename(process.cwd());
+
   if (wslTmux) {
-    const wslPath = tryExec('wsl', ['-e', 'wslpath', process.cwd()]);
-    const cdPath = wslPath ?? '/mnt/c/.../' + basename(process.cwd());
     const msg = [
       `fleet requires tmux — run fleet from inside WSL.\n`,
       `  ${wslTmux} found in WSL.\n`,
-      '  From this terminal:',
-      `    wsl bash -c "cd '${cdPath}' && fleet go"`,
+      '  Clone your repo onto the native WSL filesystem:',
+      `    wsl bash -c "git clone /mnt/c/.../repos/${repoName} ~/repos/${repoName}"`,
+      `    wsl bash -c "cd ~/repos/${repoName} && fleet go"\n`,
+      '  Do NOT run from /mnt/c/ — NTFS causes broken worktrees and permissions.',
     ];
     console.error(msg.join('\n'));
     return;
@@ -424,9 +492,10 @@ function printWindowsTmuxError(): void {
       'fleet requires tmux.\n',
       '  WSL detected but tmux is not installed. Inside a WSL terminal:',
       '    sudo apt install tmux\n',
-      '  Then run fleet go from WSL.',
-      '',
-      '  More info: https://tmux.info/docs/installation',
+      '  Then clone your repo onto the native WSL filesystem:',
+      `    git clone /mnt/c/.../repos/${repoName} ~/repos/${repoName}`,
+      `    cd ~/repos/${repoName}\n`,
+      '  Do NOT run from /mnt/c/ — NTFS causes broken worktrees and permissions.',
     ];
     console.error(msg.join('\n'));
   } else {
@@ -436,7 +505,10 @@ function printWindowsTmuxError(): void {
       '    wsl --install          (PowerShell as Admin)\n',
       '  Then inside WSL:',
       '    sudo apt install tmux\n',
-      '  More info: https://tmux.info/docs/installation',
+      '  Then clone your repo onto the native WSL filesystem:',
+      `    git clone /mnt/c/.../repos/${repoName} ~/repos/${repoName}`,
+      `    cd ~/repos/${repoName}\n`,
+      '  Do NOT run from /mnt/c/ — NTFS causes broken worktrees and permissions.',
     ];
     console.error(msg.join('\n'));
   }

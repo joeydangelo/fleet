@@ -13,6 +13,7 @@ import {
   launchDetached,
   isInsideTmux,
   ensureTmuxInstalled,
+  ensureNativeFilesystem,
 } from '../lib/tmux.js';
 import { savePanes, saveDetachedAgents, readPaneConfig } from '../lib/pane-state.js';
 import { SIDEBAR_WIDTH } from '../lib/constants.js';
@@ -162,6 +163,7 @@ export function launchCommand(): Command {
       try {
         if (!opts.dryRun) ensureTmuxInstalled();
         const { repoRoot, config } = loadRepoConfig();
+        if (!opts.dryRun) ensureNativeFilesystem(repoRoot);
 
         if (opts.dryRun) {
           const worktrees = planWorktrees(config, repoRoot);

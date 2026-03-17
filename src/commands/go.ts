@@ -14,6 +14,7 @@ import {
   createTmuxService,
   checkAgentLiveness,
   ensureTmuxInstalled,
+  ensureNativeFilesystem,
   isInsideTmux,
   tmuxSessionName,
 } from '../lib/tmux.js';
@@ -104,6 +105,7 @@ export async function runGo(opts: GoOpts): Promise<void> {
   }
 
   ensureTmuxInstalled();
+  ensureNativeFilesystem(repoRoot);
   const verbose = isVerbose();
   const totalStart = Date.now();
 

@@ -9,6 +9,7 @@ import {
   tmuxSessionName,
   isInsideTmux,
   ensureTmuxInstalled,
+  ensureNativeFilesystem,
 } from '../lib/tmux.js';
 import type { TmuxServiceApi, FleetPane } from '../lib/tmux.js';
 import { restorePanes, savePanes, labelOrchestrator, writePaneConfig } from '../lib/pane-state.js';
@@ -123,6 +124,7 @@ function runTuiSidebar(
 function runTui(): void {
   ensureTmuxInstalled();
   const repoRoot = getRepoRoot();
+  ensureNativeFilesystem(repoRoot);
   const sessionName = tmuxSessionName(basename(repoRoot));
   const tmux = createTmuxService();
 
