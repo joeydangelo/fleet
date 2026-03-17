@@ -15,7 +15,6 @@ import {
   checkAgentLiveness,
   ensureTmuxInstalled,
   ensureNativeFilesystem,
-  isInsideTmux,
   tmuxSessionName,
 } from '../lib/tmux.js';
 import { readPaneConfig } from '../lib/pane-state.js';
@@ -190,7 +189,6 @@ export async function runGo(opts: GoOpts): Promise<void> {
 
 function printDryRun(repoRoot: string, config: FleetConfig): void {
   const state = detectSessionState(repoRoot);
-  const useDetached = !isInsideTmux();
   const sessionName = tmuxSessionName(basename(repoRoot));
   const worktrees = planWorktrees(config, repoRoot);
   const syncState = readSyncState(repoRoot);
@@ -199,7 +197,7 @@ function printDryRun(repoRoot: string, config: FleetConfig): void {
   console.log(`  target:  ${config.target}`);
   console.log(`  tasks:   ${worktrees.length}`);
   console.log(`  state:   ${state}`);
-  console.log(`  mode:    ${useDetached ? 'detached' : 'attached'}`);
+  console.log(`  mode:    detached`);
   console.log(`  session: ${sessionName}`);
   console.log();
 
@@ -222,7 +220,7 @@ function printDryRun(repoRoot: string, config: FleetConfig): void {
     }
 
     console.log(pc.bold('\nWould launch agents:\n'));
-    printLaunchPreview(worktrees, syncState, useDetached);
+    printLaunchPreview(worktrees, syncState);
   }
 
   if (state === 'agents-running') {

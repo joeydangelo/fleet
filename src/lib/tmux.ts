@@ -5,7 +5,7 @@ import { basename, resolve } from 'node:path';
 import pc from 'picocolors';
 import {
   BEACON_MESSAGE,
-  BEACON_TUI_TIMEOUT_MS,
+  BEACON_AGENT_TIMEOUT_MS,
   BEACON_POLL_INTERVAL_MS,
   BEACON_VERIFY_ATTEMPTS,
   BEACON_VERIFY_DELAY_MS,
@@ -30,20 +30,6 @@ export interface TmuxPaneInfo {
   role: string;
 }
 
-/** Per-pane metadata persisted to .fleet/panes.json. */
-export interface FleetPane {
-  /** Unique pane identifier (fleet-1, fleet-2, ...). */
-  id: string;
-  /** tmux pane ID (%nn). */
-  paneId: string;
-  /** Task name from fleet.yaml. */
-  taskName: string;
-  /** Full path to the git worktree. */
-  worktreePath: string;
-  /** Git branch name. */
-  branchName: string;
-}
-
 /** Agent running in a detached tmux session. */
 export interface DetachedAgent {
   id: string;
@@ -54,46 +40,18 @@ export interface DetachedAgent {
   branchName: string;
 }
 
-/** Persisted session state — discriminated by mode. */
-export type FleetPaneConfig =
-  | {
-      /** 'attached' when inside a shared tmux session (default when absent). */
-      mode?: 'attached';
-      /** tmux session name. */
-      sessionName: string;
-      /** Repo root path. */
-      repoRoot: string;
-      /**
-       * Pane ID of the orchestrator shell (pane 1). Empty string if not yet created.
-       * The orchestrator is where the user types their AI agent command (claude).
-       */
-      orchestratorPaneId: string;
-      /** Active agent panes (panes 2+). */
-      panes: FleetPane[];
-      /** Not present in attached mode. */
-      detached?: never;
-      /** ISO timestamp of last update. */
-      lastUpdated: string;
-    }
-  | {
-      /** 'detached' when running one background session per agent. */
-      mode: 'detached';
-      /** tmux session name. */
-      sessionName: string;
-      /** Repo root path. */
-      repoRoot: string;
-      /**
-       * Pane ID of the orchestrator shell (pane 1). Empty string if not yet created.
-       * The orchestrator is where the user types their AI agent command (claude).
-       */
-      orchestratorPaneId: string;
-      /** Active agent panes (panes 2+). */
-      panes: FleetPane[];
-      /** Detached tmux sessions — only present when mode is 'detached'. */
-      detached: DetachedAgent[];
-      /** ISO timestamp of last update. */
-      lastUpdated: string;
-    };
+/** Persisted session state for detached agents. */
+export interface FleetPaneConfig {
+  mode: 'detached';
+  /** tmux session name. */
+  sessionName: string;
+  /** Repo root path. */
+  repoRoot: string;
+  /** Detached tmux sessions. */
+  detached: DetachedAgent[];
+  /** ISO timestamp of last update. */
+  lastUpdated: string;
+}
 
 /**
  * Interface for tmux operations. Enables dependency injection for testing.
@@ -102,30 +60,16 @@ export interface TmuxServiceApi {
   sessionExists(name: string): boolean;
   createSession(name: string, cwd: string): void;
   killSession(name: string): void;
-  createPane(sessionName: string, cwd: string, opts?: { horizontal?: boolean }): string;
-  killPane(paneId: string): void;
-  listPanes(sessionName: string): string[];
   listPanesDetailed(sessionName: string): TmuxPaneInfo[];
-  listPanesWithTitles(sessionName: string): Map<string, string>;
-  paneExists(paneId: string): boolean;
   sendKeys(paneId: string, keys: string): void;
   capturePane(paneId: string, lines?: number): string;
-  selectLayout(sessionName: string, layout: string): void;
-  selectPane(paneId: string): void;
   setPaneTitle(paneId: string, title: string): void;
   /** Sets a permanent fleet role label via a custom tmux user option (@fleet_role). */
   setPaneRole(paneId: string, role: string): void;
   /** Sets the project root on a pane via @fleet_project custom user option. */
   setPaneProject(paneId: string, projectRoot: string): void;
-  getCurrentPaneId(): string;
   getCurrentSessionName(): string;
   getPaneCurrentCommand(paneId: string): string;
-  resizePane(paneId: string, width: number): void;
-  pinSidebarLayout(sessionName: string, width: number): void;
-  listClients(): string[];
-  hasAttachedClient(sessionName: string): boolean;
-  switchClient(sessionName: string): void;
-  attachSession(sessionName: string): void;
   /** List all tmux session names. Returns empty array if tmux is not running. */
   listSessions(): string[];
   /** Capture visible pane content. Returns null if capture fails or content is empty. */
@@ -167,26 +111,6 @@ export class TmuxService implements TmuxServiceApi {
     this.exec(['kill-session', '-t', name]);
   }
 
-  /**
-   * Split a new pane in the session. Returns the new pane ID (%nn).
-   * Pass `horizontal: true` for a left/right split (sidebar stays left).
-   */
-  createPane(sessionName: string, cwd: string, opts?: { horizontal?: boolean }): string {
-    const args = ['split-window', '-t', sessionName, '-c', cwd, '-P', '-F', '#{pane_id}'];
-    if (opts?.horizontal) args.push('-h');
-    return this.exec(args);
-  }
-
-  killPane(paneId: string): void {
-    this.exec(['kill-pane', '-t', paneId]);
-  }
-
-  /** List all pane IDs (%nn) in a session. */
-  listPanes(sessionName: string): string[] {
-    const output = this.exec(['list-panes', '-s', '-t', sessionName, '-F', '#{pane_id}']);
-    return output.split('\n').filter(Boolean);
-  }
-
   /** List all panes in a session with their ID, title, command, cwd, and project. */
   listPanesDetailed(sessionName: string): TmuxPaneInfo[] {
     const output = this.exec([
@@ -207,38 +131,6 @@ export class TmuxService implements TmuxServiceApi {
       });
   }
 
-  /** List panes with their titles. Returns a map of title -> pane ID. */
-  listPanesWithTitles(sessionName: string): Map<string, string> {
-    const output = this.exec([
-      'list-panes',
-      '-s',
-      '-t',
-      sessionName,
-      '-F',
-      '#{pane_id} #{pane_title}',
-    ]);
-    const map = new Map<string, string>();
-    for (const line of output.split('\n').filter(Boolean)) {
-      const spaceIdx = line.indexOf(' ');
-      if (spaceIdx === -1) continue;
-      const paneId = line.slice(0, spaceIdx);
-      const title = line.slice(spaceIdx + 1);
-      if (paneId && title) {
-        map.set(title, paneId);
-      }
-    }
-    return map;
-  }
-
-  paneExists(paneId: string): boolean {
-    try {
-      this.exec(['display-message', '-t', paneId, '-p', '']);
-      return true;
-    } catch {
-      return false;
-    }
-  }
-
   sendKeys(paneId: string, keys: string): void {
     this.exec(['send-keys', '-t', paneId, keys, 'Enter']);
   }
@@ -251,18 +143,6 @@ export class TmuxService implements TmuxServiceApi {
     return this.exec(args);
   }
 
-  selectLayout(sessionName: string, layout: string): void {
-    this.exec(['select-layout', '-t', sessionName, layout]);
-  }
-
-  selectPane(paneId: string): void {
-    this.exec(['select-pane', '-t', paneId]);
-  }
-
-  getCurrentPaneId(): string {
-    return this.exec(['display-message', '-p', '#{pane_id}']);
-  }
-
   getCurrentSessionName(): string {
     return this.exec(['display-message', '-p', '#{session_name}']);
   }
@@ -273,30 +153,6 @@ export class TmuxService implements TmuxServiceApi {
     } catch {
       return '';
     }
-  }
-
-  resizePane(paneId: string, width: number): void {
-    this.exec(['resize-pane', '-t', paneId, '-x', String(width)]);
-  }
-
-  /**
-   * Pins the sidebar at a fixed width using tmux's main-vertical layout.
-   * Sets main-pane-width then applies main-vertical, which places the invoking
-   * pane full-height on the left with all other panes stacked on the right.
-   * Also sets pane-border-format to read from @fleet_role so fleet-managed pane
-   * labels are permanent and cannot be stomped by app escape sequences.
-   */
-  pinSidebarLayout(sessionName: string, width: number): void {
-    this.exec(['set-window-option', '-t', sessionName, 'main-pane-width', String(width)]);
-    this.exec(['select-layout', '-t', sessionName, 'main-vertical']);
-    this.exec(['set-window-option', '-t', sessionName, 'pane-border-status', 'top']);
-    this.exec([
-      'set-window-option',
-      '-t',
-      sessionName,
-      'pane-border-format',
-      ' #{?#{@fleet_role},#{@fleet_role},#{pane_current_command}} ',
-    ]);
   }
 
   setPaneTitle(paneId: string, title: string): void {
@@ -314,31 +170,6 @@ export class TmuxService implements TmuxServiceApi {
 
   setPaneProject(paneId: string, projectRoot: string): void {
     this.exec(['set-option', '-p', '-t', paneId, '@fleet_project', projectRoot]);
-  }
-
-  listClients(): string[] {
-    const output = this.exec(['list-clients', '-F', '#{client_name}']);
-    return output.split('\n').filter(Boolean);
-  }
-
-  hasAttachedClient(sessionName: string): boolean {
-    try {
-      const output = this.exec(['list-clients', '-t', sessionName, '-F', '#{client_name}']);
-      return output.split('\n').filter(Boolean).length > 0;
-    } catch {
-      return false;
-    }
-  }
-
-  switchClient(sessionName: string): void {
-    this.exec(['switch-client', '-t', sessionName]);
-  }
-
-  attachSession(sessionName: string): void {
-    // attach-session blocks until the user detaches
-    execFileSync('tmux', ['attach-session', '-t', sessionName], {
-      stdio: 'inherit',
-    });
   }
 
   listSessions(): string[] {
@@ -559,10 +390,6 @@ function printUnixTmuxError(): void {
   console.error(lines.join('\n'));
 }
 
-export function isInsideTmux(): boolean {
-  return !!process.env['TMUX'];
-}
-
 /**
  * Send an empty Enter to wake an idle agent and trigger its hook cycle.
  * No message content — just a poke. The actual nudge content is delivered
@@ -577,77 +404,25 @@ export function sendWakeSignal(tmux: TmuxServiceApi, target: string): boolean {
   }
 }
 
-/**
- * Launch agents in tmux panes for the given worktrees.
- * Creates the tmux session if it doesn't exist, then creates a pane
- * per worktree and sends the agent command.
- *
- * When `existingPanes` is provided, tasks that already have a live pane
- * (verified via `paneExists`) are skipped — only missing tasks get new panes.
- */
-export async function launchTmux(
-  tmux: TmuxServiceApi,
-  sessionName: string,
-  repoRoot: string,
-  worktrees: Array<{ taskName: string; worktreePath: string; agentCommand: string }>,
-  existingPanes: FleetPane[] = [],
-  beaconOpts?: BeaconOptions,
-): Promise<FleetPane[]> {
-  if (!tmux.sessionExists(sessionName)) {
-    tmux.createSession(sessionName, repoRoot);
-  }
-
-  const livePaneIds = new Set(tmux.listPanes(sessionName));
-  const liveByTask = new Map<string, FleetPane>();
-  for (const ep of existingPanes) {
-    if (livePaneIds.has(ep.paneId)) {
-      liveByTask.set(ep.taskName, ep);
-    }
-  }
-
-  const pendingWorktrees = worktrees.filter((wt) => !liveByTask.has(wt.taskName));
-
-  const launchedPanes = await Promise.all(
-    pendingWorktrees.map(async (wt, idx) => {
-      const paneId = tmux.createPane(sessionName, wt.worktreePath);
-      const pane: FleetPane = {
-        id: `fleet-${idx + 1}`,
-        paneId,
-        taskName: wt.taskName,
-        worktreePath: wt.worktreePath,
-        branchName: '',
-      };
-      tmux.setPaneTitle(paneId, `fleet-${wt.taskName}`);
-      tmux.setPaneRole(paneId, `fleet-${wt.taskName}`);
-      tmux.setPaneProject(paneId, repoRoot);
-      tmux.sendKeys(paneId, wt.agentCommand);
-      await sendBeacon(tmux, paneId, { ...beaconOpts, worktreePath: wt.worktreePath });
-      return pane;
-    }),
-  );
-
-  return launchedPanes;
-}
-
 /** Factory that creates a real `TmuxService` wired to the local tmux binary. */
 export function createTmuxService(): TmuxService {
   return new TmuxService();
 }
 
 /**
- * Wait for the Claude Code interactive prompt to be ready in a tmux session/pane.
- * Polls capture-pane until `isTuiPromptReady()` returns true.
+ * Wait for the Claude Code interactive prompt to be ready in a tmux session.
+ * Polls capture-pane until `isAgentPromptReady()` returns true.
  */
-export async function waitForTuiReady(
+export async function waitForAgentReady(
   tmux: TmuxServiceApi,
   sessionOrPane: string,
-  timeoutMs = BEACON_TUI_TIMEOUT_MS,
+  timeoutMs = BEACON_AGENT_TIMEOUT_MS,
   pollIntervalMs = BEACON_POLL_INTERVAL_MS,
 ): Promise<boolean> {
   const maxAttempts = Math.ceil(timeoutMs / pollIntervalMs);
   for (let i = 0; i < maxAttempts; i++) {
     const content = tmux.capturePaneContent(sessionOrPane);
-    if (content !== null && isTuiPromptReady(content)) return true;
+    if (content !== null && isAgentPromptReady(content)) return true;
     if (!tmux.sessionExists(sessionOrPane)) return false;
     await sleep(pollIntervalMs);
   }
@@ -655,7 +430,7 @@ export async function waitForTuiReady(
 }
 
 /** Check if captured pane content shows the Claude Code interactive prompt. */
-export function isTuiPromptReady(content: string): boolean {
+export function isAgentPromptReady(content: string): boolean {
   if (content.includes('❯')) return true;
   if (content.includes('Try "')) return true;
   if (/^>/m.test(content)) return true;
@@ -663,8 +438,8 @@ export function isTuiPromptReady(content: string): boolean {
 }
 
 export interface BeaconOptions {
-  tuiTimeoutMs?: number;
-  tuiPollIntervalMs?: number;
+  agentTimeoutMs?: number;
+  agentPollIntervalMs?: number;
   postReadyDelayMs?: number;
   verifyAttempts?: number;
   verifyDelayMs?: number;
@@ -682,8 +457,8 @@ export async function sendBeacon(
   sessionOrPane: string,
   opts: BeaconOptions = {},
 ): Promise<boolean> {
-  const tuiTimeoutMs = opts.tuiTimeoutMs ?? BEACON_TUI_TIMEOUT_MS;
-  const tuiPollIntervalMs = opts.tuiPollIntervalMs ?? BEACON_POLL_INTERVAL_MS;
+  const agentTimeoutMs = opts.agentTimeoutMs ?? BEACON_AGENT_TIMEOUT_MS;
+  const agentPollIntervalMs = opts.agentPollIntervalMs ?? BEACON_POLL_INTERVAL_MS;
   const postReadyDelayMs = opts.postReadyDelayMs ?? 1_000;
   const verifyAttempts = opts.verifyAttempts ?? BEACON_VERIFY_ATTEMPTS;
   const verifyDelayMs = opts.verifyDelayMs ?? BEACON_VERIFY_DELAY_MS;
@@ -691,11 +466,10 @@ export async function sendBeacon(
   const sessionReadyTimeoutMs = opts.sessionReadyTimeoutMs ?? BEACON_SESSION_READY_TIMEOUT_MS;
 
   // When a worktree sentinel is available, it is the authoritative readiness
-  // signal — wait for it first, then do a quick TUI check.  Without a sentinel
-  // (attached mode) fall back to TUI-only detection.
+  // signal — wait for it first, then do a quick prompt check.
   if (opts.worktreePath && sessionReadyTimeoutMs > 0) {
     const sentinel = resolve(opts.worktreePath, '.fleet', 'run', '.session-ready');
-    const pollMs = Math.max(tuiPollIntervalMs, 500);
+    const pollMs = Math.max(agentPollIntervalMs, 500);
     const maxAttempts = Math.ceil(sessionReadyTimeoutMs / pollMs);
     let found = false;
     for (let i = 0; i < maxAttempts; i++) {
@@ -710,13 +484,13 @@ export async function sendBeacon(
       }
       await sleep(pollMs);
     }
-    // Sentinel found — give the TUI a moment to settle, but don't gate on it.
+    // Sentinel found — give the agent a moment to settle, but don't gate on it.
     // If the sentinel was never written, still attempt the beacon (best-effort).
     if (found) {
-      await waitForTuiReady(tmux, sessionOrPane, tuiTimeoutMs, tuiPollIntervalMs);
+      await waitForAgentReady(tmux, sessionOrPane, agentTimeoutMs, agentPollIntervalMs);
     }
   } else {
-    const ready = await waitForTuiReady(tmux, sessionOrPane, tuiTimeoutMs, tuiPollIntervalMs);
+    const ready = await waitForAgentReady(tmux, sessionOrPane, agentTimeoutMs, agentPollIntervalMs);
     if (!ready) return false;
   }
 
@@ -724,7 +498,7 @@ export async function sendBeacon(
 
   tmux.sendKeys(sessionOrPane, BEACON_MESSAGE);
 
-  // Follow-up empty Enters to dismiss trust prompt or late TUI initialization
+  // Follow-up empty Enters to dismiss trust prompt or late initialization
   for (const delay of followUpDelays) {
     await sleep(delay);
     tmux.sendKeys(sessionOrPane, '');
@@ -748,21 +522,14 @@ export interface AgentLivenessResult {
   alive: boolean;
 }
 
-/** Check whether each agent is still alive in tmux. Works for both attached and detached modes. */
+/** Check whether each detached agent is still alive in tmux. */
 export function checkAgentLiveness(
   tmux: TmuxServiceApi,
   config: FleetPaneConfig,
 ): AgentLivenessResult[] {
-  if (config.mode === 'detached') {
-    return config.detached.map((agent) => ({
-      taskName: agent.taskName,
-      alive: tmux.sessionExists(agent.sessionName),
-    }));
-  }
-
-  return config.panes.map((pane) => ({
-    taskName: pane.taskName,
-    alive: tmux.paneExists(pane.paneId),
+  return config.detached.map((agent) => ({
+    taskName: agent.taskName,
+    alive: tmux.sessionExists(agent.sessionName),
   }));
 }
 

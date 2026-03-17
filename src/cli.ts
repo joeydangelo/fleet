@@ -155,16 +155,5 @@ Getting Started:
     const m = await import('./commands/summary.js');
     return m.summaryCommand();
   });
-
-  lazy(
-    program,
-    'tui',
-    'Open the tmux TUI (optional — fleet go runs detached by default)',
-    async () => {
-      const m = await import('./commands/tui.js');
-      return m.tuiCommand();
-    },
-  );
-
   return program;
 }

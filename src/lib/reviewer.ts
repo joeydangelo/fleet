@@ -16,7 +16,7 @@ import { resolve } from 'node:path';
 import { mkdirSync, existsSync, readFileSync, rmSync } from 'node:fs';
 import { writeFileSync } from 'atomically';
 import type { TmuxServiceApi } from './tmux.js';
-import { waitForTuiReady, killDetachedSession, isTuiPromptReady } from './tmux.js';
+import { waitForAgentReady, killDetachedSession, isAgentPromptReady } from './tmux.js';
 import { REVIEW_TIMEOUT_MS, REVIEW_NUDGE_MS, BEACON_FOLLOWUP_DELAYS } from './constants.js';
 import { sleep, formatElapsed, sanitizeBranchName } from './util.js';
 import { reviewFilePath } from './sync.js';
@@ -232,8 +232,7 @@ export async function reviewTask(
     tmux.createSession(sessionName, repoRoot);
     tmux.sendKeys(sessionName, buildReviewerCommand());
 
-    // Wait for Claude TUI to be ready
-    const ready = await waitForTuiReady(tmux, sessionName, 30_000, 1_000);
+    const ready = await waitForAgentReady(tmux, sessionName, 30_000, 1_000);
     if (!ready) {
       return {
         verdict: 'skip',
@@ -242,7 +241,6 @@ export async function reviewTask(
       };
     }
 
-    // Small delay for TUI to fully initialize
     await sleep(2_000);
 
     // Send the review prompt
@@ -296,7 +294,7 @@ export async function reviewTask(
 
         // Only nudge if the reviewer appears idle at the prompt
         const captured = tmux.capturePaneContent(sessionName, REVIEW_CAPTURE_LINES);
-        if (captured && isTuiPromptReady(captured)) {
+        if (captured && isAgentPromptReady(captured)) {
           tmux.sendKeys(sessionName, buildNudgeMessage(vPath));
           // Follow-up Enter to dismiss any dialog
           await sleep(BEACON_FOLLOWUP_DELAYS[0]!);

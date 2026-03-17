@@ -125,8 +125,6 @@ describe('resolveSessionState', () => {
     mode: 'detached',
     sessionName: 'fleet-test',
     repoRoot: '/fake/repo',
-    orchestratorPaneId: '',
-    panes: [],
     detached: [
       {
         id: 'fleet-1',

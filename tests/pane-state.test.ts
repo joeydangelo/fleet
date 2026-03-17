@@ -1,31 +1,17 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { rmSync, writeFileSync, mkdirSync } from 'node:fs';
+import { rmSync } from 'node:fs';
 import {
   readPaneConfig,
   writePaneConfig,
-  savePanes,
   saveDetachedAgents,
-  restorePanes,
-  killPanes,
   killDetachedAgents,
   killOrphanedAgentSessions,
 } from '../src/lib/pane-state.js';
-import type { FleetPane, FleetPaneConfig, DetachedAgent } from '../src/lib/tmux.js';
-import { basename, resolve } from 'node:path';
+import type { FleetPaneConfig, DetachedAgent } from '../src/lib/tmux.js';
+import { basename } from 'node:path';
 import { tmuxSessionName } from '../src/lib/tmux.js';
 import { makeTempDir } from './helpers/temp.js';
 import { createMockTmux } from './helpers/mock-tmux.js';
-
-function makePane(overrides: Partial<FleetPane> = {}): FleetPane {
-  return {
-    id: 'fleet-1',
-    paneId: '%1',
-    taskName: 'auth',
-    worktreePath: '/tmp/wt-auth',
-    branchName: 'feature-auth',
-    ...overrides,
-  };
-}
 
 describe('pane-state: readPaneConfig / writePaneConfig', () => {
   let tempDir: string;
@@ -42,77 +28,6 @@ describe('pane-state: readPaneConfig / writePaneConfig', () => {
     expect(readPaneConfig(tempDir)).toBeNull();
   });
 
-  it('returns null when panes.json contains corrupt JSON', () => {
-    const runDir = resolve(tempDir, '.fleet', 'run');
-    mkdirSync(runDir, { recursive: true });
-    writeFileSync(resolve(runDir, 'panes.json'), '{ invalid');
-
-    expect(readPaneConfig(tempDir)).toBeNull();
-  });
-
-  it('returns null when panes.json is a truncated file (partial write)', () => {
-    const runDir = resolve(tempDir, '.fleet', 'run');
-    mkdirSync(runDir, { recursive: true });
-    writeFileSync(
-      resolve(runDir, 'panes.json'),
-      '{"sessionName":"fleet-myapp","repoRoot":"/home/user/myapp","orchestratorPaneId":"%1","panes":[{"id":"fleet-1","paneId":"%1","taskName":"auth","worktreePath":"/tmp/wt-auth","bra',
-    );
-
-    expect(readPaneConfig(tempDir)).toBeNull();
-  });
-
-  it('round-trips pane config through write and read', () => {
-    const config: FleetPaneConfig = {
-      sessionName: 'fleet-myapp',
-      repoRoot: '/home/user/myapp',
-      orchestratorPaneId: '%1',
-      panes: [makePane()],
-      lastUpdated: '2026-02-21T00:00:00.000Z',
-    };
-
-    writePaneConfig(tempDir, config);
-    const result = readPaneConfig(tempDir);
-
-    expect(result).toEqual(config);
-  });
-
-  it('overwrites existing config', () => {
-    const config1: FleetPaneConfig = {
-      sessionName: 'fleet-myapp',
-      repoRoot: '/home/user/myapp',
-      orchestratorPaneId: '%1',
-      panes: [makePane({ id: 'fleet-1' })],
-      lastUpdated: '2026-02-21T00:00:00.000Z',
-    };
-
-    const config2: FleetPaneConfig = {
-      sessionName: 'fleet-myapp',
-      repoRoot: '/home/user/myapp',
-      orchestratorPaneId: '%1',
-      panes: [makePane({ id: 'fleet-1' }), makePane({ id: 'fleet-2', taskName: 'api' })],
-      lastUpdated: '2026-02-21T01:00:00.000Z',
-    };
-
-    writePaneConfig(tempDir, config1);
-    writePaneConfig(tempDir, config2);
-
-    const result = readPaneConfig(tempDir);
-    expect(result?.panes).toHaveLength(2);
-  });
-
-  it('reads config without mode field (backward compat)', () => {
-    const config: FleetPaneConfig = {
-      sessionName: 'fleet-myapp',
-      repoRoot: '/home/user/myapp',
-      orchestratorPaneId: '%1',
-      panes: [],
-      lastUpdated: '2026-02-21T00:00:00.000Z',
-    };
-    writePaneConfig(tempDir, config);
-    const result = readPaneConfig(tempDir);
-    expect(result?.mode).toBeUndefined();
-  });
-
   it('round-trips detached mode config', () => {
     const agent: DetachedAgent = {
       id: 'fleet-1',
@@ -125,8 +40,6 @@ describe('pane-state: readPaneConfig / writePaneConfig', () => {
       mode: 'detached',
       sessionName: 'fleet-myapp',
       repoRoot: '/home/user/myapp',
-      orchestratorPaneId: '',
-      panes: [],
       detached: [agent],
       lastUpdated: '2026-02-21T00:00:00.000Z',
     };
@@ -136,217 +49,37 @@ describe('pane-state: readPaneConfig / writePaneConfig', () => {
     expect(result?.detached).toHaveLength(1);
     expect(result?.detached?.[0]?.sessionName).toBe('fleet-myapp-auth');
   });
-});
 
-describe('pane-state: savePanes', () => {
-  let tempDir: string;
+  it('overwrites existing config', () => {
+    const config1: FleetPaneConfig = {
+      mode: 'detached',
+      sessionName: 'fleet-myapp',
+      repoRoot: '/home/user/myapp',
+      detached: [],
+      lastUpdated: '2026-02-21T00:00:00.000Z',
+    };
 
-  beforeEach(() => {
-    tempDir = makeTempDir({ withFleetDir: true });
-  });
+    const config2: FleetPaneConfig = {
+      mode: 'detached',
+      sessionName: 'fleet-myapp',
+      repoRoot: '/home/user/myapp',
+      detached: [
+        {
+          id: 'fleet-1',
+          sessionName: 'fleet-myapp-auth',
+          taskName: 'auth',
+          worktreePath: '/tmp/wt-auth',
+          branchName: '',
+        },
+      ],
+      lastUpdated: '2026-02-21T01:00:00.000Z',
+    };
 
-  afterEach(() => {
-    rmSync(tempDir, { recursive: true, force: true });
-  });
+    writePaneConfig(tempDir, config1);
+    writePaneConfig(tempDir, config2);
 
-  it('saves panes and orchestratorPaneId with session info', () => {
-    const panes = [makePane()];
-    savePanes(tempDir, 'fleet-myapp', panes, '%1');
-
-    const config = readPaneConfig(tempDir);
-    expect(config?.sessionName).toBe('fleet-myapp');
-    expect(config?.orchestratorPaneId).toBe('%1');
-    expect(config?.panes).toEqual(panes);
-    expect(new Date(config!.lastUpdated).getTime()).not.toBeNaN();
-  });
-
-  it('saves empty orchestratorPaneId when not yet created', () => {
-    savePanes(tempDir, 'fleet-myapp', [], '');
-
-    const config = readPaneConfig(tempDir);
-    expect(config?.orchestratorPaneId).toBe('');
-  });
-});
-
-describe('pane-state: restorePanes', () => {
-  let tempDir: string;
-
-  beforeEach(() => {
-    tempDir = makeTempDir({ withFleetDir: true });
-  });
-
-  afterEach(() => {
-    rmSync(tempDir, { recursive: true, force: true });
-  });
-
-  it('returns empty result when no config exists', () => {
-    const mock = createMockTmux();
-    const result = restorePanes(mock, 'fleet-myapp', tempDir);
-    expect(result.panes).toEqual([]);
-    expect(result.orchestratorPaneId).toBe('');
-  });
-
-  it('adopts surviving orchestrator by title when panes.json is absent', () => {
-    const titleMap = new Map([['fleet-orchestrator', '%3']]);
-    const mock = createMockTmux({ existingPanes: ['%3'], titleMap });
-    const result = restorePanes(mock, 'fleet-myapp', tempDir);
-
-    expect(result.orchestratorPaneId).toBe('%3');
-    expect(result.panes).toHaveLength(0);
-
-    // Should have written panes.json so next run finds it by ID
-    const config = readPaneConfig(tempDir);
-    expect(config?.orchestratorPaneId).toBe('%3');
-  });
-
-  it('keeps task panes that still exist in tmux', () => {
-    const pane = makePane({ paneId: '%5' });
-    savePanes(tempDir, 'fleet-myapp', [pane], '%1');
-
-    const mock = createMockTmux({ existingPanes: ['%1', '%5'] });
-    const result = restorePanes(mock, 'fleet-myapp', tempDir);
-
-    expect(result.panes).toHaveLength(1);
-    expect(result.panes[0]!.paneId).toBe('%5');
-    expect(result.orchestratorPaneId).toBe('%1');
-  });
-
-  it('drops dead task panes instead of recreating empty shells', () => {
-    const pane = makePane({ paneId: '%99', worktreePath: tempDir });
-    savePanes(tempDir, 'fleet-myapp', [pane], '');
-
-    const mock = createMockTmux({ existingPanes: [] });
-    const result = restorePanes(mock, 'fleet-myapp', tempDir);
-
-    // Dead pane is dropped — user must `fleet launch` to bring it back with an agent
-    expect(result.panes).toHaveLength(0);
-
-    const createCall = mock.calls.find((c) => c.method === 'createPane');
-    expect(createCall).toBeUndefined();
-  });
-
-  it('rebinds task pane by title when pane ID is gone but title exists', () => {
-    const pane = makePane({ paneId: '%99', taskName: 'auth', worktreePath: tempDir });
-    savePanes(tempDir, 'fleet-myapp', [pane], '');
-
-    const titles = new Map([['fleet-auth', '%50']]);
-    const mock = createMockTmux({ existingPanes: [], titleMap: titles });
-    const result = restorePanes(mock, 'fleet-myapp', tempDir);
-
-    expect(result.panes).toHaveLength(1);
-    expect(result.panes[0]!.paneId).toBe('%50');
-
-    const createCalls = mock.calls.filter((c) => c.method === 'createPane');
-    expect(createCalls).toHaveLength(0);
-  });
-
-  it('skips recreating task panes when worktree is gone', () => {
-    const pane = makePane({ paneId: '%99', worktreePath: '/nonexistent/path' });
-    savePanes(tempDir, 'fleet-myapp', [pane], '');
-
-    const mock = createMockTmux({ existingPanes: [] });
-    const result = restorePanes(mock, 'fleet-myapp', tempDir);
-
-    expect(result.panes).toHaveLength(0);
-  });
-
-  it('recreates orchestrator pane when tracked pane is gone', () => {
-    savePanes(tempDir, 'fleet-myapp', [], '%55');
-
-    const mock = createMockTmux({ existingPanes: [] }); // %55 not in session
-    const result = restorePanes(mock, 'fleet-myapp', tempDir);
-
-    expect(result.orchestratorPaneId).toBe('%101');
-
-    const createCall = mock.calls.find((c) => c.method === 'createPane');
-    expect(createCall).toBeDefined();
-
-    const titleCall = mock.calls.find(
-      (c) => c.method === 'setPaneTitle' && c.args[1] === 'fleet-orchestrator',
-    );
-    expect(titleCall).toBeDefined();
-  });
-
-  it('keeps orchestrator pane when it still exists', () => {
-    savePanes(tempDir, 'fleet-myapp', [], '%55');
-
-    const mock = createMockTmux({ existingPanes: ['%55'] });
-    const result = restorePanes(mock, 'fleet-myapp', tempDir);
-
-    expect(result.orchestratorPaneId).toBe('%55');
-
-    const createCalls = mock.calls.filter((c) => c.method === 'createPane');
-    expect(createCalls).toHaveLength(0);
-  });
-
-  it('returns empty orchestratorPaneId when none was tracked', () => {
-    savePanes(tempDir, 'fleet-myapp', [], '');
-
-    const mock = createMockTmux({ existingPanes: [] });
-    const result = restorePanes(mock, 'fleet-myapp', tempDir);
-
-    expect(result.orchestratorPaneId).toBe('');
-
-    const createCalls = mock.calls.filter((c) => c.method === 'createPane');
-    expect(createCalls).toHaveLength(0);
-  });
-});
-
-describe('pane-state: killPanes', () => {
-  let tempDir: string;
-
-  beforeEach(() => {
-    tempDir = makeTempDir({ withFleetDir: true });
-  });
-
-  afterEach(() => {
-    rmSync(tempDir, { recursive: true, force: true });
-  });
-
-  it('kills all task panes and clears panes array; preserves orchestratorPaneId', () => {
-    const panes = [
-      makePane({ paneId: '%1', taskName: 'auth' }),
-      makePane({ paneId: '%2', taskName: 'api', id: 'fleet-2' }),
-      makePane({ paneId: '%3', taskName: 'tests', id: 'fleet-3' }),
-    ];
-    savePanes(tempDir, 'fleet-myapp', panes, '%0');
-
-    const mock = createMockTmux({ existingPanes: ['%0', '%1', '%2', '%3'] });
-    killPanes(mock, tempDir);
-
-    const killCalls = mock.calls.filter((c) => c.method === 'killPane');
-    expect(killCalls).toHaveLength(3);
-    expect(killCalls.map((c) => c.args[0])).not.toContain('%0'); // orchestrator preserved
-    expect(killCalls.map((c) => c.args[0])).toContain('%1');
-
-    // panes.json survives with empty task list so next `fleet` run finds the orchestrator
-    const config = readPaneConfig(tempDir);
-    expect(config).not.toBeNull();
-    expect(config!.panes).toHaveLength(0);
-    expect(config!.orchestratorPaneId).toBe('%0');
-  });
-
-  it('skips panes that no longer exist in tmux', () => {
-    const panes = [
-      makePane({ paneId: '%1', taskName: 'auth' }),
-      makePane({ paneId: '%2', taskName: 'api', id: 'fleet-2' }),
-    ];
-    savePanes(tempDir, 'fleet-myapp', panes, '%0');
-
-    const mock = createMockTmux({ existingPanes: ['%1'] }); // %0 and %2 gone
-    killPanes(mock, tempDir);
-
-    const killCalls = mock.calls.filter((c) => c.method === 'killPane');
-    expect(killCalls).toHaveLength(1);
-    expect(killCalls[0]!.args[0]).toBe('%1');
-  });
-
-  it('does nothing when no panes.json exists', () => {
-    const mock = createMockTmux();
-    killPanes(mock, tempDir);
-
-    const killCalls = mock.calls.filter((c) => c.method === 'killPane');
-    expect(killCalls).toHaveLength(0);
+    const result = readPaneConfig(tempDir);
+    expect(result?.detached).toHaveLength(1);
   });
 });
 
@@ -377,8 +110,6 @@ describe('pane-state: saveDetachedAgents', () => {
     expect(config?.mode).toBe('detached');
     expect(config?.detached).toHaveLength(1);
     expect(config?.detached?.[0]?.sessionName).toBe('fleet-myapp-auth');
-    expect(config?.panes).toHaveLength(0);
-    expect(config?.orchestratorPaneId).toBe('');
   });
 });
 

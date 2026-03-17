@@ -1,6 +1,6 @@
 /**
  * Shared constants for fleet CLI: sync config, agent roles, health
- * thresholds, beacon timing, and TUI layout values.
+ * thresholds, and beacon timing.
  */
 
 /** Git branch used to persist session state across worktrees. */
@@ -12,13 +12,13 @@ export const DEFAULT_POLL_INTERVAL = 5;
 /** The first message sent to an agent after Claude Code boots. */
 export const BEACON_MESSAGE = 'Run `fleet shortcut build-task` and follow its instructions.';
 
-/** Max time (ms) to wait for Claude Code TUI to render before giving up. */
-export const BEACON_TUI_TIMEOUT_MS = 30_000;
+/** Max time (ms) to wait for Claude Code agent prompt before giving up. */
+export const BEACON_AGENT_TIMEOUT_MS = 30_000;
 
-/** Poll interval (ms) when waiting for TUI ready. */
+/** Poll interval (ms) when waiting for agent prompt ready. */
 export const BEACON_POLL_INTERVAL_MS = 500;
 
-/** Max beacon resend attempts if TUI still shows welcome screen. */
+/** Max beacon resend attempts if agent still shows welcome screen. */
 export const BEACON_VERIFY_ATTEMPTS = 5;
 
 /** Delay (ms) between beacon verification checks. */
@@ -29,12 +29,6 @@ export const BEACON_SESSION_READY_TIMEOUT_MS = 60_000;
 
 /** Delays (ms) for follow-up empty Enters after initial beacon send. */
 export const BEACON_FOLLOWUP_DELAYS: readonly number[] = [5_000, 10_000];
-
-/** Role identifier for the orchestrator process. */
-export const ORCHESTRATOR_ROLE = 'fleet-orchestrator';
-
-/** Role identifier for the TUI process. */
-export const TUI_ROLE = 'fleet-tui';
 
 /** Seconds with no heartbeat before an agent is considered stalled. */
 export const STALL_THRESHOLD_S = 300;
@@ -50,9 +44,6 @@ export const MAX_ESCALATION_LEVEL = 3;
 
 /** Minimum seconds between inbox checks (debounce). */
 export const INBOX_DEBOUNCE_S = 30;
-
-/** Fixed column width of the TUI left sidebar. */
-export const SIDEBAR_WIDTH = 40;
 
 /** Timeout (ms) for triage AI classification. */
 export const TRIAGE_TIMEOUT_MS = 30_000;

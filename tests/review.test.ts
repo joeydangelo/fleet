@@ -10,23 +10,23 @@ import { reviewFilePath } from '../src/lib/sync.js';
 // Mock only external boundary: tmux (external process)
 vi.mock('../src/lib/tmux.js', () => ({
   createTmuxService: vi.fn(),
-  waitForTuiReady: vi.fn().mockResolvedValue(true),
+  waitForAgentReady: vi.fn().mockResolvedValue(true),
   killDetachedSession: vi.fn(),
-  isTuiPromptReady: vi.fn().mockReturnValue(true),
+  isAgentPromptReady: vi.fn().mockReturnValue(true),
 }));
 
 import {
   createTmuxService,
-  waitForTuiReady,
+  waitForAgentReady,
   killDetachedSession,
-  isTuiPromptReady,
+  isAgentPromptReady,
 } from '../src/lib/tmux.js';
 import { runReview } from '../src/commands/review.js';
 
 const mockCreateTmuxService = vi.mocked(createTmuxService);
-const mockWaitForTuiReady = vi.mocked(waitForTuiReady);
+const mockWaitForAgentReady = vi.mocked(waitForAgentReady);
 const mockKillDetachedSession = vi.mocked(killDetachedSession);
-const mockIsTuiPromptReady = vi.mocked(isTuiPromptReady);
+const mockIsAgentPromptReady = vi.mocked(isAgentPromptReady);
 
 let fixture: FixtureRepo;
 let originalCwd: string;
@@ -67,27 +67,13 @@ function createMockTmuxApi(opts?: {
     }),
     capturePaneContent: vi.fn(() => null),
     listSessions: vi.fn(() => []),
-    createPane: vi.fn(() => ''),
-    killPane: vi.fn(),
-    listPanes: vi.fn(() => []),
     listPanesDetailed: vi.fn(() => []),
-    listPanesWithTitles: vi.fn(() => new Map()),
-    paneExists: vi.fn(() => false),
     capturePane: vi.fn(() => ''),
-    selectLayout: vi.fn(),
-    selectPane: vi.fn(),
     setPaneTitle: vi.fn(),
     setPaneRole: vi.fn(),
     setPaneProject: vi.fn(),
-    getCurrentPaneId: vi.fn(() => ''),
     getCurrentSessionName: vi.fn(() => ''),
     getPaneCurrentCommand: vi.fn(() => ''),
-    resizePane: vi.fn(),
-    pinSidebarLayout: vi.fn(),
-    listClients: vi.fn(() => []),
-    hasAttachedClient: vi.fn(() => false),
-    switchClient: vi.fn(),
-    attachSession: vi.fn(),
   };
 }
 
@@ -95,9 +81,9 @@ beforeEach(() => {
   vi.clearAllMocks();
   originalCwd = process.cwd();
   // Re-establish tmux mock implementations (restoreAllMocks resets them)
-  mockWaitForTuiReady.mockResolvedValue(true);
+  mockWaitForAgentReady.mockResolvedValue(true);
   mockKillDetachedSession.mockImplementation(() => {});
-  mockIsTuiPromptReady.mockReturnValue(true);
+  mockIsAgentPromptReady.mockReturnValue(true);
   vi.spyOn(console, 'log').mockImplementation(() => {});
   vi.spyOn(console, 'error').mockImplementation(() => {});
   vi.spyOn(console, 'warn').mockImplementation(() => {});

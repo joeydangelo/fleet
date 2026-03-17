@@ -8,7 +8,7 @@ import { planWorktrees } from '../lib/session.js';
 import { removeSyncWorktree, archiveSession } from '../lib/sync.js';
 import { SYNC_BRANCH } from '../lib/constants.js';
 import { createTmuxService } from '../lib/tmux.js';
-import { killPanes, killDetachedAgents, killOrphanedAgentSessions } from '../lib/pane-state.js';
+import { killDetachedAgents, killOrphanedAgentSessions } from '../lib/pane-state.js';
 import { killReviewerSessions } from '../lib/reviewer.js';
 import {
   success,
@@ -96,7 +96,6 @@ export function downCommand(): Command {
 
         try {
           const tmux = createTmuxService();
-          killPanes(tmux, repoRoot);
           killDetachedAgents(tmux, repoRoot);
           killOrphanedAgentSessions(tmux, repoRoot);
           killReviewerSessions(tmux);

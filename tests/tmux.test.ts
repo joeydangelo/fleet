@@ -1,26 +1,24 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import {
   TmuxService,
   tmuxSessionName,
-  isInsideTmux,
-  launchTmux,
   launchDetached,
   createDetachedSession,
   killDetachedSession,
   listDetachedSessions,
   checkAgentLiveness,
-  waitForTuiReady,
+  waitForAgentReady,
   sendBeacon,
-  isTuiPromptReady,
+  isAgentPromptReady,
   sendWakeSignal,
 } from '../src/lib/tmux.js';
 import type { BeaconOptions } from '../src/lib/tmux.js';
-import type { FleetPane, FleetPaneConfig, DetachedAgent } from '../src/lib/tmux.js';
+import type { FleetPaneConfig, DetachedAgent } from '../src/lib/tmux.js';
 import { createMockTmux } from './helpers/mock-tmux.js';
 
 const fastBeacon: BeaconOptions = {
-  tuiTimeoutMs: 100,
-  tuiPollIntervalMs: 5,
+  agentTimeoutMs: 100,
+  agentPollIntervalMs: 5,
   postReadyDelayMs: 5,
   verifyAttempts: 2,
   verifyDelayMs: 5,
@@ -70,36 +68,6 @@ describe('tmuxSessionName', () => {
   });
 });
 
-describe('isInsideTmux', () => {
-  const originalTmux = process.env['TMUX'];
-
-  beforeEach(() => {
-    delete process.env['TMUX'];
-  });
-
-  it('returns false when TMUX is not set', () => {
-    expect(isInsideTmux()).toBe(false);
-  });
-
-  it('returns true when TMUX is set', () => {
-    process.env['TMUX'] = '/tmp/tmux-1000/default,12345,0';
-    expect(isInsideTmux()).toBe(true);
-  });
-
-  // Restore original
-  afterEach(() => {
-    if (originalTmux !== undefined) {
-      process.env['TMUX'] = originalTmux;
-    } else {
-      delete process.env['TMUX'];
-    }
-  });
-});
-
-/*
- * These tests verify tmux command assembly (correct args passed to exec),
- * not actual tmux execution. The mock exec captures calls without running tmux.
- */
 describe('TmuxService with mock exec', () => {
   it('sessionExists returns true when has-session succeeds', () => {
     const { fn } = createMockExec();
@@ -127,58 +95,6 @@ describe('TmuxService with mock exec', () => {
     const svc = new TmuxService(fn);
     svc.killSession('fleet-myapp');
     expect(calls[0]).toEqual(['kill-session', '-t', 'fleet-myapp']);
-  });
-
-  it('createPane calls split-window and returns pane ID', () => {
-    const responses = new Map([['split-window -t fleet-myapp -c /tmp/wt -P -F #{pane_id}', '%42']]);
-    const { fn } = createMockExec(responses);
-    const svc = new TmuxService(fn);
-    const paneId = svc.createPane('fleet-myapp', '/tmp/wt');
-    expect(paneId).toBe('%42');
-  });
-
-  it('createPane with horizontal:true appends -h flag', () => {
-    const responses = new Map([
-      ['split-window -t fleet-myapp -c /tmp/wt -P -F #{pane_id} -h', '%43'],
-    ]);
-    const { fn } = createMockExec(responses);
-    const svc = new TmuxService(fn);
-    const paneId = svc.createPane('fleet-myapp', '/tmp/wt', { horizontal: true });
-    expect(paneId).toBe('%43');
-  });
-
-  it('killPane calls kill-pane', () => {
-    const { fn, calls } = createMockExec();
-    const svc = new TmuxService(fn);
-    svc.killPane('%42');
-    expect(calls[0]).toEqual(['kill-pane', '-t', '%42']);
-  });
-
-  it('listPanes returns array of pane IDs', () => {
-    const responses = new Map([['list-panes -s -t fleet-myapp -F #{pane_id}', '%1\n%2\n%3']]);
-    const { fn } = createMockExec(responses);
-    const svc = new TmuxService(fn);
-    expect(svc.listPanes('fleet-myapp')).toEqual(['%1', '%2', '%3']);
-  });
-
-  it('listPanes returns empty array for empty output', () => {
-    const { fn } = createMockExec();
-    const svc = new TmuxService(fn);
-    expect(svc.listPanes('fleet-myapp')).toEqual([]);
-  });
-
-  it('paneExists returns true when display-message succeeds', () => {
-    const { fn } = createMockExec();
-    const svc = new TmuxService(fn);
-    expect(svc.paneExists('%42')).toBe(true);
-  });
-
-  it('paneExists returns false when display-message throws', () => {
-    const fn = () => {
-      throw new Error('no pane');
-    };
-    const svc = new TmuxService(fn);
-    expect(svc.paneExists('%42')).toBe(false);
   });
 
   it('sendKeys sends command with Enter', () => {
@@ -214,61 +130,11 @@ describe('TmuxService with mock exec', () => {
     expect(output).toContain('All 5 tests passed');
   });
 
-  it('selectLayout applies layout', () => {
-    const { fn, calls } = createMockExec();
-    const svc = new TmuxService(fn);
-    svc.selectLayout('fleet-myapp', 'tiled');
-    expect(calls[0]).toEqual(['select-layout', '-t', 'fleet-myapp', 'tiled']);
-  });
-
   it('setPaneTitle sets title via select-pane', () => {
     const { fn, calls } = createMockExec();
     const svc = new TmuxService(fn);
     svc.setPaneTitle('%42', 'fleet-auth');
     expect(calls[0]).toEqual(['select-pane', '-t', '%42', '-T', 'fleet-auth']);
-  });
-
-  it('hasAttachedClient returns false when no clients', () => {
-    const { fn } = createMockExec();
-    const svc = new TmuxService(fn);
-    expect(svc.hasAttachedClient('fleet-myapp')).toBe(false);
-  });
-
-  it('hasAttachedClient returns true when clients listed', () => {
-    const responses = new Map([['list-clients -t fleet-myapp -F #{client_name}', '/dev/pts/0']]);
-    const { fn } = createMockExec(responses);
-    const svc = new TmuxService(fn);
-    expect(svc.hasAttachedClient('fleet-myapp')).toBe(true);
-  });
-
-  it('switchClient calls switch-client', () => {
-    const { fn, calls } = createMockExec();
-    const svc = new TmuxService(fn);
-    svc.switchClient('fleet-myapp');
-    expect(calls[0]).toEqual(['switch-client', '-t', 'fleet-myapp']);
-  });
-
-  it('listPanesWithTitles returns title-to-paneId map', () => {
-    const responses = new Map([
-      [
-        'list-panes -s -t fleet-myapp -F #{pane_id} #{pane_title}',
-        '%1 fleet-auth\n%2 fleet-api\n%3 bash',
-      ],
-    ]);
-    const { fn } = createMockExec(responses);
-    const svc = new TmuxService(fn);
-    const map = svc.listPanesWithTitles('fleet-myapp');
-    expect(map.get('fleet-auth')).toBe('%1');
-    expect(map.get('fleet-api')).toBe('%2');
-    expect(map.get('bash')).toBe('%3');
-    expect(map.size).toBe(3);
-  });
-
-  it('listPanesWithTitles returns empty map for empty output', () => {
-    const { fn } = createMockExec();
-    const svc = new TmuxService(fn);
-    const map = svc.listPanesWithTitles('fleet-myapp');
-    expect(map.size).toBe(0);
   });
 
   it('listPanesDetailed returns pane ID, title, command, cwd, project, and role for each pane', () => {
@@ -306,216 +172,6 @@ describe('TmuxService with mock exec', () => {
     const { fn } = createMockExec();
     const svc = new TmuxService(fn);
     expect(svc.listPanesDetailed('fleet-myapp')).toEqual([]);
-  });
-});
-
-describe('launchTmux', () => {
-  it('creates session when it does not exist', async () => {
-    const mock = createMockTmux();
-    const worktrees = [{ taskName: 'auth', worktreePath: '/tmp/wt-auth', agentCommand: 'claude' }];
-    await launchTmux(mock, 'fleet-myapp', '/home/user/myapp', worktrees, [], fastBeacon);
-    const createCall = mock.calls.find((c) => c.method === 'createSession');
-    expect(createCall!.args).toEqual(['fleet-myapp', '/home/user/myapp']);
-  });
-
-  it('skips session creation when it already exists', async () => {
-    const mock = createMockTmux();
-    // Pre-create the session
-    mock.createSession('fleet-myapp', '/tmp');
-    mock.calls.length = 0; // Reset calls
-
-    const worktrees = [{ taskName: 'auth', worktreePath: '/tmp/wt-auth', agentCommand: 'claude' }];
-    await launchTmux(mock, 'fleet-myapp', '/home/user/myapp', worktrees, [], fastBeacon);
-    const createCalls = mock.calls.filter((c) => c.method === 'createSession');
-    expect(createCalls).toHaveLength(0);
-  });
-
-  it('creates one pane per worktree', async () => {
-    const mock = createMockTmux();
-    const worktrees = [
-      { taskName: 'auth', worktreePath: '/tmp/wt-auth', agentCommand: 'claude' },
-      { taskName: 'api', worktreePath: '/tmp/wt-api', agentCommand: 'claude' },
-      { taskName: 'tests', worktreePath: '/tmp/wt-tests', agentCommand: 'claude' },
-    ];
-    const panes = await launchTmux(
-      mock,
-      'fleet-myapp',
-      '/home/user/myapp',
-      worktrees,
-      [],
-      fastBeacon,
-    );
-    const paneCalls = mock.calls.filter((c) => c.method === 'createPane');
-    expect(paneCalls).toHaveLength(3);
-    expect(panes).toHaveLength(3);
-  });
-
-  it('sends agent command to each pane', async () => {
-    const mock = createMockTmux();
-    const worktrees = [
-      { taskName: 'auth', worktreePath: '/tmp/wt-auth', agentCommand: 'claude --resume' },
-    ];
-    await launchTmux(mock, 'fleet-myapp', '/home/user/myapp', worktrees, [], fastBeacon);
-    const sendCall = mock.calls.find((c) => c.method === 'sendKeys');
-    expect(sendCall!.args[1]).toBe('claude --resume');
-  });
-
-  it('sets pane title for each pane', async () => {
-    const mock = createMockTmux();
-    const worktrees = [{ taskName: 'auth', worktreePath: '/tmp/wt-auth', agentCommand: 'claude' }];
-    await launchTmux(mock, 'fleet-myapp', '/home/user/myapp', worktrees, [], fastBeacon);
-    const titleCall = mock.calls.find((c) => c.method === 'setPaneTitle');
-    expect(titleCall!.args[1]).toBe('fleet-auth');
-  });
-
-  it('sets @fleet_project on each task pane', async () => {
-    const mock = createMockTmux();
-    const worktrees = [
-      { taskName: 'auth', worktreePath: '/tmp/wt-auth', agentCommand: 'claude' },
-      { taskName: 'api', worktreePath: '/tmp/wt-api', agentCommand: 'claude' },
-    ];
-    await launchTmux(mock, 'fleet-myapp', '/home/user/myapp', worktrees, [], fastBeacon);
-    const projectCalls = mock.calls.filter((c) => c.method === 'setPaneProject');
-    expect(projectCalls).toHaveLength(2);
-    expect(projectCalls[0]!.args[1]).toBe('/home/user/myapp');
-    expect(projectCalls[1]!.args[1]).toBe('/home/user/myapp');
-  });
-
-  it('does not apply any layout (caller is responsible for sidebar layout)', async () => {
-    const mock = createMockTmux();
-    const worktrees = [{ taskName: 'auth', worktreePath: '/tmp/wt-auth', agentCommand: 'claude' }];
-    await launchTmux(mock, 'fleet-myapp', '/home/user/myapp', worktrees, [], fastBeacon);
-    const layoutCalls = mock.calls.filter((c) => c.method === 'selectLayout');
-    expect(layoutCalls).toHaveLength(0);
-  });
-
-  it('returns FleetPane objects with correct structure', async () => {
-    const mock = createMockTmux();
-    const worktrees = [{ taskName: 'auth', worktreePath: '/tmp/wt-auth', agentCommand: 'claude' }];
-    const panes = await launchTmux(
-      mock,
-      'fleet-myapp',
-      '/home/user/myapp',
-      worktrees,
-      [],
-      fastBeacon,
-    );
-    expect(panes[0]).toMatchObject({
-      id: 'fleet-1',
-      taskName: 'auth',
-      worktreePath: '/tmp/wt-auth',
-    });
-    // paneId is assigned by the mock
-    expect(panes[0]!.paneId).toMatch(/^%/);
-  });
-
-  it('returns a pane for each worktree with correct task and path', async () => {
-    const mock = createMockTmux();
-    const worktrees = [
-      { taskName: 'auth', worktreePath: '/tmp/wt-auth', agentCommand: 'claude --some-flag' },
-      { taskName: 'api', worktreePath: '/tmp/wt-api', agentCommand: 'claude' },
-    ];
-    const panes = await launchTmux(
-      mock,
-      'fleet-myapp',
-      '/home/user/myapp',
-      worktrees,
-      [],
-      fastBeacon,
-    );
-    expect(panes[0]!.taskName).toBe('auth');
-    expect(panes[1]!.taskName).toBe('api');
-  });
-
-  it('skips tasks that already have a live pane (by paneId)', async () => {
-    const mock = createMockTmux();
-    mock.createSession('fleet-myapp', '/tmp');
-    // %10 is alive in tmux
-    mock.listPanes = (sessionName: string) => {
-      mock.calls.push({ method: 'listPanes', args: [sessionName] });
-      return ['%10'];
-    };
-    mock.calls.length = 0;
-
-    const existingPanes: FleetPane[] = [
-      {
-        id: 'fleet-1',
-        paneId: '%10',
-        taskName: 'auth',
-        worktreePath: '/tmp/wt-auth',
-        branchName: 'feature-auth',
-      },
-    ];
-    const worktrees = [
-      { taskName: 'auth', worktreePath: '/tmp/wt-auth', agentCommand: 'claude' },
-      { taskName: 'api', worktreePath: '/tmp/wt-api', agentCommand: 'claude' },
-    ];
-    const panes = await launchTmux(
-      mock,
-      'fleet-myapp',
-      '/home/user/myapp',
-      worktrees,
-      existingPanes,
-      fastBeacon,
-    );
-
-    // Only api should be created; auth already has a live pane
-    const createCalls = mock.calls.filter((c) => c.method === 'createPane');
-    expect(createCalls).toHaveLength(1);
-    expect(panes).toHaveLength(1);
-    expect(panes[0]!.taskName).toBe('api');
-  });
-
-  it('relaunches task when its saved pane no longer exists in tmux', async () => {
-    const mock = createMockTmux();
-    mock.createSession('fleet-myapp', '/tmp');
-    // %10 is NOT in the live pane list (killed)
-    mock.listPanes = (sessionName: string) => {
-      mock.calls.push({ method: 'listPanes', args: [sessionName] });
-      return [];
-    };
-    mock.calls.length = 0;
-
-    const existingPanes: FleetPane[] = [
-      {
-        id: 'fleet-1',
-        paneId: '%10',
-        taskName: 'auth',
-        worktreePath: '/tmp/wt-auth',
-        branchName: 'feature-auth',
-      },
-    ];
-    const worktrees = [{ taskName: 'auth', worktreePath: '/tmp/wt-auth', agentCommand: 'claude' }];
-    const panes = await launchTmux(
-      mock,
-      'fleet-myapp',
-      '/home/user/myapp',
-      worktrees,
-      existingPanes,
-      fastBeacon,
-    );
-
-    // auth pane is dead — should be recreated
-    const createCalls = mock.calls.filter((c) => c.method === 'createPane');
-    expect(createCalls).toHaveLength(1);
-    expect(panes).toHaveLength(1);
-    expect(panes[0]!.taskName).toBe('auth');
-  });
-
-  it('works without existing panes (backward compatible)', async () => {
-    const mock = createMockTmux();
-    const worktrees = [{ taskName: 'auth', worktreePath: '/tmp/wt-auth', agentCommand: 'claude' }];
-    // No existingPanes argument — should behave as before
-    const panes = await launchTmux(
-      mock,
-      'fleet-myapp',
-      '/home/user/myapp',
-      worktrees,
-      [],
-      fastBeacon,
-    );
-    expect(panes).toHaveLength(1);
-    expect(panes[0]!.taskName).toBe('auth');
   });
 });
 
@@ -583,26 +239,6 @@ describe('TmuxService setPaneProject', () => {
   });
 });
 
-describe('TmuxService selectPane', () => {
-  it('calls select-pane -t with the pane ID', () => {
-    const { fn, calls } = createMockExec();
-    const svc = new TmuxService(fn);
-    svc.selectPane('%42');
-    expect(calls[0]).toEqual(['select-pane', '-t', '%42']);
-  });
-});
-
-describe('TmuxService getCurrentPaneId', () => {
-  it('returns the current pane id from tmux', () => {
-    const responses = new Map([['display-message -p #{pane_id}', '%5']]);
-    const { fn, calls } = createMockExec(responses);
-    const svc = new TmuxService(fn);
-    const id = svc.getCurrentPaneId();
-    expect(id).toBe('%5');
-    expect(calls[0]).toEqual(['display-message', '-p', '#{pane_id}']);
-  });
-});
-
 describe('TmuxService getCurrentSessionName', () => {
   it('returns the current session name from tmux', () => {
     const responses = new Map([['display-message -p #{session_name}', 'fleet-myapp']]);
@@ -629,25 +265,6 @@ describe('TmuxService getPaneCurrentCommand', () => {
     const svc = new TmuxService(fn);
     const cmd = svc.getPaneCurrentCommand('%999');
     expect(cmd).toBe('');
-  });
-});
-
-describe('TmuxService resizePane', () => {
-  it('calls resize-pane -x with pane id and width', () => {
-    const { fn, calls } = createMockExec();
-    const svc = new TmuxService(fn);
-    svc.resizePane('%3', 40);
-    expect(calls[0]).toEqual(['resize-pane', '-t', '%3', '-x', '40']);
-  });
-});
-
-describe('TmuxService pinSidebarLayout', () => {
-  it('sets main-pane-width then selects main-vertical layout', () => {
-    const { fn, calls } = createMockExec();
-    const svc = new TmuxService(fn);
-    svc.pinSidebarLayout('fleet-test', 40);
-    expect(calls[0]).toEqual(['set-window-option', '-t', 'fleet-test', 'main-pane-width', '40']);
-    expect(calls[1]).toEqual(['select-layout', '-t', 'fleet-test', 'main-vertical']);
   });
 });
 
@@ -837,8 +454,6 @@ describe('checkAgentLiveness', () => {
       mode: 'detached',
       sessionName: 'fleet-myapp',
       repoRoot: '/home/user/myapp',
-      orchestratorPaneId: '',
-      panes: [],
       detached: [
         {
           id: 'fleet-1',
@@ -865,66 +480,6 @@ describe('checkAgentLiveness', () => {
     ]);
   });
 
-  it('checks attached panes via paneExists', () => {
-    const mock = createMockTmux();
-    mock.calls.length = 0;
-
-    const config: FleetPaneConfig = {
-      mode: 'attached',
-      sessionName: 'fleet-myapp',
-      repoRoot: '/home/user/myapp',
-      orchestratorPaneId: '%0',
-      panes: [
-        {
-          id: 'fleet-1',
-          paneId: '%1',
-          taskName: 'auth',
-          worktreePath: '/tmp/wt-auth',
-          branchName: '',
-        },
-        {
-          id: 'fleet-2',
-          paneId: '%2',
-          taskName: 'api',
-          worktreePath: '/tmp/wt-api',
-          branchName: '',
-        },
-      ],
-      lastUpdated: new Date().toISOString(),
-    };
-
-    // mock paneExists returns true by default
-    const result = checkAgentLiveness(mock, config);
-    expect(result).toEqual([
-      { taskName: 'auth', alive: true },
-      { taskName: 'api', alive: true },
-    ]);
-  });
-
-  it('defaults to attached mode when mode field is missing', () => {
-    const mock = createMockTmux();
-
-    const config: FleetPaneConfig = {
-      sessionName: 'fleet-myapp',
-      repoRoot: '/home/user/myapp',
-      orchestratorPaneId: '%0',
-      panes: [
-        {
-          id: 'fleet-1',
-          paneId: '%1',
-          taskName: 'auth',
-          worktreePath: '/tmp/wt-auth',
-          branchName: '',
-        },
-      ],
-      lastUpdated: new Date().toISOString(),
-    };
-
-    const result = checkAgentLiveness(mock, config);
-    expect(result).toHaveLength(1);
-    expect(result[0]!.taskName).toBe('auth');
-  });
-
   it('returns empty array when no agents are registered', () => {
     const mock = createMockTmux();
 
@@ -932,8 +487,6 @@ describe('checkAgentLiveness', () => {
       mode: 'detached',
       sessionName: 'fleet-myapp',
       repoRoot: '/home/user/myapp',
-      orchestratorPaneId: '',
-      panes: [],
       detached: [],
       lastUpdated: new Date().toISOString(),
     };
@@ -943,7 +496,7 @@ describe('checkAgentLiveness', () => {
   });
 });
 
-describe('waitForTuiReady', () => {
+describe('waitForAgentReady', () => {
   it('returns true immediately when prompt is ready', async () => {
     const mock = createMockTmux();
     mock.capturePaneContent = (session: string) => {
@@ -951,7 +504,7 @@ describe('waitForTuiReady', () => {
       return 'Claude Code v1.0\n❯';
     };
 
-    const ready = await waitForTuiReady(mock, 'fleet-test', 5000, 10);
+    const ready = await waitForAgentReady(mock, 'fleet-test', 5000, 10);
     expect(ready).toBe(true);
   });
 
@@ -961,14 +514,12 @@ describe('waitForTuiReady', () => {
     mock.capturePaneContent = (session: string) => {
       mock.calls.push({ method: 'capturePaneContent', args: [session] });
       callCount++;
-      // First calls return shell output ($ claude), not the TUI prompt
       if (callCount < 3) return '$ claude --dangerously-skip-permissions';
-      // Eventually the TUI renders with the ❯ prompt
       return 'Claude Code v1.0\n❯';
     };
     mock.createSession('fleet-test', '/tmp');
 
-    const ready = await waitForTuiReady(mock, 'fleet-test', 5000, 10);
+    const ready = await waitForAgentReady(mock, 'fleet-test', 5000, 10);
     expect(ready).toBe(true);
     expect(callCount).toBe(3);
   });
@@ -983,7 +534,7 @@ describe('waitForTuiReady', () => {
     };
     mock.createSession('fleet-test', '/tmp');
 
-    const ready = await waitForTuiReady(mock, 'fleet-test', 5000, 10);
+    const ready = await waitForAgentReady(mock, 'fleet-test', 5000, 10);
     expect(ready).toBe(true);
     expect(callCount).toBe(3);
   });
@@ -996,7 +547,7 @@ describe('waitForTuiReady', () => {
     };
     mock.createSession('fleet-test', '/tmp');
 
-    const ready = await waitForTuiReady(mock, 'fleet-test', 50, 10);
+    const ready = await waitForAgentReady(mock, 'fleet-test', 50, 10);
     expect(ready).toBe(false);
   });
 
@@ -1008,48 +559,48 @@ describe('waitForTuiReady', () => {
     };
     // Session doesn't exist — sessionExists returns false
 
-    const ready = await waitForTuiReady(mock, 'fleet-nonexistent', 5000, 10);
+    const ready = await waitForAgentReady(mock, 'fleet-nonexistent', 5000, 10);
     expect(ready).toBe(false);
   });
 });
 
-describe('isTuiPromptReady', () => {
+describe('isAgentPromptReady', () => {
   it('detects ❯ prompt character', () => {
-    expect(isTuiPromptReady('Claude Code v1.0\n❯')).toBe(true);
-    expect(isTuiPromptReady('❯ some input')).toBe(true);
+    expect(isAgentPromptReady('Claude Code v1.0\n❯')).toBe(true);
+    expect(isAgentPromptReady('❯ some input')).toBe(true);
   });
 
   it('detects welcome screen with Try indicator', () => {
-    expect(isTuiPromptReady('Try "help me refactor my code"')).toBe(true);
+    expect(isAgentPromptReady('Try "help me refactor my code"')).toBe(true);
   });
 
   it('detects > at start of line as fallback', () => {
-    expect(isTuiPromptReady('some header\n> prompt')).toBe(true);
-    expect(isTuiPromptReady('> prompt')).toBe(true);
+    expect(isAgentPromptReady('some header\n> prompt')).toBe(true);
+    expect(isAgentPromptReady('> prompt')).toBe(true);
   });
 
   it('rejects plain shell output without prompt', () => {
-    expect(isTuiPromptReady('$ claude --dangerously-skip-permissions')).toBe(false);
-    expect(isTuiPromptReady('Loading...')).toBe(false);
-    expect(isTuiPromptReady('npm info fleet@0.1.0')).toBe(false);
+    expect(isAgentPromptReady('$ claude --dangerously-skip-permissions')).toBe(false);
+    expect(isAgentPromptReady('Loading...')).toBe(false);
+    expect(isAgentPromptReady('npm info fleet@0.1.0')).toBe(false);
   });
 
   it('rejects > in the middle of a line (not a prompt)', () => {
-    expect(isTuiPromptReady('output -> result')).toBe(false);
+    expect(isAgentPromptReady('output -> result')).toBe(false);
   });
 });
 
 describe('sendBeacon', () => {
   const fastOpts: BeaconOptions = {
-    tuiTimeoutMs: 100,
-    tuiPollIntervalMs: 5,
+    agentTimeoutMs: 100,
+    agentPollIntervalMs: 5,
     postReadyDelayMs: 5,
     verifyAttempts: 5,
     verifyDelayMs: 5,
     followUpDelays: [5, 5],
   };
 
-  it('sends beacon message and follow-up Enters after TUI is ready', async () => {
+  it('sends beacon message and follow-up Enters after agent is ready', async () => {
     const mock = createMockTmux();
     mock.createSession('fleet-test', '/tmp');
     mock.capturePaneContent = (session: string) => {
@@ -1071,7 +622,7 @@ describe('sendBeacon', () => {
     expect(sendCalls[2]!.args[1]).toBe('');
   });
 
-  it('returns false when TUI never becomes ready', async () => {
+  it('returns false when agent never becomes ready', async () => {
     const mock = createMockTmux();
     mock.capturePaneContent = () => null;
 
