@@ -690,15 +690,14 @@ export async function sendBeacon(
   const followUpDelays = opts.followUpDelays ?? BEACON_FOLLOWUP_DELAYS;
   const sessionReadyTimeoutMs = opts.sessionReadyTimeoutMs ?? BEACON_SESSION_READY_TIMEOUT_MS;
 
-  const ready = await waitForTuiReady(tmux, sessionOrPane, tuiTimeoutMs, tuiPollIntervalMs);
-  if (!ready) return false;
-
-  // Wait for SessionStart hooks to complete before sending the beacon.
-  // fleet-session.sh writes .fleet/run/.session-ready when fleet prime finishes.
+  // When a worktree sentinel is available, it is the authoritative readiness
+  // signal — wait for it first, then do a quick TUI check.  Without a sentinel
+  // (attached mode) fall back to TUI-only detection.
   if (opts.worktreePath && sessionReadyTimeoutMs > 0) {
     const sentinel = resolve(opts.worktreePath, '.fleet', 'run', '.session-ready');
     const pollMs = Math.max(tuiPollIntervalMs, 500);
     const maxAttempts = Math.ceil(sessionReadyTimeoutMs / pollMs);
+    let found = false;
     for (let i = 0; i < maxAttempts; i++) {
       if (existsSync(sentinel)) {
         try {
@@ -706,10 +705,19 @@ export async function sendBeacon(
         } catch {
           /* best-effort cleanup */
         }
+        found = true;
         break;
       }
       await sleep(pollMs);
     }
+    // Sentinel found — give the TUI a moment to settle, but don't gate on it.
+    // If the sentinel was never written, still attempt the beacon (best-effort).
+    if (found) {
+      await waitForTuiReady(tmux, sessionOrPane, tuiTimeoutMs, tuiPollIntervalMs);
+    }
+  } else {
+    const ready = await waitForTuiReady(tmux, sessionOrPane, tuiTimeoutMs, tuiPollIntervalMs);
+    if (!ready) return false;
   }
 
   await sleep(postReadyDelayMs);
