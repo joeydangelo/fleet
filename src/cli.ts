@@ -131,6 +131,10 @@ Getting Started:
     const m = await import('./commands/launch.js');
     return m.launchCommand();
   });
+  lazy(program, 'dashboard', 'Terminal dashboard for fleet sessions', async () => {
+    const m = await import('./commands/dashboard.js');
+    return m.dashboardCommand();
+  });
   lazy(program, 'watch', 'Continuously monitor agent progress', async () => {
     const m = await import('./commands/watch.js');
     return m.watchCommand();
