@@ -13,7 +13,7 @@ import { appendMessage, readMessagesForTask } from '../src/lib/messages.js';
 import { makeTempDir } from './helpers/temp.js';
 
 function gitInit(dir: string): void {
-  execFileSync('git', ['init', dir], { stdio: 'pipe' });
+  execFileSync('git', ['init', '-b', 'main', dir], { stdio: 'pipe' });
   execFileSync('git', ['commit', '--allow-empty', '-m', 'init'], {
     cwd: dir,
     stdio: 'pipe',
