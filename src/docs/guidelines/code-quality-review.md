@@ -17,8 +17,6 @@ code you would have written differently.
 - Check that similar concepts use consistent names across the diff. A type called
   `User` in one file and `Account` for the same concept in another makes code
   unsearchable.
-- Confirm comments explain *why*, not *what*. A comment restating the code adds noise;
-  a comment explaining a non-obvious business rule or workaround adds value.
 
 ## Codebase Consistency
 
@@ -38,15 +36,28 @@ code you would have written differently.
   in the diff context. Duplication across distant modules requires cross-file reasoning
   beyond diff scope — skip it.
 
-## Error Handling Quality
+## Type Design
 
-- Verify catch blocks and error callbacks do something meaningful — log, propagate, or
-  recover. Swallowed errors (empty catch, catch-and-ignore) are findings.
-- Check that error messages include enough context (what failed, with what input) to be
-  actionable in logs.
-- Verify success messages and completion reports only execute after checking the result
-  of the operation they describe. Reporting success without verifying it is a silent
-  failure path.
+- Verify new types enforce their invariants at construction time rather than relying on
+  callers to supply valid state. A type that can be instantiated in an invalid
+  configuration is a bug waiting for a new call site.
+- Check that mutable types guard all mutation points against invalid state transitions.
+  A setter or method that accepts any value without validation undermines the type's
+  contract.
+
+## Comment Accuracy
+
+- Verify comments and docstrings match the current implementation — parameters, return
+  types, described behavior, and referenced functions. A stale comment that contradicts
+  the code is worse than no comment.
+- Flag changelog-style comments that narrate what changed rather than describing the
+  current state ("removed old auth flow", "refactored from X to Y", "previously this
+  used Z"). History belongs in git, not in source files.
+- Check for references to renamed or removed code — function names, variable names,
+  file paths, or module names that no longer exist. Outdated references send readers
+  searching for code that isn't there.
+- Confirm comments explain *why*, not *what*. A comment restating the code adds noise;
+  a comment explaining a non-obvious business rule or workaround adds value.
 
 ## Severity Calibration
 
@@ -54,8 +65,8 @@ code you would have written differently.
   exports without updating consumers, removed public API, or logic errors introduced
   by incorrect patterns.
 - **MAJOR** — real maintenance cost: inconsistent naming that makes code unsearchable,
-  duplicated logic that will drift, swallowed errors on failure paths, dead code that
-  obscures intent.
+  duplicated logic that will drift, stale comments that contradict code, dead code that
+  obscures intent, types constructable in invalid states.
 - **MINOR** — style preferences: verbose-but-clear code, acceptable-but-not-ideal
   names, redundant comments.
 - **Not a finding** when code works, reads clearly, and follows codebase conventions —
@@ -72,6 +83,6 @@ code you would have written differently.
 
 ## Examples
 
-- `MAJOR/quality src/handlers/upload.ts:34 -- empty catch block swallows file-system errors — upload failures will succeed silently with no log or user feedback`
+- `MAJOR/quality src/models/order.ts:22 -- Order type accepts negative quantity at construction — caller must validate, no invariant enforcement`
 - `MINOR/quality src/utils/format.ts:12 -- redundant comment "formats the date" on formatDate() — comment restates the function name`
 - NOT a finding: builder used a for-of loop where the reviewer prefers .map() — both are idiomatic, surrounding code uses both styles

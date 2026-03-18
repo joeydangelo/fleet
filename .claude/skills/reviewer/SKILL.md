@@ -60,6 +60,7 @@ counter-argument earns a finding drop.
 | Command | Purpose |
 |---|---|
 | `fleet guidelines code-quality-review` | Code quality and maintainability calibration for code review |
+| `fleet guidelines error-handling-review` | Error handling and silent failure detection calibration for code review |
 | `fleet guidelines performance-review` | Performance issue detection and severity calibration for code review |
 | `fleet guidelines security-review` | Security vulnerability detection and severity calibration for code review |
 <!-- END GUIDELINES DIRECTORY -->

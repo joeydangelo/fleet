@@ -41,7 +41,8 @@ roles: [reviewer]
 |---|---|---|---|---|
 | **Security** | input handling, auth, data exposure, credentials | Explore | opus | `fleet guidelines security-review` |
 | **Performance** | algorithmic complexity, I/O and concurrency, unnecessary work | Explore | sonnet | `fleet guidelines performance-review` |
-| **Style/Code Quality** | naming, codebase consistency, dead code, error handling quality | Explore | haiku | `fleet guidelines code-quality-review` |
+| **Error Handling** | try/catch blocks, fallback logic, error callbacks, silent failures | Explore | sonnet | `fleet guidelines error-handling-review` |
+| **Style/Code Quality** | naming, codebase consistency, dead code, type design, comments | Explore | haiku | `fleet guidelines code-quality-review` |
 
 **Gate:** At least one domain applies. Domains identified.
 **Artifact:** Domain list with model tier and guideline per domain.

@@ -6,24 +6,6 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/scripts/fleet-session.sh"
-          }
-        ]
-      },
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash .claude/scripts/fleet-skill-inject.sh"
-          }
-        ]
-      },
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
             "command": "bash .claude/scripts/tbd-session.sh"
           }
         ]
@@ -37,15 +19,13 @@
             "timeout": 120
           }
         ]
-      }
-    ],
-    "PreCompact": [
+      },
       {
         "matcher": "",
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/scripts/fleet-session.sh --brief"
+            "command": "bash .claude/scripts/fleet-session.sh"
           }
         ]
       },
@@ -54,7 +34,27 @@
         "hooks": [
           {
             "type": "command",
+            "command": "bash .claude/scripts/fleet-skill-inject.sh"
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
             "command": "bash .claude/scripts/tbd-session.sh --brief"
+          }
+        ]
+      },
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/scripts/fleet-session.sh --brief"
           }
         ]
       }
