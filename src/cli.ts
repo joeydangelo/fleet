@@ -159,5 +159,9 @@ Getting Started:
     const m = await import('./commands/summary.js');
     return m.summaryCommand();
   });
+  lazy(program, 'feed', 'Live-tail the NDJSON event feed', async () => {
+    const m = await import('./commands/feed.js');
+    return m.feedCommand();
+  });
   return program;
 }
