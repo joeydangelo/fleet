@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { execSync } from 'node:child_process';
 import { mkdirSync, readFileSync, rmSync, existsSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { emitEvent, formatTimestamp, getFeedPath, FEED_DIR } from './feed.js';
+import { emitEvent, formatTimestamp, getFeedPath, FEED_DIR } from '../src/lib/feed.js';
 
 // Use a real temp directory for integration tests
 const TEST_ROOT = resolve(import.meta.dirname, '../../.test-feed-tmp');

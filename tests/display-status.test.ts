@@ -1,6 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { resolveAgentStatus, statusStyle, type AgentDisplayStatus } from './display-status.js';
-import type { HealthState } from './health.js';
+import {
+  resolveAgentStatus,
+  statusStyle,
+  type AgentDisplayStatus,
+} from '../src/lib/display-status.js';
+import type { HealthState } from '../src/lib/health.js';
 
 describe('resolveAgentStatus', () => {
   const healthStates: (HealthState | undefined)[] = [

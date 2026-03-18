@@ -28,91 +28,105 @@ function getTaskColor(taskName: string, taskColors: Map<string, Formatter>): For
   return color;
 }
 
+/** Truncate or pad a string to exactly TASK_COL_WIDTH characters. */
+function fitColumn(text: string): string {
+  return text.length > TASK_COL_WIDTH ? text.slice(0, TASK_COL_WIDTH) : text.padEnd(TASK_COL_WIDTH);
+}
+
 /** Truncate task name for display — reviewer sessions show as `task:rev`. */
 function formatTaskName(task: string): string {
   if (task.endsWith(':reviewer')) {
-    const base = task.slice(0, -':reviewer'.length);
-    const short = base + ':rev';
-    return short.length > TASK_COL_WIDTH
-      ? short.slice(0, TASK_COL_WIDTH)
-      : short.padEnd(TASK_COL_WIDTH);
+    return fitColumn(task.slice(0, -':reviewer'.length) + ':rev');
   }
-  return task.length > TASK_COL_WIDTH ? task.slice(0, TASK_COL_WIDTH) : task.padEnd(TASK_COL_WIDTH);
+  return fitColumn(task);
 }
+
+/**
+ * Dispatch table mapping event names to detail formatters.
+ * Each formatter receives the parsed event record and returns a display string.
+ */
+type DetailFormatter = (p: Record<string, unknown>) => string;
+
+function fileDetail(p: Record<string, unknown>): string {
+  const file = str(p.file);
+  const lines = p.lines != null ? ' (+' + str(p.lines) + ' lines)' : '';
+  return file + lines;
+}
+
+function patternHitsDetail(p: Record<string, unknown>): string {
+  return str(p.pattern) + ' (' + str(p.hits, '0') + ' hits)';
+}
+
+function targetedMsgDetail(p: Record<string, unknown>): string {
+  return str(p.to) + ': ' + str(p.msg);
+}
+
+function sessionStartDetail(p: Record<string, unknown>): string {
+  return 'target: ' + str(p.target, '?') + ', tasks: ' + str(p.tasks, '?');
+}
+
+const DETAIL_FORMATTERS: Record<string, DetailFormatter> = {
+  // Tool events
+  'tool.Read': fileDetail,
+  'tool.Write': fileDetail,
+  'tool.Edit': fileDetail,
+  'tool.Glob': patternHitsDetail,
+  'tool.Grep': patternHitsDetail,
+  'tool.Bash': (p) => str(p.cmd),
+  'tool.Agent': (p) => {
+    const model = p.model ? ' (' + str(p.model) + ')' : '';
+    return str(p.description) + model;
+  },
+  'tool.Skill': (p) => str(p.skill),
+
+  // Git events
+  'git.commit': (p) => str(p.msg),
+
+  // Fleet events
+  'fleet.broadcast': (p) => str(p.msg),
+  'fleet.send': targetedMsgDetail,
+  'fleet.reply': targetedMsgDetail,
+  'fleet.nudge': targetedMsgDetail,
+  'fleet.review': (p) => 'cycle ' + str(p.cycle, '?'),
+  'fleet.summary': (p) => (p.append ? 'appended' : 'written'),
+  'fleet.shortcut': (p) => str(p.name),
+  'fleet.guideline': (p) => str(p.name),
+  'fleet.template': (p) => str(p.name),
+  'fleet.up': sessionStartDetail,
+  'fleet.launch': (p) => (Array.isArray(p.tasks) ? (p.tasks as string[]).join(', ') : ''),
+  'fleet.merge': (p) => {
+    const conflicts = p.conflicts ? ' (conflicts)' : ' (clean)';
+    return str(p.source, '?') + ' \u2192 ' + str(p.target, '?') + conflicts;
+  },
+  'fleet.down': (p) => 'archived: ' + str(p.archived, '?'),
+  'fleet.triage': (p) => str(p.to || p.task) + ': ' + str(p.verdict, '?'),
+
+  // Review events
+  'review.start': (p) => 'cycle ' + str(p.cycle, '?'),
+  'review.verdict': (p) => {
+    const findings = Number(p.findings ?? 0);
+    return (
+      str(p.verdict) + ' (' + String(findings) + ' finding' + (findings === 1 ? '' : 's') + ')'
+    );
+  },
+  'review.timeout': (p) => 'elapsed ' + str(p.elapsed, '?') + 's',
+
+  // Session events
+  'session.start': sessionStartDetail,
+  'session.end': (p) =>
+    'completed: ' +
+    str(p.tasks_completed, '?') +
+    ', failed: ' +
+    str(p.tasks_failed, '?') +
+    ', duration: ' +
+    str(p.duration_s, '?') +
+    's',
+};
 
 /** Extract a human-readable detail string from an event's extra fields. */
 function formatDetail(parsed: Record<string, unknown>): string {
-  const event = str(parsed.event);
-
-  // Tool events
-  if (event === 'tool.Read' || event === 'tool.Write' || event === 'tool.Edit') {
-    const file = str(parsed.file);
-    const lines = parsed.lines != null ? ' (+' + str(parsed.lines) + ' lines)' : '';
-    return file + lines;
-  }
-  if (event === 'tool.Glob' || event === 'tool.Grep') {
-    return str(parsed.pattern) + ' (' + str(parsed.hits, '0') + ' hits)';
-  }
-  if (event === 'tool.Bash') return str(parsed.cmd);
-  if (event === 'tool.Agent') {
-    const desc = str(parsed.description);
-    const model = parsed.model ? ' (' + str(parsed.model) + ')' : '';
-    return desc + model;
-  }
-  if (event === 'tool.Skill') return str(parsed.skill);
-
-  // Git events
-  if (event === 'git.commit') return str(parsed.msg);
-
-  // Fleet events
-  if (event === 'fleet.broadcast') return str(parsed.msg);
-  if (event === 'fleet.send' || event === 'fleet.reply' || event === 'fleet.nudge') {
-    return str(parsed.to) + ': ' + str(parsed.msg);
-  }
-  if (event === 'fleet.review') return 'cycle ' + str(parsed.cycle, '?');
-  if (event === 'fleet.summary') return parsed.append ? 'appended' : 'written';
-  if (event === 'fleet.shortcut' || event === 'fleet.guideline' || event === 'fleet.template') {
-    return str(parsed.name);
-  }
-  if (event === 'fleet.up' || event === 'session.start') {
-    return 'target: ' + str(parsed.target, '?') + ', tasks: ' + str(parsed.tasks, '?');
-  }
-  if (event === 'fleet.launch') {
-    const tasks = parsed.tasks;
-    return Array.isArray(tasks) ? (tasks as string[]).join(', ') : '';
-  }
-  if (event === 'fleet.merge') {
-    const conflicts = parsed.conflicts ? ' (conflicts)' : ' (clean)';
-    return str(parsed.source, '?') + ' → ' + str(parsed.target, '?') + conflicts;
-  }
-  if (event === 'fleet.down') return 'archived: ' + str(parsed.archived, '?');
-  if (event === 'fleet.triage') {
-    return str(parsed.to || parsed.task) + ': ' + str(parsed.verdict, '?');
-  }
-
-  // Review events
-  if (event === 'review.start') return 'cycle ' + str(parsed.cycle, '?');
-  if (event === 'review.verdict') {
-    const verdict = str(parsed.verdict);
-    const findings = Number(parsed.findings ?? 0);
-    return verdict + ' (' + String(findings) + ' finding' + (findings === 1 ? '' : 's') + ')';
-  }
-  if (event === 'review.timeout') return 'elapsed ' + str(parsed.elapsed, '?') + 's';
-
-  // Session end
-  if (event === 'session.end') {
-    return (
-      'completed: ' +
-      str(parsed.tasks_completed, '?') +
-      ', failed: ' +
-      str(parsed.tasks_failed, '?') +
-      ', duration: ' +
-      str(parsed.duration_s, '?') +
-      's'
-    );
-  }
-
-  return '';
+  const formatter = DETAIL_FORMATTERS[str(parsed.event)];
+  return formatter ? formatter(parsed) : '';
 }
 
 /** Color the verdict text in review events. */

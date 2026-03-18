@@ -24,16 +24,11 @@ if (tn === "Bash") {
     case "Read":
       ev = { ts, task, event: "tool.Read", file: ti.file_path || "" };
       break;
-    case "Glob": {
-      const o = input.tool_output || "";
-      const h = o ? o.split("\n").filter(Boolean).length : 0;
-      ev = { ts, task, event: "tool.Glob", pattern: ti.pattern || "", hits: h };
-      break;
-    }
+    case "Glob":
     case "Grep": {
       const o = input.tool_output || "";
       const h = o ? o.split("\n").filter(Boolean).length : 0;
-      ev = { ts, task, event: "tool.Grep", pattern: ti.pattern || "", hits: h };
+      ev = { ts, task, event: "tool." + tn, pattern: ti.pattern || "", hits: h };
       break;
     }
     case "Edit": {

@@ -116,13 +116,14 @@ export function downCommand(): Command {
 
         if (syncState) {
           const tasks = Object.values(syncState.tasks);
-          const tasksCompleted = tasks.filter((t) => t.status === 'done').length;
-          const tasksFailed = tasks.filter((t) => t.status === 'in_review').length;
+          const completed = tasks.filter((t) => t.status === 'done').length;
+          // Tasks still in_review at teardown are counted as incomplete
+          const incomplete = tasks.filter((t) => t.status === 'in_review').length;
           const durationS = Math.round((Date.now() - new Date(syncState.session).getTime()) / 1000);
           emitEvent({
             event: 'session.end',
-            tasks_completed: tasksCompleted,
-            tasks_failed: tasksFailed,
+            tasks_completed: completed,
+            tasks_failed: incomplete,
             duration_s: durationS,
           });
         }

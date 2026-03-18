@@ -282,6 +282,14 @@ export async function reviewTask(
       tmux.sendKeys(sessionName, '');
     }
 
+    // Read the verdict file and emit a feed event if present.
+    // Used at multiple exit points: session death, each poll, and timeout.
+    const checkVerdict = (): ReviewResult | null => {
+      const result = readVerdictFile(vPath);
+      if (result) emitVerdictEvent(feedContext, result);
+      return result;
+    };
+
     const startTime = Date.now();
     const maxPolls = Math.ceil(REVIEW_TIMEOUT_MS / REVIEW_POLL_MS);
 
@@ -292,25 +300,18 @@ export async function reviewTask(
 
       // Check if session is still alive
       if (!tmux.sessionExists(sessionName)) {
-        // Session died — check if it wrote a verdict before exiting
-        const fileResult = readVerdictFile(vPath);
-        if (fileResult) {
-          emitVerdictEvent(feedContext, fileResult);
-          return fileResult;
-        }
-        return {
-          verdict: 'skip',
-          strengths: '',
-          issues: 'Reviewer session exited unexpectedly — skipping review.',
-        };
+        return (
+          checkVerdict() ?? {
+            verdict: 'skip',
+            strengths: '',
+            issues: 'Reviewer session exited unexpectedly — skipping review.',
+          }
+        );
       }
 
       // Primary: check for verdict file (out-of-band sentinel)
-      const fileResult = readVerdictFile(vPath);
-      if (fileResult) {
-        emitVerdictEvent(feedContext, fileResult);
-        return fileResult;
-      }
+      const fileResult = checkVerdict();
+      if (fileResult) return fileResult;
 
       // Mini-ZFC escalation (uses pane capture for idle detection only)
 
@@ -337,11 +338,8 @@ export async function reviewTask(
     }
 
     // Timeout: one last check for verdict file, then capture pane for diagnostics
-    const finalFileResult = readVerdictFile(vPath);
-    if (finalFileResult) {
-      emitVerdictEvent(feedContext, finalFileResult);
-      return finalFileResult;
-    }
+    const finalResult = checkVerdict();
+    if (finalResult) return finalResult;
 
     const finalCapture = tmux.capturePaneContent(sessionName, REVIEW_CAPTURE_LINES);
     if (finalCapture) {

@@ -3,7 +3,7 @@ import { execSync } from 'node:child_process';
 import { mkdirSync, writeFileSync, readFileSync, rmSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { tmpdir } from 'node:os';
-import { installHooks } from './hooks.js';
+import { installHooks } from '../src/lib/hooks.js';
 
 /** Run the feed script with given JSON input and optional env vars. */
 function runFeedScript(
