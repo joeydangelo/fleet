@@ -333,7 +333,7 @@ exit 0
 
 /** Node script that parses PostToolUse JSON and emits an NDJSON event line. */
 const FLEET_FEED_JS = `const fs = require("fs");
-const input = JSON.parse(require("fs").readFileSync(0, "utf-8"));
+const input = JSON.parse(fs.readFileSync(0, "utf-8"));
 const tn = input.tool_name || "";
 const ti = input.tool_input || {};
 let task = process.env.FLEET_TASK || "orchestrator";

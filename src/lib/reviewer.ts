@@ -13,7 +13,7 @@
  */
 
 import { resolve } from 'node:path';
-import { mkdirSync, existsSync, readFileSync, rmSync } from 'node:fs';
+import { mkdirSync, readFileSync, rmSync } from 'node:fs';
 import { writeFileSync } from 'atomically';
 import type { TmuxServiceApi } from './tmux.js';
 import { waitForAgentReady, killDetachedSession, isAgentPromptReady } from './tmux.js';
@@ -23,8 +23,22 @@ import { reviewFilePath } from './sync.js';
 import { emitEvent } from './feed.js';
 
 /** Count review findings (lines starting with CRITICAL/MAJOR/MINOR). */
-function countFindings(issues: string): number {
+export function countFindings(issues: string): number {
   return issues.split('\n').filter((l) => /^(CRITICAL|MAJOR|MINOR)/i.test(l.trim())).length;
+}
+
+/** Emit a review.verdict feed event if feedContext is provided. */
+function emitVerdictEvent(
+  feedContext: { taskName: string; cycle: number } | undefined,
+  result: ReviewResult,
+): void {
+  if (!feedContext) return;
+  emitEvent({
+    event: 'review.verdict',
+    task: `${feedContext.taskName}:reviewer`,
+    verdict: result.verdict,
+    findings: countFindings(result.issues),
+  });
 }
 
 /** Prefix for all reviewer tmux sessions. */
@@ -66,7 +80,6 @@ export function verdictFilePath(repoRoot: string, taskBranch: string): string {
 
 /** Read and parse the verdict sentinel file. Returns null if not yet written. */
 export function readVerdictFile(filePath: string): ReviewResult | null {
-  if (!existsSync(filePath)) return null;
   try {
     const raw = readFileSync(filePath, 'utf-8');
     const data = JSON.parse(raw) as Partial<ReviewResult>;
@@ -282,14 +295,7 @@ export async function reviewTask(
         // Session died — check if it wrote a verdict before exiting
         const fileResult = readVerdictFile(vPath);
         if (fileResult) {
-          if (feedContext) {
-            emitEvent({
-              event: 'review.verdict',
-              task: `${feedContext.taskName}:reviewer`,
-              verdict: fileResult.verdict,
-              findings: countFindings(fileResult.issues),
-            });
-          }
+          emitVerdictEvent(feedContext, fileResult);
           return fileResult;
         }
         return {
@@ -302,14 +308,7 @@ export async function reviewTask(
       // Primary: check for verdict file (out-of-band sentinel)
       const fileResult = readVerdictFile(vPath);
       if (fileResult) {
-        if (feedContext) {
-          emitEvent({
-            event: 'review.verdict',
-            task: `${feedContext.taskName}:reviewer`,
-            verdict: fileResult.verdict,
-            findings: countFindings(fileResult.issues),
-          });
-        }
+        emitVerdictEvent(feedContext, fileResult);
         return fileResult;
       }
 
@@ -340,14 +339,7 @@ export async function reviewTask(
     // Timeout: one last check for verdict file, then capture pane for diagnostics
     const finalFileResult = readVerdictFile(vPath);
     if (finalFileResult) {
-      if (feedContext) {
-        emitEvent({
-          event: 'review.verdict',
-          task: `${feedContext.taskName}:reviewer`,
-          verdict: finalFileResult.verdict,
-          findings: countFindings(finalFileResult.issues),
-        });
-      }
+      emitVerdictEvent(feedContext, finalFileResult);
       return finalFileResult;
     }
 
@@ -362,7 +354,7 @@ export async function reviewTask(
       emitEvent({
         event: 'review.timeout',
         task: `${feedContext.taskName}:reviewer`,
-        elapsed: formatElapsed(REVIEW_TIMEOUT_MS),
+        elapsed: Math.round(REVIEW_TIMEOUT_MS / 1000),
       });
     }
 

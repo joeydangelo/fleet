@@ -15,7 +15,7 @@ import {
   requireWorktreeTask,
 } from '../lib/sync.js';
 import { createTmuxService } from '../lib/tmux.js';
-import { reviewTask } from '../lib/reviewer.js';
+import { reviewTask, countFindings } from '../lib/reviewer.js';
 import { REVIEW_MAX_RETRIES } from '../lib/constants.js';
 import { handleError, colors } from '../lib/output.js';
 import { emitEvent } from '../lib/feed.js';
@@ -138,9 +138,7 @@ export async function runReview(): Promise<number> {
   state = reopenTask(state, taskName);
   writeSyncState(state, repoRoot);
 
-  const issueCount = result.issues
-    ? result.issues.split('\n').filter((l) => /^(CRITICAL|MAJOR|MINOR)\//i.test(l.trim())).length
-    : 0;
+  const issueCount = result.issues ? countFindings(result.issues) : 0;
   console.log(
     colors.warn(`  ${taskName} -- FAIL (${issueCount} issue${issueCount !== 1 ? 's' : ''})`),
   );
