@@ -4,7 +4,7 @@ import { resolve } from 'node:path';
 import { emitEvent, formatTimestamp, getFeedPath, FEED_DIR } from './feed.js';
 
 // Use a real temp directory for integration tests
-const TEST_ROOT = resolve(import.meta.dirname ?? __dirname, '../../.test-feed-tmp');
+const TEST_ROOT = resolve(import.meta.dirname, '../../.test-feed-tmp');
 
 describe('formatTimestamp', () => {
   it('returns HH:MM:SS format', () => {

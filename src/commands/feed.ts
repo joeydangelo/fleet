@@ -164,7 +164,7 @@ function processChunk(
       if (opts.eventFilter && !str(parsed.event).startsWith(opts.eventFilter)) continue;
       printEvent(parsed, taskColors);
     } catch {
-      // Skip malformed lines silently
+      console.log(pc.dim('  [malformed line skipped]'));
     }
   }
 }

@@ -109,19 +109,10 @@ export function downCommand(): Command {
 
         cleanupBackupRefs(repoRoot);
 
-        // Archive and emit before deleting .fleet/run/ so feed.ndjson is preserved
+        // Emit events before archiving so fleet.down and session.end are in the archive
         let archivePath: string | null = null;
-        try {
-          archivePath = archiveSession(repoRoot, config.target);
-          if (archivePath) {
-            success('archive', archivePath);
-          }
-        } catch (err) {
-          const message = toErrorMessage(err);
-          error('archive', `failed: ${message}`);
-        }
 
-        emitEvent({ event: 'fleet.down', archived: archivePath ?? '' });
+        emitEvent({ event: 'fleet.down', archived: '' });
 
         if (syncState) {
           const tasks = Object.values(syncState.tasks);
@@ -134,6 +125,16 @@ export function downCommand(): Command {
             tasks_failed: tasksFailed,
             duration_s: durationS,
           });
+        }
+
+        try {
+          archivePath = archiveSession(repoRoot, config.target);
+          if (archivePath) {
+            success('archive', archivePath);
+          }
+        } catch (err) {
+          const message = toErrorMessage(err);
+          error('archive', `failed: ${message}`);
         }
 
         const runDir = resolve(repoRoot, '.fleet', 'run');

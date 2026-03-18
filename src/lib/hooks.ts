@@ -316,9 +316,6 @@ const FLEET_FEED_SCRIPT = `#!/bin/bash
 # Installed by: fleet init
 # Fires on PostToolUse (all tools)
 
-# Capture stdin before anything else consumes it
-export FLEET_INPUT=$(cat)
-
 # Detect task name from .fleet/tasks/*.md
 task_file=$(ls .fleet/tasks/*.md 2>/dev/null | head -1)
 if [ -n "$task_file" ]; then
@@ -328,6 +325,7 @@ else
 fi
 
 mkdir -p .fleet/run
+# Pipe stdin directly to node — avoids MAX_ARG_STRLEN limit on large tool outputs
 node .claude/hooks/fleet-feed.js
 
 exit 0
@@ -335,7 +333,7 @@ exit 0
 
 /** Node script that parses PostToolUse JSON and emits an NDJSON event line. */
 const FLEET_FEED_JS = `const fs = require("fs");
-const input = JSON.parse(process.env.FLEET_INPUT);
+const input = JSON.parse(require("fs").readFileSync(0, "utf-8"));
 const tn = input.tool_name || "";
 const ti = input.tool_input || {};
 let task = process.env.FLEET_TASK || "orchestrator";
@@ -348,7 +346,7 @@ if (tn === "Bash") {
   const cmd = ti.command || "";
   if (cmd.startsWith("fleet ")) process.exit(0);
   if (/\\bgit commit\\b/.test(cmd)) {
-    const m = cmd.match(/-m\\s+["']([^"']*)["']/);
+    const m = cmd.match(/-m\\s+"([^"]*)"/) || cmd.match(/-m\\s+'([^']*)'/);
     const msg = m ? m[1].slice(0, 50) : "";
     ev = { ts, task, event: "git.commit", msg };
   } else {
