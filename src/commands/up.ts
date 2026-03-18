@@ -9,6 +9,7 @@ import type { WorktreeInfo } from '../lib/session.js';
 import { initSyncState, writeSyncStateAndFiles, initSyncWorktree } from '../lib/sync.js';
 import { installHooks } from '../lib/hooks.js';
 import { success, pending, handleError } from '../lib/output.js';
+import { emitEvent } from '../lib/feed.js';
 
 /** Create worktrees, copy config, run hooks, and initialize sync state for all tasks. */
 export async function runUp(
@@ -127,6 +128,8 @@ export function upCommand(): Command {
         }
 
         await runUp(repoRoot, configPath, config);
+        emitEvent({ event: 'fleet.up', target: config.target, tasks: taskNames.length });
+        emitEvent({ event: 'session.start', target: config.target, tasks: taskNames.length });
         console.log(pc.dim('\nOpen an agent session in each worktree path to begin.'));
       } catch (err) {
         handleError(err);

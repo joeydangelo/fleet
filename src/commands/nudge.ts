@@ -4,6 +4,7 @@ import { readRequiredSyncState } from '../lib/sync.js';
 import { appendMessage } from '../lib/messages.js';
 import { handleError, success } from '../lib/output.js';
 import { getTaskIdentity } from '../lib/session.js';
+import { emitEvent } from '../lib/feed.js';
 
 /** Build the `fleet nudge` CLI command. */
 export function nudgeCommand(): Command {
@@ -26,6 +27,7 @@ export function nudgeCommand(): Command {
           },
           repoRoot,
         );
+        emitEvent({ event: 'fleet.nudge', to: task, msg: message });
         success(task, 'nudge delivered');
       } catch (err) {
         handleError(err);

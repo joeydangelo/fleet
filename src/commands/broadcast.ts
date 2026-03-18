@@ -4,6 +4,7 @@ import { getTaskIdentity } from '../lib/session.js';
 import { readRequiredSyncState } from '../lib/sync.js';
 import { appendMessage } from '../lib/messages.js';
 import { handleError, colors } from '../lib/output.js';
+import { emitEvent } from '../lib/feed.js';
 
 /** CLI command: broadcast a message to all agents in the session. */
 export function broadcastCommand(): Command {
@@ -18,6 +19,7 @@ export function broadcastCommand(): Command {
         readRequiredSyncState(repoRoot);
 
         appendMessage(taskName, { type: 'broadcast', msg: message }, repoRoot);
+        emitEvent({ event: 'fleet.broadcast', msg: message });
 
         console.log(colors.success(`[${taskName} → all] ${message}`));
       } catch (err) {

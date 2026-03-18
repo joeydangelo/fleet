@@ -5,7 +5,7 @@ import { resolve } from 'node:path';
 import { removeWorktree, branchExists, deleteBranch, cleanupBackupRefs } from '../lib/git.js';
 import { loadRepoConfig } from '../lib/config.js';
 import { planWorktrees } from '../lib/session.js';
-import { removeSyncWorktree, archiveSession } from '../lib/sync.js';
+import { removeSyncWorktree, archiveSession, readSyncState } from '../lib/sync.js';
 import { SYNC_BRANCH } from '../lib/constants.js';
 import { createTmuxService } from '../lib/tmux.js';
 import { killDetachedAgents, killOrphanedAgentSessions } from '../lib/pane-state.js';
@@ -20,6 +20,7 @@ import {
   colors,
 } from '../lib/output.js';
 import { writeDefaultFleetYaml } from '../lib/util.js';
+import { emitEvent } from '../lib/feed.js';
 
 /**
  * State files cleaned up during `fleet down`. Must be updated when new
@@ -50,6 +51,9 @@ export function downCommand(): Command {
         const worktrees = planWorktrees(config, repoRoot);
 
         console.log(pc.bold(`fleet down${opts.dryRun ? ' (dry run)' : ''}\n`));
+
+        // Read sync state before cleanup for session.end metrics
+        const syncState = readSyncState(repoRoot);
 
         if (opts.dryRun) {
           for (const wt of worktrees) {
@@ -127,8 +131,9 @@ export function downCommand(): Command {
           /* best-effort cleanup */
         }
 
+        let archivePath: string | null = null;
         try {
-          const archivePath = archiveSession(repoRoot, config.target);
+          archivePath = archiveSession(repoRoot, config.target);
           if (archivePath) {
             success('archive', archivePath);
           }
@@ -136,6 +141,8 @@ export function downCommand(): Command {
           const message = toErrorMessage(err);
           error('archive', `failed: ${message}`);
         }
+
+        emitEvent({ event: 'fleet.down', archived: archivePath ?? '' });
 
         try {
           if (writeDefaultFleetYaml(repoRoot)) {
@@ -163,6 +170,20 @@ export function downCommand(): Command {
           console.log(`\n${pc.dim(`Removed ${removed} worktree(s).`)}`);
         }
 
+        if (syncState) {
+          const tasks = Object.values(syncState.tasks);
+          const tasksCompleted = tasks.filter((t) => t.status === 'done').length;
+          const tasksFailed = tasks.filter(
+            (t) => t.status !== 'done' && t.status !== 'pending',
+          ).length;
+          const durationS = Math.round((Date.now() - new Date(syncState.session).getTime()) / 1000);
+          emitEvent({
+            event: 'session.end',
+            tasks_completed: tasksCompleted,
+            tasks_failed: tasksFailed,
+            duration_s: durationS,
+          });
+        }
         console.log(pc.dim('Task branches kept. Use git branch -d to clean up manually.'));
       } catch (err) {
         handleError(err);

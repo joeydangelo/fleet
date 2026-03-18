@@ -4,6 +4,7 @@ import { getTaskIdentity } from '../lib/session.js';
 import { readRequiredSyncState } from '../lib/sync.js';
 import { appendMessage, generateThreadId } from '../lib/messages.js';
 import { handleError, colors } from '../lib/output.js';
+import { emitEvent } from '../lib/feed.js';
 
 /** CLI command: send a direct message to an agent. */
 export function sendCommand(): Command {
@@ -25,6 +26,7 @@ export function sendCommand(): Command {
 
         const thread = generateThreadId();
         appendMessage(taskName, { type: 'send', to: task, msg: message, thread }, repoRoot);
+        emitEvent({ event: 'fleet.send', to: task, msg: message });
 
         console.log(colors.success(`[${taskName} → ${task}] (${thread}) ${message}`));
       } catch (err) {

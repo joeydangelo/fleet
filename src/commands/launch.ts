@@ -16,6 +16,7 @@ import {
 import { saveDetachedAgents, readPaneConfig } from '../lib/pane-state.js';
 import { success, skip, error, pending, handleError, formatTaskStatus } from '../lib/output.js';
 import { writeHeartbeat } from '../lib/health.js';
+import { emitEvent } from '../lib/feed.js';
 import type { WorktreeInfo } from '../lib/session.js';
 import type { SyncState } from '../lib/sync.js';
 
@@ -111,6 +112,7 @@ export async function runLaunch(repoRoot: string, config: FleetConfig): Promise<
     success(agent.taskName, agent.worktreePath);
   }
 
+  emitEvent({ event: 'fleet.launch', tasks: newAgents.map((a) => a.taskName) });
   console.log(pc.dim(`\nLaunched ${newAgents.length} agent(s) in detached tmux sessions.`));
 }
 

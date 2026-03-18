@@ -9,6 +9,7 @@ import {
 } from '../lib/sync.js';
 import { handleError, colors } from '../lib/output.js';
 import pc from 'picocolors';
+import { emitEvent } from '../lib/feed.js';
 
 interface SummaryRunOpts {
   show?: boolean;
@@ -51,9 +52,11 @@ export function runSummary(opts: SummaryRunOpts): number {
   if (opts.append) {
     const existing = readSyncFile(reviewPath, repoRoot) ?? '';
     writeSyncFile(reviewPath, existing + content, repoRoot);
+    emitEvent({ event: 'fleet.summary', append: true });
     console.log(colors.success(`  ${taskName} -- summary updated`));
   } else {
     writeSyncFile(reviewPath, content, repoRoot);
+    emitEvent({ event: 'fleet.summary', append: false });
     console.log(colors.success(`  ${taskName} -- summary written`));
   }
 

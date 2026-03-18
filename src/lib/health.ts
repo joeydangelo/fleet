@@ -14,6 +14,7 @@ import {
   TRIAGE_CAPTURE_LINES,
 } from './constants.js';
 import type { TmuxServiceApi } from './tmux.js';
+import { emitEvent } from './feed.js';
 
 export type HealthState = 'booting' | 'working' | 'stalled' | 'zombie' | 'completed';
 
@@ -243,10 +244,12 @@ export function triageAgent(
     }).trim();
 
     const upper = result.toUpperCase();
-    if (upper.includes('TERMINATE')) return { verdict: 'terminate', captured };
-    if (upper.includes('RETRY')) return { verdict: 'retry', captured };
-    // safe default
-    return { verdict: 'extend', captured };
+    let verdict: TriageVerdict;
+    if (upper.includes('TERMINATE')) verdict = 'terminate';
+    else if (upper.includes('RETRY')) verdict = 'retry';
+    else verdict = 'extend';
+    emitEvent({ event: 'fleet.triage', task: taskName, verdict });
+    return { verdict, captured };
   } catch {
     // On failure (timeout, claude not found, etc.), default to extend (safe)
     return { verdict: 'extend', captured };
