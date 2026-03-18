@@ -76,11 +76,13 @@ errors.
 **Objective:** Validate the resolution and resume the merge loop.
 **Tools:** Bash
 
-1. Run lint and typecheck. Check `package.json`, `Makefile`, `pyproject.toml`, or
-   similar for project commands. Fix failures before proceeding.
-2. Commit the resolution using the commit conventions
+1. Check `package.json`, `Makefile`, `pyproject.toml`, or equivalent for project
+   commands.
+2. Run lint and typecheck.
+3. Fix failures before proceeding.
+4. Commit the resolution using the commit conventions
    (see `fleet guidelines commit-conventions`).
-3. Run `fleet merge --continue`. If another conflict occurs, repeat from Phase 1.
+5. Run `fleet merge --continue`. If another conflict occurs, repeat from Phase 1.
 
 **Gate:** Lint and typecheck pass on resolved files.
 **Artifact:** Resolution commit on the target branch. `fleet merge --continue`

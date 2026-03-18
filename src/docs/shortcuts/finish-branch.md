@@ -30,14 +30,19 @@ roles: [orchestrator]
 **Tools:** Bash, Read
 
 1. Determine the validation level from the changes on `TARGET_BRANCH`:
-   - **Level 1** (docs, config, formatting): lint + typecheck.
-   - **Level 2** (core logic, bug fixes, new endpoints — **default**): lint + typecheck + tests.
-   - **Level 3** (migrations, auth, release prep): lint + typecheck + full test suite
-     + build.
-2. Check `package.json`, `Makefile`, `pyproject.toml`, or similar for project commands.
-   Run validation at the selected level. Fix failures (max `MAX_FIX_ATTEMPTS` per
-   error). Pre-existing failures (not caused by this branch): document and proceed.
-3. If a spec exists with `must_haves`, verify goal-backward: `truths` (behavioral
+
+   | Level | Change Type | Checks |
+   |---|---|---|
+   | **1** | Docs, config, formatting | Lint + typecheck |
+   | **2** *(default)* | Core logic, bug fixes, new endpoints | Lint + typecheck + tests |
+   | **3** | Migrations, auth, release prep | Lint + typecheck + full test suite + build |
+
+2. Check `package.json`, `Makefile`, `pyproject.toml`, or equivalent for project
+   commands.
+3. Run validation at the selected level.
+4. Fix failures (max `MAX_FIX_ATTEMPTS` per error).
+5. **Pre-existing failures** (not caused by this branch): document and proceed.
+6. If a spec exists with `must_haves`, verify goal-backward: `truths` (behavioral
    assertions hold), `artifacts` (expected files exist), `key_links` (issue references
    present in commits or PR body).
 

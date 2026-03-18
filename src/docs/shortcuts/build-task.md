@@ -69,16 +69,19 @@ Run the verify loop (max `MAX_VERIFY_RETRIES` cycles):
    - Every requirement addressed in changed files.
    - No files outside task scope (`SCOPE_DRIFT`).
 3. Select validation level based on change risk:
-   - **Level 1** (docs, config, formatting): lint + typecheck.
-   - **Level 2** (features, bug fixes, endpoints — **default**): lint + typecheck
-     + relevant tests (scoped to changed modules).
-   - **Level 3** (auth, migrations, payments, schemas): lint + typecheck + relevant
-     tests + full test suite + build.
-4. Check `package.json`, `Makefile`, `pyproject.toml`, or similar for project
-   commands. Run validation at the selected level. Fix failures (max
-   `MAX_VERIFY_RETRIES` per error). Pre-existing failures (not caused by your
-   changes): document in the summary and proceed.
-5. Broadcast interface changes (types, exports, API, config):
+
+   | Level | Change Type | Checks |
+   |---|---|---|
+   | **1** | Docs, config, formatting | Lint + typecheck |
+   | **2** *(default)* | Features, bug fixes, endpoints | Lint + typecheck + relevant tests (scoped to changed modules) |
+   | **3** | Auth, migrations, payments, schemas | Lint + typecheck + relevant tests + full test suite + build |
+4. Check `package.json`, `Makefile`, `pyproject.toml`, or equivalent for project
+   commands.
+5. Run validation at the selected level.
+6. Fix failures (max `MAX_VERIFY_RETRIES` per error).
+7. **Pre-existing failures** (not caused by your changes): document in summary
+   and proceed.
+8. Broadcast interface changes (types, exports, API, config):
    `fleet broadcast "Changed <interface>: <details>"`.
 
 **Gate:** Quality suite introduces no new failures. All task requirements covered.
