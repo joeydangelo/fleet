@@ -25,6 +25,7 @@ import {
   formatTaskStatus,
   toErrorMessage,
 } from '../lib/output.js';
+import { emitEvent } from '../lib/feed.js';
 
 function statusColor(status: string): (text: string) => string {
   if (status === 'done') return colors.success;
@@ -54,6 +55,7 @@ export function primeCommand(): Command {
         const taskName = detectTaskName(repoRoot);
 
         if (!taskName) {
+          emitEvent({ event: 'fleet.prime' });
           if (opts.brief) {
             printOrchestratorBrief(repoRoot);
           } else {
@@ -75,6 +77,7 @@ export function primeCommand(): Command {
         }
         const state = readSyncState(repoRoot);
 
+        emitEvent({ event: 'fleet.prime' });
         if (opts.brief) {
           printBrief(taskName, taskContent, state, repoRoot);
         } else {

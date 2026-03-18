@@ -499,6 +499,11 @@ export function archiveSession(repoRoot: string, target: string): string | null 
     }
   }
 
+  const feedFile = resolve(repoRoot, '.fleet', 'run', 'feed.ndjson');
+  if (existsSync(feedFile)) {
+    copyFileSync(feedFile, resolve(archiveDir, 'feed.ndjson'));
+  }
+
   const configPath = resolve(repoRoot, '.fleet', 'fleet.yaml');
   if (existsSync(configPath)) {
     copyFileSync(configPath, resolve(archiveDir, 'fleet.yaml'));

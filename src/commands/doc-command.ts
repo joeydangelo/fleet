@@ -6,6 +6,7 @@ import { handleError, colors, success, toErrorMessage } from '../lib/output.js';
 import { addDoc } from '../lib/doc-add.js';
 import type { DocType } from '../lib/doc-add.js';
 import { getRepoRoot } from '../lib/git.js';
+import { emitEvent } from '../lib/feed.js';
 
 /** Derive a doc name from a URL's last path segment. */
 function deriveNameFromUrl(url: string): string {
@@ -24,7 +25,12 @@ function categoryToDocType(category: string): DocType {
 }
 
 /** Builds a Commander CLI subcommand that fetches and displays a tbd doc file by name within a given category. */
-export function createDocCommand(name: string, category: string, description: string): Command {
+export function createDocCommand(
+  name: string,
+  category: string,
+  description: string,
+  eventName?: string,
+): Command {
   return new Command(name)
     .description(description)
     .argument('[name]', `${name} name`)
@@ -105,6 +111,7 @@ export function createDocCommand(name: string, category: string, description: st
             console.error(pc.dim(`Run \`fleet ${name} --list\` to see available ${category}.`));
             process.exit(1);
           }
+          if (eventName) emitEvent({ event: eventName, name: docName });
           console.log(doc.content);
         } catch (err) {
           handleError(err);

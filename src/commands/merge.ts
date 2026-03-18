@@ -10,6 +10,7 @@ import {
   unstashWorkingTree,
   getHeadRef,
   createBackupRef,
+  getConflictingFiles,
 } from '../lib/git.js';
 import { loadRepoConfig, topologicalSort } from '../lib/config.js';
 import type { FleetConfig } from '../lib/config.js';
@@ -26,6 +27,7 @@ import type { SyncState } from '../lib/sync.js';
 import { generateConflictBrief } from '../lib/conflict.js';
 import { success, warn, skip, handleError } from '../lib/output.js';
 import { ValidationError } from '../lib/errors.js';
+import { emitEvent } from '../lib/feed.js';
 
 /** Build the `fleet merge` CLI command. */
 export function mergeCommand(): Command {
@@ -109,6 +111,13 @@ function handleMergeContinue(
 
   console.log(pc.bold('fleet merge --continue\n'));
   success(conflictTask.taskName, 'conflict resolved');
+  emitEvent({
+    event: 'fleet.merge',
+    source: conflictTask.branch,
+    target: updated.target,
+    conflicts: false,
+    continue: true,
+  });
 
   return updated;
 }
@@ -159,6 +168,7 @@ function runMergeLoop(
       const result = mergeBranch(wt.branch, repoRoot);
       if (result.success) {
         success(wt.taskName, 'merged clean');
+        emitEvent({ event: 'fleet.merge', source: wt.branch, target, conflicts: false });
 
         state = updateMergeEntry(state, wt.taskName, {
           status: 'merged',
@@ -180,6 +190,14 @@ function runMergeLoop(
         });
         writeSyncStateAndFiles(state, [{ path: briefPath, content: brief }], repoRoot);
 
+        const conflictFiles = getConflictingFiles(repoRoot);
+        emitEvent({
+          event: 'fleet.merge',
+          source: wt.branch,
+          target,
+          conflicts: true,
+          files: conflictFiles,
+        });
         warn(wt.taskName, 'conflicts');
         const firstLine =
           result.message.split('\n')[0]?.trim() || result.message || 'Merge completed';

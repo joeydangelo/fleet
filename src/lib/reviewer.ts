@@ -20,6 +20,12 @@ import { waitForAgentReady, killDetachedSession, isAgentPromptReady } from './tm
 import { REVIEW_TIMEOUT_MS, REVIEW_NUDGE_MS, BEACON_FOLLOWUP_DELAYS } from './constants.js';
 import { sleep, formatElapsed, sanitizeBranchName } from './util.js';
 import { reviewFilePath } from './sync.js';
+import { emitEvent } from './feed.js';
+
+/** Count review findings (lines starting with CRITICAL/MAJOR/MINOR). */
+function countFindings(issues: string): number {
+  return issues.split('\n').filter((l) => /^(CRITICAL|MAJOR|MINOR)/i.test(l.trim())).length;
+}
 
 /** Prefix for all reviewer tmux sessions. */
 const REVIEW_SESSION_PREFIX = 'fleet-review-';
@@ -208,6 +214,7 @@ export async function reviewTask(
   callbacks?: ReviewCallbacks,
   taskFilePath?: string,
   reviewFileOverride?: string,
+  feedContext?: { taskName: string; cycle: number },
 ): Promise<ReviewResult> {
   const sessionName = `${REVIEW_SESSION_PREFIX}${sanitizeBranchName(taskBranch)}`;
   const vPath = verdictFilePath(repoRoot, taskBranch);
@@ -229,6 +236,13 @@ export async function reviewTask(
 
   try {
     // Launch the reviewer session
+    if (feedContext) {
+      emitEvent({
+        event: 'review.start',
+        task: `${feedContext.taskName}:reviewer`,
+        cycle: feedContext.cycle,
+      });
+    }
     tmux.createSession(sessionName, repoRoot);
     tmux.sendKeys(sessionName, buildReviewerCommand());
 
@@ -267,7 +281,17 @@ export async function reviewTask(
       if (!tmux.sessionExists(sessionName)) {
         // Session died — check if it wrote a verdict before exiting
         const fileResult = readVerdictFile(vPath);
-        if (fileResult) return fileResult;
+        if (fileResult) {
+          if (feedContext) {
+            emitEvent({
+              event: 'review.verdict',
+              task: `${feedContext.taskName}:reviewer`,
+              verdict: fileResult.verdict,
+              findings: countFindings(fileResult.issues),
+            });
+          }
+          return fileResult;
+        }
         return {
           verdict: 'skip',
           strengths: '',
@@ -277,7 +301,17 @@ export async function reviewTask(
 
       // Primary: check for verdict file (out-of-band sentinel)
       const fileResult = readVerdictFile(vPath);
-      if (fileResult) return fileResult;
+      if (fileResult) {
+        if (feedContext) {
+          emitEvent({
+            event: 'review.verdict',
+            task: `${feedContext.taskName}:reviewer`,
+            verdict: fileResult.verdict,
+            findings: countFindings(fileResult.issues),
+          });
+        }
+        return fileResult;
+      }
 
       // Mini-ZFC escalation (uses pane capture for idle detection only)
 
@@ -305,13 +339,31 @@ export async function reviewTask(
 
     // Timeout: one last check for verdict file, then capture pane for diagnostics
     const finalFileResult = readVerdictFile(vPath);
-    if (finalFileResult) return finalFileResult;
+    if (finalFileResult) {
+      if (feedContext) {
+        emitEvent({
+          event: 'review.verdict',
+          task: `${feedContext.taskName}:reviewer`,
+          verdict: finalFileResult.verdict,
+          findings: countFindings(finalFileResult.issues),
+        });
+      }
+      return finalFileResult;
+    }
 
     const finalCapture = tmux.capturePaneContent(sessionName, REVIEW_CAPTURE_LINES);
     if (finalCapture) {
       const capturePath = saveCapture(repoRoot, taskBranch, finalCapture);
       callbacks?.onCapture?.(formatElapsed(Date.now() - startTime), capturePath);
       callbacks?.onTimeout?.(formatElapsed(REVIEW_TIMEOUT_MS));
+    }
+
+    if (feedContext) {
+      emitEvent({
+        event: 'review.timeout',
+        task: `${feedContext.taskName}:reviewer`,
+        elapsed: formatElapsed(REVIEW_TIMEOUT_MS),
+      });
     }
 
     return { verdict: 'skip', strengths: '', issues: 'Review timed out — skipping review.' };

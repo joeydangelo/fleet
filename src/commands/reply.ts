@@ -5,6 +5,7 @@ import { readRequiredSyncState } from '../lib/sync.js';
 import { readMessages, replyToMessage } from '../lib/messages.js';
 import { handleError, colors } from '../lib/output.js';
 import { computeThreads, writeGateFlag, clearGateFlag } from './inbox.js';
+import { emitEvent } from '../lib/feed.js';
 
 /** CLI command: reply to a direct message from an agent. */
 export function replyCommand(): Command {
@@ -26,6 +27,7 @@ export function replyCommand(): Command {
           process.exit(1);
         }
 
+        emitEvent({ event: 'fleet.reply', to: task, msg: message });
         console.log(colors.success(`[${taskName} → ${task}] ${message}`));
 
         // Re-check for remaining unanswered sends directed at this task

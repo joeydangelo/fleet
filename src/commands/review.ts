@@ -18,6 +18,7 @@ import { createTmuxService } from '../lib/tmux.js';
 import { reviewTask } from '../lib/reviewer.js';
 import { REVIEW_MAX_RETRIES } from '../lib/constants.js';
 import { handleError, colors } from '../lib/output.js';
+import { emitEvent } from '../lib/feed.js';
 
 /** Build the `fleet review` CLI command. */
 export function reviewCommand(): Command {
@@ -56,6 +57,7 @@ export async function runReview(): Promise<number> {
 
   state = submitForReview(state, taskName);
   writeSyncState(state, repoRoot);
+  emitEvent({ event: 'fleet.review', cycle: nextCycle });
   console.log(pc.dim(`  ${taskName} -- submitted for review (cycle ${nextCycle})`));
 
   let tmux;
@@ -89,6 +91,7 @@ export async function runReview(): Promise<number> {
     },
     taskFilePath,
     reviewPath,
+    { taskName, cycle: nextCycle },
   );
 
   // Build the "## Review — Cycle N" section from the verdict
