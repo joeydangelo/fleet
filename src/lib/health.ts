@@ -44,6 +44,19 @@ interface AgentHealth {
 
 type TriageVerdict = 'extend' | 'retry' | 'terminate';
 
+/**
+ * Parse an LLM triage response into a verdict.
+ * Precedence: EXTEND > RETRY > TERMINATE (safest-first).
+ * Falls back to 'extend' on empty/garbage input.
+ */
+export function parseTriageVerdict(raw: string): TriageVerdict {
+  const upper = raw.toUpperCase();
+  if (upper.includes('EXTEND')) return 'extend';
+  if (upper.includes('RETRY')) return 'retry';
+  if (upper.includes('TERMINATE')) return 'terminate';
+  return 'extend';
+}
+
 export interface HealthSnapshot {
   timestamp: string;
   agents: Record<string, AgentHealth>;
@@ -166,7 +179,9 @@ export function readHeartbeat(repoRoot: string, taskName: string): string | null
   try {
     const filePath = resolve(repoRoot, '.fleet', 'run', 'heartbeats', taskName);
     return readFileSync(filePath, 'utf-8').trim() || null;
-  } catch {
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === 'ENOENT') return null;
+    console.warn(`[fleet] readHeartbeat(${taskName}): unexpected error: ${(err as Error).message}`);
     return null;
   }
 }
@@ -183,7 +198,9 @@ export function readHealthSnapshot(repoRoot: string): HealthSnapshot | null {
   try {
     const filePath = resolve(repoRoot, '.fleet', 'run', 'health.json');
     return HealthSnapshotSchema.parse(JSON.parse(readFileSync(filePath, 'utf-8')));
-  } catch {
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === 'ENOENT') return null;
+    console.warn(`[fleet] readHealthSnapshot: unexpected error: ${(err as Error).message}`);
     return null;
   }
 }
@@ -243,15 +260,11 @@ export function triageAgent(
       stdio: ['pipe', 'pipe', 'pipe'],
     }).trim();
 
-    const upper = result.toUpperCase();
-    let verdict: TriageVerdict;
-    if (upper.includes('TERMINATE')) verdict = 'terminate';
-    else if (upper.includes('RETRY')) verdict = 'retry';
-    else verdict = 'extend';
+    const verdict = parseTriageVerdict(result);
     emitEvent({ event: 'fleet.triage', task: taskName, verdict });
     return { verdict, captured };
-  } catch {
-    // On failure (timeout, claude not found, etc.), default to extend (safe)
+  } catch (err) {
+    console.warn(`[fleet] triageAgent(${taskName}): triage failed: ${(err as Error).message}`);
     return { verdict: 'extend', captured };
   }
 }

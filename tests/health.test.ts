@@ -1,9 +1,16 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { existsSync, readFileSync, rmSync } from 'node:fs';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync as fsWriteFileSync,
+} from 'node:fs';
 import { resolve } from 'node:path';
 import {
   resolveHealthState,
   computeEscalationLevel,
+  parseTriageVerdict,
   readHeartbeat,
   writeHeartbeat,
   readHealthSnapshot,
@@ -303,6 +310,103 @@ describe('inbox cursor I/O writes to .fleet/run/', () => {
 
   it('readInboxCursor returns null when missing', () => {
     expect(readInboxCursor(repoRoot, 'nope')).toBeNull();
+  });
+});
+
+describe('parseTriageVerdict', () => {
+  it('returns terminate for "TERMINATE"', () => {
+    expect(parseTriageVerdict('TERMINATE')).toBe('terminate');
+  });
+
+  it('returns retry for "RETRY"', () => {
+    expect(parseTriageVerdict('RETRY')).toBe('retry');
+  });
+
+  it('returns extend for "EXTEND"', () => {
+    expect(parseTriageVerdict('EXTEND')).toBe('extend');
+  });
+
+  it('returns retry when both TERMINATE and RETRY present (precedence)', () => {
+    expect(parseTriageVerdict('do not TERMINATE, RETRY instead')).toBe('retry');
+  });
+
+  it('returns extend when both EXTEND and TERMINATE present', () => {
+    expect(parseTriageVerdict('EXTEND, do not TERMINATE')).toBe('extend');
+  });
+
+  it('returns extend for empty string', () => {
+    expect(parseTriageVerdict('')).toBe('extend');
+  });
+
+  it('returns extend for garbage input', () => {
+    expect(parseTriageVerdict('I am not sure what to do')).toBe('extend');
+  });
+
+  it('is case-insensitive', () => {
+    expect(parseTriageVerdict('retry')).toBe('retry');
+    expect(parseTriageVerdict('Terminate')).toBe('terminate');
+    expect(parseTriageVerdict('extend')).toBe('extend');
+  });
+});
+
+describe('readHeartbeat warns on non-ENOENT errors', () => {
+  let repoRoot: string;
+
+  beforeEach(() => {
+    repoRoot = makeTempDir();
+  });
+
+  afterEach(() => {
+    rmSync(repoRoot, { recursive: true, force: true });
+  });
+
+  it('returns null for missing heartbeat (ENOENT)', () => {
+    expect(readHeartbeat(repoRoot, 'missing-task')).toBeNull();
+  });
+
+  it('reads valid heartbeat content', () => {
+    const dir = resolve(repoRoot, '.fleet', 'run', 'heartbeats');
+    mkdirSync(dir, { recursive: true });
+    fsWriteFileSync(resolve(dir, 'auth'), '2026-01-01T00:00:00.000Z');
+    expect(readHeartbeat(repoRoot, 'auth')).toBe('2026-01-01T00:00:00.000Z');
+  });
+});
+
+describe('readHealthSnapshot warns on non-ENOENT errors', () => {
+  let repoRoot: string;
+
+  beforeEach(() => {
+    repoRoot = makeTempDir();
+  });
+
+  afterEach(() => {
+    rmSync(repoRoot, { recursive: true, force: true });
+  });
+
+  it('returns null for missing health.json (ENOENT)', () => {
+    expect(readHealthSnapshot(repoRoot)).toBeNull();
+  });
+
+  it('warns and returns null for corrupt JSON', () => {
+    const dir = resolve(repoRoot, '.fleet', 'run');
+    mkdirSync(dir, { recursive: true });
+    fsWriteFileSync(resolve(dir, 'health.json'), '{corrupt');
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const result = readHealthSnapshot(repoRoot);
+    expect(result).toBeNull();
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('[fleet] readHealthSnapshot'));
+    warnSpy.mockRestore();
+  });
+
+  it('warns and returns null for invalid schema', () => {
+    const dir = resolve(repoRoot, '.fleet', 'run');
+    mkdirSync(dir, { recursive: true });
+    fsWriteFileSync(resolve(dir, 'health.json'), JSON.stringify({ wrong: 'shape' }));
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const result = readHealthSnapshot(repoRoot);
+    expect(result).toBeNull();
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('[fleet] readHealthSnapshot'));
+    warnSpy.mockRestore();
   });
 });
 
