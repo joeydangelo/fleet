@@ -14,11 +14,10 @@ function runFeedScript(
   const scriptPath = resolve(repoRoot, '.claude/hooks/fleet-feed.sh');
   const feedPath = resolve(repoRoot, '.fleet/run/feed.ndjson');
 
-  // Ensure feed dir exists
+  // Ensure feed dir and feed file exist (hook skips without active session)
   mkdirSync(resolve(repoRoot, '.fleet/run'), { recursive: true });
-
-  // Remove existing feed file to get clean output
-  if (existsSync(feedPath)) rmSync(feedPath);
+  // Truncate to get clean output while keeping the file (guard checks existence)
+  writeFileSync(resolve(repoRoot, '.fleet/run/feed.ndjson'), '', 'utf-8');
 
   try {
     execSync(`bash "${scriptPath}"`, {
@@ -50,6 +49,7 @@ describe('FLEET_FEED_SCRIPT (PostToolUse hook)', () => {
       `fleet-hook-test-${Date.now()}-${Math.random().toString(36).slice(2)}`,
     );
     mkdirSync(repoRoot, { recursive: true });
+    execSync('git init', { cwd: repoRoot, stdio: 'ignore' });
 
     // Create a task file so task detection works
     mkdirSync(resolve(repoRoot, '.fleet/tasks'), { recursive: true });
@@ -158,7 +158,7 @@ describe('FLEET_FEED_SCRIPT (PostToolUse hook)', () => {
       tool_input: { command: 'fleet broadcast "Starting alpha"' },
     });
 
-    expect(output).toBeNull();
+    expect(output ?? '').toBe('');
   });
 
   it('emits git.commit with msg for git commit commands', () => {

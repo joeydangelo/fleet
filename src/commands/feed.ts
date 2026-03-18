@@ -8,7 +8,7 @@ import { handleError } from '../lib/output.js';
 import { FEED_DIR, FEED_FILENAME } from '../lib/feed.js';
 
 const COLOR_PALETTE: Formatter[] = [pc.blue, pc.green, pc.yellow, pc.magenta, pc.cyan, pc.red];
-const TASK_COL_WIDTH = 8;
+const TASK_COL_WIDTH = 12;
 
 /** Safely convert an unknown value to string. */
 function str(val: unknown, fallback = ''): string {
@@ -54,7 +54,12 @@ function formatDetail(parsed: Record<string, unknown>): string {
     return str(parsed.pattern) + ' (' + str(parsed.hits, '0') + ' hits)';
   }
   if (event === 'tool.Bash') return str(parsed.cmd);
-  if (event === 'tool.Agent') return str(parsed.description);
+  if (event === 'tool.Agent') {
+    const desc = str(parsed.description);
+    const model = parsed.model ? ' (' + str(parsed.model) + ')' : '';
+    return desc + model;
+  }
+  if (event === 'tool.Skill') return str(parsed.skill);
 
   // Git events
   if (event === 'git.commit') return str(parsed.msg);
@@ -65,7 +70,7 @@ function formatDetail(parsed: Record<string, unknown>): string {
     return str(parsed.to) + ': ' + str(parsed.msg);
   }
   if (event === 'fleet.review') return 'cycle ' + str(parsed.cycle, '?');
-  if (event === 'fleet.summary') return parsed.append ? 'append' : '';
+  if (event === 'fleet.summary') return parsed.append ? 'appended' : 'written';
   if (event === 'fleet.shortcut' || event === 'fleet.guideline' || event === 'fleet.template') {
     return str(parsed.name);
   }

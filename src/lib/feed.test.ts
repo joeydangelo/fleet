@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { execSync } from 'node:child_process';
 import { mkdirSync, readFileSync, rmSync, existsSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { emitEvent, formatTimestamp, getFeedPath, FEED_DIR } from './feed.js';
@@ -21,6 +22,7 @@ describe('formatTimestamp', () => {
 describe('emitEvent', () => {
   beforeEach(() => {
     mkdirSync(TEST_ROOT, { recursive: true });
+    execSync('git init', { cwd: TEST_ROOT, stdio: 'ignore' });
     // Create a .fleet/tasks/ with no task file → getTaskIdentity returns 'orchestrator'
     mkdirSync(resolve(TEST_ROOT, '.fleet', 'tasks'), { recursive: true });
   });

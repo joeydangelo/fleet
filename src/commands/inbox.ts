@@ -8,7 +8,6 @@ import { readInboxCursor, writeInboxCursor } from '../lib/health.js';
 import { readMessagesForTask, getUnansweredThreadsForTask } from '../lib/messages.js';
 import type { Message } from '../lib/messages.js';
 import { INBOX_GATE_PREFIX } from '../lib/constants.js';
-import { emitEvent } from '../lib/feed.js';
 
 /** Message that carries a thread identifier. */
 type ThreadedEntry = Message & { thread: string };
@@ -156,8 +155,6 @@ export function inboxCommand(): Command {
           const latestTs = entries[entries.length - 1]!.ts;
           writeInboxCursor(mainRoot, taskName, latestTs);
         }
-
-        emitEvent({ event: 'fleet.inbox' });
       } catch {
         // Hooks must not crash the agent — swallow all errors
       }

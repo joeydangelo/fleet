@@ -316,6 +316,18 @@ const FLEET_FEED_SCRIPT = `#!/bin/bash
 # Installed by: fleet init
 # Fires on PostToolUse (all tools)
 
+# Resolve main repo root (worktrees write to the shared feed file)
+MAIN_ROOT=$(cd "$(git rev-parse --git-common-dir)/.." 2>/dev/null && pwd)
+if [ -z "$MAIN_ROOT" ]; then
+  MAIN_ROOT="$(pwd)"
+fi
+export FLEET_MAIN_ROOT="$MAIN_ROOT"
+
+# Only emit when a fleet session is active (feed file is created by fleet up)
+if [ ! -f "$MAIN_ROOT/.fleet/run/feed.ndjson" ]; then
+  exit 0
+fi
+
 # Detect task name from .fleet/tasks/*.md
 task_file=$(ls .fleet/tasks/*.md 2>/dev/null | head -1)
 if [ -n "$task_file" ]; then
@@ -324,9 +336,9 @@ else
   export FLEET_TASK="orchestrator"
 fi
 
-mkdir -p .fleet/run
+mkdir -p "$MAIN_ROOT/.fleet/run"
 # Pipe stdin directly to node — avoids MAX_ARG_STRLEN limit on large tool outputs
-node .claude/hooks/fleet-feed.js
+node "$MAIN_ROOT/.claude/hooks/fleet-feed.cjs"
 
 exit 0
 `;
@@ -339,7 +351,8 @@ const ti = input.tool_input || {};
 let task = process.env.FLEET_TASK || "orchestrator";
 if (process.env.FLEET_ROLE === "reviewer") task += ":reviewer";
 const ts = new Date().toTimeString().slice(0, 8);
-const feed = ".fleet/run/feed.ndjson";
+const mainRoot = process.env.FLEET_MAIN_ROOT || ".";
+const feed = mainRoot + "/.fleet/run/feed.ndjson";
 
 let ev;
 if (tn === "Bash") {
@@ -378,8 +391,13 @@ if (tn === "Bash") {
     case "Write":
       ev = { ts, task, event: "tool.Write", file: ti.file_path || "" };
       break;
-    case "Agent":
+    case "Agent": {
       ev = { ts, task, event: "tool.Agent", description: ti.description || "" };
+      if (ti.model) ev.model = ti.model;
+      break;
+    }
+    case "Skill":
+      ev = { ts, task, event: "tool.Skill", skill: ti.skill || "" };
       break;
     default:
       ev = { ts, task, event: "tool." + tn };
@@ -397,7 +415,7 @@ const HEARTBEAT_RELATIVE = '.claude/hooks/fleet-heartbeat.sh';
 const INBOX_RELATIVE = '.claude/hooks/fleet-inbox.sh';
 const GATE_RELATIVE = '.claude/hooks/fleet-inbox-gate.sh';
 const FEED_RELATIVE = '.claude/hooks/fleet-feed.sh';
-const FEED_JS_RELATIVE = '.claude/hooks/fleet-feed.js';
+const FEED_JS_RELATIVE = '.claude/hooks/fleet-feed.cjs';
 
 interface HookHandler {
   type: 'command';

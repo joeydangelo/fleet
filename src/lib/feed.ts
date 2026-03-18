@@ -1,5 +1,6 @@
 import { writeFileSync, mkdirSync, openSync, closeSync, constants } from 'node:fs';
 import { resolve, dirname } from 'node:path';
+import { resolveMainRoot } from './git.js';
 import { getTaskIdentity } from './session.js';
 
 /** Base event shape — every NDJSON line has these three fields plus variable extras. */
@@ -78,10 +79,6 @@ export interface FleetReplyEvent extends FeedEvent {
   event: 'fleet.reply';
   to: string;
   msg: string;
-}
-
-export interface FleetInboxEvent extends FeedEvent {
-  event: 'fleet.inbox';
 }
 
 export interface FleetReviewEvent extends FeedEvent {
@@ -199,7 +196,7 @@ export function formatTimestamp(date: Date = new Date()): string {
 export const FEED_FILENAME = 'feed.ndjson';
 export const FEED_DIR = '.fleet/run';
 
-/** Resolve the full path to the feed file. */
+/** Resolve the full path to the feed file, always in the main repo root. */
 export function getFeedPath(cwd: string): string {
   return resolve(cwd, FEED_DIR, FEED_FILENAME);
 }
@@ -207,12 +204,16 @@ export function getFeedPath(cwd: string): string {
 /**
  * Append one NDJSON event line to `.fleet/run/feed.ndjson`.
  *
+ * Resolves to the main repo root so events from worktrees land in the
+ * shared feed file that `fleet feed` tails.
+ *
  * - Auto-detects task name via getTaskIdentity() if not provided.
  * - Creates `.fleet/run/` if it doesn't exist.
  * - Uses O_APPEND for atomic appends (POSIX guarantee under PIPE_BUF).
  */
 export function emitEvent(input: EmitEventInput, cwd: string = process.cwd()): void {
-  const feedPath = getFeedPath(cwd);
+  const mainRoot = resolveMainRoot(cwd);
+  const feedPath = getFeedPath(mainRoot);
   const dir = dirname(feedPath);
   mkdirSync(dir, { recursive: true });
 

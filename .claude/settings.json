@@ -76,6 +76,15 @@
             "command": "bash .claude/hooks/fleet-heartbeat.sh"
           }
         ]
+      },
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/fleet-feed.sh"
+          }
+        ]
       }
     ],
     "PreToolUse": [
