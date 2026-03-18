@@ -109,6 +109,33 @@ export function downCommand(): Command {
 
         cleanupBackupRefs(repoRoot);
 
+        // Archive and emit before deleting .fleet/run/ so feed.ndjson is preserved
+        let archivePath: string | null = null;
+        try {
+          archivePath = archiveSession(repoRoot, config.target);
+          if (archivePath) {
+            success('archive', archivePath);
+          }
+        } catch (err) {
+          const message = toErrorMessage(err);
+          error('archive', `failed: ${message}`);
+        }
+
+        emitEvent({ event: 'fleet.down', archived: archivePath ?? '' });
+
+        if (syncState) {
+          const tasks = Object.values(syncState.tasks);
+          const tasksCompleted = tasks.filter((t) => t.status === 'done').length;
+          const tasksFailed = tasks.filter((t) => t.status === 'in_review').length;
+          const durationS = Math.round((Date.now() - new Date(syncState.session).getTime()) / 1000);
+          emitEvent({
+            event: 'session.end',
+            tasks_completed: tasksCompleted,
+            tasks_failed: tasksFailed,
+            duration_s: durationS,
+          });
+        }
+
         const runDir = resolve(repoRoot, '.fleet', 'run');
         try {
           rmSync(runDir, { recursive: true });
@@ -130,19 +157,6 @@ export function downCommand(): Command {
         } catch {
           /* best-effort cleanup */
         }
-
-        let archivePath: string | null = null;
-        try {
-          archivePath = archiveSession(repoRoot, config.target);
-          if (archivePath) {
-            success('archive', archivePath);
-          }
-        } catch (err) {
-          const message = toErrorMessage(err);
-          error('archive', `failed: ${message}`);
-        }
-
-        emitEvent({ event: 'fleet.down', archived: archivePath ?? '' });
 
         try {
           if (writeDefaultFleetYaml(repoRoot)) {
@@ -170,20 +184,6 @@ export function downCommand(): Command {
           console.log(`\n${pc.dim(`Removed ${removed} worktree(s).`)}`);
         }
 
-        if (syncState) {
-          const tasks = Object.values(syncState.tasks);
-          const tasksCompleted = tasks.filter((t) => t.status === 'done').length;
-          const tasksFailed = tasks.filter(
-            (t) => t.status !== 'done' && t.status !== 'pending',
-          ).length;
-          const durationS = Math.round((Date.now() - new Date(syncState.session).getTime()) / 1000);
-          emitEvent({
-            event: 'session.end',
-            tasks_completed: tasksCompleted,
-            tasks_failed: tasksFailed,
-            duration_s: durationS,
-          });
-        }
         console.log(pc.dim('Task branches kept. Use git branch -d to clean up manually.'));
       } catch (err) {
         handleError(err);

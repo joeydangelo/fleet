@@ -123,7 +123,6 @@ export function inboxCommand(): Command {
         const taskName = detectTaskName(cwd);
 
         if (!taskName) return;
-        emitEvent({ event: 'fleet.inbox' });
         const mainRoot = resolveMainRoot(cwd);
 
         const cursor = readInboxCursor(mainRoot, taskName);
@@ -157,6 +156,8 @@ export function inboxCommand(): Command {
           const latestTs = entries[entries.length - 1]!.ts;
           writeInboxCursor(mainRoot, taskName, latestTs);
         }
+
+        emitEvent({ event: 'fleet.inbox' });
       } catch {
         // Hooks must not crash the agent — swallow all errors
       }

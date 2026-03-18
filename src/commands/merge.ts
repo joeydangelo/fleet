@@ -10,6 +10,7 @@ import {
   unstashWorkingTree,
   getHeadRef,
   createBackupRef,
+  getConflictingFiles,
 } from '../lib/git.js';
 import { loadRepoConfig, topologicalSort } from '../lib/config.js';
 import type { FleetConfig } from '../lib/config.js';
@@ -189,7 +190,14 @@ function runMergeLoop(
         });
         writeSyncStateAndFiles(state, [{ path: briefPath, content: brief }], repoRoot);
 
-        emitEvent({ event: 'fleet.merge', source: wt.branch, target, conflicts: true });
+        const conflictFiles = getConflictingFiles(repoRoot);
+        emitEvent({
+          event: 'fleet.merge',
+          source: wt.branch,
+          target,
+          conflicts: true,
+          files: conflictFiles,
+        });
         warn(wt.taskName, 'conflicts');
         const firstLine =
           result.message.split('\n')[0]?.trim() || result.message || 'Merge completed';

@@ -22,6 +22,11 @@ import { sleep, formatElapsed, sanitizeBranchName } from './util.js';
 import { reviewFilePath } from './sync.js';
 import { emitEvent } from './feed.js';
 
+/** Count review findings (lines starting with CRITICAL/MAJOR/MINOR). */
+function countFindings(issues: string): number {
+  return issues.split('\n').filter((l) => /^(CRITICAL|MAJOR|MINOR)/i.test(l.trim())).length;
+}
+
 /** Prefix for all reviewer tmux sessions. */
 const REVIEW_SESSION_PREFIX = 'fleet-review-';
 
@@ -278,16 +283,11 @@ export async function reviewTask(
         const fileResult = readVerdictFile(vPath);
         if (fileResult) {
           if (feedContext) {
-            const findings = fileResult.issues
-              ? fileResult.issues
-                  .split('\n')
-                  .filter((l) => /^(CRITICAL|MAJOR|MINOR)/i.test(l.trim())).length
-              : 0;
             emitEvent({
               event: 'review.verdict',
               task: `${feedContext.taskName}:reviewer`,
               verdict: fileResult.verdict,
-              findings,
+              findings: countFindings(fileResult.issues),
             });
           }
           return fileResult;
@@ -303,15 +303,11 @@ export async function reviewTask(
       const fileResult = readVerdictFile(vPath);
       if (fileResult) {
         if (feedContext) {
-          const findings = fileResult.issues
-            ? fileResult.issues.split('\n').filter((l) => /^(CRITICAL|MAJOR|MINOR)/i.test(l.trim()))
-                .length
-            : 0;
           emitEvent({
             event: 'review.verdict',
             task: `${feedContext.taskName}:reviewer`,
             verdict: fileResult.verdict,
-            findings,
+            findings: countFindings(fileResult.issues),
           });
         }
         return fileResult;
@@ -345,16 +341,11 @@ export async function reviewTask(
     const finalFileResult = readVerdictFile(vPath);
     if (finalFileResult) {
       if (feedContext) {
-        const findings = finalFileResult.issues
-          ? finalFileResult.issues
-              .split('\n')
-              .filter((l) => /^(CRITICAL|MAJOR|MINOR)/i.test(l.trim())).length
-          : 0;
         emitEvent({
           event: 'review.verdict',
           task: `${feedContext.taskName}:reviewer`,
           verdict: finalFileResult.verdict,
-          findings,
+          findings: countFindings(finalFileResult.issues),
         });
       }
       return finalFileResult;
