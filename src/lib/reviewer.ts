@@ -16,7 +16,12 @@ import { resolve } from 'node:path';
 import { mkdirSync, readFileSync, rmSync } from 'node:fs';
 import { writeFileSync } from 'atomically';
 import type { TmuxServiceApi } from './tmux.js';
-import { waitForAgentReady, killDetachedSession, isAgentPromptReady } from './tmux.js';
+import {
+  waitForAgentReady,
+  killDetachedSession,
+  isAgentPromptReady,
+  sendAndVerifyMessage,
+} from './tmux.js';
 import { REVIEW_TIMEOUT_MS, REVIEW_NUDGE_MS, BEACON_FOLLOWUP_DELAYS } from './constants.js';
 import { sleep, formatElapsed, sanitizeBranchName } from './util.js';
 import { reviewFilePath } from './sync.js';
@@ -270,17 +275,15 @@ export async function reviewTask(
 
     await sleep(2_000);
 
-    // Send the review prompt
-    tmux.sendKeys(
-      sessionName,
-      buildReviewPrompt(taskBranch, targetBranch, vPath, taskFilePath, reviewFileOverride),
+    // Send the review prompt with verify-and-resend (shared with sendBeacon)
+    const reviewPrompt = buildReviewPrompt(
+      taskBranch,
+      targetBranch,
+      vPath,
+      taskFilePath,
+      reviewFileOverride,
     );
-
-    // Follow-up empty Enters to dismiss trust/permission dialogs (same as sendBeacon)
-    for (const delay of BEACON_FOLLOWUP_DELAYS) {
-      await sleep(delay);
-      tmux.sendKeys(sessionName, '');
-    }
+    await sendAndVerifyMessage(tmux, sessionName, reviewPrompt);
 
     // Read the verdict file and emit a feed event if present.
     // Used at multiple exit points: session death, each poll, and timeout.

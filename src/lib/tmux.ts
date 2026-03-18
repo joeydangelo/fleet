@@ -451,6 +451,48 @@ export interface BeaconOptions {
   sessionReadyTimeoutMs?: number;
 }
 
+/** Options for the send-and-verify loop. */
+export interface SendAndVerifyOptions {
+  followUpDelays?: readonly number[];
+  verifyAttempts?: number;
+  verifyDelayMs?: number;
+}
+
+/**
+ * Send a message to a tmux session/pane and verify it was accepted.
+ * Sends follow-up empty Enters to dismiss trust/permission dialogs,
+ * then retries if the welcome screen (`Try "`) is still visible.
+ */
+export async function sendAndVerifyMessage(
+  tmux: TmuxServiceApi,
+  sessionOrPane: string,
+  message: string,
+  opts: SendAndVerifyOptions = {},
+): Promise<void> {
+  const followUpDelays = opts.followUpDelays ?? BEACON_FOLLOWUP_DELAYS;
+  const verifyAttempts = opts.verifyAttempts ?? BEACON_VERIFY_ATTEMPTS;
+  const verifyDelayMs = opts.verifyDelayMs ?? BEACON_VERIFY_DELAY_MS;
+
+  tmux.sendKeys(sessionOrPane, message);
+
+  // Follow-up empty Enters to dismiss trust prompt or late initialization
+  for (const delay of followUpDelays) {
+    await sleep(delay);
+    tmux.sendKeys(sessionOrPane, '');
+  }
+
+  // Retry if welcome screen is still visible
+  for (let attempt = 0; attempt < verifyAttempts; attempt++) {
+    await sleep(verifyDelayMs);
+    const content = tmux.capturePaneContent(sessionOrPane);
+    // null = can't capture (session gone), non-null without welcome screen = accepted
+    if (!content || !content.includes('Try "')) return;
+    tmux.sendKeys(sessionOrPane, message);
+    await sleep(followUpDelays[0] ?? BEACON_FOLLOWUP_DELAYS[0]!);
+    tmux.sendKeys(sessionOrPane, '');
+  }
+}
+
 /** Send the initial task message to an agent after Claude Code boots. */
 export async function sendBeacon(
   tmux: TmuxServiceApi,
@@ -496,23 +538,11 @@ export async function sendBeacon(
 
   await sleep(postReadyDelayMs);
 
-  tmux.sendKeys(sessionOrPane, BEACON_MESSAGE);
-
-  // Follow-up empty Enters to dismiss trust prompt or late initialization
-  for (const delay of followUpDelays) {
-    await sleep(delay);
-    tmux.sendKeys(sessionOrPane, '');
-  }
-
-  // Retry if welcome screen is still visible
-  for (let attempt = 0; attempt < verifyAttempts; attempt++) {
-    await sleep(verifyDelayMs);
-    const content = tmux.capturePaneContent(sessionOrPane);
-    if (content && !content.includes('Try "')) return true;
-    tmux.sendKeys(sessionOrPane, BEACON_MESSAGE);
-    await sleep(followUpDelays[0] ?? BEACON_FOLLOWUP_DELAYS[0]!);
-    tmux.sendKeys(sessionOrPane, '');
-  }
+  await sendAndVerifyMessage(tmux, sessionOrPane, BEACON_MESSAGE, {
+    followUpDelays,
+    verifyAttempts,
+    verifyDelayMs,
+  });
 
   return true;
 }

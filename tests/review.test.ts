@@ -7,13 +7,18 @@ import { createFixtureRepo, type FixtureRepo } from './helpers/fixture-repo.js';
 import { getCurrentBranch } from '../src/lib/git.js';
 import { reviewFilePath } from '../src/lib/sync.js';
 
-// Mock only external boundary: tmux (external process)
-vi.mock('../src/lib/tmux.js', () => ({
-  createTmuxService: vi.fn(),
-  waitForAgentReady: vi.fn().mockResolvedValue(true),
-  killDetachedSession: vi.fn(),
-  isAgentPromptReady: vi.fn().mockReturnValue(true),
-}));
+// Mock only external boundary: tmux (external process).
+// sendAndVerifyMessage is kept real — it operates on the mock TmuxServiceApi.
+vi.mock('../src/lib/tmux.js', async (importOriginal) => {
+  const actual: Record<string, unknown> = await importOriginal();
+  return {
+    createTmuxService: vi.fn(),
+    waitForAgentReady: vi.fn().mockResolvedValue(true),
+    killDetachedSession: vi.fn(),
+    isAgentPromptReady: vi.fn().mockReturnValue(true),
+    sendAndVerifyMessage: actual.sendAndVerifyMessage,
+  };
+});
 
 import {
   createTmuxService,
@@ -233,6 +238,39 @@ describe('runReview', () => {
 
     const state = fixture.readSyncState()!;
     expect(state.tasks['auth']?.reviewCycle).toBe(1);
+  });
+
+  it('resends review prompt when welcome screen persists', async () => {
+    fixture = createFixtureRepo();
+    process.chdir(fixture.repoRoot);
+    vi.useFakeTimers();
+
+    const branch = getCurrentBranch(fixture.repoRoot);
+    const mockTmux = createMockTmuxApi({
+      verdictToWrite: { verdict: 'pass', strengths: 'Good', issues: '' },
+      repoRoot: fixture.repoRoot,
+      branch,
+    });
+
+    // Simulate welcome screen visible on first capture, then cleared
+    let captureCount = 0;
+    mockTmux.capturePaneContent = vi.fn(() => {
+      captureCount++;
+      return captureCount <= 1 ? 'Welcome! Try "help" to get started' : 'Reviewing task branch';
+    });
+
+    mockCreateTmuxService.mockReturnValue(mockTmux as ReturnType<typeof createTmuxService>);
+
+    const promise = runReview();
+    // Extra time for verify-resend loop: BEACON_VERIFY_DELAY_MS + BEACON_FOLLOWUP_DELAYS[0]
+    await vi.advanceTimersByTimeAsync(REVIEW_SETTLE_MS + 10_000);
+    const exitCode = await promise;
+
+    expect(exitCode).toBe(0);
+    // sendKeys called more than 3 times: claude cmd + prompt + follow-ups + resend + follow-up
+    const sendKeysCalls = (mockTmux.sendKeys as ReturnType<typeof vi.fn>).mock.calls as string[][];
+    const promptCalls = sendKeysCalls.filter((args) => args[1]?.includes('review-pr'));
+    expect(promptCalls.length).toBeGreaterThanOrEqual(2);
   });
 
   it('submits for review before calling reviewTask', async () => {
