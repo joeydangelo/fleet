@@ -310,6 +310,87 @@ sed '/^---$/,/^---$/d; /^<!-- DO NOT EDIT/,/-->/d' "$SKILL_FILE"
 exit 0
 `;
 
+/** PostToolUse hook that emits tool-level events to the NDJSON feed file. */
+const FLEET_FEED_SCRIPT = `#!/bin/bash
+# Emit tool-level events to .fleet/run/feed.ndjson
+# Installed by: fleet init
+# Fires on PostToolUse (all tools)
+
+# Capture stdin before anything else consumes it
+export FLEET_INPUT=$(cat)
+
+# Detect task name from .fleet/tasks/*.md
+task_file=$(ls .fleet/tasks/*.md 2>/dev/null | head -1)
+if [ -n "$task_file" ]; then
+  export FLEET_TASK=$(basename "$task_file" .md)
+else
+  export FLEET_TASK="orchestrator"
+fi
+
+mkdir -p .fleet/run
+node .claude/hooks/fleet-feed.js
+
+exit 0
+`;
+
+/** Node script that parses PostToolUse JSON and emits an NDJSON event line. */
+const FLEET_FEED_JS = `const fs = require("fs");
+const input = JSON.parse(process.env.FLEET_INPUT);
+const tn = input.tool_name || "";
+const ti = input.tool_input || {};
+let task = process.env.FLEET_TASK || "orchestrator";
+if (process.env.FLEET_ROLE === "reviewer") task += ":reviewer";
+const ts = new Date().toTimeString().slice(0, 8);
+const feed = ".fleet/run/feed.ndjson";
+
+let ev;
+if (tn === "Bash") {
+  const cmd = ti.command || "";
+  if (cmd.startsWith("fleet ")) process.exit(0);
+  if (/\\bgit commit\\b/.test(cmd)) {
+    const m = cmd.match(/-m\\s+["']([^"']*)["']/);
+    const msg = m ? m[1].slice(0, 50) : "";
+    ev = { ts, task, event: "git.commit", msg };
+  } else {
+    ev = { ts, task, event: "tool.Bash", cmd: cmd.slice(0, 120) };
+  }
+} else {
+  switch (tn) {
+    case "Read":
+      ev = { ts, task, event: "tool.Read", file: ti.file_path || "" };
+      break;
+    case "Glob": {
+      const o = input.tool_output || "";
+      const h = o ? o.split("\\n").filter(Boolean).length : 0;
+      ev = { ts, task, event: "tool.Glob", pattern: ti.pattern || "", hits: h };
+      break;
+    }
+    case "Grep": {
+      const o = input.tool_output || "";
+      const h = o ? o.split("\\n").filter(Boolean).length : 0;
+      ev = { ts, task, event: "tool.Grep", pattern: ti.pattern || "", hits: h };
+      break;
+    }
+    case "Edit": {
+      const ns = ti.new_string || "";
+      const l = ns.split("\\n").length;
+      ev = { ts, task, event: "tool.Edit", file: ti.file_path || "", lines: l };
+      break;
+    }
+    case "Write":
+      ev = { ts, task, event: "tool.Write", file: ti.file_path || "" };
+      break;
+    case "Agent":
+      ev = { ts, task, event: "tool.Agent", description: ti.description || "" };
+      break;
+    default:
+      ev = { ts, task, event: "tool." + tn };
+      break;
+  }
+}
+fs.appendFileSync(feed, JSON.stringify(ev) + "\\n");
+`;
+
 const SCRIPT_RELATIVE = '.claude/scripts/fleet-session.sh';
 const SKILL_INJECT_RELATIVE = '.claude/scripts/fleet-skill-inject.sh';
 const GUARD_RELATIVE = '.claude/hooks/fleet-guard.sh';
@@ -317,6 +398,8 @@ const REMINDER_RELATIVE = '.claude/hooks/fleet-review-reminder.sh';
 const HEARTBEAT_RELATIVE = '.claude/hooks/fleet-heartbeat.sh';
 const INBOX_RELATIVE = '.claude/hooks/fleet-inbox.sh';
 const GATE_RELATIVE = '.claude/hooks/fleet-inbox-gate.sh';
+const FEED_RELATIVE = '.claude/hooks/fleet-feed.sh';
+const FEED_JS_RELATIVE = '.claude/hooks/fleet-feed.js';
 
 interface HookHandler {
   type: 'command';
@@ -342,6 +425,8 @@ export function installHooks(repoRoot: string): void {
   writeFileSync(resolve(repoRoot, HEARTBEAT_RELATIVE), FLEET_HEARTBEAT_SCRIPT, 'utf-8');
   writeFileSync(resolve(repoRoot, INBOX_RELATIVE), FLEET_INBOX_SCRIPT, 'utf-8');
   writeFileSync(resolve(repoRoot, GATE_RELATIVE), FLEET_INBOX_GATE_SCRIPT, 'utf-8');
+  writeFileSync(resolve(repoRoot, FEED_RELATIVE), FLEET_FEED_SCRIPT, 'utf-8');
+  writeFileSync(resolve(repoRoot, FEED_JS_RELATIVE), FLEET_FEED_JS, 'utf-8');
 
   const oldReminderPath = resolve(hooksDir, 'fleet-done-reminder.sh');
   try {
@@ -432,6 +517,15 @@ export function installHooks(repoRoot: string): void {
           },
         ],
       },
+      {
+        matcher: '',
+        hooks: [
+          {
+            type: 'command',
+            command: `bash ${FEED_RELATIVE}`,
+          },
+        ],
+      },
     ],
   };
 
@@ -468,6 +562,7 @@ export function installHooks(repoRoot: string): void {
   success('script', HEARTBEAT_RELATIVE);
   success('script', INBOX_RELATIVE);
   success('script', GATE_RELATIVE);
+  success('script', FEED_RELATIVE);
 }
 
 /** Detect any fleet-related hook entry (old flat format or correct matcher group). */

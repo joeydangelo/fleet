@@ -122,11 +122,13 @@ describe('installHooks', () => {
     );
 
     const postToolUse = settings.hooks.PostToolUse;
-    expect(postToolUse).toHaveLength(2);
+    expect(postToolUse).toHaveLength(3);
     expect(postToolUse[0]).toHaveProperty('matcher', 'Bash');
     expect(postToolUse[0].hooks[0].command).toContain('fleet-review-reminder.sh');
     expect(postToolUse[1]).toHaveProperty('matcher', '');
     expect(postToolUse[1].hooks[0].command).toContain('fleet-heartbeat.sh');
+    expect(postToolUse[2]).toHaveProperty('matcher', '');
+    expect(postToolUse[2].hooks[0].command).toContain('fleet-feed.sh');
   });
 
   it('writes the fleet review reminder script', () => {
@@ -150,7 +152,7 @@ describe('installHooks', () => {
     expect(settings.hooks.SessionStart).toHaveLength(2);
     expect(settings.hooks.UserPromptSubmit).toHaveLength(1);
     expect(settings.hooks.PreCompact).toHaveLength(1);
-    expect(settings.hooks.PostToolUse).toHaveLength(2);
+    expect(settings.hooks.PostToolUse).toHaveLength(3);
   });
 
   it('replaces old flat-format fleet hooks with correct schema', () => {
