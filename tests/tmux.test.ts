@@ -104,32 +104,6 @@ describe('TmuxService with mock exec', () => {
     expect(calls[0]).toEqual(['send-keys', '-t', '%42', 'claude --resume', 'Enter']);
   });
 
-  it('capturePane captures with line limit and returns content', () => {
-    const responses = new Map([
-      [
-        'capture-pane -t %42 -p -S -50',
-        '$ claude --resume\nClaude Code v1.0\n❯ working on task...',
-      ],
-    ]);
-    const { fn, calls } = createMockExec(responses);
-    const svc = new TmuxService(fn);
-    const output = svc.capturePane('%42', 50);
-    expect(calls[0]).toEqual(['capture-pane', '-t', '%42', '-p', '-S', '-50']);
-    expect(output).toContain('Claude Code v1.0');
-    expect(output).toContain('❯');
-  });
-
-  it('capturePane captures without line limit and returns content', () => {
-    const responses = new Map([
-      ['capture-pane -t %42 -p', 'fleet-auth: running tests\nAll 5 tests passed'],
-    ]);
-    const { fn, calls } = createMockExec(responses);
-    const svc = new TmuxService(fn);
-    const output = svc.capturePane('%42');
-    expect(calls[0]).toEqual(['capture-pane', '-t', '%42', '-p']);
-    expect(output).toContain('All 5 tests passed');
-  });
-
   it('setPaneTitle sets title via select-pane', () => {
     const { fn, calls } = createMockExec();
     const svc = new TmuxService(fn);
@@ -260,11 +234,13 @@ describe('TmuxService getPaneCurrentCommand', () => {
     expect(calls[0]).toEqual(['display-message', '-t', '%5', '-p', '#{pane_current_command}']);
   });
 
-  it('returns empty string when pane does not exist', () => {
-    const { fn } = createMockExec(); // no matching response → throws
+  it('returns null when pane does not exist', () => {
+    const fn = () => {
+      throw new Error('pane not found');
+    };
     const svc = new TmuxService(fn);
     const cmd = svc.getPaneCurrentCommand('%999');
-    expect(cmd).toBe('');
+    expect(cmd).toBeNull();
   });
 });
 
@@ -441,6 +417,73 @@ describe('launchDetached', () => {
 
     expect(agents).toHaveLength(1);
     expect(agents[0]!.taskName).toBe('auth');
+  });
+
+  it('assigns stable IDs from original worktrees array, not filtered index', async () => {
+    const mock = createMockTmux();
+    // auth (index 0) is already live, only api (index 1) and db (index 2) are pending
+    mock.createSession('fleet-myapp-auth', '/tmp');
+    mock.calls.length = 0;
+
+    const existing: DetachedAgent[] = [
+      {
+        id: 'fleet-1',
+        sessionName: 'fleet-myapp-auth',
+        taskName: 'auth',
+        worktreePath: '/tmp/wt-auth',
+        branchName: '',
+      },
+    ];
+    const worktrees = [
+      { taskName: 'auth', worktreePath: '/tmp/wt-auth', agentCommand: 'claude' },
+      { taskName: 'api', worktreePath: '/tmp/wt-api', agentCommand: 'claude' },
+      { taskName: 'db', worktreePath: '/tmp/wt-db', agentCommand: 'claude' },
+    ];
+    const agents = await launchDetached(mock, 'fleet-myapp', worktrees, existing, fastBeacon);
+
+    expect(agents).toHaveLength(2);
+    // IDs must reflect original array positions (2 and 3), not filtered positions (1 and 2)
+    expect(agents[0]!.id).toBe('fleet-2');
+    expect(agents[0]!.taskName).toBe('api');
+    expect(agents[1]!.id).toBe('fleet-3');
+    expect(agents[1]!.taskName).toBe('db');
+  });
+
+  it('assigns sequential IDs when all tasks are pending', async () => {
+    const mock = createMockTmux();
+    const worktrees = [
+      { taskName: 'auth', worktreePath: '/tmp/wt-auth', agentCommand: 'claude' },
+      { taskName: 'api', worktreePath: '/tmp/wt-api', agentCommand: 'claude' },
+    ];
+    const agents = await launchDetached(mock, 'fleet-myapp', worktrees, [], fastBeacon);
+
+    expect(agents[0]!.id).toBe('fleet-1');
+    expect(agents[1]!.id).toBe('fleet-2');
+  });
+
+  it('assigns correct ID when single task is pending', async () => {
+    const mock = createMockTmux();
+    mock.createSession('fleet-myapp-auth', '/tmp');
+    mock.calls.length = 0;
+
+    const existing: DetachedAgent[] = [
+      {
+        id: 'fleet-1',
+        sessionName: 'fleet-myapp-auth',
+        taskName: 'auth',
+        worktreePath: '/tmp/wt-auth',
+        branchName: '',
+      },
+    ];
+    const worktrees = [
+      { taskName: 'auth', worktreePath: '/tmp/wt-auth', agentCommand: 'claude' },
+      { taskName: 'api', worktreePath: '/tmp/wt-api', agentCommand: 'claude' },
+    ];
+    const agents = await launchDetached(mock, 'fleet-myapp', worktrees, existing, fastBeacon);
+
+    expect(agents).toHaveLength(1);
+    expect(agents[0]!.id).toBe('fleet-2');
+    expect(agents[0]!.taskName).toBe('api');
   });
 });
 

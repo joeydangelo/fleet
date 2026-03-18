@@ -598,7 +598,7 @@ function isFleetHookEntry(entry: unknown): boolean {
   return false;
 }
 
-/** Check if a hook command belongs to fleet. */
-function isFleetCommand(command: string): boolean {
-  return command.includes('fleet');
+/** Check if a hook command belongs to fleet (matches fleet hook/script paths, not arbitrary substrings). */
+export function isFleetCommand(command: string): boolean {
+  return /\.claude\/(hooks|scripts)\/fleet-/.test(command);
 }

@@ -3,7 +3,7 @@ import { execSync } from 'node:child_process';
 import { mkdirSync, writeFileSync, readFileSync, rmSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { tmpdir } from 'node:os';
-import { installHooks } from '../src/lib/hooks.js';
+import { installHooks, isFleetCommand } from '../src/lib/hooks.js';
 
 /** Run the feed script with given JSON input and optional env vars. */
 function runFeedScript(
@@ -268,5 +268,80 @@ describe('installHooks registers feed hook', () => {
     );
     expect(feedEntry).toBeDefined();
     expect(feedEntry!.matcher).toBe('');
+  });
+});
+
+describe('isFleetCommand', () => {
+  it('matches fleet hook commands', () => {
+    expect(isFleetCommand('bash .claude/hooks/fleet-guard.sh')).toBe(true);
+    expect(isFleetCommand('bash .claude/hooks/fleet-feed.sh')).toBe(true);
+    expect(isFleetCommand('bash .claude/hooks/fleet-inbox.sh')).toBe(true);
+    expect(isFleetCommand('bash .claude/hooks/fleet-heartbeat.sh')).toBe(true);
+    expect(isFleetCommand('bash .claude/hooks/fleet-review-reminder.sh')).toBe(true);
+    expect(isFleetCommand('bash .claude/hooks/fleet-inbox-gate.sh')).toBe(true);
+  });
+
+  it('matches fleet script commands', () => {
+    expect(isFleetCommand('bash .claude/scripts/fleet-session.sh')).toBe(true);
+    expect(isFleetCommand('bash .claude/scripts/fleet-skill-inject.sh')).toBe(true);
+    expect(isFleetCommand('bash .claude/scripts/fleet-session.sh --brief')).toBe(true);
+  });
+
+  it('rejects user hooks containing fleet as substring', () => {
+    expect(isFleetCommand('bash my-fleet-manager.sh')).toBe(false);
+    expect(isFleetCommand('npm run fleet-deploy')).toBe(false);
+    expect(isFleetCommand('starfleet monitor')).toBe(false);
+    expect(isFleetCommand('fleet broadcast "hello"')).toBe(false);
+  });
+
+  it('rejects unrelated commands', () => {
+    expect(isFleetCommand('npm test')).toBe(false);
+    expect(isFleetCommand('git commit -m "fix"')).toBe(false);
+    expect(isFleetCommand('')).toBe(false);
+  });
+});
+
+describe('installHooks preserves user hooks', () => {
+  let repoRoot: string;
+
+  beforeEach(() => {
+    repoRoot = resolve(tmpdir(), `fleet-hook-preserve-${Date.now()}`);
+    mkdirSync(repoRoot, { recursive: true });
+  });
+
+  afterEach(() => {
+    rmSync(repoRoot, { recursive: true, force: true });
+  });
+
+  it('user hooks survive reinstall even if they contain fleet substring', () => {
+    // Pre-install with a user hook containing "fleet"
+    const settingsDir = resolve(repoRoot, '.claude');
+    mkdirSync(settingsDir, { recursive: true });
+    const userSettings = {
+      hooks: {
+        SessionStart: [
+          {
+            matcher: '',
+            hooks: [{ type: 'command', command: 'bash my-fleet-manager.sh' }],
+          },
+        ],
+      },
+    };
+    writeFileSync(resolve(settingsDir, 'settings.json'), JSON.stringify(userSettings), 'utf-8');
+
+    // Install fleet hooks
+    installHooks(repoRoot);
+
+    // Read back settings
+    const settings = JSON.parse(readFileSync(resolve(settingsDir, 'settings.json'), 'utf-8'));
+    const sessionStartHooks = settings.hooks.SessionStart as Array<{
+      hooks: Array<{ command: string }>;
+    }>;
+
+    // User hook must still be present
+    const userHook = sessionStartHooks.find((g) =>
+      g.hooks?.some((h) => h.command === 'bash my-fleet-manager.sh'),
+    );
+    expect(userHook).toBeDefined();
   });
 });

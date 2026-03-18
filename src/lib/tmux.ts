@@ -62,14 +62,13 @@ export interface TmuxServiceApi {
   killSession(name: string): void;
   listPanesDetailed(sessionName: string): TmuxPaneInfo[];
   sendKeys(paneId: string, keys: string): void;
-  capturePane(paneId: string, lines?: number): string;
   setPaneTitle(paneId: string, title: string): void;
   /** Sets a permanent fleet role label via a custom tmux user option (@fleet_role). */
   setPaneRole(paneId: string, role: string): void;
   /** Sets the project root on a pane via @fleet_project custom user option. */
   setPaneProject(paneId: string, projectRoot: string): void;
   getCurrentSessionName(): string;
-  getPaneCurrentCommand(paneId: string): string;
+  getPaneCurrentCommand(paneId: string): string | null;
   /** List all tmux session names. Returns empty array if tmux is not running. */
   listSessions(): string[];
   /** Capture visible pane content. Returns null if capture fails or content is empty. */
@@ -135,23 +134,15 @@ export class TmuxService implements TmuxServiceApi {
     this.exec(['send-keys', '-t', paneId, keys, 'Enter']);
   }
 
-  capturePane(paneId: string, lines?: number): string {
-    const args = ['capture-pane', '-t', paneId, '-p'];
-    if (lines !== undefined) {
-      args.push('-S', `-${lines}`);
-    }
-    return this.exec(args);
-  }
-
   getCurrentSessionName(): string {
     return this.exec(['display-message', '-p', '#{session_name}']);
   }
 
-  getPaneCurrentCommand(paneId: string): string {
+  getPaneCurrentCommand(paneId: string): string | null {
     try {
       return this.exec(['display-message', '-t', paneId, '-p', '#{pane_current_command}']);
     } catch {
-      return '';
+      return null;
     }
   }
 
@@ -629,14 +620,14 @@ export async function launchDetached(
   const pendingWorktrees = worktrees.filter((wt) => !liveByTask.has(wt.taskName));
 
   const agents = await Promise.all(
-    pendingWorktrees.map(async (wt, idx) => {
+    pendingWorktrees.map(async (wt) => {
       const sessionName = `${sessionPrefix}-${wt.taskName}`;
       await createDetachedSession(tmux, sessionName, wt.worktreePath, wt.agentCommand, {
         ...beaconOpts,
         worktreePath: wt.worktreePath,
       });
       return {
-        id: `fleet-${idx + 1}`,
+        id: `fleet-${worktrees.indexOf(wt) + 1}`,
         sessionName,
         taskName: wt.taskName,
         worktreePath: wt.worktreePath,

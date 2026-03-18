@@ -39,10 +39,6 @@ export function createMockTmux(opts: MockTmuxOptions = {}): MockTmuxService {
     sendKeys(paneId: string, keys: string) {
       calls.push({ method: 'sendKeys', args: [paneId, keys] });
     },
-    capturePane(paneId: string, lines?: number) {
-      calls.push({ method: 'capturePane', args: [paneId, lines] });
-      return '';
-    },
     capturePaneContent(sessionOrPane: string, lines?: number) {
       calls.push({ method: 'capturePaneContent', args: [sessionOrPane, lines] });
       return defaultCapture(sessionOrPane);
@@ -60,7 +56,7 @@ export function createMockTmux(opts: MockTmuxOptions = {}): MockTmuxService {
       calls.push({ method: 'getCurrentSessionName', args: [] });
       return 'fleet-myapp';
     },
-    getPaneCurrentCommand(paneId: string) {
+    getPaneCurrentCommand(paneId: string): string | null {
       calls.push({ method: 'getPaneCurrentCommand', args: [paneId] });
       return 'bash';
     },

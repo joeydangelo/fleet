@@ -73,12 +73,11 @@ function createMockTmuxApi(opts?: {
     capturePaneContent: vi.fn(() => null),
     listSessions: vi.fn(() => []),
     listPanesDetailed: vi.fn(() => []),
-    capturePane: vi.fn(() => ''),
     setPaneTitle: vi.fn(),
     setPaneRole: vi.fn(),
     setPaneProject: vi.fn(),
     getCurrentSessionName: vi.fn(() => ''),
-    getPaneCurrentCommand: vi.fn(() => ''),
+    getPaneCurrentCommand: vi.fn(() => null),
   };
 }
 

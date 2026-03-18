@@ -40,7 +40,7 @@ export function readPaneConfig(repoRoot: string): FleetPaneConfig | null {
   }
 }
 
-/** Persist pane config to .fleet/panes.json using atomic writes. */
+/** Persist pane config to .fleet/run/panes.json using atomic writes. */
 export function writePaneConfig(repoRoot: string, config: FleetPaneConfig): void {
   const p = panesPath(repoRoot);
   const dir = dirname(p);
