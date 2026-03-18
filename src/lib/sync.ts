@@ -237,14 +237,15 @@ function commitSyncChanges(syncDir: string, message: string): void {
   });
 }
 
-/** Read and parse the sync state from the sync worktree, or null if unavailable. */
+/** Read and parse the sync state from the sync worktree, or null if the file is missing. */
 export function readSyncState(repoRoot?: string): SyncState | null {
   try {
     const syncDir = resolveSyncDir(repoRoot ?? process.cwd());
     const raw = readFileSync(resolve(syncDir, STATE_FILE), 'utf-8');
     return SyncStateSchema.parse(JSON.parse(raw));
-  } catch {
-    return null;
+  } catch (err: unknown) {
+    if ((err as NodeJS.ErrnoException).code === 'ENOENT') return null;
+    throw err;
   }
 }
 
@@ -253,8 +254,9 @@ export function readSyncFile(path: string, repoRoot?: string): string | null {
   try {
     const syncDir = resolveSyncDir(repoRoot ?? process.cwd());
     return readFileSync(resolve(syncDir, path), 'utf-8');
-  } catch {
-    return null;
+  } catch (err: unknown) {
+    if ((err as NodeJS.ErrnoException).code === 'ENOENT') return null;
+    throw err;
   }
 }
 
@@ -265,8 +267,9 @@ export function listSyncDir(prefix: string, repoRoot?: string): string[] {
     const dir = resolve(syncDir, prefix);
     const entries = readdirSync(dir);
     return entries.map((e) => `${prefix}/${e}`);
-  } catch {
-    return [];
+  } catch (err: unknown) {
+    if ((err as NodeJS.ErrnoException).code === 'ENOENT') return [];
+    throw err;
   }
 }
 

@@ -198,6 +198,13 @@ describe('writeSyncState / readSyncState', () => {
     expect(read!.tasks['auth']?.status).toBe('pending');
   });
 
+  it('throws on corrupt JSON instead of returning null', () => {
+    const syncDir = resolveSyncDir(repoDir);
+    writeFileSync(resolve(syncDir, 'state.json'), '{not valid json!!!');
+
+    expect(() => readSyncState(repoDir)).toThrow();
+  });
+
   it('overwrites previous state on second write', () => {
     const state = initSyncState('feature/dash', ['auth'], 'fleet.yaml');
     writeSyncState(state, repoDir);
@@ -242,6 +249,12 @@ describe('writeSyncFile / readSyncFile', () => {
 
     expect(readSyncFile('review/auth.md', repoDir)).toBe('auth findings');
     expect(readSyncFile('review/api.md', repoDir)).toBe('api findings');
+  });
+
+  it('throws on non-ENOENT errors instead of returning null', () => {
+    // Reading a directory as a file throws EISDIR
+    writeSyncFile('review/auth.md', 'findings', repoDir);
+    expect(() => readSyncFile('review', repoDir)).toThrow();
   });
 });
 
@@ -299,6 +312,12 @@ describe('listSyncDir', () => {
     expect(files).toContain('review/auth.md');
     expect(files).toContain('review/api.md');
     expect(files).toHaveLength(2);
+  });
+
+  it('throws on non-ENOENT errors instead of returning empty array', () => {
+    // Listing a file as a directory throws ENOTDIR
+    writeSyncFile('not-a-dir', 'content', repoDir);
+    expect(() => listSyncDir('not-a-dir', repoDir)).toThrow();
   });
 });
 

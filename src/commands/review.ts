@@ -4,7 +4,6 @@ import pc from 'picocolors';
 import { getRepoRoot, getCurrentBranch } from '../lib/git.js';
 import {
   readRequiredSyncState,
-  readSyncState,
   readSyncFile,
   submitForReview,
   completeTask,
@@ -65,7 +64,7 @@ export async function runReview(): Promise<number> {
     tmux = createTmuxService();
   } catch {
     // tmux not available — auto-complete
-    state = readSyncState(repoRoot)!;
+    state = readRequiredSyncState(repoRoot);
     state = completeTask(state, taskName);
     writeSyncState(state, repoRoot);
     console.log(pc.dim('  tmux not available — review skipped, marked done'));
@@ -122,7 +121,7 @@ export async function runReview(): Promise<number> {
   }
 
   // Sync state may have changed during the async review
-  state = readSyncState(repoRoot)!;
+  state = readRequiredSyncState(repoRoot);
   state.tasks[taskName] = { ...state.tasks[taskName]!, verdict: result.verdict };
 
   if (result.verdict === 'pass' || result.verdict === 'skip') {
