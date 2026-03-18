@@ -12,8 +12,6 @@ import { tryGetLivenessMap } from '../lib/util.js';
 import { formatElapsed } from '../lib/util.js';
 import { evaluateAllAgents } from '../lib/health.js';
 import type { HealthSnapshot } from '../lib/health.js';
-import { readVerdictFile, verdictFilePath } from '../lib/reviewer.js';
-import type { ReviewVerdict } from '../lib/reviewer.js';
 import { resolveAgentStatus, statusStyle } from '../lib/display-status.js';
 import type { AgentDisplayStatus } from '../lib/display-status.js';
 import { getVersion } from '../lib/version.js';
@@ -102,14 +100,12 @@ interface DashboardState {
   messages: Message[];
   livenessMap: Map<string, boolean>;
   healthSnapshot: HealthSnapshot | null;
-  verdicts: Record<string, ReviewVerdict | null>;
   now: Date;
 }
 
 function pollState(
   repoRoot: string,
   taskNames: string[],
-  taskBranches: Record<string, string>,
   prevHealth: HealthSnapshot | null,
 ): DashboardState {
   const now = new Date();
@@ -130,17 +126,7 @@ function pollState(
     });
   }
 
-  const verdicts: Record<string, ReviewVerdict | null> = {};
-  for (const taskName of taskNames) {
-    const branch = taskBranches[taskName];
-    if (branch) {
-      const vPath = verdictFilePath(repoRoot, branch);
-      const result = readVerdictFile(vPath);
-      verdicts[taskName] = result?.verdict ?? null;
-    }
-  }
-
-  return { syncState, messages, livenessMap, healthSnapshot, verdicts, now };
+  return { syncState, messages, livenessMap, healthSnapshot, now };
 }
 
 // ── Ink Components ───────────────────────────────────────────────────
@@ -169,14 +155,12 @@ function AgentsPanel({
   syncState,
   healthSnapshot,
   livenessMap,
-  verdicts,
   now,
 }: {
   taskNames: string[];
   syncState: SyncState | null;
   healthSnapshot: HealthSnapshot | null;
   livenessMap: Map<string, boolean>;
-  verdicts: Record<string, ReviewVerdict | null>;
   now: Date;
 }) {
   const count = taskNames.length;
@@ -193,7 +177,7 @@ function AgentsPanel({
           ? resolveAgentStatus(task.status, health?.state)
           : 'pending';
         const style = statusStyle(displayStatus);
-        const verdict = verdicts[name];
+        const verdict = task?.verdict;
         const duration = task ? computeDuration(task, now) : '';
         const tmuxAlive = livenessMap.get(name);
 
@@ -226,7 +210,7 @@ function AgentsPanel({
 }
 
 function MailPanel({ messages, now }: { messages: Message[]; now: Date }) {
-  const recent = messages.slice(-5).reverse();
+  const recent = messages.slice(-5);
   return (
     <Box flexDirection="column" paddingX={1} width="50%">
       <Text bold>Mail ({messages.length})</Text>
@@ -273,14 +257,12 @@ function MergeQueuePanel({
 function Dashboard({
   repoRoot,
   taskNames,
-  taskBranches,
   target,
   interval,
   version,
 }: {
   repoRoot: string;
   taskNames: string[];
-  taskBranches: Record<string, string>;
   target: string;
   interval: number;
   version: string;
@@ -291,7 +273,6 @@ function Dashboard({
     messages: [],
     livenessMap: new Map(),
     healthSnapshot: null,
-    verdicts: {},
     now: new Date(),
   });
 
@@ -305,7 +286,7 @@ function Dashboard({
     let prevHealth: HealthSnapshot | null = null;
 
     const poll = () => {
-      const next = pollState(repoRoot, taskNames, taskBranches, prevHealth);
+      const next = pollState(repoRoot, taskNames, prevHealth);
       prevHealth = next.healthSnapshot;
       setState(next);
     };
@@ -313,7 +294,7 @@ function Dashboard({
     poll(); // initial
     const id = setInterval(poll, interval * 1000);
     return () => clearInterval(id);
-  }, [repoRoot, taskNames, taskBranches, interval]);
+  }, [repoRoot, taskNames, interval]);
 
   return (
     <Box flexDirection="column" width={GRID_WIDTH} marginTop={1}>
@@ -324,7 +305,6 @@ function Dashboard({
         syncState={state.syncState}
         healthSnapshot={state.healthSnapshot}
         livenessMap={state.livenessMap}
-        verdicts={state.verdicts}
         now={state.now}
       />
       <HRule />
@@ -348,10 +328,6 @@ export function dashboardCommand(): Command {
         const interval = parseInt(opts.interval, 10) || DEFAULT_POLL_INTERVAL;
         const worktrees = planWorktrees(config, repoRoot);
         const taskNames = worktrees.map((w) => w.taskName);
-        const taskBranches: Record<string, string> = {};
-        for (const w of worktrees) {
-          taskBranches[w.taskName] = w.branch;
-        }
         const version = getVersion();
 
         // Enter alternate screen buffer for clean redraws on resize
@@ -362,7 +338,6 @@ export function dashboardCommand(): Command {
           <Dashboard
             repoRoot={repoRoot}
             taskNames={taskNames}
-            taskBranches={taskBranches}
             target={config.target}
             interval={interval}
             version={version}

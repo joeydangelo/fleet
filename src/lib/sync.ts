@@ -27,6 +27,7 @@ export interface TaskState {
   focus?: string[];
   /** Always initialized to 0; incremented by submitForReview. */
   reviewCycle?: number;
+  verdict?: 'pass' | 'fail' | 'skip';
 }
 
 /** Exhaustive check: returns true only for statuses where the task is fully complete. */
@@ -68,6 +69,7 @@ const TaskStateSchema = z.object({
   doneAt: z.string().optional(),
   focus: z.array(z.string()).optional(),
   reviewCycle: z.number().optional().default(0),
+  verdict: z.enum(['pass', 'fail', 'skip']).optional(),
 });
 
 const MergeEntrySchema = z.discriminatedUnion('status', [
