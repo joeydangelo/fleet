@@ -235,13 +235,13 @@ Run `tbd guidelines <name>` to apply any of these guidelines:
 | convex-limits-best-practices | Comprehensive reference for Convex platform limits, workarounds, and performance best practices |
 | convex-rules | Guidelines and best practices for building Convex projects, including database schema design, queries, mutations, and real-world examples |
 | electron-app-development-patterns | Guidelines for Electron development ecosystems including npm, pnpm, and Bun, with security baselines and framework comparisons |
-| error-handling | Rules for handling errors, failures, and exceptional conditions |
+| error-handling-rules | Rules for handling errors, failures, and exceptional conditions |
 | general-coding-rules | Rules for constants, magic numbers, and general coding practices |
-| code-comments | Language-agnostic rules for writing clean, maintainable comments |
+| general-comment-rules | Language-agnostic rules for writing clean, maintainable comments |
 | general-eng-assistant-rules | Rules for AI assistants acting as senior engineers, including objectivity and communication guidelines |
 | general-style-rules | Style guidelines for auto-formatting, emoji usage, and output formatting |
 | general-tdd-guidelines | Test-Driven Development methodology and best practices |
-| test-quality | Rules for writing minimal, effective tests with maximum coverage |
+| general-testing-rules | Rules for writing minimal, effective tests with maximum coverage |
 | golden-testing-guidelines | Guidelines for implementing golden/snapshot testing for complex systems |
 | pnpm-monorepo-patterns | Modern patterns for pnpm-based TypeScript monorepo architecture |
 | python-cli-patterns | Modern patterns for Python CLI application architecture |
