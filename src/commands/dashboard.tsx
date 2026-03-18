@@ -370,6 +370,8 @@ export function dashboardCommand(): Command {
           { exitOnCtrlC: true },
         );
 
+        process.stdout.on('resize', () => instance.clear());
+
         void instance.waitUntilExit().then(() => {
           process.stdout.write('\x1b[?1049l');
         });

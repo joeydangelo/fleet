@@ -7,7 +7,7 @@
 export const SYNC_BRANCH = 'fleet-sync';
 
 /** Unit: seconds. */
-export const DEFAULT_POLL_INTERVAL = 5;
+export const DEFAULT_POLL_INTERVAL = 3;
 
 /** The first message sent to an agent after Claude Code boots. */
 export const BEACON_MESSAGE = 'Run `fleet shortcut build-task` and follow its instructions.';
