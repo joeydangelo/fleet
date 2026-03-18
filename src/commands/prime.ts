@@ -16,7 +16,15 @@ import { livenessMarker } from '../lib/tmux.js';
 import { tryGetLivenessMap } from '../lib/util.js';
 import type { FleetConfig } from '../lib/config.js';
 import { ensureDocsFresh } from '../lib/doc-sync.js';
-import { handleError, formatFocusAreas, colors, success, formatTaskStatus } from '../lib/output.js';
+import {
+  handleError,
+  formatFocusAreas,
+  colors,
+  success,
+  warn,
+  formatTaskStatus,
+  toErrorMessage,
+} from '../lib/output.js';
 
 function statusColor(status: string): (text: string) => string {
   if (status === 'done') return colors.success;
@@ -59,8 +67,11 @@ export function primeCommand(): Command {
 
         try {
           claimTaskAtomic(taskName, repoRoot);
-        } catch {
-          // Claim failure is non-fatal — agent proceeds with context output
+        } catch (err) {
+          warn(
+            taskName,
+            `Task claim failed to persist to git: ${toErrorMessage(err)}. Dashboard may show this task as pending.`,
+          );
         }
         const state = readSyncState(repoRoot);
 

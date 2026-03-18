@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { resolve } from 'node:path';
-import { existsSync, rmSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, rmSync, mkdirSync, readFileSync, writeFileSync, utimesSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import {
   initSyncState,
@@ -22,6 +22,8 @@ import {
   readRequiredSyncState,
   reviewFilePath,
   requireWorktreeTask,
+  claimTaskAtomic,
+  updateLastCheck,
 } from '../src/lib/sync.js';
 import { deleteBranch, createBranch, createWorktree, removeWorktree } from '../src/lib/git.js';
 import { makeTempDir } from './helpers/temp.js';
@@ -563,5 +565,127 @@ describe('requireWorktreeTask', () => {
     const dir = makeTempDir();
     expect(() => requireWorktreeTask(dir)).toThrow('Not in a fleet worktree');
     rmSync(dir, { recursive: true, force: true });
+  });
+});
+
+describe('claimTaskAtomic', () => {
+  let repoDir: string;
+
+  beforeEach(() => {
+    repoDir = makeTempDir();
+    gitInit(repoDir);
+    initSyncWorktree(repoDir);
+  });
+
+  afterEach(() => {
+    removeSyncWorktree(repoDir);
+    rmSync(repoDir, { recursive: true, force: true });
+  });
+
+  it('claims a pending task and persists to git', () => {
+    const state = initSyncState('feature/dash', ['auth', 'api'], 'fleet.yaml');
+    writeSyncState(state, repoDir);
+
+    claimTaskAtomic('auth', repoDir);
+
+    const read = readSyncState(repoDir);
+    expect(read!.tasks['auth']?.status).toBe('in_progress');
+    expect(read!.tasks['auth']?.claimed).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+    expect(read!.tasks['api']?.status).toBe('pending');
+  });
+
+  it('is a no-op for a task already in_progress', () => {
+    const state = initSyncState('feature/dash', ['auth'], 'fleet.yaml');
+    state.tasks['auth']!.status = 'in_progress';
+    writeSyncState(state, repoDir);
+
+    // Should return without error (early return for non-pending task)
+    claimTaskAtomic('auth', repoDir);
+
+    const read = readSyncState(repoDir);
+    expect(read!.tasks['auth']?.status).toBe('in_progress');
+  });
+
+  it('throws ExternalCommandError when sync lock cannot be acquired', () => {
+    const state = initSyncState('feature/dash', ['auth'], 'fleet.yaml');
+    writeSyncState(state, repoDir);
+
+    const syncDir = resolveSyncDir(repoDir);
+    // Simulate a held lock by pre-creating the lock directory with a fresh mtime
+    const lockPath = resolve(syncDir, '.fleet-sync-lock');
+    mkdirSync(lockPath, { recursive: true });
+    // Touch the lock so it doesn't look stale (stale = >30s)
+    const now = new Date();
+    utimesSync(lockPath, now, now);
+
+    try {
+      expect(() => claimTaskAtomic('auth', repoDir)).toThrow(
+        /Failed to acquire sync lock after 10 attempts/,
+      );
+    } finally {
+      rmSync(lockPath, { recursive: true, force: true });
+    }
+  });
+
+  it('recovers from a stale lock and succeeds', () => {
+    const state = initSyncState('feature/dash', ['auth'], 'fleet.yaml');
+    writeSyncState(state, repoDir);
+
+    const syncDir = resolveSyncDir(repoDir);
+    const lockPath = resolve(syncDir, '.fleet-sync-lock');
+    mkdirSync(lockPath, { recursive: true });
+    // Set mtime to 60s ago so it looks stale (threshold is 30s)
+    const staleTime = new Date(Date.now() - 60_000);
+    utimesSync(lockPath, staleTime, staleTime);
+
+    // Should succeed — stale lock gets force-removed
+    claimTaskAtomic('auth', repoDir);
+
+    const read = readSyncState(repoDir);
+    expect(read!.tasks['auth']?.status).toBe('in_progress');
+  });
+});
+
+describe('updateLastCheck', () => {
+  let repoDir: string;
+
+  beforeEach(() => {
+    repoDir = makeTempDir();
+    gitInit(repoDir);
+    initSyncWorktree(repoDir);
+  });
+
+  afterEach(() => {
+    removeSyncWorktree(repoDir);
+    rmSync(repoDir, { recursive: true, force: true });
+  });
+
+  it('persists lastCheck cursor to git', () => {
+    const state = initSyncState('feature/dash', ['auth'], 'fleet.yaml');
+    writeSyncState(state, repoDir);
+
+    updateLastCheck('auth', repoDir);
+
+    const read = readSyncState(repoDir);
+    expect(read!.lastCheck?.['auth']).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+  });
+
+  it('throws ExternalCommandError when sync lock cannot be acquired', () => {
+    const state = initSyncState('feature/dash', ['auth'], 'fleet.yaml');
+    writeSyncState(state, repoDir);
+
+    const syncDir = resolveSyncDir(repoDir);
+    const lockPath = resolve(syncDir, '.fleet-sync-lock');
+    mkdirSync(lockPath, { recursive: true });
+    const now = new Date();
+    utimesSync(lockPath, now, now);
+
+    try {
+      expect(() => updateLastCheck('auth', repoDir)).toThrow(
+        /Failed to acquire sync lock after 10 attempts/,
+      );
+    } finally {
+      rmSync(lockPath, { recursive: true, force: true });
+    }
   });
 });

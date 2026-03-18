@@ -7,17 +7,68 @@ import {
   readdirSync,
   cpSync,
   copyFileSync,
+  statSync,
 } from 'node:fs';
 import { writeFileSync } from 'atomically';
 import { z } from 'zod';
 import { git } from './git.js';
-import { toErrorMessage, requireSyncState } from './output.js';
+import { requireSyncState } from './output.js';
 import { CLIError, NotFoundError, ExternalCommandError } from './errors.js';
 import { SYNC_BRANCH } from './constants.js';
 import { detectTaskName } from './session.js';
 import { sanitizeBranchName } from './util.js';
 const STATE_FILE = 'state.json';
-const MAX_RETRIES = 3;
+const MAX_RETRIES = 10;
+const LOCK_DIR = '.fleet-sync-lock';
+
+/**
+ * Acquire an exclusive directory-based lock for the sync worktree.
+ * mkdirSync is atomic on all platforms — only one process succeeds.
+ * Retries with jittered backoff. Stale locks (>30s) are force-removed.
+ */
+function withSyncLock<T>(syncDir: string, fn: () => T): T {
+  const lockPath = resolve(syncDir, LOCK_DIR);
+
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    // Remove stale locks from crashed processes
+    try {
+      const stat = statSync(lockPath);
+      if (Date.now() - stat.mtimeMs > 30_000) {
+        rmSync(lockPath, { recursive: true, force: true });
+      }
+    } catch {
+      // Lock dir doesn't exist — good
+    }
+
+    try {
+      mkdirSync(lockPath);
+    } catch {
+      // Lock held by another agent — wait and retry
+      if (attempt === MAX_RETRIES) {
+        throw new ExternalCommandError(
+          `Failed to acquire sync lock after ${MAX_RETRIES} attempts (sync dir: ${syncDir})`,
+        );
+      }
+      const delayMs = 100 * attempt + Math.random() * 200;
+      const end = Date.now() + delayMs;
+      while (Date.now() < end) {
+        /* spin — acceptable for short CLI lock backoff */
+      }
+      continue;
+    }
+
+    // Lock acquired — run the critical section
+    try {
+      return fn();
+    } finally {
+      rmSync(lockPath, { recursive: true, force: true });
+    }
+  }
+
+  // Unreachable — loop always returns from fn() or throws at MAX_RETRIES.
+  // Required to satisfy TypeScript's control-flow analysis.
+  throw new ExternalCommandError('Failed to acquire sync lock');
+}
 
 /** Lifecycle status and metadata for a single task in the sync state. */
 export interface TaskState {
@@ -173,31 +224,17 @@ export function removeSyncWorktree(repoRoot: string): void {
 }
 
 /**
- * Stage all changes in the sync worktree and commit with retry.
- * Retries on index.lock contention (concurrent multi-agent writes).
+ * Stage all changes in the sync worktree and commit.
+ * Serialized via withSyncLock to prevent index.lock contention.
  */
 function commitSyncChanges(syncDir: string, message: string): void {
-  const errors: string[] = [];
-  let lastCause: Error | undefined;
-  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-    try {
-      git(['add', '-A'], { cwd: syncDir, stdio: 'pipe' });
-      git(['commit', '--allow-empty', '-m', message], {
-        cwd: syncDir,
-        stdio: 'pipe',
-      });
-      return;
-    } catch (err) {
-      lastCause = err instanceof Error ? err : new CLIError(String(err));
-      errors.push(`attempt ${attempt}: ${toErrorMessage(err)}`);
-      if (attempt === MAX_RETRIES) {
-        throw new ExternalCommandError(
-          `Failed to commit sync changes after ${MAX_RETRIES} attempts:\n${errors.join('\n')}`,
-          { cause: lastCause },
-        );
-      }
-    }
-  }
+  withSyncLock(syncDir, () => {
+    git(['add', '-A'], { cwd: syncDir, stdio: 'pipe' });
+    git(['commit', '--allow-empty', '-m', message], {
+      cwd: syncDir,
+      stdio: 'pipe',
+    });
+  });
 }
 
 /** Read and parse the sync state from the sync worktree, or null if unavailable. */
@@ -316,7 +353,9 @@ export function claimTaskAtomic(taskName: string, repoRoot: string): void {
   const syncDir = resolveSyncDir(repoRoot);
   const filePath = resolve(syncDir, STATE_FILE);
 
-  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+  withSyncLock(syncDir, () => {
+    // Read inside the lock so no other agent can modify state between
+    // our read and our commit.
     const raw = readFileSync(filePath, 'utf-8');
     const state = SyncStateSchema.parse(JSON.parse(raw));
     const task = state.tasks[taskName];
@@ -329,18 +368,9 @@ export function claimTaskAtomic(taskName: string, repoRoot: string): void {
     };
 
     writeFileSync(resolve(syncDir, STATE_FILE), JSON.stringify(state, null, 2) + '\n');
-    try {
-      git(['add', '-A'], { cwd: syncDir, stdio: 'pipe' });
-      git(['commit', '-m', `fleet: claim ${taskName}`], { cwd: syncDir, stdio: 'pipe' });
-      return;
-    } catch {
-      const delayMs = 50 * attempt + Math.random() * 100;
-      const end = Date.now() + delayMs;
-      while (Date.now() < end) {
-        /* spin — acceptable for short CLI retry backoff */
-      }
-    }
-  }
+    git(['add', '-A'], { cwd: syncDir, stdio: 'pipe' });
+    git(['commit', '-m', `fleet: claim ${taskName}`], { cwd: syncDir, stdio: 'pipe' });
+  });
 }
 
 /**
@@ -351,25 +381,16 @@ export function updateLastCheck(taskName: string, repoRoot: string): void {
   const syncDir = resolveSyncDir(repoRoot);
   const filePath = resolve(syncDir, STATE_FILE);
 
-  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+  withSyncLock(syncDir, () => {
     const raw = readFileSync(filePath, 'utf-8');
     const state = SyncStateSchema.parse(JSON.parse(raw));
 
     state.lastCheck = { ...state.lastCheck, [taskName]: new Date().toISOString() };
 
     writeFileSync(resolve(syncDir, STATE_FILE), JSON.stringify(state, null, 2) + '\n');
-    try {
-      git(['add', '-A'], { cwd: syncDir, stdio: 'pipe' });
-      git(['commit', '-m', `fleet: update lastCheck ${taskName}`], { cwd: syncDir, stdio: 'pipe' });
-      return;
-    } catch {
-      const delayMs = 50 * attempt + Math.random() * 100;
-      const end = Date.now() + delayMs;
-      while (Date.now() < end) {
-        /* spin */
-      }
-    }
-  }
+    git(['add', '-A'], { cwd: syncDir, stdio: 'pipe' });
+    git(['commit', '-m', `fleet: update lastCheck ${taskName}`], { cwd: syncDir, stdio: 'pipe' });
+  });
 }
 
 /** Transition a task to `in_review` and increment its review cycle counter. */
