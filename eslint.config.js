@@ -31,6 +31,7 @@ export default [
       '**/attic/**',
       '**/.fleet/**',
       '**/.tbd/**',
+      '**/.claude/hooks/**',
       '*.config.*',
       'scripts/**',
     ],
