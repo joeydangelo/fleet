@@ -48,7 +48,14 @@ export function readManifest(repoRoot: string): FleetManifest {
     return FleetManifestSchema.parse({});
   }
   const raw = readFileSync(manifestPath, 'utf-8');
-  return FleetManifestSchema.parse((parseYaml(raw) as unknown) ?? {});
+  try {
+    return FleetManifestSchema.parse((parseYaml(raw) as unknown) ?? {});
+  } catch (err) {
+    throw new Error(
+      `Failed to parse manifest at ${manifestPath}: ${err instanceof Error ? err.message : String(err)}`,
+      { cause: err },
+    );
+  }
 }
 
 const MANIFEST_HEADER = `\

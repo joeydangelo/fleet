@@ -32,7 +32,10 @@ function getLookupPaths(repoRoot: string, category: string): string[] {
   try {
     const manifest = readManifest(repoRoot);
     lookupPath = manifest.docs_cache.lookup_path;
-  } catch {
+  } catch (err) {
+    console.warn(
+      `[fleet] Could not read manifest for lookup paths: ${err instanceof Error ? err.message : String(err)}`,
+    );
     lookupPath = [];
   }
 

@@ -24,7 +24,7 @@ function categoryToDocType(category: string): DocType {
   return category.replace(/s$/, '') as DocType;
 }
 
-/** Builds a Commander CLI subcommand that fetches and displays a tbd doc file by name within a given category. */
+/** Builds a Commander CLI subcommand that fetches and displays a fleet doc file by name within a given category. */
 export function createDocCommand(
   name: string,
   category: string,

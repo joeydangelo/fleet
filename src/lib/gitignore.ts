@@ -16,7 +16,7 @@ specs/
 `;
 
 /**
- * Create or update .fleet/.gitignore so that docs/, state.yml, and runtime
+ * Create or update .fleet/.gitignore so that docs/ and runtime
  * data are ignored while manifest.yml and hooks/ stay tracked.
  */
 export function ensureFleetGitignore(repoRoot: string): boolean {

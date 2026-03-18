@@ -70,7 +70,10 @@ export async function fetchWithGhFallback(
     return { content, usedGhCli: false };
   } catch (error) {
     if (!(error instanceof Error && error.message.includes('HTTP 403'))) {
-      throw error;
+      throw new Error(
+        `Fetch failed for ${rawUrl}: ${error instanceof Error ? error.message : String(error)}`,
+        { cause: error },
+      );
     }
   }
 
