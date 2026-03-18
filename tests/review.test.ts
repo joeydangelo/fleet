@@ -158,6 +158,7 @@ describe('runReview', () => {
     expect(exitCode).toBe(0);
     const state = fixture.readSyncState()!;
     expect(state.tasks['auth']?.status).toBe('done');
+    expect(state.tasks['auth']?.verdict).toBe('pass');
 
     const reviewContent = fixture.readSyncFile(reviewFilePath(branch));
     expect(reviewContent).toContain('Review — Cycle 1');
@@ -188,6 +189,7 @@ describe('runReview', () => {
     expect(exitCode).toBe(1);
     const state = fixture.readSyncState()!;
     expect(state.tasks['auth']?.status).toBe('in_progress');
+    expect(state.tasks['auth']?.verdict).toBe('fail');
 
     const logs = vi.mocked(console.log).mock.calls.map((c) => String(c[0]));
     expect(logs.some((l) => l.includes('SQL injection'))).toBe(true);
@@ -209,6 +211,7 @@ describe('runReview', () => {
     expect(exitCode).toBe(0);
     const state = fixture.readSyncState()!;
     expect(state.tasks['auth']?.status).toBe('done');
+    expect(state.tasks['auth']?.verdict).toBe('skip');
   });
 
   it('increments reviewCycle after PASS', async () => {

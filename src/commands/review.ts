@@ -123,6 +123,7 @@ export async function runReview(): Promise<number> {
 
   // Sync state may have changed during the async review
   state = readSyncState(repoRoot)!;
+  state.tasks[taskName] = { ...state.tasks[taskName]!, verdict: result.verdict };
 
   if (result.verdict === 'pass' || result.verdict === 'skip') {
     state = completeTask(state, taskName);
