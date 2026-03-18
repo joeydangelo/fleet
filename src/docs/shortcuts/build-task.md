@@ -44,7 +44,7 @@ roles: [builder]
 **Objective:** Implement all increments using TDD with passing smoke tests.
 **Tools:** Read, Write, Edit, Bash, Glob, Grep
 
-1. Load `fleet guidelines testing`.
+1. Load `fleet guidelines testing` and `fleet guidelines code-authoring`.
 2. For each increment, follow Red-Green-Refactor:
    - Write a failing test.
    - Write minimal code to pass.

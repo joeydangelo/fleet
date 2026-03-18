@@ -63,6 +63,7 @@ failures.
 <!-- BEGIN GUIDELINES DIRECTORY -->
 | Command | Purpose |
 |---|---|
+| `fleet guidelines code-authoring` | Code clarity and anti-slop discipline at authoring time — naming, structure, comments, and codebase alignment |
 | `fleet guidelines commit-conventions` | Conventional Commits format with scope, body, and multi-agent extensions |
 | `fleet guidelines testing` | Test design calibration for builder agents — what to test, where to draw the mock boundary, and how to avoid testing theatre |
 <!-- END GUIDELINES DIRECTORY -->

@@ -11,9 +11,11 @@
 # Configure with settings.doc_auto_sync_hours (0 = disabled).
 docs_cache:
   files:
+    guidelines/code-authoring.md: internal:guidelines/code-authoring.md
     guidelines/code-quality-review.md: internal:guidelines/code-quality-review.md
     guidelines/codebase-research.md: internal:guidelines/codebase-research.md
     guidelines/commit-conventions.md: internal:guidelines/commit-conventions.md
+    guidelines/error-handling-review.md: internal:guidelines/error-handling-review.md
     guidelines/performance-review.md: internal:guidelines/performance-review.md
     guidelines/security-review.md: internal:guidelines/security-review.md
     guidelines/spec-design.md: internal:guidelines/spec-design.md
