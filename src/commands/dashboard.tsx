@@ -145,19 +145,23 @@ function pollState(
 
 // ── Ink Components ───────────────────────────────────────────────────
 
+const GRID_WIDTH = 90;
+
 function HeaderBar({ version, now, interval }: { version: string; now: Date; interval: number }) {
+  const left = `fleet dashboard v${version}`;
+  const right = `${formatTime(now)}  |  refresh: ${interval * 1000}ms`;
+  const gap = Math.max(1, GRID_WIDTH - 2 - left.length - right.length);
   return (
-    <Box justifyContent="space-between" paddingX={1}>
-      <Text bold>fleet dashboard v{version}</Text>
-      <Text>
-        {formatTime(now)} | refresh: {interval * 1000}ms
-      </Text>
+    <Box paddingX={1} width={GRID_WIDTH}>
+      <Text bold>{left}</Text>
+      <Text>{' '.repeat(gap)}</Text>
+      <Text>{right}</Text>
     </Box>
   );
 }
 
 function HRule() {
-  return <Text dimColor>{'─'.repeat(80)}</Text>;
+  return <Text dimColor>{'─'.repeat(GRID_WIDTH)}</Text>;
 }
 
 function AgentsPanel({
@@ -312,7 +316,7 @@ function Dashboard({
   }, [repoRoot, taskNames, taskBranches, interval]);
 
   return (
-    <Box flexDirection="column">
+    <Box flexDirection="column" width={GRID_WIDTH} marginTop={1}>
       <HeaderBar version={version} now={state.now} interval={interval} />
       <HRule />
       <AgentsPanel
@@ -350,7 +354,11 @@ export function dashboardCommand(): Command {
         }
         const version = getVersion();
 
-        render(
+        // Enter alternate screen buffer for clean redraws on resize
+        process.stdout.write('\x1b[?1049h');
+        process.on('exit', () => process.stdout.write('\x1b[?1049l'));
+
+        const instance = render(
           <Dashboard
             repoRoot={repoRoot}
             taskNames={taskNames}
@@ -361,6 +369,10 @@ export function dashboardCommand(): Command {
           />,
           { exitOnCtrlC: true },
         );
+
+        void instance.waitUntilExit().then(() => {
+          process.stdout.write('\x1b[?1049l');
+        });
       } catch (err) {
         handleError(err);
       }

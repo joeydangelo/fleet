@@ -5,9 +5,9 @@ import {
   formatMessage,
   computeDuration,
   mergeBadge,
-} from './dashboard.js';
-import type { Message } from '../lib/messages.js';
-import type { TaskState } from '../lib/sync.js';
+} from '../src/commands/dashboard.js';
+import type { Message } from '../src/lib/messages.js';
+import type { TaskState } from '../src/lib/sync.js';
 
 describe('formatTime', () => {
   it('formats a date as HH:MM:SS AM/PM', () => {
