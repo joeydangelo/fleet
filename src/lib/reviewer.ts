@@ -30,7 +30,7 @@ import {
 } from './constants.js';
 import type { ReviewVerdict } from './constants.js';
 export type { ReviewVerdict } from './constants.js';
-import { sleep, formatElapsed, sanitizeBranchName, returnNullOnENOENT } from './util.js';
+import { sleep, formatElapsed, sanitizeBranchName } from './util.js';
 import { reviewFilePath } from './sync.js';
 import { emitEvent } from './feed.js';
 import { toErrorMessage } from './output.js';
@@ -95,20 +95,25 @@ export function verdictFilePath(repoRoot: string, taskBranch: string): string {
 
 /** Read and parse the verdict sentinel file. Returns null if not yet written. */
 export function readVerdictFile(filePath: string): ReviewResult | null {
+  let raw: string;
   try {
-    return returnNullOnENOENT(() => {
-      const raw = readFileSync(filePath, 'utf-8');
-      const data = JSON.parse(raw) as Partial<ReviewResult>;
-      const v = String(data.verdict ?? '').toLowerCase();
-      // Fail-closed: anything other than an explicit 'pass' is treated as 'fail'
-      const verdict: ReviewVerdict = v === 'pass' ? 'pass' : 'fail';
-      return {
-        verdict,
-        strengths: String(data.strengths ?? ''),
-        issues: String(data.issues ?? ''),
-        suggestions: data.suggestions ? String(data.suggestions) : undefined,
-      };
-    });
+    raw = readFileSync(filePath, 'utf-8');
+  } catch (err: unknown) {
+    if ((err as NodeJS.ErrnoException).code === 'ENOENT') return null;
+    throw err;
+  }
+
+  try {
+    const data = JSON.parse(raw) as Partial<ReviewResult>;
+    const v = String(data.verdict ?? '').toLowerCase();
+    // Fail-closed: anything other than an explicit 'pass' is treated as 'fail'
+    const verdict: ReviewVerdict = v === 'pass' ? 'pass' : 'fail';
+    return {
+      verdict,
+      strengths: String(data.strengths ?? ''),
+      issues: String(data.issues ?? ''),
+      suggestions: data.suggestions ? String(data.suggestions) : undefined,
+    };
   } catch (err: unknown) {
     // Corrupt file — warn and fail-closed so poll loop doesn't wait until timeout
     console.warn(`[fleet] Corrupt verdict file ${filePath}: ${toErrorMessage(err)}`);
