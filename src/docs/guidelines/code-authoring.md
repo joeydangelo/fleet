@@ -30,6 +30,8 @@ agents replicate whatever structure they encounter first.
   readability.
 - Always handle errors explicitly — never silently swallow failures.
 - Extract repeated logic into shared functions — if the same pattern appears three or more times, abstract it.
+- Avoid trivial wrapper functions that only forward to an inner object — wrap only when adding validation, transformation, or coordination.
+- Reserve fallback logic for conditions that can actually occur — dead code paths create false safety and obscure actual behavior.
 
 ## Code Organization
 

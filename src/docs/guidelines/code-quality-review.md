@@ -28,6 +28,15 @@ code you would have written differently.
   neighboring code uses direct calls, or a new utility for a one-time operation,
   introduces complexity the codebase doesn't use.
 
+## Control Flow
+
+- Check that conditions exit early rather than wrapping the remainder in else
+  branches — deeply nested logic with multiple indentation levels is a finding.
+- Flag nested ternaries and complex conditional expressions that require
+  re-reading to parse — guard clauses and switch/if-else are preferred.
+- Verify functions serve a single purpose — a function with comment-separated
+  sections doing unrelated work should be split.
+
 ## Dead Code and Duplication
 
 - Flag unreachable code, unused parameters, and commented-out blocks introduced by the
