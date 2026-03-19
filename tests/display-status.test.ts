@@ -1,9 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import {
-  resolveAgentStatus,
-  statusStyle,
-  type AgentDisplayStatus,
-} from '../src/lib/display-status.js';
+import { resolveAgentStatus } from '../src/lib/display-status.js';
 import type { HealthState } from '../src/lib/health.js';
 
 describe('resolveAgentStatus', () => {
@@ -58,23 +54,5 @@ describe('resolveAgentStatus', () => {
     it.each(healthStates)('done + %s → done', (health) => {
       expect(resolveAgentStatus('done', health)).toBe('done');
     });
-  });
-});
-
-describe('statusStyle', () => {
-  const cases: Array<[AgentDisplayStatus, string, string]> = [
-    ['pending', '◌', 'dim'],
-    ['booting', '◌', 'dim'],
-    ['working', '●', 'green'],
-    ['stalled', '●', 'yellow'],
-    ['zombie', '●', 'red'],
-    ['in review', '⟳', 'cyan'],
-    ['done', '✓', 'green'],
-  ];
-
-  it.each(cases)('statusStyle(%s) → icon=%s color=%s', (status, icon, color) => {
-    const style = statusStyle(status);
-    expect(style.icon).toBe(icon);
-    expect(style.color).toBe(color);
   });
 });

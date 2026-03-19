@@ -5,6 +5,7 @@ import pc from 'picocolors';
 import type { Formatter } from 'picocolors/types.js';
 import { getRepoRoot } from '../lib/git.js';
 import { handleError, COLOR_PALETTE } from '../lib/output.js';
+import { CLIError } from '../lib/errors.js';
 import { FEED_DIR, FEED_FILENAME } from '../lib/feed.js';
 const TASK_COL_WIDTH = 12;
 
@@ -230,9 +231,7 @@ export function feedCommand(): Command {
           // Replay archived session
           const feedPath = resolve(repoRoot, '.fleet', 'sessions', opts.replay, FEED_FILENAME);
           if (!existsSync(feedPath)) {
-            console.error(pc.red('No feed found for session "' + opts.replay + '"'));
-            console.error(pc.dim('Expected: ' + feedPath));
-            process.exit(1);
+            throw new CLIError(`No feed found for session "${opts.replay}"\nExpected: ${feedPath}`);
           }
           const content = readFileSync(feedPath, 'utf-8');
           processChunk(
@@ -248,10 +247,7 @@ export function feedCommand(): Command {
         const sessionReady = resolve(repoRoot, FEED_DIR, '.session-ready');
 
         if (!existsSync(sessionReady) && !existsSync(feedPath)) {
-          console.error(
-            pc.red('No active session. Use --replay <session> to read archived feeds.'),
-          );
-          process.exit(1);
+          throw new CLIError('No active session. Use --replay <session> to read archived feeds.');
         }
 
         const filterOpts = { taskFilter: opts.task, eventFilter: opts.event, json: opts.json };

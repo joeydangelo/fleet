@@ -30,28 +30,8 @@ export interface TmuxPaneInfo {
   role: string;
 }
 
-/** Agent running in a detached tmux session. */
-export interface DetachedAgent {
-  id: string;
-  /** tmux session name: fleet-{project}-{task}. */
-  sessionName: string;
-  taskName: string;
-  worktreePath: string;
-  branchName: string;
-}
-
-/** Persisted session state for detached agents. */
-export interface FleetPaneConfig {
-  mode: 'detached';
-  /** tmux session name. */
-  sessionName: string;
-  /** Repo root path. */
-  repoRoot: string;
-  /** Detached tmux sessions. */
-  detached: DetachedAgent[];
-  /** ISO timestamp of last update. */
-  lastUpdated: string;
-}
+import type { DetachedAgent, FleetPaneConfig } from './pane-state.js';
+export type { DetachedAgent, FleetPaneConfig } from './pane-state.js';
 
 /**
  * Interface for tmux operations. Enables dependency injection for testing.
@@ -589,7 +569,7 @@ export function killDetachedSession(tmux: TmuxServiceApi, sessionName: string): 
   }
 }
 
-/** Check which of the given session names are still alive. */
+/** @internal - exported for testing */
 export function listDetachedSessions(tmux: TmuxServiceApi, sessionNames: string[]): string[] {
   return sessionNames.filter((name) => tmux.sessionExists(name));
 }

@@ -31,18 +31,9 @@ export const HealthSnapshotSchema = z.object({
   agents: z.record(z.string(), AgentHealthSchema),
 });
 
-interface AgentHealth {
-  taskName: string;
-  state: HealthState;
-  /** ISO timestamp of last tool invocation (from heartbeat file). */
-  lastActivity: string | null;
-  /** ISO timestamp when stall was first detected. */
-  stalledSince: string | null;
-  /** Progressive escalation stage: 0=warn, 1=nudge, 2=triage, 3=terminate. */
-  escalationLevel: number;
-}
+type AgentHealth = z.infer<typeof AgentHealthSchema>;
 
-type TriageVerdict = 'extend' | 'retry' | 'terminate';
+export type TriageVerdict = 'extend' | 'retry' | 'terminate';
 
 /**
  * Parse an LLM triage response into a verdict.
@@ -57,10 +48,7 @@ export function parseTriageVerdict(raw: string): TriageVerdict {
   return 'extend';
 }
 
-export interface HealthSnapshot {
-  timestamp: string;
-  agents: Record<string, AgentHealth>;
-}
+export type HealthSnapshot = z.infer<typeof HealthSnapshotSchema>;
 
 /**
  * A launch heartbeat is written at spawn time, so `lastActivity` always exists.
@@ -176,10 +164,10 @@ export function evaluateAllAgents(opts: {
 
 /** Read the ISO timestamp from a task's heartbeat file, or null if missing. */
 export function readHeartbeat(repoRoot: string, taskName: string): string | null {
+  const filePath = resolve(repoRoot, '.fleet', 'run', 'heartbeats', taskName);
   try {
-    const filePath = resolve(repoRoot, '.fleet', 'run', 'heartbeats', taskName);
     return readFileSync(filePath, 'utf-8').trim() || null;
-  } catch (err) {
+  } catch (err: unknown) {
     if ((err as NodeJS.ErrnoException).code === 'ENOENT') return null;
     console.warn(`[fleet] readHeartbeat(${taskName}): unexpected error: ${(err as Error).message}`);
     return null;
@@ -193,12 +181,12 @@ export function writeHeartbeat(repoRoot: string, taskName: string): void {
   writeFileSync(resolve(dir, taskName), new Date().toISOString(), 'utf-8');
 }
 
-/** Load the last persisted health snapshot, or null if none exists. */
+/** @internal - exported for testing */
 export function readHealthSnapshot(repoRoot: string): HealthSnapshot | null {
+  const filePath = resolve(repoRoot, '.fleet', 'run', 'health.json');
   try {
-    const filePath = resolve(repoRoot, '.fleet', 'run', 'health.json');
     return HealthSnapshotSchema.parse(JSON.parse(readFileSync(filePath, 'utf-8')));
-  } catch (err) {
+  } catch (err: unknown) {
     if ((err as NodeJS.ErrnoException).code === 'ENOENT') return null;
     console.warn(`[fleet] readHealthSnapshot: unexpected error: ${(err as Error).message}`);
     return null;

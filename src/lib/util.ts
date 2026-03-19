@@ -2,14 +2,20 @@ import { existsSync, mkdirSync } from 'node:fs';
 import { writeFileSync } from 'atomically';
 import { join, resolve } from 'node:path';
 import { readDoc } from './docs.js';
+import { readPaneConfig } from './pane-state.js';
 import { createTmuxService, checkAgentLiveness, buildLivenessMap } from './tmux.js';
 import type { FleetPaneConfig } from './tmux.js';
 
 /**
  * Try to build a liveness map from tmux pane config.
- * Returns an empty map if paneConfig is null or if tmux is unavailable.
+ * Accepts either a repoRoot string (reads pane config internally) or
+ * a pre-read FleetPaneConfig. Returns an empty map if config is null or tmux is unavailable.
  */
-export function tryGetLivenessMap(paneConfig: FleetPaneConfig | null): Map<string, boolean> {
+export function tryGetLivenessMap(
+  repoRootOrConfig: string | FleetPaneConfig | null,
+): Map<string, boolean> {
+  const paneConfig =
+    typeof repoRootOrConfig === 'string' ? readPaneConfig(repoRootOrConfig) : repoRootOrConfig;
   if (!paneConfig) return new Map();
   try {
     const tmux = createTmuxService();
@@ -17,6 +23,26 @@ export function tryGetLivenessMap(paneConfig: FleetPaneConfig | null): Map<strin
     return buildLivenessMap(results);
   } catch {
     return new Map();
+  }
+}
+
+/** Swallow ENOENT errors, returning null; rethrow everything else. */
+export function returnNullOnENOENT<T>(fn: () => T): T | null {
+  try {
+    return fn();
+  } catch (err: unknown) {
+    if ((err as NodeJS.ErrnoException).code === 'ENOENT') return null;
+    throw err;
+  }
+}
+
+/** Run a void function, silently swallowing ENOENT errors; rethrow everything else. */
+export function swallowENOENT(fn: () => void): void {
+  try {
+    fn();
+  } catch (err: unknown) {
+    if ((err as NodeJS.ErrnoException).code === 'ENOENT') return;
+    throw err;
   }
 }
 

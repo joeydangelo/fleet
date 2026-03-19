@@ -9,7 +9,7 @@ import { listDocs } from '../lib/docs.js';
 import { syncDocs } from '../lib/doc-sync.js';
 import { ensureFleetGitignore, removeFleetFromRootGitignore } from '../lib/gitignore.js';
 import { installHooks } from '../lib/hooks.js';
-import { success, skip, handleError } from '../lib/output.js';
+import { success, skip, handleError, toErrorMessage } from '../lib/output.js';
 import { findBundledDir, writeDefaultFleetYaml } from '../lib/util.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -136,7 +136,7 @@ export function initCommand(): Command {
           success('docs', 'up to date');
         }
       } catch (err) {
-        skip('docs', `sync failed: ${err instanceof Error ? err.message : String(err)}`);
+        skip('docs', `sync failed: ${toErrorMessage(err)}`);
       }
 
       installSkills(repoRoot);

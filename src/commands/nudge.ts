@@ -1,9 +1,7 @@
 import { Command } from 'commander';
-import { getRepoRoot } from '../lib/git.js';
-import { readRequiredSyncState } from '../lib/sync.js';
+import { requireFleetSession } from '../lib/session-context.js';
 import { appendMessage } from '../lib/messages.js';
 import { handleError, success } from '../lib/output.js';
-import { getTaskIdentity } from '../lib/session.js';
 import { emitEvent } from '../lib/feed.js';
 
 /** Build the `fleet nudge` CLI command. */
@@ -14,10 +12,7 @@ export function nudgeCommand(): Command {
     .argument('<message>', 'Message to send')
     .action((task: string, message: string) => {
       try {
-        const repoRoot = getRepoRoot();
-        readRequiredSyncState(repoRoot);
-
-        const sender = getTaskIdentity(repoRoot);
+        const { repoRoot, taskName: sender } = requireFleetSession();
         appendMessage(
           sender,
           {

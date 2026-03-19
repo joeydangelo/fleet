@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computeThreads, formatMessage } from '../src/commands/inbox.js';
+import { computeThreads, formatMessageForCLI } from '../src/commands/inbox.js';
 import type { Message } from '../src/lib/messages.js';
 
 function entry(overrides: Partial<Message> & { thread?: string }): Message {
@@ -102,15 +102,15 @@ describe('computeThreads', () => {
   });
 });
 
-describe('formatMessage', () => {
+describe('formatMessageForCLI', () => {
   it('formats nudge with warning prefix', () => {
     const nudge = entry({ type: 'nudge', from: 'orchestrator', msg: 'Finish task' });
-    expect(formatMessage(nudge)).toBe('[fleet] Warning: Finish task');
+    expect(formatMessageForCLI(nudge)).toBe('[fleet] Warning: Finish task');
   });
 
   it('formats broadcast as [from] broadcast: msg', () => {
     const broadcast = entry({ type: 'broadcast', from: 'api', msg: 'Schema updated' });
-    expect(formatMessage(broadcast)).toBe('[api] broadcast: Schema updated');
+    expect(formatMessageForCLI(broadcast)).toBe('[api] broadcast: Schema updated');
   });
 
   it('formats directed message (with to) as [from → to] msg', () => {
@@ -120,11 +120,11 @@ describe('formatMessage', () => {
       to: 'auth',
       msg: 'Are you done?',
     });
-    expect(formatMessage(directed)).toBe('[orchestrator → auth] Are you done?');
+    expect(formatMessageForCLI(directed)).toBe('[orchestrator → auth] Are you done?');
   });
 
   it('formats plain message (no to, not nudge/broadcast) as [from] msg', () => {
     const plain = entry({ type: 'send', from: 'api', msg: 'Just a note' });
-    expect(formatMessage(plain)).toBe('[api] Just a note');
+    expect(formatMessageForCLI(plain)).toBe('[api] Just a note');
   });
 });

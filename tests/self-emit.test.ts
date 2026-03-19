@@ -1,7 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { mkdirSync, writeFileSync, readFileSync, existsSync, rmSync } from 'node:fs';
-import { resolve } from 'node:path';
-import { makeTempDir } from './helpers/temp.js';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Track emitEvent calls
 const emitCalls: Array<Record<string, unknown>> = [];
@@ -15,28 +12,6 @@ vi.mock('../src/lib/feed.js', () => ({
 vi.mock('node:child_process', () => ({
   execFileSync: vi.fn().mockReturnValue('EXTEND'),
 }));
-
-describe('self-emit: archiveSession copies feed.ndjson', () => {
-  let tmpDir: string;
-
-  beforeEach(() => {
-    tmpDir = makeTempDir();
-  });
-
-  afterEach(() => {
-    rmSync(tmpDir, { recursive: true, force: true });
-  });
-
-  it('feed.ndjson is preserved in run directory for archive copy', () => {
-    const runDir = resolve(tmpDir, '.fleet', 'run');
-    mkdirSync(runDir, { recursive: true });
-    const feedPath = resolve(runDir, 'feed.ndjson');
-    writeFileSync(feedPath, '{"event":"test"}\n');
-
-    expect(existsSync(feedPath)).toBe(true);
-    expect(readFileSync(feedPath, 'utf-8')).toContain('"event":"test"');
-  });
-});
 
 describe('self-emit: triage emits fleet.triage event', () => {
   beforeEach(() => {

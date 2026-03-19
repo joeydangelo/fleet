@@ -1,15 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { render, Box, Text, useApp, useInput } from 'ink';
 import { Command } from 'commander';
-import { loadRepoConfig } from '../lib/config.js';
-import { planWorktrees } from '../lib/session.js';
+import { loadSessionContext } from '../lib/session-context.js';
 import { readSyncState } from '../lib/sync.js';
 import type { SyncState, TaskState, MergeEntry } from '../lib/sync.js';
-import { readMessages } from '../lib/messages.js';
+import { readMessages, formatMessagePrefix } from '../lib/messages.js';
 import type { Message } from '../lib/messages.js';
-import { readPaneConfig } from '../lib/pane-state.js';
-import { tryGetLivenessMap } from '../lib/util.js';
-import { formatElapsed } from '../lib/util.js';
+import { tryGetLivenessMap, formatElapsed } from '../lib/util.js';
 import { evaluateAllAgents } from '../lib/health.js';
 import type { HealthSnapshot } from '../lib/health.js';
 import { resolveAgentStatus, statusStyle } from '../lib/display-status.js';
@@ -43,16 +40,9 @@ export function relativeTime(isoTs: string, now: Date): string {
 }
 
 /** Format a message for display, truncating if needed. */
-export function formatMessage(entry: Message, now: Date, maxLen: number): string {
+export function formatMessageForDisplay(entry: Message, now: Date, maxLen: number): string {
   const rel = relativeTime(entry.ts, now);
-  let prefix: string;
-  if (entry.type === 'broadcast') {
-    prefix = `${entry.from}:`;
-  } else if (entry.type === 'nudge') {
-    prefix = `Orchestrator -> ${entry.to ?? ''}:`;
-  } else {
-    prefix = entry.to ? `${entry.from} -> ${entry.to}:` : `${entry.from}:`;
-  }
+  const prefix = formatMessagePrefix(entry);
   const suffix = ` (${rel})`;
   const content = ` ${entry.msg}`;
   const available = maxLen - prefix.length - suffix.length;
@@ -111,8 +101,7 @@ function pollState(
   const now = new Date();
   const syncState = readSyncState(repoRoot);
   const messages = readMessages(repoRoot);
-  const paneConfig = readPaneConfig(repoRoot);
-  const livenessMap = tryGetLivenessMap(paneConfig);
+  const livenessMap = tryGetLivenessMap(repoRoot);
 
   let healthSnapshot: HealthSnapshot | null = null;
   if (syncState) {
@@ -217,7 +206,7 @@ function MailPanel({ messages, now }: { messages: Message[]; now: Date }) {
       {recent.length === 0 && <Text dimColor>No messages</Text>}
       {recent.map((msg, i) => (
         <Text key={i} wrap="truncate">
-          {formatMessage(msg, now, 70)}
+          {formatMessageForDisplay(msg, now, 70)}
         </Text>
       ))}
     </Box>
@@ -324,9 +313,8 @@ export function dashboardCommand(): Command {
     .option('--interval <seconds>', 'Poll interval in seconds', String(DEFAULT_POLL_INTERVAL))
     .action((opts: { interval: string }) => {
       try {
-        const { repoRoot, config } = loadRepoConfig();
+        const { repoRoot, config, worktrees } = loadSessionContext();
         const interval = parseInt(opts.interval, 10) || DEFAULT_POLL_INTERVAL;
-        const worktrees = planWorktrees(config, repoRoot);
         const taskNames = worktrees.map((w) => w.taskName);
         const version = getVersion();
 

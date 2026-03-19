@@ -3,9 +3,8 @@ import pc from 'picocolors';
 import { existsSync, readdirSync, rmSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { removeWorktree, branchExists, deleteBranch, cleanupBackupRefs } from '../lib/git.js';
-import { loadRepoConfig } from '../lib/config.js';
-import { planWorktrees } from '../lib/session.js';
-import { removeSyncWorktree, archiveSession, readSyncState } from '../lib/sync.js';
+import { loadSessionContext } from '../lib/session-context.js';
+import { removeSyncWorktree, archiveSession } from '../lib/sync.js';
 import { SYNC_BRANCH } from '../lib/constants.js';
 import { createTmuxService } from '../lib/tmux.js';
 import { killDetachedAgents, killOrphanedAgentSessions } from '../lib/pane-state.js';
@@ -47,13 +46,9 @@ export function downCommand(): Command {
     .option('--dry-run', 'Show what would be removed without making changes')
     .action((opts: { dryRun?: boolean }) => {
       try {
-        const { repoRoot, config } = loadRepoConfig();
-        const worktrees = planWorktrees(config, repoRoot);
+        const { repoRoot, config, worktrees, syncState } = loadSessionContext();
 
         console.log(pc.bold(`fleet down${opts.dryRun ? ' (dry run)' : ''}\n`));
-
-        // Read sync state before cleanup for session.end metrics
-        const syncState = readSyncState(repoRoot);
 
         if (opts.dryRun) {
           for (const wt of worktrees) {

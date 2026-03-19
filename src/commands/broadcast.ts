@@ -1,7 +1,5 @@
 import { Command } from 'commander';
-import { getRepoRoot } from '../lib/git.js';
-import { getTaskIdentity } from '../lib/session.js';
-import { readRequiredSyncState } from '../lib/sync.js';
+import { requireFleetSession } from '../lib/session-context.js';
 import { appendMessage } from '../lib/messages.js';
 import { handleError, colors } from '../lib/output.js';
 import { emitEvent } from '../lib/feed.js';
@@ -13,10 +11,7 @@ export function broadcastCommand(): Command {
     .argument('<message>', 'Message to broadcast')
     .action((message: string) => {
       try {
-        const repoRoot = getRepoRoot();
-        const taskName = getTaskIdentity(repoRoot);
-
-        readRequiredSyncState(repoRoot);
+        const { repoRoot, taskName } = requireFleetSession();
 
         appendMessage(taskName, { type: 'broadcast', msg: message }, repoRoot);
         emitEvent({ event: 'fleet.broadcast', msg: message });

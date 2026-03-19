@@ -14,9 +14,10 @@ import { z } from 'zod';
 import { git } from './git.js';
 import { requireSyncState } from './output.js';
 import { CLIError, NotFoundError, ExternalCommandError } from './errors.js';
-import { SYNC_BRANCH } from './constants.js';
+import { SYNC_BRANCH, REVIEW_VERDICTS } from './constants.js';
+import type { ReviewVerdict } from './constants.js';
 import { detectTaskName } from './session.js';
-import { sanitizeBranchName } from './util.js';
+import { sanitizeBranchName, returnNullOnENOENT } from './util.js';
 const STATE_FILE = 'state.json';
 const MAX_RETRIES = 10;
 const LOCK_DIR = '.fleet-sync-lock';
@@ -78,7 +79,7 @@ export interface TaskState {
   focus?: string[];
   /** Always initialized to 0; incremented by submitForReview. */
   reviewCycle?: number;
-  verdict?: 'pass' | 'fail' | 'skip';
+  verdict?: ReviewVerdict;
 }
 
 /** Exhaustive check: returns true only for statuses where the task is fully complete. */
@@ -120,7 +121,7 @@ const TaskStateSchema = z.object({
   doneAt: z.string().optional(),
   focus: z.array(z.string()).optional(),
   reviewCycle: z.number().optional().default(0),
-  verdict: z.enum(['pass', 'fail', 'skip']).optional(),
+  verdict: z.enum(REVIEW_VERDICTS).optional(),
 });
 
 const MergeEntrySchema = z.discriminatedUnion('status', [
@@ -239,25 +240,19 @@ function commitSyncChanges(syncDir: string, message: string): void {
 
 /** Read and parse the sync state from the sync worktree, or null if the file is missing. */
 export function readSyncState(repoRoot?: string): SyncState | null {
-  try {
+  return returnNullOnENOENT(() => {
     const syncDir = resolveSyncDir(repoRoot ?? process.cwd());
     const raw = readFileSync(resolve(syncDir, STATE_FILE), 'utf-8');
     return SyncStateSchema.parse(JSON.parse(raw));
-  } catch (err: unknown) {
-    if ((err as NodeJS.ErrnoException).code === 'ENOENT') return null;
-    throw err;
-  }
+  });
 }
 
 /** Read a file from the sync worktree by relative path, or null if missing. */
 export function readSyncFile(path: string, repoRoot?: string): string | null {
-  try {
+  return returnNullOnENOENT(() => {
     const syncDir = resolveSyncDir(repoRoot ?? process.cwd());
     return readFileSync(resolve(syncDir, path), 'utf-8');
-  } catch (err: unknown) {
-    if ((err as NodeJS.ErrnoException).code === 'ENOENT') return null;
-    throw err;
-  }
+  });
 }
 
 /** List files under a directory prefix in the sync worktree. */
@@ -328,23 +323,27 @@ export function initSyncState(
   };
 }
 
-/** Transition a task to `in_progress` with a claimed timestamp. */
-export function claimTask(state: SyncState, taskName: string): SyncState {
+/** Apply partial updates to a task, returning a new immutable SyncState. Throws if the task doesn't exist. */
+function updateTaskStatus(
+  state: SyncState,
+  taskName: string,
+  updates: Partial<TaskState>,
+): SyncState {
   const task = state.tasks[taskName];
   if (!task) throw new NotFoundError(`Task not found in sync state: ${taskName}`);
-
   return {
     ...state,
-    tasks: {
-      ...state.tasks,
-      [taskName]: {
-        ...task,
-        status: 'in_progress',
-        claimed: new Date().toISOString(),
-        reviewCycle: task.reviewCycle ?? 0,
-      },
-    },
+    tasks: { ...state.tasks, [taskName]: { ...task, ...updates } },
   };
+}
+
+/** @internal - exported for testing */
+export function claimTask(state: SyncState, taskName: string): SyncState {
+  return updateTaskStatus(state, taskName, {
+    status: 'in_progress',
+    claimed: new Date().toISOString(),
+    reviewCycle: state.tasks[taskName]?.reviewCycle ?? 0,
+  });
 }
 
 /**
@@ -398,55 +397,23 @@ export function updateLastCheck(taskName: string, repoRoot: string): void {
 
 /** Transition a task to `in_review` and increment its review cycle counter. */
 export function submitForReview(state: SyncState, taskName: string): SyncState {
-  const task = state.tasks[taskName];
-  if (!task) throw new NotFoundError(`Task not found in sync state: ${taskName}`);
-
-  return {
-    ...state,
-    tasks: {
-      ...state.tasks,
-      [taskName]: {
-        ...task,
-        status: 'in_review',
-        reviewCycle: (task.reviewCycle ?? 0) + 1,
-      },
-    },
-  };
+  return updateTaskStatus(state, taskName, {
+    status: 'in_review',
+    reviewCycle: (state.tasks[taskName]?.reviewCycle ?? 0) + 1,
+  });
 }
 
 /** Transition a task to `done` with a completion timestamp. */
 export function completeTask(state: SyncState, taskName: string): SyncState {
-  const task = state.tasks[taskName];
-  if (!task) throw new NotFoundError(`Task not found in sync state: ${taskName}`);
-
-  return {
-    ...state,
-    tasks: {
-      ...state.tasks,
-      [taskName]: {
-        ...task,
-        status: 'done',
-        doneAt: new Date().toISOString(),
-      },
-    },
-  };
+  return updateTaskStatus(state, taskName, {
+    status: 'done',
+    doneAt: new Date().toISOString(),
+  });
 }
 
 /** Revert a task back to `in_progress` (e.g. after a failed review). */
 export function reopenTask(state: SyncState, taskName: string): SyncState {
-  const task = state.tasks[taskName];
-  if (!task) throw new NotFoundError(`Task not found in sync state: ${taskName}`);
-
-  return {
-    ...state,
-    tasks: {
-      ...state.tasks,
-      [taskName]: {
-        ...task,
-        status: 'in_progress',
-      },
-    },
-  };
+  return updateTaskStatus(state, taskName, { status: 'in_progress' });
 }
 
 /** Create the initial merge tracking map with all tasks set to `pending`. */

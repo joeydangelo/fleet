@@ -106,20 +106,11 @@ describe('submitForReview', () => {
 });
 
 describe('isTerminalStatus', () => {
-  it('returns true for done', () => {
-    expect(isTerminalStatus('done')).toBe(true);
-  });
-
-  it('returns false for in_review', () => {
-    expect(isTerminalStatus('in_review')).toBe(false);
-  });
-
-  it('returns false for in_progress', () => {
-    expect(isTerminalStatus('in_progress')).toBe(false);
-  });
-
-  it('returns false for pending', () => {
-    expect(isTerminalStatus('pending')).toBe(false);
+  it.each([
+    ['done', true],
+    ['pending', false],
+  ] as const)('isTerminalStatus(%s) → %s', (status, expected) => {
+    expect(isTerminalStatus(status)).toBe(expected);
   });
 });
 

@@ -3,22 +3,18 @@ import { mkdirSync, rmSync } from 'node:fs';
 import { writeFileSync } from 'atomically';
 import { join } from 'node:path';
 import { resolveMainRoot } from '../lib/git.js';
+import { swallowENOENT } from '../lib/util.js';
 import { detectTaskName } from '../lib/session.js';
 import { readInboxCursor, writeInboxCursor } from '../lib/health.js';
-import { readMessagesForTask, getUnansweredThreadsForTask } from '../lib/messages.js';
-import type { Message, ThreadedMessage, OpenThread } from '../lib/messages.js';
-export type { OpenThread } from '../lib/messages.js';
+import {
+  readMessagesForTask,
+  getUnansweredThreadsForTask,
+  formatMessagePrefix,
+  matchThreads,
+} from '../lib/messages.js';
+import type { Message, OpenThread, ResolvedThread } from '../lib/messages.js';
+export type { OpenThread, ResolvedThread } from '../lib/messages.js';
 import { INBOX_GATE_PREFIX } from '../lib/constants.js';
-
-function hasThread(e: Message): e is ThreadedMessage {
-  return typeof (e as unknown as { thread?: unknown }).thread === 'string';
-}
-
-/** A directed message that has been answered. */
-export interface ResolvedThread {
-  send: ThreadedMessage;
-  reply: ThreadedMessage;
-}
 
 /** Categorised inbox entries: open threads, resolved threads, and broadcasts. */
 export interface ThreadResult {
@@ -32,46 +28,18 @@ export interface ThreadResult {
  * Open: send entries with a thread value that have no matching reply.
  * Resolved: send entries with a matching reply (same thread value).
  * Broadcasts: entries with type === 'broadcast' or 'nudge'.
- * Entries without a thread field (other than broadcasts/nudges) are skipped.
  */
 export function computeThreads(entries: Message[]): ThreadResult {
-  const sends = entries.filter((e): e is ThreadedMessage => e.type === 'send' && hasThread(e));
-  const replyByThread = new Map<string, ThreadedMessage>();
+  const { open, resolved } = matchThreads(entries);
   const broadcasts = entries.filter((e) => e.type === 'broadcast' || e.type === 'nudge');
-
-  for (const e of entries) {
-    if (e.type === 'reply' && hasThread(e)) {
-      replyByThread.set(e.thread, e);
-    }
-  }
-
-  const open: OpenThread[] = [];
-  const resolved: ResolvedThread[] = [];
-
-  for (const send of sends) {
-    const reply = replyByThread.get(send.thread);
-    if (reply) {
-      resolved.push({ send, reply });
-    } else {
-      open.push({ send });
-    }
-  }
-
   return { open, resolved, broadcasts };
 }
 
 /** Formats a Message entry as a display string; layout varies by type: nudge, broadcast, directed, or plain. */
-export function formatMessage(entry: Message): string {
-  if (entry.type === 'nudge') {
-    return `[fleet] Warning: ${entry.msg}`;
-  }
-  if (entry.type === 'broadcast') {
-    return `[${entry.from}] broadcast: ${entry.msg}`;
-  }
-  if (entry.to) {
-    return `[${entry.from} → ${entry.to}] ${entry.msg}`;
-  }
-  return `[${entry.from}] ${entry.msg}`;
+export function formatMessageForCLI(entry: Message): string {
+  const prefix = formatMessagePrefix(entry);
+  if (entry.type === 'nudge') return `${prefix} Warning: ${entry.msg}`;
+  return `${prefix} ${entry.msg}`;
 }
 
 /** Format unanswered threads into the gate denial message. */
@@ -98,11 +66,7 @@ export function writeGateFlag(cwd: string, taskName: string, unanswered: OpenThr
 
 /** Clear the inbox gate flag file for a task. Swallows ENOENT. */
 export function clearGateFlag(cwd: string, taskName: string): void {
-  try {
-    rmSync(join(cwd, `${INBOX_GATE_PREFIX}${taskName}`));
-  } catch (err: unknown) {
-    if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
-  }
+  swallowENOENT(() => rmSync(join(cwd, `${INBOX_GATE_PREFIX}${taskName}`)));
 }
 
 /** CLI command: show new messages, unanswered threads, and broadcasts for an agent. */
@@ -126,7 +90,7 @@ export function inboxCommand(): Command {
         if (relevant.length > 0) {
           console.log(`\n[fleet] ${relevant.length} new message(s) from other agents:`);
           for (const entry of relevant) {
-            console.log(`  ${formatMessage(entry)}`);
+            console.log(`  ${formatMessageForCLI(entry)}`);
           }
           console.log();
         }

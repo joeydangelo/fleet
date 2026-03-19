@@ -1,8 +1,7 @@
 import { Command } from 'commander';
-import { getRepoRoot } from '../lib/git.js';
-import { getTaskIdentity } from '../lib/session.js';
-import { readRequiredSyncState } from '../lib/sync.js';
+import { requireFleetSession } from '../lib/session-context.js';
 import { appendMessage, generateThreadId } from '../lib/messages.js';
+import { CLIError } from '../lib/errors.js';
 import { handleError, colors } from '../lib/output.js';
 import { emitEvent } from '../lib/feed.js';
 
@@ -14,14 +13,10 @@ export function sendCommand(): Command {
     .argument('<message>', 'Message to send')
     .action((task: string, message: string) => {
       try {
-        const repoRoot = getRepoRoot();
-        const taskName = getTaskIdentity(repoRoot);
+        const { repoRoot, taskName, syncState } = requireFleetSession();
 
-        const state = readRequiredSyncState(repoRoot);
-
-        if (!state.tasks[task]) {
-          console.error(colors.error(`Task '${task}' not found in session.`));
-          process.exit(1);
+        if (!syncState.tasks[task]) {
+          throw new CLIError(`Task '${task}' not found in session.`);
         }
 
         const thread = generateThreadId();

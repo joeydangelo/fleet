@@ -2,11 +2,8 @@ import { Command } from 'commander';
 import { existsSync } from 'node:fs';
 import pc from 'picocolors';
 import { getWorktreeProgress } from '../lib/worktree-stats.js';
-import { loadRepoConfig } from '../lib/config.js';
-import { planWorktrees } from '../lib/session.js';
-import { readSyncState } from '../lib/sync.js';
+import { loadSessionContext } from '../lib/session-context.js';
 import { readMessages } from '../lib/messages.js';
-import { readPaneConfig } from '../lib/pane-state.js';
 import { livenessMarker } from '../lib/tmux.js';
 import { tryGetLivenessMap } from '../lib/util.js';
 import {
@@ -22,12 +19,8 @@ import {
 export function statusCommand(): Command {
   return new Command('status').description('Check progress of all task worktrees').action(() => {
     try {
-      const { repoRoot, config } = loadRepoConfig();
-      const worktrees = planWorktrees(config, repoRoot);
-      const syncState = readSyncState(repoRoot);
-
-      const paneConfig = readPaneConfig(repoRoot);
-      const livenessMap = tryGetLivenessMap(paneConfig);
+      const { repoRoot, config, worktrees, syncState } = loadSessionContext();
+      const livenessMap = tryGetLivenessMap(repoRoot);
 
       console.log(pc.bold('fleet status\n'));
 

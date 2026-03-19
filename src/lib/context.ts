@@ -22,10 +22,6 @@ export function setColorOption(option: ColorOption): void {
   _colorOption = option;
 }
 
-export function getColorOption(): ColorOption {
-  return _colorOption;
-}
-
 export function shouldColorize(colorOption: ColorOption = _colorOption): boolean {
   if (colorOption === 'always') return true;
   if (colorOption === 'never') return false;

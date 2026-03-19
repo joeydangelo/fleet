@@ -3,6 +3,7 @@ import { join, basename } from 'node:path';
 import { parse as parseYaml } from 'yaml';
 import { getRepoRootOrNull } from './git.js';
 import { readManifest } from './manifest.js';
+import { toErrorMessage } from './output.js';
 
 /** Return the repo root or null when called outside a git repo. */
 function getRepoRootSafe(): string | null {
@@ -33,9 +34,7 @@ function getLookupPaths(repoRoot: string, category: string): string[] {
     const manifest = readManifest(repoRoot);
     lookupPath = manifest.docs_cache.lookup_path;
   } catch (err) {
-    console.warn(
-      `[fleet] Could not read manifest for lookup paths: ${err instanceof Error ? err.message : String(err)}`,
-    );
+    console.warn(`[fleet] Could not read manifest for lookup paths: ${toErrorMessage(err)}`);
     lookupPath = [];
   }
 

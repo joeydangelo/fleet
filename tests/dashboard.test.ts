@@ -2,9 +2,8 @@ import { describe, it, expect } from 'vitest';
 import {
   formatTime,
   relativeTime,
-  formatMessage,
+  formatMessageForDisplay,
   computeDuration,
-  mergeBadge,
 } from '../src/commands/dashboard.js';
 import type { Message } from '../src/lib/messages.js';
 import type { TaskState } from '../src/lib/sync.js';
@@ -43,7 +42,7 @@ describe('relativeTime', () => {
   });
 });
 
-describe('formatMessage', () => {
+describe('formatMessageForDisplay', () => {
   const now = new Date('2026-03-17T12:00:00Z');
 
   it('formats broadcast messages', () => {
@@ -53,8 +52,8 @@ describe('formatMessage', () => {
       type: 'broadcast',
       msg: 'Migration done',
     };
-    const result = formatMessage(msg, now, 80);
-    expect(result).toContain('schema:');
+    const result = formatMessageForDisplay(msg, now, 80);
+    expect(result).toContain('[schema] broadcast:');
     expect(result).toContain('Migration done');
     expect(result).toContain('1m ago');
   });
@@ -67,12 +66,12 @@ describe('formatMessage', () => {
       to: 'orchestrator',
       msg: 'Blocked',
     };
-    const result = formatMessage(msg, now, 80);
-    expect(result).toContain('worker -> orchestrator:');
+    const result = formatMessageForDisplay(msg, now, 80);
+    expect(result).toContain('[worker → orchestrator]');
     expect(result).toContain('Blocked');
   });
 
-  it('formats nudge messages with Orchestrator prefix', () => {
+  it('formats nudge messages with fleet prefix', () => {
     const msg: Message = {
       ts: new Date(now.getTime() - 45_000).toISOString(),
       from: 'orchestrator',
@@ -80,8 +79,8 @@ describe('formatMessage', () => {
       to: 'worker',
       msg: 'Wake up',
     };
-    const result = formatMessage(msg, now, 80);
-    expect(result).toContain('Orchestrator -> worker:');
+    const result = formatMessageForDisplay(msg, now, 80);
+    expect(result).toContain('[fleet]');
   });
 
   it('truncates long messages with ...', () => {
@@ -91,7 +90,7 @@ describe('formatMessage', () => {
       type: 'broadcast',
       msg: 'A'.repeat(200),
     };
-    const result = formatMessage(msg, now, 50);
+    const result = formatMessageForDisplay(msg, now, 50);
     expect(result).toContain('...');
     expect(result.length).toBeLessThanOrEqual(55); // small padding tolerance
   });
@@ -122,23 +121,5 @@ describe('computeDuration', () => {
     };
     const result = computeDuration(task, now);
     expect(result).toBe('3m 10s');
-  });
-});
-
-describe('mergeBadge', () => {
-  it('returns green for merged', () => {
-    expect(mergeBadge('merged')).toEqual({ label: 'merged', color: 'green' });
-  });
-
-  it('returns red for conflict', () => {
-    expect(mergeBadge('conflict')).toEqual({ label: 'conflict', color: 'red' });
-  });
-
-  it('returns gray for skipped', () => {
-    expect(mergeBadge('skipped')).toEqual({ label: 'skipped', color: 'gray' });
-  });
-
-  it('returns yellow for pending', () => {
-    expect(mergeBadge('pending')).toEqual({ label: 'pending', color: 'yellow' });
   });
 });

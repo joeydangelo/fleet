@@ -2,6 +2,7 @@ import { Command } from 'commander';
 import pc from 'picocolors';
 import { readDoc, listDocs } from '../lib/docs.js';
 import { ensureDocsFresh } from '../lib/doc-sync.js';
+import { NotFoundError } from '../lib/errors.js';
 import { handleError, colors, success, toErrorMessage } from '../lib/output.js';
 import { addDoc } from '../lib/doc-add.js';
 import type { DocType } from '../lib/doc-add.js';
@@ -107,9 +108,9 @@ export function createDocCommand(
           const doc = readDoc(category, docName);
           if (!doc) {
             const label = name.charAt(0).toUpperCase() + name.slice(1);
-            console.error(colors.error(`${label} not found: ${docName}`));
-            console.error(pc.dim(`Run \`fleet ${name} --list\` to see available ${category}.`));
-            process.exit(1);
+            throw new NotFoundError(
+              `${label} not found: ${docName}\nRun \`fleet ${name} --list\` to see available ${category}.`,
+            );
           }
           if (eventName) emitEvent({ event: eventName, name: docName });
           console.log(doc.content);

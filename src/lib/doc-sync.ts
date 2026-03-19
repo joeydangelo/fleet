@@ -36,9 +36,7 @@ export function generateDefaultManifest(): Record<string, string> {
   try {
     docsDir = getDocsBasePath();
   } catch (err) {
-    console.warn(
-      `[fleet] Could not resolve docs base path: ${err instanceof Error ? err.message : String(err)}`,
-    );
+    console.warn(`[fleet] Could not resolve docs base path: ${toErrorMessage(err)}`);
     return manifest;
   }
 
@@ -69,9 +67,7 @@ export function pruneStaleInternals(manifest: Record<string, string>): Record<st
   try {
     docsDir = getDocsBasePath();
   } catch (err) {
-    console.warn(
-      `[fleet] Could not resolve docs base path for pruning: ${err instanceof Error ? err.message : String(err)}`,
-    );
+    console.warn(`[fleet] Could not resolve docs base path for pruning: ${toErrorMessage(err)}`);
     return manifest;
   }
 
@@ -115,9 +111,7 @@ export function syncDocs(repoRoot: string): SyncResult {
   try {
     bundledDocsDir = getDocsBasePath();
   } catch (err) {
-    console.warn(
-      `[fleet] Could not resolve docs base path during sync: ${err instanceof Error ? err.message : String(err)}`,
-    );
+    console.warn(`[fleet] Could not resolve docs base path during sync: ${toErrorMessage(err)}`);
     writeManifest(repoRoot, { ...manifest, docs_cache: { ...manifest.docs_cache, files: final } });
     return { added, updated, removed, skipped };
   }

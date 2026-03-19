@@ -4,6 +4,7 @@ import { resolve, dirname } from 'node:path';
 
 import { fetchWithGhFallback } from './github-fetch.js';
 import { readManifest, writeManifest } from './manifest.js';
+import { toErrorMessage } from './output.js';
 
 /** The category of a fleet doc file — controls which subdirectory and manifest section it uses. */
 export type DocType = 'shortcut' | 'guideline' | 'template';
@@ -77,10 +78,7 @@ export async function addDoc(
   try {
     result = await fetchWithGhFallback(url);
   } catch (err) {
-    throw new Error(
-      `Failed to fetch doc from ${url}: ${err instanceof Error ? err.message : String(err)}`,
-      { cause: err },
-    );
+    throw new Error(`Failed to fetch doc from ${url}: ${toErrorMessage(err)}`, { cause: err });
   }
   let content = result.content;
   const { usedGhCli } = result;

@@ -62,3 +62,9 @@ export const REVIEW_MAX_RETRIES = 2;
 
 /** Path prefix for unanswered-message flag files (per task). */
 export const INBOX_GATE_PREFIX = '.fleet/run/.unanswered-';
+
+/** Canonical list of review verdict values — used by both the type and Zod schema. */
+export const REVIEW_VERDICTS = ['pass', 'fail', 'skip'] as const;
+
+/** Outcome of a PR review: pass, fail, or skip (timeout/error). */
+export type ReviewVerdict = (typeof REVIEW_VERDICTS)[number];

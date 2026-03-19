@@ -1,7 +1,7 @@
 import { resolve } from 'node:path';
 import { Command } from 'commander';
 import pc from 'picocolors';
-import { getRepoRoot, getCurrentBranch } from '../lib/git.js';
+import { getCurrentBranch } from '../lib/git.js';
 import {
   readRequiredSyncState,
   readSyncFile,
@@ -11,8 +11,8 @@ import {
   writeSyncState,
   writeSyncFile,
   reviewFilePath,
-  requireWorktreeTask,
 } from '../lib/sync.js';
+import { requireFleetSession } from '../lib/session-context.js';
 import { createTmuxService } from '../lib/tmux.js';
 import { reviewTask, countFindings } from '../lib/reviewer.js';
 import { REVIEW_MAX_RETRIES } from '../lib/constants.js';
@@ -35,10 +35,9 @@ export function reviewCommand(): Command {
 
 /** Submit the current task for review — returns 0 on PASS/SKIP, 1 on FAIL. */
 export async function runReview(): Promise<number> {
-  const repoRoot = getRepoRoot();
-  const taskName = requireWorktreeTask(repoRoot);
+  const { repoRoot, taskName, syncState } = requireFleetSession();
 
-  let state = readRequiredSyncState(repoRoot);
+  let state = syncState;
 
   const task = state.tasks[taskName];
   if (!task) {
@@ -77,21 +76,20 @@ export async function runReview(): Promise<number> {
   const reviewPath = reviewFilePath(taskBranch);
 
   console.log(pc.dim(`  Reviewing ${taskName}...`));
-  const result = await reviewTask(
-    tmux,
+  const result = await reviewTask(tmux, {
     taskBranch,
     targetBranch,
     repoRoot,
-    {
+    callbacks: {
       onWarning: (elapsed) => console.log(pc.yellow(`  ⚠ reviewer still working (${elapsed})`)),
       onNudge: (elapsed) => console.log(pc.yellow(`  📩 nudging reviewer to wrap up (${elapsed})`)),
       onCapture: (_elapsed, path) => console.log(pc.dim(`  📋 reviewer capture saved: ${path}`)),
       onTimeout: (elapsed) => console.log(pc.red(`  ⏱ reviewer timed out (${elapsed}) — skipping`)),
     },
     taskFilePath,
-    reviewPath,
-    { taskName, cycle: nextCycle },
-  );
+    reviewFileOverride: reviewPath,
+    feedContext: { taskName, cycle: nextCycle },
+  });
 
   // Build the "## Review — Cycle N" section from the verdict
   const findingsSection = [

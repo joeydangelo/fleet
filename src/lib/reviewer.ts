@@ -22,21 +22,32 @@ import {
   isAgentPromptReady,
   sendAndVerifyMessage,
 } from './tmux.js';
-import { REVIEW_TIMEOUT_MS, REVIEW_NUDGE_MS, BEACON_FOLLOWUP_DELAYS } from './constants.js';
-import { sleep, formatElapsed, sanitizeBranchName } from './util.js';
+import {
+  REVIEW_TIMEOUT_MS,
+  REVIEW_NUDGE_MS,
+  BEACON_FOLLOWUP_DELAYS,
+  REVIEW_VERDICTS,
+} from './constants.js';
+import type { ReviewVerdict } from './constants.js';
+export type { ReviewVerdict } from './constants.js';
+import { sleep, formatElapsed, sanitizeBranchName, returnNullOnENOENT } from './util.js';
 import { reviewFilePath } from './sync.js';
 import { emitEvent } from './feed.js';
+import { toErrorMessage } from './output.js';
 
 /** Count review findings (lines starting with CRITICAL/MAJOR/MINOR). */
 export function countFindings(issues: string): number {
   return issues.split('\n').filter((l) => /^(CRITICAL|MAJOR|MINOR)/i.test(l.trim())).length;
 }
 
+/** Context for emitting review feed events. */
+export interface ReviewFeedContext {
+  taskName: string;
+  cycle: number;
+}
+
 /** Emit a review.verdict feed event if feedContext is provided. */
-function emitVerdictEvent(
-  feedContext: { taskName: string; cycle: number } | undefined,
-  result: ReviewResult,
-): void {
+function emitVerdictEvent(feedContext: ReviewFeedContext | undefined, result: ReviewResult): void {
   if (!feedContext) return;
   emitEvent({
     event: 'review.verdict',
@@ -49,8 +60,7 @@ function emitVerdictEvent(
 /** Prefix for all reviewer tmux sessions. */
 const REVIEW_SESSION_PREFIX = 'fleet-review-';
 
-/** Outcome of a PR review: pass, fail, or skip (timeout/error). */
-export type ReviewVerdict = 'pass' | 'fail' | 'skip';
+export { REVIEW_VERDICTS };
 
 /** Structured review output: verdict plus categorized findings. */
 export interface ReviewResult {
@@ -86,27 +96,26 @@ export function verdictFilePath(repoRoot: string, taskBranch: string): string {
 /** Read and parse the verdict sentinel file. Returns null if not yet written. */
 export function readVerdictFile(filePath: string): ReviewResult | null {
   try {
-    const raw = readFileSync(filePath, 'utf-8');
-    const data = JSON.parse(raw) as Partial<ReviewResult>;
-    const v = String(data.verdict ?? '').toLowerCase();
-    // Fail-closed: anything other than an explicit 'pass' is treated as 'fail'
-    const verdict: ReviewVerdict = v === 'pass' ? 'pass' : 'fail';
-    return {
-      verdict,
-      strengths: String(data.strengths ?? ''),
-      issues: String(data.issues ?? ''),
-      suggestions: data.suggestions ? String(data.suggestions) : undefined,
-    };
+    return returnNullOnENOENT(() => {
+      const raw = readFileSync(filePath, 'utf-8');
+      const data = JSON.parse(raw) as Partial<ReviewResult>;
+      const v = String(data.verdict ?? '').toLowerCase();
+      // Fail-closed: anything other than an explicit 'pass' is treated as 'fail'
+      const verdict: ReviewVerdict = v === 'pass' ? 'pass' : 'fail';
+      return {
+        verdict,
+        strengths: String(data.strengths ?? ''),
+        issues: String(data.issues ?? ''),
+        suggestions: data.suggestions ? String(data.suggestions) : undefined,
+      };
+    });
   } catch (err: unknown) {
-    if ((err as NodeJS.ErrnoException).code === 'ENOENT') return null;
     // Corrupt file — warn and fail-closed so poll loop doesn't wait until timeout
-    console.warn(
-      `[fleet] Corrupt verdict file ${filePath}: ${err instanceof Error ? err.message : String(err)}`,
-    );
+    console.warn(`[fleet] Corrupt verdict file ${filePath}: ${toErrorMessage(err)}`);
     return {
       verdict: 'fail',
       strengths: '',
-      issues: `Verdict file corrupt: ${err instanceof Error ? err.message : String(err)}`,
+      issues: `Verdict file corrupt: ${toErrorMessage(err)}`,
     };
   }
 }
@@ -216,33 +225,38 @@ export function killReviewerSessions(tmux: TmuxServiceApi): void {
   }
 }
 
+export interface ReviewTaskOptions {
+  taskBranch: string;
+  targetBranch: string;
+  repoRoot: string;
+  callbacks?: ReviewCallbacks;
+  taskFilePath?: string;
+  reviewFileOverride?: string;
+  feedContext?: ReviewFeedContext;
+}
+
 /**
- * Review a task branch by launching a Claude session in a detached tmux session.
- * The reviewer loads `fleet shortcut review-pr` and guidelines autonomously.
+ * Launch a reviewer agent in tmux and poll for its verdict.
  *
- * Mini-ZFC escalation (time-based, no heartbeats):
- *   0–2min:  polling silently
- *   2min:    warning — reviewer is still working
- *   5min:    nudge — send-keys reminder to wrap up
- *   10min:   timeout — capture pane for diagnostics, default to skip
- *
- * @param tmux - Tmux service for session management
- * @param taskBranch - The task branch to review (e.g., "feature/api-auth")
- * @param targetBranch - The target branch to diff against (e.g., "feature/main")
- * @param repoRoot - Repository root path
- * @param callbacks - Optional callbacks for orchestrator logging
- * @returns ReviewResult with verdict (pass/fail) and findings text
+ * Mini-ZFC escalation timeline (time-based, no heartbeats):
+ *   0–2min  silent polling (REVIEW_POLL_MS intervals)
+ *   2min    warning callback (REVIEW_WARN_MS)
+ *   5min    nudge message sent if idle (REVIEW_NUDGE_MS)
+ *  10min    timeout — pane captured for diagnostics, returns 'skip' (REVIEW_TIMEOUT_MS)
  */
 export async function reviewTask(
   tmux: TmuxServiceApi,
-  taskBranch: string,
-  targetBranch: string,
-  repoRoot: string,
-  callbacks?: ReviewCallbacks,
-  taskFilePath?: string,
-  reviewFileOverride?: string,
-  feedContext?: { taskName: string; cycle: number },
+  opts: ReviewTaskOptions,
 ): Promise<ReviewResult> {
+  const {
+    taskBranch,
+    targetBranch,
+    repoRoot,
+    callbacks,
+    taskFilePath,
+    reviewFileOverride,
+    feedContext,
+  } = opts;
   const sessionName = `${REVIEW_SESSION_PREFIX}${sanitizeBranchName(taskBranch)}`;
   const vPath = verdictFilePath(repoRoot, taskBranch);
 

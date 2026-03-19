@@ -1,12 +1,7 @@
 import { Command } from 'commander';
-import { getRepoRoot, getCurrentBranch } from '../lib/git.js';
-import {
-  readRequiredSyncState,
-  readSyncFile,
-  writeSyncFile,
-  reviewFilePath,
-  requireWorktreeTask,
-} from '../lib/sync.js';
+import { getCurrentBranch } from '../lib/git.js';
+import { readSyncFile, writeSyncFile, reviewFilePath } from '../lib/sync.js';
+import { requireFleetSession } from '../lib/session-context.js';
 import { handleError, colors } from '../lib/output.js';
 import pc from 'picocolors';
 import { emitEvent } from '../lib/feed.js';
@@ -19,16 +14,12 @@ interface SummaryRunOpts {
 
 /** Core logic for the summary command — testable without Commander. */
 export function runSummary(opts: SummaryRunOpts): number {
-  const repoRoot = getRepoRoot();
-
   if (opts.show && opts.append) {
     console.error(colors.error('Cannot use --show and --append together.'));
     return 1;
   }
 
-  const taskName = requireWorktreeTask(repoRoot);
-
-  readRequiredSyncState(repoRoot);
+  const { repoRoot, taskName } = requireFleetSession();
 
   const taskBranch = getCurrentBranch(repoRoot);
   const reviewPath = reviewFilePath(taskBranch);

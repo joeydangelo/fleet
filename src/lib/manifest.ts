@@ -3,6 +3,7 @@ import { writeFileSync } from 'atomically';
 import { resolve } from 'node:path';
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
 import { z } from 'zod';
+import { toErrorMessage } from './output.js';
 
 const YAML_OPTIONS = {
   lineWidth: 88,
@@ -51,10 +52,9 @@ export function readManifest(repoRoot: string): FleetManifest {
   try {
     return FleetManifestSchema.parse((parseYaml(raw) as unknown) ?? {});
   } catch (err) {
-    throw new Error(
-      `Failed to parse manifest at ${manifestPath}: ${err instanceof Error ? err.message : String(err)}`,
-      { cause: err },
-    );
+    throw new Error(`Failed to parse manifest at ${manifestPath}: ${toErrorMessage(err)}`, {
+      cause: err,
+    });
   }
 }
 

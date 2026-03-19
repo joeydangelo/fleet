@@ -121,6 +121,14 @@ export function readMessagesForTask(taskName: string, cwd?: string, since?: stri
   });
 }
 
+/** Build the display prefix for a message (e.g. "[from] broadcast:" or "[from -> to]"). */
+export function formatMessagePrefix(entry: Message): string {
+  if (entry.type === 'nudge') return '[fleet]';
+  if (entry.type === 'broadcast') return `[${entry.from}] broadcast:`;
+  if (entry.to) return `[${entry.from} → ${entry.to}]`;
+  return `[${entry.from}]`;
+}
+
 /** A message with a thread identifier — guaranteed to have `thread` set. */
 export interface ThreadedMessage extends Message {
   thread: string;
@@ -131,19 +139,47 @@ export interface OpenThread {
   send: ThreadedMessage;
 }
 
+/** A resolved (answered) message thread. */
+export interface ResolvedThread {
+  send: ThreadedMessage;
+  reply: ThreadedMessage;
+}
+
+function isThreaded(e: Message): e is ThreadedMessage {
+  return typeof e.thread === 'string';
+}
+
+/** Match sends to replies by thread ID. Returns open and resolved thread pairs. */
+export function matchThreads(entries: Message[]): {
+  open: OpenThread[];
+  resolved: ResolvedThread[];
+} {
+  const sends = entries.filter((e): e is ThreadedMessage => e.type === 'send' && isThreaded(e));
+  const replyByThread = new Map<string, ThreadedMessage>();
+  for (const e of entries) {
+    if (e.type === 'reply' && isThreaded(e)) {
+      replyByThread.set(e.thread, e);
+    }
+  }
+
+  const open: OpenThread[] = [];
+  const resolved: ResolvedThread[] = [];
+
+  for (const send of sends) {
+    const reply = replyByThread.get(send.thread);
+    if (reply) {
+      resolved.push({ send, reply });
+    } else {
+      open.push({ send });
+    }
+  }
+
+  return { open, resolved };
+}
+
 /** Returns open message threads addressed to taskName that have no reply. */
 export function getUnansweredThreadsForTask(taskName: string, cwd: string): OpenThread[] {
   const allEntries = readMessages(cwd);
-  const sends = allEntries.filter(
-    (e): e is ThreadedMessage => e.type === 'send' && typeof e.thread === 'string',
-  );
-  const replyByThread = new Map<string, ThreadedMessage>();
-  for (const e of allEntries) {
-    if (e.type === 'reply' && typeof e.thread === 'string') {
-      replyByThread.set(e.thread, e as ThreadedMessage);
-    }
-  }
-  return sends
-    .filter((send) => send.to === taskName && !replyByThread.has(send.thread))
-    .map((send) => ({ send }));
+  const { open } = matchThreads(allEntries);
+  return open.filter(({ send }) => send.to === taskName);
 }

@@ -12,12 +12,11 @@ import {
   createBackupRef,
   getConflictingFiles,
 } from '../lib/git.js';
-import { loadRepoConfig, topologicalSort } from '../lib/config.js';
+import { topologicalSort } from '../lib/config.js';
 import type { FleetConfig } from '../lib/config.js';
-import { planWorktrees } from '../lib/session.js';
 import type { WorktreeInfo } from '../lib/session.js';
+import { loadSessionContext } from '../lib/session-context.js';
 import {
-  readRequiredSyncState,
   writeSyncState,
   writeSyncStateAndFiles,
   initMergeState,
@@ -25,7 +24,7 @@ import {
 } from '../lib/sync.js';
 import type { SyncState } from '../lib/sync.js';
 import { generateConflictBrief } from '../lib/conflict.js';
-import { success, warn, skip, handleError } from '../lib/output.js';
+import { requireSyncState, success, warn, skip, handleError } from '../lib/output.js';
 import { ValidationError } from '../lib/errors.js';
 import { emitEvent } from '../lib/feed.js';
 
@@ -36,7 +35,8 @@ export function mergeCommand(): Command {
     .option('--continue', 'Continue merging after resolving a conflict')
     .action((opts: { continue?: boolean }) => {
       try {
-        const { repoRoot, config } = loadRepoConfig();
+        const { repoRoot, config, worktrees: allWorktrees, syncState } = loadSessionContext();
+        requireSyncState(syncState);
 
         const currentBranch = getCurrentBranch(repoRoot);
         if (currentBranch !== config.target) {
@@ -45,9 +45,8 @@ export function mergeCommand(): Command {
           );
         }
 
-        let state = readRequiredSyncState(repoRoot);
+        let state = syncState;
 
-        const allWorktrees = planWorktrees(config, repoRoot);
         const sortedNames = topologicalSort(config.tasks);
         const worktrees = sortedNames.map(
           (name) => allWorktrees.find((wt) => wt.taskName === name)!,

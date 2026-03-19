@@ -1,8 +1,7 @@
 import { Command } from 'commander';
-import { getRepoRoot } from '../lib/git.js';
-import { getTaskIdentity } from '../lib/session.js';
-import { readRequiredSyncState } from '../lib/sync.js';
+import { requireFleetSession } from '../lib/session-context.js';
 import { readMessages, replyToMessage } from '../lib/messages.js';
+import { CLIError } from '../lib/errors.js';
 import { handleError, colors } from '../lib/output.js';
 import { computeThreads, writeGateFlag, clearGateFlag } from './inbox.js';
 import { emitEvent } from '../lib/feed.js';
@@ -15,16 +14,12 @@ export function replyCommand(): Command {
     .argument('<message>', 'Reply message')
     .action((task: string, message: string) => {
       try {
-        const repoRoot = getRepoRoot();
-        const taskName = getTaskIdentity(repoRoot);
-
-        readRequiredSyncState(repoRoot);
+        const { repoRoot, taskName } = requireFleetSession();
 
         const reply = replyToMessage(taskName, task, message, repoRoot);
 
         if (!reply) {
-          console.error(colors.warn(`No unanswered messages from '${task}'.`));
-          process.exit(1);
+          throw new CLIError(`No unanswered messages from '${task}'.`);
         }
 
         emitEvent({ event: 'fleet.reply', to: task, msg: message });

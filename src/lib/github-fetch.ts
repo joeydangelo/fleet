@@ -1,5 +1,6 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
+import { toErrorMessage } from './output.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -70,10 +71,7 @@ export async function fetchWithGhFallback(
     return { content, usedGhCli: false };
   } catch (error) {
     if (!(error instanceof Error && error.message.includes('HTTP 403'))) {
-      throw new Error(
-        `Fetch failed for ${rawUrl}: ${error instanceof Error ? error.message : String(error)}`,
-        { cause: error },
-      );
+      throw new Error(`Fetch failed for ${rawUrl}: ${toErrorMessage(error)}`, { cause: error });
     }
   }
 

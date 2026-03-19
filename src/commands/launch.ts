@@ -2,8 +2,8 @@ import { Command } from 'commander';
 import { existsSync } from 'node:fs';
 import { basename } from 'node:path';
 import pc from 'picocolors';
-import { loadRepoConfig } from '../lib/config.js';
 import type { FleetConfig } from '../lib/config.js';
+import { loadSessionContext } from '../lib/session-context.js';
 import { planWorktrees } from '../lib/session.js';
 import { readSyncState } from '../lib/sync.js';
 import {
@@ -124,12 +124,10 @@ export function launchCommand(): Command {
     .action(async (opts: { dryRun?: boolean }) => {
       try {
         if (!opts.dryRun) ensureTmuxInstalled();
-        const { repoRoot, config } = loadRepoConfig();
+        const { repoRoot, config, worktrees, syncState } = loadSessionContext();
         if (!opts.dryRun) ensureNativeFilesystem(repoRoot);
 
         if (opts.dryRun) {
-          const worktrees = planWorktrees(config, repoRoot);
-          const syncState = readSyncState(repoRoot);
           const sessionName = tmuxSessionName(basename(repoRoot));
 
           console.log(pc.bold(`fleet launch: ${worktrees.length} task(s) (dry run)`));
