@@ -582,8 +582,8 @@ function isFleetHookEntry(entry: unknown): boolean {
   const obj = entry as Record<string, unknown>;
 
   /** Old flat format: `{ command: "fleet prime --brief" }` */
-  if ('command' in obj && typeof obj.command === 'string' && isFleetCommand(obj.command)) {
-    return true;
+  if ('command' in obj && typeof obj.command === 'string') {
+    if (isFleetCommand(obj.command) || /^fleet\s/.test(obj.command)) return true;
   }
 
   /** Matcher group format: `{ matcher: "", hooks: [{ command: "...fleet..." }] }` */
