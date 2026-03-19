@@ -135,8 +135,8 @@ export function initCommand(): Command {
         } else {
           success('docs', 'up to date');
         }
-      } catch {
-        skip('docs', 'bundled docs not found (run pnpm build)');
+      } catch (err) {
+        skip('docs', `sync failed: ${err instanceof Error ? err.message : String(err)}`);
       }
 
       installSkills(repoRoot);

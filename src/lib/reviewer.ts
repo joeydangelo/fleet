@@ -97,8 +97,17 @@ export function readVerdictFile(filePath: string): ReviewResult | null {
       issues: String(data.issues ?? ''),
       suggestions: data.suggestions ? String(data.suggestions) : undefined,
     };
-  } catch {
-    return null;
+  } catch (err: unknown) {
+    if ((err as NodeJS.ErrnoException).code === 'ENOENT') return null;
+    // Corrupt file — warn and fail-closed so poll loop doesn't wait until timeout
+    console.warn(
+      `[fleet] Corrupt verdict file ${filePath}: ${err instanceof Error ? err.message : String(err)}`,
+    );
+    return {
+      verdict: 'fail',
+      strengths: '',
+      issues: `Verdict file corrupt: ${err instanceof Error ? err.message : String(err)}`,
+    };
   }
 }
 

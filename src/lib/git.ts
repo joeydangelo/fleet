@@ -82,11 +82,16 @@ export function removeWorktree(worktreePath: string, cwd?: string): void {
 
 /** Count commits on `branch` that are not reachable from `base`. */
 export function getCommitCount(branch: string, base: string, cwd?: string): number {
-  const output = git(['rev-list', '--count', `${base}..${branch}`], {
-    cwd,
-    stdio: 'pipe',
-  });
-  return parseInt(output, 10);
+  try {
+    const output = git(['rev-list', '--count', `${base}..${branch}`], {
+      cwd,
+      stdio: 'pipe',
+    });
+    const n = parseInt(output, 10);
+    return Number.isNaN(n) ? 0 : n;
+  } catch {
+    return 0;
+  }
 }
 
 /** Count files changed between `base` and `branch`. */

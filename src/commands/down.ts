@@ -122,9 +122,9 @@ export function downCommand(): Command {
           const durationS = Math.round((Date.now() - new Date(syncState.session).getTime()) / 1000);
           emitEvent({
             event: 'session.end',
-            tasks_completed: completed,
-            tasks_failed: incomplete,
-            duration_s: durationS,
+            tasksCompleted: completed,
+            tasksFailed: incomplete,
+            durationS: durationS,
           });
         }
 

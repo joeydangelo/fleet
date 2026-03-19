@@ -4,10 +4,8 @@ import { resolve } from 'node:path';
 import pc from 'picocolors';
 import type { Formatter } from 'picocolors/types.js';
 import { getRepoRoot } from '../lib/git.js';
-import { handleError } from '../lib/output.js';
+import { handleError, COLOR_PALETTE } from '../lib/output.js';
 import { FEED_DIR, FEED_FILENAME } from '../lib/feed.js';
-
-const COLOR_PALETTE: Formatter[] = [pc.blue, pc.green, pc.yellow, pc.magenta, pc.cyan, pc.red];
 const TASK_COL_WIDTH = 12;
 
 /** Safely convert an unknown value to string. */
@@ -115,11 +113,11 @@ const DETAIL_FORMATTERS: Record<string, DetailFormatter> = {
   'session.start': sessionStartDetail,
   'session.end': (p) =>
     'completed: ' +
-    str(p.tasks_completed, '?') +
+    str(p.tasksCompleted ?? p.tasks_completed, '?') +
     ', failed: ' +
-    str(p.tasks_failed, '?') +
+    str(p.tasksFailed ?? p.tasks_failed, '?') +
     ', duration: ' +
-    str(p.duration_s, '?') +
+    str(p.durationS ?? p.duration_s, '?') +
     's',
 };
 

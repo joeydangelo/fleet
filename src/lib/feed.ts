@@ -174,9 +174,9 @@ export interface SessionStartEvent extends FeedEvent {
 
 export interface SessionEndEvent extends FeedEvent {
   event: 'session.end';
-  tasks_completed: number;
-  tasks_failed: number;
-  duration_s: number;
+  tasksCompleted: number;
+  tasksFailed: number;
+  durationS: number;
 }
 
 /** Input to emitEvent — event field is required, task and ts are auto-populated. */

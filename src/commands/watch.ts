@@ -13,7 +13,7 @@ import { createTmuxService, sendWakeSignal } from '../lib/tmux.js';
 import type { TmuxServiceApi } from '../lib/tmux.js';
 import { sleep, tryGetLivenessMap } from '../lib/util.js';
 import { DEFAULT_POLL_INTERVAL } from '../lib/constants.js';
-import { handleError, colors } from '../lib/output.js';
+import { handleError, colors, COLOR_PALETTE } from '../lib/output.js';
 import {
   evaluateAllAgents,
   writeHealthSnapshot,
@@ -21,8 +21,6 @@ import {
   saveTriageOutput,
 } from '../lib/health.js';
 import type { HealthState, HealthSnapshot } from '../lib/health.js';
-
-const COLOR_PALETTE: Formatter[] = [pc.blue, pc.green, pc.yellow, pc.magenta, pc.cyan, pc.red];
 
 function assignColor(index: number): Formatter {
   return COLOR_PALETTE[index % COLOR_PALETTE.length]!;

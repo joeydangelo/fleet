@@ -69,10 +69,13 @@ describe('readVerdictFile', () => {
     expect(result!.verdict).toBe('fail');
   });
 
-  it('returns null for malformed JSON', () => {
+  it('returns fail verdict for malformed JSON (fail-closed)', () => {
     const path = resolve(tmpDir, 'verdict.json');
     writeFileSync(path, 'not json at all');
-    expect(readVerdictFile(path)).toBeNull();
+    const result = readVerdictFile(path);
+    expect(result).not.toBeNull();
+    expect(result!.verdict).toBe('fail');
+    expect(result!.issues).toContain('Verdict file corrupt');
   });
 
   it('handles missing fields gracefully', () => {

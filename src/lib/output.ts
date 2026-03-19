@@ -1,5 +1,17 @@
+import pc from 'picocolors';
+import type { Formatter } from 'picocolors/types.js';
 import { createSemanticColors } from './context.js';
 import { CLIError } from './errors.js';
+
+/** Shared color palette for per-task coloring in watch and feed views. */
+export const COLOR_PALETTE: Formatter[] = [
+  pc.blue,
+  pc.green,
+  pc.yellow,
+  pc.magenta,
+  pc.cyan,
+  pc.red,
+];
 
 let _colors: ReturnType<typeof createSemanticColors> | null = null;
 

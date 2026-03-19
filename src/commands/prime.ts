@@ -51,7 +51,9 @@ export function primeCommand(): Command {
     .action(async (opts: { brief?: boolean }) => {
       try {
         const repoRoot = getRepoRoot();
-        await ensureDocsFresh(repoRoot).catch(() => {});
+        await ensureDocsFresh(repoRoot).catch((e) =>
+          console.warn(`[fleet] Doc sync error: ${toErrorMessage(e)}`),
+        );
         const taskName = detectTaskName(repoRoot);
 
         if (!taskName) {
@@ -255,7 +257,7 @@ function printBrief(
   }
 }
 
-/** Updates the `lastCheck` cursor so the next prime skips already-seen messages. */
+/** Print the full orientation dashboard for a builder agent: task file, team status, messages, and conflicts. */
 function printFull(
   taskName: string,
   taskContent: string | null,

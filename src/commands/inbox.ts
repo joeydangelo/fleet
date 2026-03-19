@@ -6,25 +6,18 @@ import { resolveMainRoot } from '../lib/git.js';
 import { detectTaskName } from '../lib/session.js';
 import { readInboxCursor, writeInboxCursor } from '../lib/health.js';
 import { readMessagesForTask, getUnansweredThreadsForTask } from '../lib/messages.js';
-import type { Message } from '../lib/messages.js';
+import type { Message, ThreadedMessage, OpenThread } from '../lib/messages.js';
+export type { OpenThread } from '../lib/messages.js';
 import { INBOX_GATE_PREFIX } from '../lib/constants.js';
 
-/** Message that carries a thread identifier. */
-type ThreadedEntry = Message & { thread: string };
-
-function hasThread(e: Message): e is ThreadedEntry {
+function hasThread(e: Message): e is ThreadedMessage {
   return typeof (e as unknown as { thread?: unknown }).thread === 'string';
-}
-
-/** A directed message awaiting a reply. */
-export interface OpenThread {
-  send: ThreadedEntry;
 }
 
 /** A directed message that has been answered. */
 export interface ResolvedThread {
-  send: ThreadedEntry;
-  reply: ThreadedEntry;
+  send: ThreadedMessage;
+  reply: ThreadedMessage;
 }
 
 /** Categorised inbox entries: open threads, resolved threads, and broadcasts. */
@@ -42,8 +35,8 @@ export interface ThreadResult {
  * Entries without a thread field (other than broadcasts/nudges) are skipped.
  */
 export function computeThreads(entries: Message[]): ThreadResult {
-  const sends = entries.filter((e): e is ThreadedEntry => e.type === 'send' && hasThread(e));
-  const replyByThread = new Map<string, ThreadedEntry>();
+  const sends = entries.filter((e): e is ThreadedMessage => e.type === 'send' && hasThread(e));
+  const replyByThread = new Map<string, ThreadedMessage>();
   const broadcasts = entries.filter((e) => e.type === 'broadcast' || e.type === 'nudge');
 
   for (const e of entries) {
