@@ -12,7 +12,6 @@ vi.mock('../src/lib/github-fetch.js', () => ({
 
 // Mock git so getRepoRoot() returns our temp dir (no actual git required)
 vi.mock('../src/lib/git.js', async (importOriginal) => {
-   
   return { ...(await importOriginal()), getRepoRoot: vi.fn(), getRepoRootOrNull: vi.fn() };
 });
 

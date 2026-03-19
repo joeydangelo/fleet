@@ -47,7 +47,9 @@ export function generateConflictBrief(opts: ConflictBriefOpts): string {
   if (mergedTasks.length > 0) {
     lines.push('## Already merged (in target)');
     for (const [name, entry] of mergedTasks) {
-      lines.push(`${name} -- merged clean${entry.status === 'merged' ? ` at ${entry.merged}` : ''}`);
+      lines.push(
+        `${name} -- merged clean${entry.status === 'merged' ? ` at ${entry.merged}` : ''}`,
+      );
     }
     lines.push('');
   }
