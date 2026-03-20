@@ -16,7 +16,9 @@ export async function runUp(
   repoRoot: string,
   configPath: string,
   config: FleetConfig,
+  opts?: { quiet?: boolean },
 ): Promise<WorktreeInfo[]> {
+  const quiet = opts?.quiet ?? false;
   const worktrees = createSession(config, repoRoot);
   writeTaskFiles(config, worktrees, config.target);
 
@@ -26,7 +28,7 @@ export async function runUp(
       const dest = resolve(wt.worktreePath, '.claude');
       if (!existsSync(dest)) {
         cpSync(claudeDir, dest, { recursive: true });
-        success(wt.taskName, '.claude/ → worktree');
+        if (!quiet) success(wt.taskName, '.claude/ → worktree');
       }
     }
   }
@@ -34,7 +36,7 @@ export async function runUp(
   // Always install hooks in each worktree to ensure they're current
   // (the branch's .claude/ may be stale if hooks were added after the base branch)
   for (const wt of worktrees) {
-    installHooks(wt.worktreePath);
+    installHooks(wt.worktreePath, { quiet });
   }
 
   const specFile = config.spec;
@@ -58,11 +60,13 @@ export async function runUp(
         copied: await copyIncludes(repoRoot, wt.worktreePath, config.include!),
       })),
     );
-    for (const { wt, copied } of results) {
-      if (copied.length > 0) {
-        console.log(
-          pc.dim(`  copied ${copied.length} file(s) to ${wt.taskName}: ${copied.join(', ')}`),
-        );
+    if (!quiet) {
+      for (const { wt, copied } of results) {
+        if (copied.length > 0) {
+          console.log(
+            pc.dim(`  copied ${copied.length} file(s) to ${wt.taskName}: ${copied.join(', ')}`),
+          );
+        }
       }
     }
   }
@@ -88,8 +92,10 @@ export async function runUp(
 
   writeSyncStateAndFiles(syncState, syncFiles, repoRoot);
 
-  for (const wt of worktrees) {
-    success(wt.taskName, wt.worktreePath);
+  if (!quiet) {
+    for (const wt of worktrees) {
+      success(wt.taskName, wt.worktreePath);
+    }
   }
 
   return worktrees;

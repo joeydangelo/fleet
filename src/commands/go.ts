@@ -3,6 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, rmSync } from 'node:fs';
 import { basename, resolve } from 'node:path';
 import pc from 'picocolors';
+import { intro, log, outro } from '@clack/prompts';
 import { getCurrentBranch, git } from '../lib/git.js';
 import { loadRepoConfig } from '../lib/config.js';
 import type { FleetConfig } from '../lib/config.js';
@@ -107,48 +108,54 @@ export async function runGo(opts: GoOpts): Promise<void> {
   ensureNativeFilesystem(repoRoot);
   const verbose = isVerbose();
   const totalStart = Date.now();
+  const taskCount = Object.keys(config.tasks).length;
+  const rail = `${pc.dim('│')}  `;
 
   const state = detectSessionState(repoRoot);
-  console.log(pc.bold('fleet go'));
-  console.log(`  target: ${config.target}`);
-  console.log(`  tasks:  ${Object.keys(config.tasks).length}`);
-  console.log(`  state:  ${state}\n`);
+
+  intro('fleet go');
+  console.log(`${rail}target: ${config.target} · ${taskCount} tasks`);
 
   if (state === 'clean') {
-    console.log(pc.dim('Nothing to do.'));
+    outro('Nothing to do.');
     return;
   }
 
   if (state === 'no-session') {
-    console.log(pc.bold('Step 1: fleet up\n'));
     let phaseStart = Date.now();
-    await runUp(repoRoot, configPath, config);
-    if (verbose) console.log(colors.info(`⏰ up: ${formatElapsed(Date.now() - phaseStart)}`));
+    const worktrees = await runUp(repoRoot, configPath, config, { quiet: true });
+    log.step('fleet up');
+    console.log(`${rail}${worktrees.map((w) => w.taskName).join(' · ')}`);
+    if (verbose)
+      console.log(`${rail}${colors.info(`⏰ up: ${formatElapsed(Date.now() - phaseStart)}`)}`);
 
-    console.log(pc.bold('\nStep 2: fleet launch\n'));
     phaseStart = Date.now();
-    await runLaunch(repoRoot, config);
-    if (verbose) console.log(colors.info(`⏰ launch: ${formatElapsed(Date.now() - phaseStart)}`));
+    const launched = await runLaunch(repoRoot, config, { quiet: true });
+    log.step('fleet launch');
+    console.log(`${rail}${launched} agent${launched === 1 ? '' : 's'} spawned`);
+    if (verbose)
+      console.log(`${rail}${colors.info(`⏰ launch: ${formatElapsed(Date.now() - phaseStart)}`)}`);
   }
 
   if (state === 'no-session' || state === 'agents-running' || state === 'has-dead-agents') {
-    console.log();
+    console.log(pc.dim('│'));
+    console.log(`${pc.magenta('●')}  watching ${taskCount} tasks...`);
     await runWatchLoop({
       repoRoot,
       configPath,
       interval: pollInterval,
-      header: pc.dim(
-        `Watching ${Object.keys(config.tasks).length} task(s), polling every ${pollInterval}s...`,
-      ),
+      header: '',
+      linePrefix: rail,
       onAbort: () => {
         console.log(pc.dim('\nAborted.'));
         process.exit(130);
       },
     });
-    if (verbose) console.log(colors.info(`⏰ watch: ${formatElapsed(Date.now() - totalStart)}`));
+    if (verbose)
+      console.log(`${rail}${colors.info(`⏰ watch: ${formatElapsed(Date.now() - totalStart)}`)}`);
+    log.step('all tasks complete');
   }
 
-  console.log(pc.bold('\nfleet merge\n'));
   let phaseStart = Date.now();
 
   // Remove before checkout to avoid "untracked files would be overwritten"
@@ -161,30 +168,32 @@ export async function runGo(opts: GoOpts): Promise<void> {
 
   const currentBranch = getCurrentBranch(repoRoot);
   if (currentBranch !== config.target) {
-    console.log(pc.dim(`Switching to target branch: ${config.target}`));
     git(['checkout', config.target], { cwd: repoRoot });
   }
 
   const mergeResult = runFleetCommand(['merge']);
   if (mergeResult.exitCode !== 0) {
-    console.log(colors.warn('\nMerge failed. Resolve the issue, then run: fleet merge --continue'));
-    console.log(colors.warn('Worktrees left intact (skipping fleet down).'));
+    log.warn('Merge failed. Resolve the issue, then run: fleet merge --continue');
+    log.warn('Worktrees left intact (skipping fleet down).');
     return;
   }
-  if (verbose) console.log(colors.info(`⏰ merge: ${formatElapsed(Date.now() - phaseStart)}`));
+  log.step('fleet merge');
+  if (verbose)
+    console.log(`${rail}${colors.info(`⏰ merge: ${formatElapsed(Date.now() - phaseStart)}`)}`);
 
-  console.log(pc.bold('\nfleet down\n'));
   phaseStart = Date.now();
   const downResult = runFleetCommand(['down']);
   if (downResult.exitCode !== 0) {
-    console.error(colors.error('\nfleet down failed.'));
+    log.error('fleet down failed.');
     process.exit(downResult.exitCode);
   }
-  if (verbose) console.log(colors.info(`⏰ down: ${formatElapsed(Date.now() - phaseStart)}`));
+  log.step('fleet down');
+  if (verbose)
+    console.log(`${rail}${colors.info(`⏰ down: ${formatElapsed(Date.now() - phaseStart)}`)}`);
 
-  if (verbose) console.log(colors.info(`⏰ total: ${formatElapsed(Date.now() - totalStart)}`));
-  console.log(colors.success(`\nDone. Work merged to ${config.target}.`));
-  console.log(pc.dim(`Next: run \`fleet shortcut finish-branch\``));
+  if (verbose)
+    console.log(`${rail}${colors.info(`⏰ total: ${formatElapsed(Date.now() - totalStart)}`)}`);
+  outro(`Done — run \`fleet shortcut finish-branch\``);
 }
 
 function printDryRun(repoRoot: string, config: FleetConfig): void {

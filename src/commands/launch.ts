@@ -52,15 +52,22 @@ export function printLaunchPreview(targets: WorktreeInfo[], syncState: SyncState
 }
 
 /** Spawn agents in detached tmux sessions for tasks that aren't done. */
-export async function runLaunch(repoRoot: string, config: FleetConfig): Promise<void> {
+export async function runLaunch(
+  repoRoot: string,
+  config: FleetConfig,
+  opts?: { quiet?: boolean },
+): Promise<number> {
+  const quiet = opts?.quiet ?? false;
   const worktrees = planWorktrees(config, repoRoot);
   const syncState = readSyncState(repoRoot);
   const sessionName = tmuxSessionName(basename(repoRoot));
 
-  console.log(pc.bold(`fleet launch: ${worktrees.length} task(s)`));
-  console.log(`  agent: claude`);
-  console.log(`  session: ${sessionName}`);
-  console.log(`  mode: detached\n`);
+  if (!quiet) {
+    console.log(pc.bold(`fleet launch: ${worktrees.length} task(s)`));
+    console.log(`  agent: claude`);
+    console.log(`  session: ${sessionName}`);
+    console.log(`  mode: detached\n`);
+  }
 
   const launchList: Array<{ taskName: string; worktreePath: string; agentCommand: string }> = [];
 
@@ -68,12 +75,12 @@ export async function runLaunch(repoRoot: string, config: FleetConfig): Promise<
     const taskState = syncState?.tasks[wt.taskName];
 
     if (taskState?.status === 'done' || taskState?.status === 'in_review') {
-      skip(wt.taskName, formatTaskStatus(taskState.status));
+      if (!quiet) skip(wt.taskName, formatTaskStatus(taskState.status));
       continue;
     }
 
     if (!existsSync(wt.worktreePath)) {
-      error(wt.taskName, 'worktree not found -- run fleet up first');
+      if (!quiet) error(wt.taskName, 'worktree not found -- run fleet up first');
       continue;
     }
 
@@ -91,8 +98,8 @@ export async function runLaunch(repoRoot: string, config: FleetConfig): Promise<
   }
 
   if (launchList.length === 0) {
-    console.log(pc.dim('No tasks to launch.'));
-    return;
+    if (!quiet) console.log(pc.dim('No tasks to launch.'));
+    return 0;
   }
 
   const tmux = createTmuxService();
@@ -109,11 +116,15 @@ export async function runLaunch(repoRoot: string, config: FleetConfig): Promise<
 
   for (const agent of newAgents) {
     writeHeartbeat(repoRoot, agent.taskName);
-    success(agent.taskName, agent.worktreePath);
+    if (!quiet) success(agent.taskName, agent.worktreePath);
   }
 
   emitEvent({ event: 'fleet.launch', tasks: newAgents.map((a) => a.taskName) });
-  console.log(pc.dim(`\nLaunched ${newAgents.length} agent(s) in detached tmux sessions.`));
+  if (!quiet) {
+    console.log(pc.dim(`\nLaunched ${newAgents.length} agent(s) in detached tmux sessions.`));
+  }
+
+  return newAgents.length;
 }
 
 /** Build the `fleet launch` CLI command. */

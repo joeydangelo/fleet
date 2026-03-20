@@ -53,6 +53,8 @@ interface StatusTransition {
   task: string;
   from: TaskState['status'] | undefined;
   to: TaskState['status'];
+  verdict?: string;
+  reviewCycle?: number;
 }
 
 interface StatusDiff {
@@ -72,7 +74,13 @@ export function diffStatuses(
     currentStatuses[task] = state.status;
     const prevStatus = prev[task];
     if (prevStatus !== state.status) {
-      transitions.push({ task, from: prevStatus, to: state.status });
+      transitions.push({
+        task,
+        from: prevStatus,
+        to: state.status,
+        verdict: state.verdict,
+        reviewCycle: state.reviewCycle,
+      });
     }
   }
 
@@ -126,20 +134,24 @@ function colorTask(name: string, taskIndex: Map<string, number>): string {
   return assignColor(idx)(name);
 }
 
-function printMessage(entry: Message, taskIndex: Map<string, number>): void {
+function printMessage(entry: Message, taskIndex: Map<string, number>, prefix = ''): void {
   const from = colorTask(entry.from, taskIndex);
 
   if (entry.type === 'broadcast') {
-    console.log(`${timestamp()}   ${from} broadcast: ${entry.msg}`);
+    console.log(`${prefix}${timestamp()}   ${from} broadcast: ${entry.msg}`);
   } else if (entry.to) {
     const to = colorTask(entry.to, taskIndex);
-    console.log(`${timestamp()}   ${from} → ${to}: ${entry.msg}`);
+    console.log(`${prefix}${timestamp()}   ${from} → ${to}: ${entry.msg}`);
   } else {
-    console.log(`${timestamp()}   ${from}: ${entry.msg}`);
+    console.log(`${prefix}${timestamp()}   ${from}: ${entry.msg}`);
   }
 }
 
-function printStatusTransition(t: StatusTransition, taskIndex: Map<string, number>): void {
+function printStatusTransition(
+  t: StatusTransition,
+  taskIndex: Map<string, number>,
+  prefix = '',
+): void {
   const name = colorTask(t.task, taskIndex);
 
   if (t.from === undefined) {
@@ -149,37 +161,48 @@ function printStatusTransition(t: StatusTransition, taskIndex: Map<string, numbe
 
   switch (t.to) {
     case 'in_progress':
-      console.log(`${timestamp()} ${colors.success('+')} ${name} claimed task`);
+      if (t.from === 'in_review') {
+        console.log(`${prefix}${timestamp()} ${colors.error('✗')} ${name} review failed — fixing`);
+      } else {
+        console.log(`${prefix}${timestamp()} ${colors.success('+')} ${name} claimed task`);
+      }
       break;
-    case 'in_review':
-      console.log(`${timestamp()} ${colors.info('⟳')} ${name} submitted for review`);
+    case 'in_review': {
+      const cycle = t.reviewCycle ?? 0;
+      const suffix = cycle > 1 ? ` (attempt ${cycle})` : '';
+      console.log(
+        `${prefix}${timestamp()} ${colors.info('⟳')} ${name} submitted for review${suffix}`,
+      );
       break;
+    }
     case 'done':
-      console.log(`${timestamp()} ${colors.success('✓')} ${name} done`);
+      console.log(`${prefix}${timestamp()} ${colors.success('✓')} ${name} done`);
       break;
     case 'pending':
-      console.log(`${timestamp()}   ${name} ${t.from} → ${t.to}`);
       break;
-    default: {
-      const exhaustive: never = t.to;
-      console.log(`${timestamp()}   ${name} ${t.from} → ${String(exhaustive)}`);
-    }
   }
+}
+
+function plural(n: number, word: string): string {
+  return `${n} ${word}${n === 1 ? '' : 's'}`;
 }
 
 function printCommitDelta(
   d: CommitDelta,
   taskIndex: Map<string, number>,
   fileCount?: number,
+  prefix = '',
 ): void {
   const name = colorTask(d.task, taskIndex);
   const delta = d.to - d.from;
-  const filesStr = fileCount !== undefined ? `, ${fileCount} file(s)` : '';
-  console.log(`${timestamp()}   ${name} +${delta} commit(s) (${d.to} total${filesStr})`);
+  const filesStr = fileCount !== undefined ? `, ${plural(fileCount, 'file')}` : '';
+  console.log(
+    `${prefix}${timestamp()}   ${name} +${plural(delta, 'commit')} (${d.to} total${filesStr})`,
+  );
 }
 
-function printSummary(): void {
-  console.log(`${timestamp()} All agents done.`);
+function printSummary(prefix = ''): void {
+  console.log(`${prefix}${timestamp()} All agents done.`);
 }
 
 function printHealthTransition(
@@ -187,16 +210,15 @@ function printHealthTransition(
   from: HealthState | undefined,
   to: HealthState,
   taskIndex: Map<string, number>,
+  prefix = '',
 ): void {
   const name = colorTask(taskName, taskIndex);
   if (to === 'stalled') {
-    console.log(`${timestamp()} ${colors.warn('⚠')} ${name} stalled — no activity`);
+    console.log(`${prefix}${timestamp()} ${colors.warn('⚠')} ${name} stalled — no activity`);
   } else if (to === 'zombie') {
-    console.log(`${timestamp()} ${colors.error('☠')} ${name} zombie — presumed dead`);
+    console.log(`${prefix}${timestamp()} ${colors.error('☠')} ${name} zombie — presumed dead`);
   } else if (from === 'stalled' && to === 'working') {
-    console.log(`${timestamp()} ${colors.success('↻')} ${name} resumed`);
-  } else if (to === 'working' && from === 'booting') {
-    console.log(`${timestamp()} ${colors.success('+')} ${name} first heartbeat`);
+    console.log(`${prefix}${timestamp()} ${colors.success('↻')} ${name} resumed`);
   }
 }
 
@@ -206,9 +228,11 @@ export async function runWatchLoop(opts: {
   configPath: string;
   interval: number;
   header?: string;
+  linePrefix?: string;
   onAbort?: () => void;
 }): Promise<void> {
   const { repoRoot, configPath, interval, onAbort } = opts;
+  const prefix = opts.linePrefix ?? '';
   const config = loadConfig(configPath);
   const worktrees = planWorktrees(config, repoRoot);
   const taskNames = worktrees.map((w) => w.taskName);
@@ -233,20 +257,20 @@ export async function runWatchLoop(opts: {
   process.on('SIGTERM', onSignal);
 
   if (opts.header !== undefined) {
-    console.log(opts.header);
+    if (opts.header !== '') console.log(opts.header);
   } else {
     console.log(
       pc.bold('fleet watch') + pc.dim(` (polling every ${interval}s, ${taskNames.length} task(s))`),
     );
+    console.log(pc.dim(`Tasks: ${taskNames.map((n, i) => assignColor(i)(n)).join(', ')}`));
+    console.log();
   }
-  console.log(pc.dim(`Tasks: ${taskNames.map((n, i) => assignColor(i)(n)).join(', ')}`));
-  console.log();
 
   try {
     while (!aborted) {
       const syncState = readSyncState(repoRoot);
       if (!syncState) {
-        console.log(pc.dim(`${timestamp()} No sync state yet, waiting...`));
+        console.log(`${prefix}${pc.dim(`${timestamp()} No sync state yet, waiting...`)}`);
         await sleep(interval * 1000);
         continue;
       }
@@ -256,22 +280,23 @@ export async function runWatchLoop(opts: {
       lastSeenTs = messageDiff.lastSeenTs;
 
       for (const entry of messageDiff.newEntries) {
-        printMessage(entry, taskIndex);
+        printMessage(entry, taskIndex, prefix);
       }
 
       const statusDiff = diffStatuses(prevStatuses, syncState.tasks);
       prevStatuses = statusDiff.currentStatuses;
 
       for (const t of statusDiff.transitions) {
-        printStatusTransition(t, taskIndex);
+        printStatusTransition(t, taskIndex, prefix);
       }
 
       const currentCommitCounts: Record<string, number> = {};
       for (const wt of worktrees) {
         try {
           currentCommitCounts[wt.taskName] = getCommitCount(wt.branch, config.target, repoRoot);
-        } catch (err) {
-          console.warn(`Failed to get commit count for ${wt.taskName}: ${String(err)}`);
+        } catch {
+          // Commit count is cosmetic — transient git errors (e.g. mid-rebase)
+          // resolve on the next poll cycle without user intervention.
           currentCommitCounts[wt.taskName] = prevCommitCounts[wt.taskName] ?? 0;
         }
       }
@@ -290,7 +315,7 @@ export async function runWatchLoop(opts: {
           // File count is cosmetic display data — failure does not affect merge logic,
           // so silent skip is acceptable here.
         }
-        printCommitDelta(d, taskIndex, fileCount);
+        printCommitDelta(d, taskIndex, fileCount, prefix);
       }
 
       // Runs after review refresh so health sees up-to-date sync state
@@ -322,7 +347,7 @@ export async function runWatchLoop(opts: {
         const health = { ...healthSnapshot_ };
         const prevState = prevHealthStates[taskName];
         if (prevState !== health.state) {
-          printHealthTransition(taskName, prevState, health.state, taskIndex);
+          printHealthTransition(taskName, prevState, health.state, taskIndex, prefix);
           prevHealthStates[taskName] = health.state;
         }
 
@@ -331,10 +356,12 @@ export async function runWatchLoop(opts: {
         const currLevel = health.escalationLevel;
 
         if (health.state === 'stalled' && currLevel > prevLevel) {
+          const name = colorTask(taskName, taskIndex);
+
           switch (currLevel) {
             case 1: {
               console.log(
-                `${timestamp()} ${colors.warn('📩')} ${colorTask(taskName, taskIndex)} nudging stalled agent...`,
+                `${prefix}${timestamp()} ${colors.warn('→')} ${name} nudging stalled agent`,
               );
               const stalledMs = health.stalledSince
                 ? now.getTime() - new Date(health.stalledSince).getTime()
@@ -353,13 +380,7 @@ export async function runWatchLoop(opts: {
 
               if (paneConfig && tmux) {
                 const target = resolvePaneTarget(paneConfig, taskName);
-                if (target && !sendWakeSignal(tmux, target)) {
-                  console.log(
-                    pc.dim(
-                      `${timestamp()}   wake signal failed for ${colorTask(taskName, taskIndex)}`,
-                    ),
-                  );
-                }
+                if (target) sendWakeSignal(tmux, target);
               }
               break;
             }
@@ -369,20 +390,20 @@ export async function runWatchLoop(opts: {
                 const target = resolvePaneTarget(paneConfig, taskName);
                 if (target) {
                   console.log(
-                    `${timestamp()} ${colors.warn('🔍')} ${colorTask(taskName, taskIndex)} triaging stalled agent...`,
+                    `${prefix}${timestamp()} ${colors.warn('⚠')} ${name} triaging stalled agent`,
                   );
                   const { verdict, captured } = triageAgent(tmux, target, taskName);
                   saveTriageOutput(repoRoot, taskName, captured, verdict, new Date().toISOString());
 
                   if (verdict === 'extend') {
                     console.log(
-                      `${timestamp()}   ${colorTask(taskName, taskIndex)} triage: EXTEND — resetting escalation`,
+                      `${prefix}${timestamp()}   ${name} triage: extending — activity detected`,
                     );
                     health.stalledSince = now.toISOString();
                     health.escalationLevel = 0;
                   } else if (verdict === 'retry') {
                     console.log(
-                      `${timestamp()}   ${colorTask(taskName, taskIndex)} triage: RETRY — sending recovery nudge`,
+                      `${prefix}${timestamp()}   ${name} triage: retrying — sending recovery nudge`,
                     );
                     const retryMsg =
                       `You appear stuck on task "${taskName}". ` +
@@ -392,20 +413,12 @@ export async function runWatchLoop(opts: {
                       to: taskName,
                       msg: retryMsg,
                     });
-                    if (!sendWakeSignal(tmux, target)) {
-                      console.log(
-                        pc.dim(
-                          `${timestamp()}   wake signal failed for ${colorTask(taskName, taskIndex)}`,
-                        ),
-                      );
-                    }
+                    sendWakeSignal(tmux, target);
                   } else {
-                    console.log(
-                      `${timestamp()} ${colors.error('☠')} ${colorTask(taskName, taskIndex)} triage: TERMINATE — marking zombie`,
-                    );
+                    console.log(`${prefix}${timestamp()}   ${name} triage: terminating`);
                     health.state = 'zombie';
                     health.escalationLevel = 0;
-                    printHealthTransition(taskName, 'stalled', 'zombie', taskIndex);
+                    printHealthTransition(taskName, 'stalled', 'zombie', taskIndex, prefix);
                     prevHealthStates[taskName] = 'zombie';
                   }
                 }
@@ -413,15 +426,12 @@ export async function runWatchLoop(opts: {
               break;
             }
 
-            // currLevel is bounded by MAX_ESCALATION_LEVEL; levels above case 2 are terminal and mark zombie.
+            // currLevel is bounded by MAX_ESCALATION_LEVEL; levels above case 2 are terminal.
             default: {
-              console.log(
-                `${timestamp()} ${colors.error('☠')} ${colorTask(taskName, taskIndex)} escalation reached terminal level — marking zombie`,
-              );
               health.state = 'zombie';
               health.escalationLevel = 0;
               health.stalledSince = null;
-              printHealthTransition(taskName, 'stalled', 'zombie', taskIndex);
+              printHealthTransition(taskName, 'stalled', 'zombie', taskIndex, prefix);
               prevHealthStates[taskName] = 'zombie';
               break;
             }
@@ -434,7 +444,7 @@ export async function runWatchLoop(opts: {
       writeHealthSnapshot(repoRoot, healthSnapshot);
 
       if (isAllDone(syncState.tasks)) {
-        printSummary();
+        printSummary(prefix);
         break;
       } else {
         // Only exit when every non-done task is a genuine zombie.
@@ -445,7 +455,9 @@ export async function runWatchLoop(opts: {
           nonDoneNames.length > 0 &&
           nonDoneNames.every((n) => healthSnapshot.agents[n]?.state === 'zombie');
         if (allNonDoneZombie) {
-          console.log(colors.error('All remaining agents are zombies. Manual review required.'));
+          console.log(
+            `${prefix}${colors.error('All remaining agents are zombies. Manual review required.')}`,
+          );
           break;
         }
       }
