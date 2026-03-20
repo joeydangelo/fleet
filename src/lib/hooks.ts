@@ -423,7 +423,7 @@ interface MatcherGroup {
 }
 
 /** Install Claude Code hooks and the wrapper script into a repo. */
-export function installHooks(repoRoot: string): void {
+export function installHooks(repoRoot: string, opts?: { quiet?: boolean }): number {
   const scriptDir = resolve(repoRoot, '.claude', 'scripts');
   mkdirSync(scriptDir, { recursive: true });
   writeFileSync(resolve(repoRoot, SCRIPT_RELATIVE), FLEET_SESSION_SCRIPT, 'utf-8');
@@ -564,16 +564,22 @@ export function installHooks(repoRoot: string): void {
   mkdirSync(resolve(settingsPath, '..'), { recursive: true });
   writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + '\n', 'utf-8');
 
-  success('hooks', 'SessionStart + UserPromptSubmit + PreCompact + PreToolUse + PostToolUse');
+  const hookCount = Object.keys(fleetHooks).length;
 
-  success('script', SCRIPT_RELATIVE);
-  success('script', SKILL_INJECT_RELATIVE);
-  success('script', GUARD_RELATIVE);
-  success('script', REMINDER_RELATIVE);
-  success('script', HEARTBEAT_RELATIVE);
-  success('script', INBOX_RELATIVE);
-  success('script', GATE_RELATIVE);
-  success('script', FEED_RELATIVE);
+  if (!opts?.quiet) {
+    success('hooks', 'SessionStart + UserPromptSubmit + PreCompact + PreToolUse + PostToolUse');
+
+    success('script', SCRIPT_RELATIVE);
+    success('script', SKILL_INJECT_RELATIVE);
+    success('script', GUARD_RELATIVE);
+    success('script', REMINDER_RELATIVE);
+    success('script', HEARTBEAT_RELATIVE);
+    success('script', INBOX_RELATIVE);
+    success('script', GATE_RELATIVE);
+    success('script', FEED_RELATIVE);
+  }
+
+  return hookCount;
 }
 
 /** Detect any fleet-related hook entry (old flat format or correct matcher group). */

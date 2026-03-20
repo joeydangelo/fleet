@@ -4,12 +4,13 @@ import { writeFileSync } from 'atomically';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import pc from 'picocolors';
+import { intro, log } from '@clack/prompts';
 import { getRepoRoot } from '../lib/git.js';
 import { listDocs } from '../lib/docs.js';
 import { syncDocs } from '../lib/doc-sync.js';
 import { ensureFleetGitignore, removeFleetFromRootGitignore } from '../lib/gitignore.js';
 import { installHooks } from '../lib/hooks.js';
-import { success, skip, handleError, toErrorMessage } from '../lib/output.js';
+import { handleError } from '../lib/output.js';
 import { findBundledDir, writeDefaultFleetYaml } from '../lib/util.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -86,9 +87,9 @@ function readSkillSource(role: string): string | null {
   return readFileSync(skillPath, 'utf-8');
 }
 
-/** Install role-specific skills and clean up the old monolithic skill. */
-function installSkills(repoRoot: string): void {
-  let installed = 0;
+/** Install role-specific skills and clean up the old monolithic skill. Returns names installed. */
+function installSkills(repoRoot: string): string[] {
+  const installed: string[] = [];
 
   for (const role of ROLES) {
     const source = readSkillSource(role);
@@ -101,19 +102,15 @@ function installSkills(repoRoot: string): void {
     content = injectDirectories(content, role);
 
     writeFileSync(resolve(skillDir, 'SKILL.md'), content, 'utf-8');
-    installed++;
-  }
-
-  if (installed > 0) {
-    success('skills', `${installed} role-specific skills installed`);
-  } else {
-    skip('skills', 'skill sources not found (run pnpm build)');
+    installed.push(role);
   }
 
   const oldSkillDir = resolve(repoRoot, '.claude', 'skills', 'fleet');
   if (existsSync(oldSkillDir)) {
     rmSync(oldSkillDir, { recursive: true, force: true });
   }
+
+  return installed;
 }
 
 /** CLI command: initialize fleet in a repository (sync docs, write skills, install hooks). */
@@ -122,45 +119,58 @@ export function initCommand(): Command {
     try {
       const repoRoot = getRepoRoot();
 
-      console.log(pc.bold('fleet init\n'));
+      intro('fleet init');
 
+      // Docs must sync before skills so injectDirectories can find them
+      const docParts: string[] = [];
+      let docTotal = 0;
       try {
         const syncResult = syncDocs(repoRoot);
-        if (syncResult.added.length > 0 || syncResult.updated.length > 0) {
-          const parts: string[] = [];
-          if (syncResult.added.length > 0) parts.push(`${syncResult.added.length} new`);
-          if (syncResult.updated.length > 0) parts.push(`${syncResult.updated.length} updated`);
-          if (syncResult.removed.length > 0) parts.push(`${syncResult.removed.length} removed`);
-          success('docs', `synced (${parts.join(', ')})`);
-        } else {
-          success('docs', 'up to date');
-        }
-      } catch (err) {
-        skip('docs', `sync failed: ${toErrorMessage(err)}`);
-      }
-
-      installSkills(repoRoot);
-
-      if (removeFleetFromRootGitignore(repoRoot)) {
-        success('gitignore', 'migrated — removed .fleet/ from root .gitignore');
-      }
-      if (ensureFleetGitignore(repoRoot)) {
-        success('gitignore', 'created .fleet/.gitignore');
-      } else {
-        skip('gitignore', '.fleet/.gitignore up to date');
-      }
-
-      try {
-        if (writeDefaultFleetYaml(repoRoot)) {
-          success('config', resolve(repoRoot, '.fleet', 'fleet.yaml'));
+        docTotal = syncResult.added.length + syncResult.updated.length + syncResult.skipped.length;
+        for (const cat of ['shortcuts', 'guidelines', 'templates'] as const) {
+          const count = [syncResult.added, syncResult.updated, syncResult.skipped]
+            .flat()
+            .filter((key) => key.startsWith(`${cat}/`)).length;
+          if (count > 0) docParts.push(`${count} ${cat}`);
         }
       } catch {
-        skip('config', 'fleet-yaml template not found (run pnpm build)');
+        /* non-fatal */
       }
 
-      installHooks(repoRoot);
+      // Skills
+      const skills = installSkills(repoRoot);
+      if (skills.length > 0) {
+        log.step(`${skills.length} skills installed`);
+        console.log(`${pc.dim('│')}  ${skills.join(' · ')}`);
+      }
 
-      console.log(pc.dim('\nEdit .fleet/fleet.yaml and run `fleet go` to start a session.'));
+      // Docs (display after skills)
+      if (docTotal > 0) {
+        log.step(`${docTotal} docs synced`);
+        if (docParts.length > 0) {
+          console.log(`${pc.dim('│')}  ${docParts.join(' · ')}`);
+        }
+      }
+
+      // Gitignore
+      removeFleetFromRootGitignore(repoRoot);
+      ensureFleetGitignore(repoRoot);
+
+      // Hooks
+      const hookCount = installHooks(repoRoot, { quiet: true });
+      log.step(`${hookCount} hooks configured`);
+
+      // Config
+      try {
+        const created = writeDefaultFleetYaml(repoRoot);
+        if (created) {
+          log.step('fleet.yaml created');
+        }
+      } catch {
+        /* non-fatal */
+      }
+
+      log.success('Ready — run `fleet go` to start');
     } catch (err) {
       handleError(err);
     }
