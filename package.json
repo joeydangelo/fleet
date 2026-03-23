@@ -3,6 +3,25 @@
   "version": "0.1.0",
   "description": "Fleet — orchestrate multi-agent git worktree workflows",
   "license": "MIT",
+  "author": "Joey D'Angelo",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/joeydangelo/fleet.git"
+  },
+  "homepage": "https://github.com/joeydangelo/fleet#readme",
+  "bugs": {
+    "url": "https://github.com/joeydangelo/fleet/issues"
+  },
+  "keywords": [
+    "claude",
+    "ai",
+    "agents",
+    "multi-agent",
+    "worktree",
+    "git",
+    "orchestration",
+    "cli"
+  ],
   "type": "module",
   "main": "./dist/index.mjs",
   "types": "./dist/index.d.mts",
