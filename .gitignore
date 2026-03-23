@@ -3,4 +3,7 @@ dist/
 attic/
 *.tgz
 .DS_Store
-prompts/
+.tbd/
+.claude/hooks/tbd-*
+.claude/scripts/tbd-*
+.claude/skills/tbd/
