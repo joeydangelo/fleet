@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=1200">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      width: 1200px;
+      height: 630px;
+      font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+      background-color: #faf9f7;
+      overflow: hidden;
+      position: relative;
+      display: flex;
+    }
+
+    .left {
+      width: 440px;
+      padding: 0 56px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 20px;
+      position: relative;
+      z-index: 2;
+    }
+
+    .title {
+      font-family: 'Instrument Serif', Georgia, serif;
+      font-size: 96px;
+      font-weight: 400;
+      color: #1a1a1a;
+      letter-spacing: -0.03em;
+      line-height: 0.9;
+    }
+
+    .tagline {
+      font-size: 20px;
+      line-height: 1.5;
+      color: #6b6560;
+      max-width: 340px;
+    }
+
+    .url {
+      font-family: 'Fira Code', monospace;
+      font-size: 15px;
+      color: #d97757;
+      margin-top: 8px;
+    }
+
+    .right {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .right::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image: radial-gradient(circle, rgba(0,0,0,0.035) 1px, transparent 1px);
+      background-size: 20px 20px;
+    }
+
+    .graph-wrap {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+    }
+
+    .graph-svg {
+      width: 760px;
+      height: 630px;
+    }
+
+    /* Agent labels — positioned next to their branch */
+    .label {
+      position: absolute;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: white;
+      border: 1px solid #e8e5df;
+      border-radius: 8px;
+      padding: 10px 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+      z-index: 2;
+      white-space: nowrap;
+    }
+
+    .label__dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .label__name {
+      font-family: 'Fira Code', monospace;
+      font-size: 12.5px;
+      font-weight: 500;
+      color: #1a1a1a;
+    }
+
+    .label__badge {
+      font-size: 10.5px;
+      font-weight: 600;
+      padding: 1px 7px;
+      border-radius: 4px;
+    }
+
+    .badge--pass { background: rgba(127, 168, 135, 0.12); color: #7fa887; }
+    .badge--building { background: rgba(217, 119, 87, 0.1); color: #d97757; }
+
+    .label--1 { top: 122px; left: 240px; }
+    .label--2 { top: 260px; left: 300px; }
+    .label--3 { top: 405px; left: 360px; }
+  </style>
+</head>
+<body>
+  <div class="left">
+    <h1 class="title">Fleet</h1>
+    <p class="tagline">Parallel AI agents, isolated worktrees, merged results.</p>
+    <span class="url">fleetgo.sh</span>
+  </div>
+
+  <div class="right">
+    <div class="graph-wrap">
+      <svg class="graph-svg" viewBox="0 0 760 630" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <!--
+          Authentic git graph style:
+          - Trunk is a continuous vertical line
+          - Branches fork right with rounded corners, run parallel, merge back
+          - Dots ONLY where commits exist (on branches = work, on trunk = merges)
+          - Fork points have no special dot — the line just departs
+          - Thicker lines for visibility at thumbnail size
+        -->
+
+        <!-- Main trunk — runs full height, drawn UNDER branches -->
+        <line x1="60" y1="0" x2="60" y2="630" stroke="#c8c4be" stroke-width="3"/>
+
+        <!-- Branch 1 (blue) — forks at y=70, runs at x=110, merges at y=210 -->
+        <path d="
+          M 60 70
+          L 95 70 A 15 15 0 0 1 110 85
+          L 110 195 A 15 15 0 0 1 95 210
+          L 60 210
+        " stroke="#6a9bcc" stroke-width="3" fill="none" stroke-linejoin="round"/>
+
+        <!-- Branch 2 (orange) — forks at y=100, runs at x=160, merges at y=340 -->
+        <path d="
+          M 60 100
+          L 145 100 A 15 15 0 0 1 160 115
+          L 160 325 A 15 15 0 0 1 145 340
+          L 60 340
+        " stroke="#d97757" stroke-width="3" fill="none" stroke-linejoin="round"/>
+
+        <!-- Branch 3 (green) — forks at y=130, runs at x=210, merges at y=480 -->
+        <path d="
+          M 60 130
+          L 195 130 A 15 15 0 0 1 210 145
+          L 210 465 A 15 15 0 0 1 195 480
+          L 60 480
+        " stroke="#7fa887" stroke-width="3" fill="none" stroke-linejoin="round"/>
+
+        <!-- Commit dots — branch work (small, on the branch line) -->
+        <!-- Blue branch commits -->
+        <circle cx="110" cy="120" r="4.5" fill="#6a9bcc"/>
+        <circle cx="110" cy="158" r="4.5" fill="#6a9bcc"/>
+
+        <!-- Orange branch commits -->
+        <circle cx="160" cy="165" r="4.5" fill="#d97757"/>
+        <circle cx="160" cy="220" r="4.5" fill="#d97757"/>
+        <circle cx="160" cy="275" r="4.5" fill="#d97757"/>
+
+        <!-- Green branch commits -->
+        <circle cx="210" cy="200" r="4.5" fill="#7fa887"/>
+        <circle cx="210" cy="270" r="4.5" fill="#7fa887"/>
+        <circle cx="210" cy="340" r="4.5" fill="#7fa887"/>
+        <circle cx="210" cy="410" r="4.5" fill="#7fa887"/>
+
+        <!-- Merge commits on trunk (larger, colored) -->
+        <circle cx="60" cy="210" r="6" fill="#6a9bcc"/>
+        <circle cx="60" cy="340" r="6" fill="#d97757"/>
+        <circle cx="60" cy="480" r="6" fill="#7fa887"/>
+
+        <!-- Trunk commits between merges (small gray) -->
+        <circle cx="60" cy="40" r="4" fill="#c8c4be"/>
+        <circle cx="60" cy="270" r="4" fill="#c8c4be"/>
+        <circle cx="60" cy="410" r="4" fill="#c8c4be"/>
+        <circle cx="60" cy="540" r="4" fill="#c8c4be"/>
+        <circle cx="60" cy="580" r="4" fill="#c8c4be"/>
+      </svg>
+
+      <!-- Agent labels next to branches -->
+      <div class="label label--1">
+        <span class="label__dot" style="background:#6a9bcc"></span>
+        <span class="label__name">auth-middleware</span>
+        <span class="label__badge badge--pass">PASS</span>
+      </div>
+
+      <div class="label label--2">
+        <span class="label__dot" style="background:#d97757"></span>
+        <span class="label__name">api-routes</span>
+        <span class="label__badge badge--pass">PASS</span>
+      </div>
+
+      <div class="label label--3">
+        <span class="label__dot" style="background:#7fa887"></span>
+        <span class="label__name">config-layer</span>
+        <span class="label__badge badge--building">building</span>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
