@@ -282,14 +282,11 @@ code {
 }
 
 .install-block--large {
-  display: flex;
-  width: 100%;
-  padding: 0.85em 1em 0.85em 1.5em;
+  padding: 0.85em 1.25em 0.85em 1.5em;
 }
 
 .install-block--large .install-block__code {
-  font-size: clamp(0.75rem, 0.3rem + 2vw, 1em);
-  flex: 1;
+  font-size: 1em;
 }
 
 .install-block__code {
@@ -762,6 +759,15 @@ code {
   .install-block {
     width: 100%;
     justify-content: space-between;
+  }
+
+  .install-block--large {
+    display: flex;
+  }
+
+  .install-block--large .install-block__code {
+    font-size: clamp(0.75rem, 0.3rem + 2vw, 1em);
+    flex: 1;
   }
 
   .install-block__code {
