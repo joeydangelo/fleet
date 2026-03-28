@@ -282,11 +282,14 @@ code {
 }
 
 .install-block--large {
+  display: flex;
+  width: 100%;
   padding: 0.85em 1em 0.85em 1.5em;
 }
 
 .install-block--large .install-block__code {
-  font-size: 1em;
+  font-size: clamp(0.75rem, 0.3rem + 2vw, 1em);
+  flex: 1;
 }
 
 .install-block__code {
@@ -307,6 +310,7 @@ code {
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
   width: 2em;
   height: 2em;
   border: none;
