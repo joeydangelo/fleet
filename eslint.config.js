@@ -32,6 +32,7 @@ export default [
       '**/.fleet/**',
       '**/.tbd/**',
       '**/.claude/hooks/**',
+      '**/website/**',
       '*.config.*',
       'scripts/**',
     ],

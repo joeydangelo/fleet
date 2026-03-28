@@ -3,6 +3,7 @@ dist/
 attic/
 *.tgz
 .DS_Store
+website/*.mp4
 .tbd/
 .claude/hooks/tbd-*
 .claude/scripts/tbd-*

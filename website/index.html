@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fleet - Parallel AI Agent Worktrees</title>
+  <meta name="description" content="Orchestrate multiple AI coding agents across git worktrees. One command splits features into parallel tasks, spawns agents, and merges results.">
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="Fleet - Parallel AI Agent Worktrees">
+  <meta property="og:description" content="Orchestrate multiple AI coding agents across git worktrees. One command splits features into parallel tasks, spawns agents, and merges results.">
+  <meta property="og:image" content="og-image.png">
+  <meta property="og:type" content="website">
+
+  <!-- Twitter / X -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Fleet - Parallel AI Agent Worktrees">
+  <meta name="twitter:description" content="Orchestrate multiple AI coding agents across git worktrees.">
+  <meta name="twitter:image" content="og-image.png">
+
+  <!-- Favicon -->
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif&family=Plus+Jakarta+Sans:wght@400;500;600&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+
+  <!-- Lenis smooth scroll -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lenis@1.2.3/dist/lenis.css">
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- Navigation -->
+  <nav class="nav">
+    <div class="nav__inner">
+      <a href="/" class="nav__logo">Fleet</a>
+      <div class="nav__links">
+        <a href="https://github.com/joeydangelo/fleet" class="nav__link nav__gh" target="_blank" rel="noopener">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+          </svg>
+          <svg class="nav__star-icon" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+          </svg>
+          <span class="nav__star-count" id="starCount"></span>
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="hero__inner">
+      <p class="hero__label" data-reveal>Open-source CLI</p>
+      <h1 class="hero__title" data-reveal>
+        Parallel AI agents,<br>
+        isolated worktrees,<br>
+        merged results.
+      </h1>
+      <p class="hero__description" data-reveal>
+        Fleet splits features into parallel tasks, spawns a Claude Code agent
+        for each one in its own git worktree, and merges the results back
+        together. One command runs the full lifecycle.
+      </p>
+      <div class="hero__install" data-reveal>
+        <div class="install-block">
+          <code class="install-block__code">
+            <span class="install-block__prompt">$</span> npm install -g get-fleet@latest
+          </code>
+          <button class="install-block__copy" aria-label="Copy install command" data-copy="npm install -g get-fleet@latest">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+              <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"></path>
+            </svg>
+          </button>
+        </div>
+      </div>
+      <div class="hero__actions" data-reveal>
+        <a href="https://github.com/joeydangelo/fleet" class="hero__action hero__action--primary" target="_blank" rel="noopener">View on GitHub</a>
+        <a href="https://github.com/joeydangelo/fleet#readme" class="hero__action hero__action--secondary" target="_blank" rel="noopener">Read the docs</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Demo Video -->
+  <section class="demo">
+    <div class="demo__inner">
+      <div class="demo__player" data-reveal>
+        <div data-media-mode="autoplay" data-media-init data-media-status="not-active" class="demo__media">
+          <video
+            data-media-video-src="FleetDemo.mp4"
+            muted
+            loop
+            playsinline
+            webkit-playsinline
+            class="demo__video"
+          ></video>
+          <img
+            class="demo__poster"
+            src="preview.png"
+            data-media-placeholder
+            alt="Fleet demo preview"
+          >
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- How It Works -->
+  <section class="lifecycle">
+    <div class="lifecycle__inner">
+      <div class="lifecycle__header" data-reveal>
+        <div class="lifecycle__command">
+          <code>fleet go</code>
+        </div>
+        <h2 class="lifecycle__title">One command. Full lifecycle.</h2>
+        <p class="lifecycle__subtitle">
+          Tell your orchestrator agent what to build. Fleet handles the rest.
+        </p>
+      </div>
+
+      <div class="lifecycle__steps">
+        <div class="lifecycle__step" data-reveal>
+          <div class="lifecycle__icon lifecycle__icon--plan">
+            <span>1</span>
+          </div>
+          <div class="lifecycle__step-content">
+            <h3>Plan</h3>
+            <p>Scout the codebase, write a feature spec, decompose it into parallel tasks with non-overlapping file ownership.</p>
+          </div>
+        </div>
+
+        <div class="lifecycle__step" data-reveal>
+          <div class="lifecycle__icon lifecycle__icon--spawn">
+            <span>2</span>
+          </div>
+          <div class="lifecycle__step-content">
+            <h3>Spawn</h3>
+            <p>Create a git worktree and branch for each task. Launch a Claude Code agent in a tmux session per worktree.</p>
+          </div>
+        </div>
+
+        <div class="lifecycle__step" data-reveal>
+          <div class="lifecycle__icon lifecycle__icon--build">
+            <span>3</span>
+          </div>
+          <div class="lifecycle__step-content">
+            <h3>Build</h3>
+            <p>Agents work in parallel on isolated branches. Health monitoring detects stalls and recovers stuck agents automatically.</p>
+          </div>
+        </div>
+
+        <div class="lifecycle__step" data-reveal>
+          <div class="lifecycle__icon lifecycle__icon--merge">
+            <span>4</span>
+          </div>
+          <div class="lifecycle__step-content">
+            <h3>Merge</h3>
+            <p>Completed branches merge back in dependency order. Worktrees archive, session cleans up. Your feature is ready.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Capabilities -->
+  <section class="capabilities">
+    <div class="capabilities__inner">
+      <h2 class="capabilities__title" data-reveal>Built for serious work</h2>
+
+      <div class="capabilities__grid">
+        <div class="capabilities__item capabilities__item--wide" data-reveal>
+          <div class="capabilities__item-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M16 18l2-2-2-2M8 18l-2-2 2-2M3 6h18M3 6v12a2 2 0 002 2h14a2 2 0 002-2V6M9 6V4a2 2 0 012-2h2a2 2 0 012 2v2"/>
+            </svg>
+          </div>
+          <h3>Parallel worktrees</h3>
+          <p>Each task gets its own git worktree and Claude Code session. Agents never conflict because they own separate files. No merge hell.</p>
+        </div>
+
+        <div class="capabilities__item" data-reveal>
+          <div class="capabilities__item-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0zM12 9v4M12 17h.01"/>
+            </svg>
+          </div>
+          <h3>Health monitoring</h3>
+          <p>Every tool call records a heartbeat. Stalled agents get nudged. Stuck agents get triaged. Crashed agents become zombies so others keep working.</p>
+        </div>
+
+        <div class="capabilities__item" data-reveal>
+          <div class="capabilities__item-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+            </svg>
+          </div>
+          <h3>Agent messaging</h3>
+          <p>Broadcast to all agents, send direct messages, or reply to requests. Agents coordinate through a shared git branch without stepping on each other.</p>
+        </div>
+
+        <div class="capabilities__item" data-reveal>
+          <div class="capabilities__item-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M9 11l3 3L22 4M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
+            </svg>
+          </div>
+          <h3>Built-in review</h3>
+          <p>Each task submits for automated code review before merging. Reviewers check quality, tests, error handling, and security. PASS or FAIL, no ambiguity.</p>
+        </div>
+
+        <div class="capabilities__item capabilities__item--wide" data-reveal>
+          <div class="capabilities__item-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M4 19.5A2.5 2.5 0 016.5 17H20M4 19.5A2.5 2.5 0 016.5 17H20M4 19.5V4.5A2.5 2.5 0 016.5 2H20v20H6.5A2.5 2.5 0 014 19.5z"/>
+            </svg>
+          </div>
+          <h3>Shortcuts, guidelines, templates</h3>
+          <p>Agents load procedures on demand. Shortcuts say <em>what to do</em>. Guidelines say <em>what counts as correct</em>. Templates give structure. Add your own from any URL.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Commands -->
+  <section class="commands">
+    <div class="commands__inner">
+      <h2 class="commands__title" data-reveal>Essential commands</h2>
+      <div class="commands__table-wrap" data-reveal>
+        <table class="commands__table">
+          <tbody>
+            <tr>
+              <td><code>fleet go</code></td>
+              <td>Full lifecycle: up, launch, watch, merge, down</td>
+            </tr>
+            <tr>
+              <td><code>fleet status</code></td>
+              <td>Check progress across all tasks</td>
+            </tr>
+            <tr>
+              <td><code>fleet broadcast "msg"</code></td>
+              <td>Send a message to all agents</td>
+            </tr>
+            <tr>
+              <td><code>fleet send &lt;task&gt; "msg"</code></td>
+              <td>Direct message to one agent</td>
+            </tr>
+            <tr>
+              <td><code>fleet dashboard</code></td>
+              <td>Terminal UI with agents, messages, merge queue</td>
+            </tr>
+            <tr>
+              <td><code>fleet down</code></td>
+              <td>Archive session, remove worktrees, clean up</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="cta">
+    <div class="cta__inner" data-reveal>
+      <h2 class="cta__title">Get started</h2>
+      <div class="install-block install-block--large">
+        <code class="install-block__code">
+          <span class="install-block__prompt">$</span> npm install -g get-fleet@latest
+        </code>
+        <button class="install-block__copy" aria-label="Copy install command" data-copy="npm install -g get-fleet@latest">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+            <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"></path>
+          </svg>
+        </button>
+      </div>
+      <p class="cta__note">Then run <code>fleet init</code> in your repo. Requires Node.js 20+, tmux, and Claude Code CLI.</p>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="footer__inner">
+      <span class="footer__brand">Fleet</span>
+      <span class="footer__sep">&middot;</span>
+      <span>MIT License</span>
+      <span class="footer__sep">&middot;</span>
+      <a href="https://github.com/joeydangelo/fleet" target="_blank" rel="noopener">GitHub</a>
+    </div>
+  </footer>
+
+  <!-- Dependencies -->
+  <script src="https://cdn.jsdelivr.net/npm/lenis@1.2.3/dist/lenis.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/ScrollTrigger.min.js"></script>
+
+  <script src="script.js"></script>
+</body>
+</html>
