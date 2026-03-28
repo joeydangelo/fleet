@@ -38,7 +38,7 @@
   --space-sm: 1em;
   --space-md: 2em;
   --space-lg: 4em;
-  --space-xl: 7em;
+  --space-xl: 5em;
 
   /* Layout */
   --container-width: min(72em, 90vw);
@@ -514,7 +514,7 @@ code {
 
 .capabilities__grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 1.25em;
 }
 
@@ -530,7 +530,7 @@ code {
 }
 
 .capabilities__item--wide {
-  grid-column: span 2;
+  grid-column: 1 / -1;
 }
 
 .capabilities__item-icon {
@@ -560,7 +560,7 @@ code {
 /* --- Commands --- */
 
 .commands {
-  padding: var(--space-lg) 0 var(--space-xl);
+  padding: var(--space-xl) 0;
   background-color: var(--c-bg-alt);
 }
 
